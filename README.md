@@ -1,16 +1,4 @@
-# Starter base
+# Sugira Muryango Mobile App
 
-A starting point to help you set up your project quickly and use the common components provided by `react-native-reusables`. The idea is to make it easier for you to get started.
+The Sugira Muryango Mobile App is a powerful tool designed to assist the health ministry and its agents in collecting survey data from families under the IZUs initiative. The app enables agents to work offline, sync data when online, and provides a dynamic, user-friendly interface for efficient data collection.
 
-## Features
-
-- NativeWind v4
-- Dark and light mode
-  - Android Navigation Bar matches mode
-  - Persistent mode
-- Common components
-  - ThemeToggle, Avatar, Button, Card, Progress, Text, Tooltip
-
-<img src="https://github.com/mrzachnugent/react-native-reusables/assets/63797719/42c94108-38a7-498b-9c70-18640420f1bc"
-     alt="starter-base-template"
-     style="width:270px;" />
