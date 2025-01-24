@@ -11,13 +11,15 @@
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.sugiramuryango.mobile"
     },
     "android": {
       "adaptiveIcon": {
