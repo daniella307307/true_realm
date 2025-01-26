@@ -30,7 +30,7 @@ const SafeAreaRootProvider = ({ children }: SafeRootProviderProps) => {
       SplashScreen.hideAsync().catch(console.warn);
     };
 
-    router.push("/(families)/");
+    router.push("/(user-management)/login");
 
     initializeApp();
   }, [fontsLoaded, initializing]);

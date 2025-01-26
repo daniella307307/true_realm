@@ -2,14 +2,29 @@ import { View, Image } from "react-native";
 import React from "react";
 import { Text } from "./ui/text";
 
-const Logo = ({ className }: { className?: string }) => {
+const Logo = ({
+  className = "",
+  size = 32,
+  horizontal = false,
+}: {
+  className?: string;
+  size?: number;
+  horizontal?: boolean;
+}) => {
   return (
-    <View className={`flex items-center ${className}`}>
+    <View
+      className={`flex ${horizontal ? "flex-row items-center" : "flex-col items-center"} ${className}`}
+    >
       <Image
         source={require("../assets/images/logo.png")}
-        className="h-32 w-32 object-cover"
+        style={{ height: size, width: size }}
+        className="object-cover"
       />
-      <Text className="font-semibold text-black text-xl">Sugira Muryango</Text>
+      {!horizontal && (
+        <Text className="font-semibold text-black text-xl mt-2">
+          Sugira Muryango
+        </Text>
+      )}
     </View>
   );
 };

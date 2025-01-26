@@ -11,6 +11,8 @@ import { Button } from "~/components/ui/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CustomInput from "~/components/ui/input";
 import { router } from "expo-router";
+import { Modal, TouchableWithoutFeedback } from "react-native";
+import { Picker } from "@react-native-picker/picker"; // For dropdown
 
 const schema = z.object({
   email: z
@@ -30,13 +32,11 @@ const schema = z.object({
 });
 
 export default function LoginScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
 
-  const {
-    control,
-    handleSubmit,
-  } = useForm({
+  const { control, handleSubmit } = useForm({
     resolver: zodResolver(schema),
     mode: "onChange",
   });
@@ -48,6 +48,12 @@ export default function LoginScreen() {
   const onSubmit = (data: any) => {
     console.log("Form Data:", data);
     // Handle form submission logic here
+  };
+
+  const changeLanguage = (lang: string) => {
+    console.log("Selected Language:", lang);
+    i18n.changeLanguage(lang); // Change the language globally
+    setLanguageModalVisible(false); // Close the modal after language selection
   };
 
   return (
@@ -136,8 +142,44 @@ export default function LoginScreen() {
               {t("Forgot Password?")}
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setLanguageModalVisible(true)}
+            className="mt-4"
+          >
+            <Text className="text-accent text-center">
+              {t("Select Language")}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
+
+      <Modal
+        transparent={true}
+        visible={languageModalVisible}
+        animationType="slide"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <TouchableWithoutFeedback
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <View className="flex-1 justify-center items-center bg-black opacity-50" />
+        </TouchableWithoutFeedback>
+
+        <View className="bg-white p-6 rounded-lg w-full">
+          <Text className="text-lg mb-4">Select Language</Text>
+          <Picker selectedValue={i18n.language} onValueChange={changeLanguage}>
+            <Picker.Item label="English" value="en" />
+            <Picker.Item label="Kinyarwanda" value="rw" />
+          </Picker>
+          <TouchableOpacity
+            onPress={() => setLanguageModalVisible(false)}
+            className="mt-4"
+          >
+            <Text className="text-center text-accent">Close</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
