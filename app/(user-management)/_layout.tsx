@@ -2,8 +2,11 @@ import React from "react";
 import { router, Stack } from "expo-router";
 import { TouchableOpacity } from "react-native";
 import { ChevronLeft } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 
 const AuthLayout = () => {
+  const { t } = useTranslation();
+
   return (
     <Stack
       screenOptions={{
@@ -13,8 +16,9 @@ const AuthLayout = () => {
       <Stack.Screen
         name="login"
         options={{
-          title: "Login",
+          title: t("Login.title"),
           headerShown: true,
+          headerTitleAlign: "center",
           contentStyle: {
             elevation: 0,
             shadowOpacity: 0,
@@ -30,7 +34,7 @@ const AuthLayout = () => {
       <Stack.Screen
         name="forgot-password"
         options={{
-          title: "Forgot Password",
+          title: t("Login.forgotPassword"),
           headerShown: true,
           contentStyle: {
             elevation: 0,
@@ -47,7 +51,7 @@ const AuthLayout = () => {
       <Stack.Screen
         name="password-verification-sent"
         options={{
-          title: "Password Verification",
+          title: t("Password Verification"), // Add the respective translation key here
           headerShown: true,
           contentStyle: {
             elevation: 0,

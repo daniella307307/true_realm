@@ -36,11 +36,11 @@ export default function ForgotScreen() {
         <Logo className="mt-14" />
         <View>
           <Text className="mb-2 text-xl text-center font-medium text-[#050F2B]">
-            {t("Forgot your Password")}
+            {t("ForgotPassword.title")}
           </Text>
           <Text className="text-[#6E7191] text-center">
             {t(
-              "Enter your registered email below to receive password reset instruction"
+              "ForgotPassword.description"
             )}
           </Text>
         </View>
@@ -48,14 +48,14 @@ export default function ForgotScreen() {
         <View className="w-full">
           <View className="mt-4">
             <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-              {t("Email Address")}
+              {t("ForgotPassword.email")}
             </Text>
             <CustomInput
               control={control}
               name="email"
-              placeholder={t("Input email address")}
+              placeholder={t("ForgotPassword.emailPlaceholder")}
               keyboardType="email-address"
-              accessibilityLabel={t("Email Address")}
+              accessibilityLabel={t("ForgotPassword.email")}
             />
           </View>
 
@@ -65,17 +65,17 @@ export default function ForgotScreen() {
               size="default"
               onPress={() => router.push("/password-verification-sent")}
             >
-              <Text className="text-white font-semibold">{t("Send")}</Text>
+              <Text className="text-white font-semibold">{t("ForgotPassword.send")}</Text>
             </Button>
           </View>
         </View>
       </View>
       <TouchableOpacity className="absolue bottom-10">
         <View className="text-center flex-row justify-center items-center">
-          <Text> {t("You remember your password?")}</Text>
+          <Text> {t("ForgotPassword.rememberPassword")}</Text>
           <Pressable onPress={() => router.push("/login")}>
             <Text className="text-primary font-semibold ml-1">
-              {t("Login")}
+              {t("ForgotPassword.backToLogin")}
             </Text>
           </Pressable>
         </View>

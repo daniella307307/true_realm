@@ -4,7 +4,7 @@ import { TouchableOpacity } from "react-native";
 import { ChevronLeft } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 
-const FamilyFormsLayout = () => {
+const StatisticsLayout = () => {
   const { t } = useTranslation();
   return (
     <Stack
@@ -16,7 +16,7 @@ const FamilyFormsLayout = () => {
         name="index"
         options={{
           headerShown: true,
-          title: t("CohortPage.title"),
+          title: t("Statistics"),
           headerTitleAlign: "center",
           headerLeft: () => (
             <TouchableOpacity
@@ -33,4 +33,4 @@ const FamilyFormsLayout = () => {
   );
 };
 
-export default FamilyFormsLayout;
+export default StatisticsLayout;

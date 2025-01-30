@@ -4,7 +4,7 @@ import { TouchableOpacity } from "react-native";
 import { ChevronLeft } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 
-const FamilyFormsLayout = () => {
+const IzuMonitoringLayout = () => {
   const { t } = useTranslation();
   return (
     <Stack
@@ -13,10 +13,10 @@ const FamilyFormsLayout = () => {
       }}
     >
       <Stack.Screen
-        name="index"
+        name="izu-monitoring"
         options={{
           headerShown: true,
-          title: t("CohortPage.title"),
+          title: t("Izu"),
           headerTitleAlign: "center",
           headerLeft: () => (
             <TouchableOpacity
@@ -33,4 +33,4 @@ const FamilyFormsLayout = () => {
   );
 };
 
-export default FamilyFormsLayout;
+export default IzuMonitoringLayout;

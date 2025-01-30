@@ -1,117 +1,104 @@
-import React, { Fragment } from "react";
-import { ScrollView, View } from "react-native";
-import DynamicForm, { IForm } from "~/components/DynamicForm";
+import { Href, router } from "expo-router";
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { Pressable, ScrollView, View } from "react-native";
+import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
+import { IFamilies } from "~/types";
 
-const sampleFields: IForm[] = [
+const families: IFamilies[] = [
   {
-    id: "form1",
-    title: "Newly Created Form",
-    name: "sample-form",
-    path: "/sample-form",
-    type: "form",
-    display: "form",
-    description: "This is a newly created form, to test the dynamic form and its components. Feel free to test it out.",
-    tags: ["sample", "form"],
-    owner: "admin",
-    components: [
-      {
-        label: "Name",
-        type: "textfield",
-        key: "name",
-        placeholder: "Enter your name",
-        validate: { required: true, customMessage: "Name is required" },
-      },
-      {
-        label: "Gender",
-        type: "select",
-        key: "gender",
-        placeholder: "Select your gender",
-        options: [
-          { label: "Male", value: "male" },
-          { label: "Female", value: "female" },
-        ],
-        validate: { required: true, customMessage: "Gender is required" },
-      },
-
-      {
-        label: "Address",
-        type: "address",
-        key: "address",
-        components: [
-          { label: "Street", type: "textfield", key: "street" },
-          { label: "City", type: "textfield", key: "city" },
-        ],
-      },
-      {
-        label: "Remember Me",
-        type: "switch",
-        key: "rememberMe",
-      },
-    ],
+    id: "F-143456-12347",
+    name: "John Doe",
+    cohort: 1,
   },
   {
-    id: "form2",
-    title: "Account Information",
-    description: "Please fill in your account information,",
-    name: "sample-form",
-    path: "/sample-form",
-    type: "form",
-    display: "form",
-    tags: ["sample", "form"],
-    owner: "admin",
-    components: [
-      {
-        label: "Name",
-        type: "textfield",
-        key: "name",
-        placeholder: "Enter your name",
-        validate: { required: true, customMessage: "Name is required" },
-      },
-      {
-        label: "Gender",
-        type: "select",
-        key: "gender",
-        placeholder: "Select your gender",
-        options: [
-          { label: "Male", value: "male" },
-          { label: "Female", value: "female" },
-        ],
-        validate: { required: true, customMessage: "Gender is required" },
-      },
-
-      {
-        label: "Address",
-        type: "address",
-        key: "address",
-        components: [
-          { label: "Street", type: "textfield", key: "street" },
-          { label: "City", type: "textfield", key: "city" },
-        ],
-      },
-      {
-        label: "Remember Me",
-        type: "switch",
-        key: "rememberMe",
-      },
-    ],
+    id: "F-123456-12347",
+    name: "Jane Doe",
+    cohort: 2,
+  },
+  {
+    id: "F-113456-12347",
+    name: "John Smith",
+    cohort: 2,
+  },
+  {
+    id: "F-193456-12347",
+    name: "Jane Smith",
+    cohort: 1,
+  },
+  {
+    id: "F-148456-12347",
+    name: "Jane Smith",
+    cohort: 1,
+  },
+  {
+    id: "F-101456-12347",
+    name: "Jane Smith",
+    cohort: 1,
   },
 ];
 
-const FormScreen = () => {
+const CohortPage = () => {
+  const { t } = useTranslation();
+  // Calculate total number of families
+  const totalFamilies = families.length;
+
+  // Group families by cohort
+  const familiesByCohort = families.reduce((acc, family) => {
+    if (!acc[family.cohort]) {
+      acc[family.cohort] = [];
+    }
+    acc[family.cohort].push(family);
+    return acc;
+  }, {} as Record<number, IFamilies[]>);
+
+  // Create an array of cohort data
+  const cohortData = Object.entries(familiesByCohort).map(
+    ([cohort, families]) => ({
+      cohort: Number(cohort),
+      count: families.length,
+    })
+  );
+
   return (
-    <ScrollView className="bg-white py-10">
-      {sampleFields.map((form: IForm) => (
-        <Fragment key={form.id}>
-          <View className="px-8">
-            <Text className="text-xl font-semibold">{form.title}</Text>
-            <Text className="text-[#6E7191]">{form.description}</Text>
+    <ScrollView className="bg-white pt-6">
+      <View className="flex-row flex-wrap justify-between px-6">
+        <Pressable
+          onPress={() => {}}
+          className="flex flex-col bg-[#A23A910D] border border-[#0000001A] justify-between gap-6 p-6 rounded-xl w-[48%] mb-4"
+        >
+          <TabBarIcon name="family-restroom" family="MaterialIcons" />
+          <View>
+            <Text className="text-sm text-[#71717A]">
+              {totalFamilies} {t("HomePage.families")}
+            </Text>
+            <Text className="text-md font-semibold">
+              {t("CohortPage.all_cohorts")}
+            </Text>
           </View>
-          <DynamicForm fields={form.components} />
-        </Fragment>
-      ))}
+        </Pressable>
+
+        {cohortData.map((data, index) => (
+          <Pressable
+            onPress={() => router.push(`/(cohorts)/${data.cohort}` as Href<string>)}
+            key={index}
+            className="flex flex-col bg-[#A23A910D] border border-[#0000001A] justify-between gap-6 p-6 rounded-xl w-[48%] mb-4"
+          >
+            <TabBarIcon name="family-restroom" family="MaterialIcons" />
+            <View>
+              <Text className="text-sm text-[#71717A]">
+                {t("CohortPage.cohort")} {data.cohort}
+              </Text>
+              <Text className="text-md font-semibold">
+                {data.count} {t("HomePage.families")}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+      </View>
     </ScrollView>
   );
 };
 
-export default FormScreen;
+export default CohortPage;

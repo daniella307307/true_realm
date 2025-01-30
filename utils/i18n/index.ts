@@ -4,13 +4,11 @@ import { initReactI18next } from "react-i18next";
 import * as Localization from "expo-localization";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import enTranslation from "~/lib/locales/en.json";
-import chTranslation from "~/lib/locales/ch.json";
-import spTranslation from "~/lib/locales/sp.json";
+import kinTranslation from "~/lib/locales/rw.json";
 
 const resources = {
-  "pt-BR": { translation: spTranslation },
   "en-US": { translation: enTranslation },
-  "zh-CN": { translation: chTranslation },
+  "rw-RW": { translation: kinTranslation },
 };
 
 const initI18n = async () => {
@@ -25,7 +23,7 @@ const initI18n = async () => {
     compatibilityJSON: "v4",
     resources,
     lng: savedLanguage,
-    fallbackLng: "pt-BR",
+    fallbackLng: "en-US",
     interpolation: {
       escapeValue: false,
     },

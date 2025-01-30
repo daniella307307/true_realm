@@ -1,38 +1,57 @@
 
 {
-    "language": "Language",
-    "home": {
-      "title": "Home",
-      "welcome": "Welcome",
-      "subtitle": "Example i18n App!",
-      "description": "This is an example React Native application demonstrating how to implement internationalization (i18n) using react-i18next. The app allows users to switch between different languages for a more localized experience.",
-      "exploringLanguages": "Exploring Languages",
-      "exploringLanguagesDescription": "Click on country flags to explore the app's content in different languages.",
-      "learnMore": "Want to Learn More?",
-      "repositoryLinkText": "Project repository on GitHub",
-      "articlesLinkText": "More articles"
-    },
-    "features": {
-      "title": "Features",
-      "collapsibles": {
-        "i18n": {
-          "title": "Internationalization with i18next",
-          "description": "Uses react-i18next for language management, allowing the app to be localized for different languages."
-        },
-        "persistent": {
-          "title": "Persistent Language Selection",
-          "description": "Uses AsyncStorage to persistently store the user's preferred language, providing a consistent experience across app restarts."
-        },
-        "fallback": {
-          "title": "Language Fallback",
-          "description": "Defaults to the device's language if no language preference is saved."
-        },
-        "switching": {
-          "title": "Easy Language Switching",
-          "description": "Users can switch languages by tapping on country flags."
-        }
+    "language": "en",
+    "Login": {
+      "title": "Login",
+      "email": "Email Address",
+      "password": "Password",
+      "emailPlaceholder": "Enter your email",
+      "passwordPlaceholder": "Enter your password",
+      "login": "Login",
+      "forgotPassword": "Forgot Password?",
+      "Select Language": "Select Language",
+      "Validation": {
+        "invalidEmail": "Invalid email address",
+        "requiredEmail": "Email is required",
+        "requiredPassword": "Password is required",
+        "passwordMin": "Password should contain at least 5 characters",
+        "passwordUppercase": "Password should contain at least one uppercase letter",
+        "passwordSymbol": "Password should contain at least one symbol",
+        "passwordDigit": "Password should contain at least one digit"
       }
+    },
+    "ForgotPassword": {
+      "title": "Forgot Password",
+      "email": "Email Address",
+      "description": "Enter your email address below and we'll send you a link to reset your password.",
+      "emailPlaceholder": "Enter your email",
+      "send": "Send",
+      "rememberPassword": "Remember your password?",
+      "backToLogin": "Back to Login",
+      "Validation": {
+        "invalidEmail": "Invalid email address",
+        "requiredEmail": "Email is required"
+      }
+    },
+    "HomePage": {
+      "title": "Hello, ",
+      "description": "How can we help you today",
+      "families": "Families",
+      "history": "History",
+      "statistics": "Statistics",
+      "IZU_Monitoring": "IZU Monitoring",
+      "videos": "Videos",
+      "settings": "Settings",
+      "Izu_telephone_Supervision": "Izu telephone Supervision",
+      "community": "Community"
+    },
+    "CohortPage": {
+      "title": "Cohorts",
+      "all_cohorts": "All Cohorts",
+      "cohort": "Cohort",
+      "assigned_Family": "Assigned Family",
+      "search_family": "Search Family"
     }
-  }
+}
   
   

@@ -3,6 +3,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { ViewStyle } from "react-native";
 import {
   Entypo,
+  Feather,
   FontAwesome6,
   MaterialCommunityIcons,
   MaterialIcons,
@@ -39,6 +40,11 @@ type MaterialIcons = {
   name: ComponentProps<typeof MaterialIcons>["name"];
 };
 
+type Feather = {
+  family: "Feather";
+  name: ComponentProps<typeof Feather>["name"];
+};
+
 type TabBarIconProps = (
   | IoniconsProps
   | FontAwesomeProps
@@ -46,6 +52,7 @@ type TabBarIconProps = (
   | MaterialCommunityIconsProps
   | OcticonsProps
   | MaterialIcons
+  | Feather
 ) & {
   color?: string;
   size?: number;
@@ -80,6 +87,9 @@ export function TabBarIcon({
     case "MaterialIcons":
       IconComponent = MaterialIcons;
       break;
+    case "Feather":
+      IconComponent = Feather;
+      break;
 
     default:
       IconComponent = Ionicons;
@@ -88,7 +98,7 @@ export function TabBarIcon({
     <IconComponent
       name={name as any}
       size={size}
-      color={color ? color : "black"}
+      color={color ? color : "#A23A91"}
       style={[{ marginBottom: -3 }, style]}
       {...rest}
     />
