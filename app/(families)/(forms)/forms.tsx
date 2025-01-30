@@ -1,5 +1,5 @@
 import { View, Text, FlatList, Pressable } from "react-native";
-import React, { useState } from "react";
+import React from "react";
 import { useGetForms } from "~/services/forms";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -61,7 +61,7 @@ const FormsScreen = () => {
             <Pressable
               onPress={() =>
                 router.push(
-                  `/(families)/(forms)/(elements)/${item.id}` as Href<string>
+                  `/(families)/(forms)/(elements)/${item.id}`
                 )
               }
               className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"

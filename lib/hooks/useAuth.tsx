@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   ILoginDetails,
   ILoginResponse,
@@ -22,7 +22,27 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const mainStore = useMainStore();
   const user = useMemo(() => mainStore.user!, [mainStore.user]);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const isLoggedIn = useMemo(() => !!user, [user]);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = await AsyncStorage.getItem("tknToken");
+      if (token && !user) {
+        // You might want to validate the token here
+        setIsLoading(true);
+        // Add your token validation logic if needed
+      }
+    } catch (error) {
+      console.error("Auth status check failed:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const logoutUser = () => {
     if (mainStore.logout()) {
@@ -53,6 +73,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     mutationFn: userLogin,
     onMutate: async () => {
       setIsLoggingIn(true);
+      setIsLoading(true);
       const token = await AsyncStorage.getItem("tknToken");
       if (token) {
         mainStore.logout();
@@ -67,7 +88,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       });
     },
     onError: (error) => {
-        console.log("🚀 file: useAuth.tsx, fn: onError , line 64", error);
+      console.log("🚀 file: useAuth.tsx, fn: onError , line 64", error);
       Toast.show({
         text1: "An error occurred",
         text2: error.response?.data?.message || "Please try again",
@@ -78,6 +99,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         topOffset: 30,
       });
       setIsLoggingIn(false);
+      setIsLoading(false);
     },
     onSuccess: async (data) => {
       if (data?.token) {
@@ -91,7 +113,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         });
 
         // 1. store token in cookie storage
-        const tokenStoredInCookie = storeTokenInAsynStorage(data.token);
+        const tokenStoredInCookie = await storeTokenInAsynStorage(data.token);
 
         if (!tokenStoredInCookie)
           throw new Error("Auth Token was not stored in cookie.");
@@ -100,7 +122,6 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         const authUser = data;
 
         // if not authUser, return null
-
         if (!authUser) {
           Toast.show({
             text1: "An error occurred",
@@ -112,6 +133,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
             topOffset: 30,
           });
           setIsLoggingIn(false);
+          setIsLoading(false);
           return;
         }
 
@@ -129,6 +151,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
             topOffset: 30,
           });
           setIsLoggingIn(false);
+          setIsLoading(false);
           onLogin?.(authUser!);
         }
       }
@@ -145,6 +168,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     logout,
     isLoggingIn,
     isLoggedIn,
+    isLoading,
   };
 };
 

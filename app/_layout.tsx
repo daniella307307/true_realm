@@ -1,10 +1,9 @@
 import "~/global.css";
-import { router, Slot } from "expo-router";
+import { router, Slot, SplashScreen } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { PortalHost } from "@rn-primitives/portal";
 import { useAuth } from "~/lib/hooks/useAuth";
-import { useKeepAwake } from "expo-keep-awake";
 import { Appearance } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SplashScreenProvider } from "~/providers/SplashScreenProvider";
@@ -13,7 +12,9 @@ import { useEffect } from "react";
 import QueryProvider from "~/providers/QueryProvider";
 import Toast from "react-native-toast-message";
 import toastConfig from "~/providers/toastConfig";
+import { enableScreens } from "react-native-screens";
 
+enableScreens();
 export default function RootLayout() {
   Appearance.setColorScheme("light");
 
@@ -29,14 +30,16 @@ export default function RootLayout() {
 
 function Layout() {
   const { isDarkColorScheme } = useColorScheme();
-  useKeepAwake();
   const { isLoggedIn } = useAuth({});
 
+  SplashScreen.hideAsync();
   useEffect(() => {
     if (!isLoggedIn) {
-      router.replace("/(home)/home");
+      console.log("🚀 file: _layout.tsx, fn: Layout, line 57");
+      router.push("/(home)/home");
+      console.log("🚀 file: _layout.tsx, fn: Layout, line 59");
     } else {
-      router.replace("/(user-management)/login");
+      router.push("/(user-management)/login");
     }
   }, [isLoggedIn]);
 

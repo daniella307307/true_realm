@@ -81,7 +81,7 @@ const CohortPage = () => {
 
         {cohortData.map((data, index) => (
           <Pressable
-            onPress={() => router.push(`/(cohorts)/${data.cohort}` as Href<string>)}
+            onPress={() => router.push(`/(cohorts)/${data.cohort}`)}
             key={index}
             className="flex flex-col bg-[#A23A910D] border border-[#0000001A] justify-between gap-6 p-6 rounded-xl w-[48%] mb-4"
           >
