@@ -3,6 +3,7 @@ import { router, Stack } from "expo-router";
 import { TouchableOpacity } from "react-native";
 import { ChevronLeft } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
+import HeaderNavigation from "~/components/ui/header";
 
 const ModuleLayout = () => {
   const { t } = useTranslation();
@@ -18,15 +19,8 @@ const ModuleLayout = () => {
           headerShown: true,
           title: t("Forms"),
           headerTitleAlign: "center",
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => {
-                router.back();
-              }}
-            >
-              <ChevronLeft color={"#A23A91"} />
-            </TouchableOpacity>
-          ),
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerRight: () => <HeaderNavigation showLeft={false} />,
         }}
       />
     </Stack>

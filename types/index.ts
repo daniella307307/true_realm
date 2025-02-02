@@ -206,15 +206,16 @@ export interface IFormElement {
         ignoreCache?: boolean;
         fieldSet?: boolean;
     };
-    created_at: string;
-    updated_at: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface IForm {
-    success: boolean;
+    success?: boolean;
+    id?: number;
     name: string;
-    title: string;
-    path: string;
+    title?: string;
+    path?: string;
     description: string;
     data: IFormElement[];
 }

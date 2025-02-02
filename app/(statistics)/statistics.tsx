@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 const CohortStatisticsScreen = () => {
   const { t } = useTranslation();
 
-  // Dummy array of families
   const families = [
     { id: 1, name: "Family A", monitored: true },
     { id: 2, name: "Family B", monitored: false },
@@ -27,20 +26,24 @@ const CohortStatisticsScreen = () => {
   const monitoringPercentage = (
     (monitoredFamilies / totalFamilies) *
     100
-  ).toFixed(2); // Keep 2 decimal places
+  ).toFixed(2);
 
   return (
-    <View className="flex-1 p-4 bg-white">
+    <View className="flex-1 p-4 bg-background">
       <View className="flex-row justify-between">
         <View className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center gap-6 py-6 rounded-xl w-[48%] mb-4">
-          <Text className="text-lg font-semibold text-primary">
+          <Text className="text-2xl font-bold text-primary">
             {monitoredFamilies} / {totalFamilies}
           </Text>
-          <Text className="text-gray-500">{t("Families")}</Text>
+          <Text className="text-gray-500">
+            {t("Number of families visited")}
+          </Text>
         </View>
 
         <View className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center gap-6 py-6 rounded-xl w-[48%] mb-4">
-          <Text className="text-lg font-semibold text-primary">{monitoringPercentage}%</Text>
+          <Text className="text-2xl font-bold text-primary">
+            {monitoringPercentage}%
+          </Text>
           <Text className="text-gray-500">{t("Monitoring Behavior")}</Text>
         </View>
       </View>

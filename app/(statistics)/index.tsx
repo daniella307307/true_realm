@@ -61,7 +61,7 @@ const StatisticsScreen = () => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => router.push("/(families)/(modules)/module")}
+            onPress={() => router.push("/statistics")}
             className="p-4 border flex-row items-center justify-between mb-4 border-gray-200 rounded-xl"
           >
             <View className="flex-row items-center">

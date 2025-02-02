@@ -51,6 +51,35 @@
       "cohort": "Cohort",
       "assigned_Family": "Assigned Family",
       "search_family": "Search Family"
+    },
+    "HistoryPage": {
+      "title": "History",
+      "all_history": "All History",
+      "history": "History",
+      "assigned_Family": "Assigned Family",
+      "search_family": "Search Family"
+    },
+    "StatisticsPage": {
+      "title": "Statistics",
+      "all_statistics": "All Statistics",
+      "statistics": "Statistics",
+      "search_izu": "Search IZU",
+      "number_of_families_visited": "Number of families visited",
+      "monitoring_behaviors": "Monitoring behaviors"
+    },
+    "IzuMonitoringPage": {
+      "title": "IZU Monitoring",
+      "all_izu": "All IZU",
+      "izu": "IZU",
+      "search_izu": "Search IZU"
+    },
+    "SettingsPage": {
+      "title": "Settings",
+      "language": "Language",
+      "theme": "Theme",
+      "dark": "Dark",
+      "light": "Light",
+      "logout": "Logout"
     }
 }
   

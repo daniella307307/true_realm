@@ -3,7 +3,7 @@ import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 
-const StatisticsLayout = () => {
+const VideoLayout = () => {
   const { t } = useTranslation();
   return (
     <Stack
@@ -12,20 +12,20 @@ const StatisticsLayout = () => {
       }}
     >
       <Stack.Screen
-        name="index"
+        name="video"
         options={{
           headerShown: true,
-          title: t("Statistics"),
+          title: t("Videos"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
         }}
       />
       <Stack.Screen
-        name="statistics"
+        name="[vidId]"
         options={{
           headerShown: true,
-          title: t("Statistics"),
+          title: t("Videos"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
@@ -35,4 +35,4 @@ const StatisticsLayout = () => {
   );
 };
 
-export default StatisticsLayout;
+export default VideoLayout;

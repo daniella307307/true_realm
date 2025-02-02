@@ -1,7 +1,7 @@
+// _layout.tsx
 import "~/global.css";
 import { router, Slot, SplashScreen } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useColorScheme } from "~/lib/useColorScheme";
 import { PortalHost } from "@rn-primitives/portal";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { Appearance } from "react-native";
@@ -13,31 +13,32 @@ import QueryProvider from "~/providers/QueryProvider";
 import Toast from "react-native-toast-message";
 import toastConfig from "~/providers/toastConfig";
 import { enableScreens } from "react-native-screens";
+import { Drawer } from "expo-router/drawer";
+import CustomDrawerContent from "~/components/ui/custom-drawer";
+import { FontSizeProvider } from "~/providers/FontSizeContext";
 
 enableScreens();
 export default function RootLayout() {
   Appearance.setColorScheme("light");
-
   return (
-    <QueryProvider>
-      <SplashScreenProvider>
-        <Layout />
-      </SplashScreenProvider>
-      <Toast config={toastConfig} />
-    </QueryProvider>
+    <FontSizeProvider>
+      <QueryProvider>
+        <SplashScreenProvider>
+          <Layout />
+        </SplashScreenProvider>
+        <Toast config={toastConfig} />
+      </QueryProvider>
+    </FontSizeProvider>
   );
 }
 
 function Layout() {
-  const { isDarkColorScheme } = useColorScheme();
   const { isLoggedIn } = useAuth({});
 
-  SplashScreen.hideAsync();
   useEffect(() => {
-    if (!isLoggedIn) {
-      console.log("🚀 file: _layout.tsx, fn: Layout, line 57");
+    SplashScreen.hideAsync();
+    if (isLoggedIn) {
       router.push("/(home)/home");
-      console.log("🚀 file: _layout.tsx, fn: Layout, line 59");
     } else {
       router.push("/(user-management)/login");
     }
@@ -45,8 +46,20 @@ function Layout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style={isDarkColorScheme ? "light" : "dark"} />
-      <Slot />
+      <StatusBar style="dark" />
+      <Drawer
+        screenOptions={{
+          drawerPosition: "right",
+          headerShown: false,
+          drawerStyle: {
+            width: "70%",
+          },
+          drawerType: "front",
+        }}
+        drawerContent={() => <CustomDrawerContent />}
+      >
+        <Slot />
+      </Drawer>
       <PortalHost />
     </GestureHandlerRootView>
   );

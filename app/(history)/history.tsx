@@ -90,7 +90,6 @@ const HistoryScreen = () => {
 
   return (
     <View className="flex-1 p-4 bg-white">
-      <Text className="text-xl font-bold mb-4">History</Text>
       <CustomInput
         control={control}
         name="searchQuery"

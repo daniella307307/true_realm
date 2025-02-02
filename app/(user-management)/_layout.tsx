@@ -1,8 +1,7 @@
 import React from "react";
-import { router, Stack } from "expo-router";
-import { TouchableOpacity } from "react-native";
-import { ChevronLeft } from "lucide-react-native";
+import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
+import HeaderNavigation from "~/components/ui/header";
 
 const AuthLayout = () => {
   const { t } = useTranslation();
@@ -24,11 +23,7 @@ const AuthLayout = () => {
             shadowOpacity: 0,
             borderBottomWidth: 0,
           },
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => { router.back(); }}>
-              <ChevronLeft color={"#A23A91"} />
-            </TouchableOpacity>
-          ),
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
         }}
       />
       <Stack.Screen
@@ -41,11 +36,7 @@ const AuthLayout = () => {
             shadowOpacity: 0,
             borderBottomWidth: 0,
           },
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => { router.back(); }}>
-              <ChevronLeft color={"#A23A91"} />
-            </TouchableOpacity>
-          ),
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
         }}
       />
       <Stack.Screen
@@ -58,11 +49,7 @@ const AuthLayout = () => {
             shadowOpacity: 0,
             borderBottomWidth: 0,
           },
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => { router.back(); }}>
-              <ChevronLeft color={"#A23A91"} />
-            </TouchableOpacity>
-          ),
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
         }}
       />
     </Stack>

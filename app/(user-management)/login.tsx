@@ -41,8 +41,7 @@ export default function LoginScreen() {
 
   const onSubmit = (data: ILoginDetails) => {
     console.log("Form Data:", data);
-    // login(data);
-    router.push("/(home)/home")
+    login(data);
   };
 
   const changeLanguage = (lang: string) => {
@@ -58,16 +57,37 @@ export default function LoginScreen() {
           <Text className="mb-2 text-lg font-medium text-[#050F2B]">
             {t("Login.email")}
           </Text>
-          <CustomInput
+          <Controller
             control={control}
             name="email"
-            placeholder={t("Login.emailPlaceholder")}
-            keyboardType="email-address"
-            accessibilityLabel={t("Login.email")}
+            render={({
+              field: { onChange, onBlur, value },
+              fieldState: { error },
+            }) => (
+              <>
+                <View
+                  className={`flex flex-row items-center w-full border ${
+                    error ? "border-primary" : "border-border"
+                  } rounded-lg`}
+                >
+                  <TextInput
+                    className="w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]"
+                    placeholder={t("Login.emailPlaceholder")}
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    value={value}
+                    accessibilityLabel={t("Login.email")}
+                  />
+                </View>
+                {error && (
+                  <Text className="text-red-500 mt-2">{error.message}</Text>
+                )}
+              </>
+            )}
           />
         </View>
 
-        <View>
+        <View className="mt-4">
           <Text className="mb-2 text-lg font-medium text-[#050F2B]">
             {t("Login.password")}
           </Text>

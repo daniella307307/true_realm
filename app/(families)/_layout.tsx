@@ -1,8 +1,10 @@
 import React from "react";
 import { router, Stack } from "expo-router";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { ChevronLeft } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
+import { Text } from "~/components/ui/text";
+import HeaderNavigation from "~/components/ui/header";
 
 const FamilyFormsLayout = () => {
   const { t } = useTranslation();
@@ -18,15 +20,8 @@ const FamilyFormsLayout = () => {
           headerShown: true,
           title: t("CohortPage.title"),
           headerTitleAlign: "center",
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => {
-                router.back();
-              }}
-            >
-              <ChevronLeft color={"#A23A91"} />
-            </TouchableOpacity>
-          ),
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerRight: () => <HeaderNavigation showLeft={false} />,
         }}
       />
     </Stack>

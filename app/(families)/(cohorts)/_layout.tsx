@@ -1,8 +1,7 @@
 import React from "react";
-import { router, Stack } from "expo-router";
-import { TouchableOpacity } from "react-native";
-import { ChevronLeft } from "lucide-react-native";
+import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
+import HeaderNavigation from "~/components/ui/header";
 
 const CohortIndexLayout = () => {
   const { t } = useTranslation();
@@ -10,26 +9,10 @@ const CohortIndexLayout = () => {
     <Stack
       screenOptions={{
         headerShown: true,
-        contentStyle: {
-          borderWidth: 0,
-          borderEndEndRadius: 0,
-          borderEndWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
-          shadowRadius: 0,
-          borderBottomWidth: 0,
-        },
         title: t("CohortPage.assigned_Family"),
         headerTitleAlign: "center",
-        headerLeft: () => (
-          <TouchableOpacity
-            onPress={() => {
-              router.back();
-            }}
-          >
-            <ChevronLeft color={"#A23A91"} />
-          </TouchableOpacity>
-        ),
+        headerLeft: () => <HeaderNavigation showLeft={true} />,
+        headerRight: () => <HeaderNavigation showLeft={false} />,
       }}
     >
       <Stack.Screen

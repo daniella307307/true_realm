@@ -1,26 +1,98 @@
-import { View, Text, FlatList, Pressable } from "react-native";
-import React, { useState } from "react";
-import { useGetForms } from "~/services/forms";
-import { useQuery } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import CustomInput from "~/components/ui/input";
-import { useTranslation } from "react-i18next";
-import { Href, router } from "expo-router";
-import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import { IForms } from "~/types";
+import React, { useState, useEffect } from 'react';
+import { View, Text, Pressable, FlatList } from 'react-native';
+import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
+import { router, Href } from 'expo-router';
+import CustomInput from '~/components/ui/input';
+import { TabBarIcon } from '~/components/ui/tabbar-icon';
 
-const FormsScreen = () => {
-  const { data: forms, isLoading } = useQuery({
-    queryKey: ["forms"],
-    queryFn: useGetForms,
-  });
+const staticForms = [
+  {
+    id: 1,
+    name: "General Questions",
+    description: "Basic information gathering questions",
+    data: [
+      {
+        id: 1,
+        form_id: 1,
+        key: "fullName",
+        type: "textfield",
+        label: "Full Name",
+        element_properties: {
+          label: "Full Name",
+          labelPosition: "top",
+          placeholder: "Enter your full name",
+          validate: {
+            required: true
+          }
+        }
+      }
+    ]
+  },
+  {
+    id: 2,
+    name: "Special Questions",
+    description: "Detailed assessment questions",
+    data: [
+      {
+        id: 2,
+        form_id: 2,
+        key: "specialCase",
+        type: "textarea",
+        label: "Special Case Description",
+        element_properties: {
+          label: "Special Case",
+          labelPosition: "top",
+          validate: {
+            required: true,
+            minLength: 10
+          }
+        }
+      }
+    ]
+  },
+  {
+    id: 3,
+    name: "Closing Questions",
+    description: "Final feedback and completion questions",
+    data: [
+      {
+        id: 3,
+        form_id: 3,
+        key: "feedback",
+        type: "radio",
+        label: "Overall Experience",
+        element_properties: {
+          label: "Rate your experience",
+          labelPosition: "top",
+          values: [
+            { label: "Excellent", value: "excellent" },
+            { label: "Good", value: "good" },
+            { label: "Fair", value: "fair" }
+          ]
+        }
+      }
+    ]
+  }
+];
+
+const IZUForms = () => {
+  const [isLoading, setIsLoading] = useState(true);
   const { t } = useTranslation();
   const { control } = useForm({
-    resolver: zodResolver(z.object({ searchQuery: z.string() })),
-    mode: "onChange",
+    defaultValues: {
+      searchQuery: ''
+    }
   });
+
+  useEffect(() => {
+    // Simulate loading delay
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <View className="flex-1 p-4 bg-white">
@@ -33,7 +105,6 @@ const FormsScreen = () => {
       />
 
       {isLoading ? (
-        // Skeleton Loader while fetching data
         <View className="mt-6">
           {[1, 2, 3].map((item) => (
             <View
@@ -50,18 +121,18 @@ const FormsScreen = () => {
         </View>
       ) : (
         <FlatList
-          data={forms?.data?.data || []}
-          keyExtractor={(item: IForms) => item.id.toString()}
+          data={staticForms}
+          keyExtractor={(item) => item.id.toString()}
           ListEmptyComponent={() => (
             <Text className="text-center text-gray-500 mt-6">
               {t("No forms available")}
             </Text>
           )}
-          renderItem={({ item }: { item: IForms }) => (
+          renderItem={({ item }) => (
             <Pressable
               onPress={() =>
                 router.push(
-                  `/(families)/(forms)/(elements)/${item.id}` as Href<string>
+                  `/(elements)/${item.id}` as Href
                 )
               }
               className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
@@ -86,4 +157,4 @@ const FormsScreen = () => {
   );
 };
 
-export default FormsScreen;
+export default IZUForms;

@@ -1,8 +1,7 @@
 import React from "react";
-import { router, Stack } from "expo-router";
-import { TouchableOpacity } from "react-native";
-import { ChevronLeft } from "lucide-react-native";
+import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
+import HeaderNavigation from "~/components/ui/header";
 
 const SettingsLayout = () => {
   const { t } = useTranslation();
@@ -18,15 +17,38 @@ const SettingsLayout = () => {
           headerShown: true,
           title: t("Settings"),
           headerTitleAlign: "center",
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => {
-                router.back();
-              }}
-            >
-              <ChevronLeft color={"#A23A91"} />
-            </TouchableOpacity>
-          ),
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerRight: () => <HeaderNavigation showLeft={false} />,
+        }}
+      />
+      <Stack.Screen
+        name="account"
+        options={{
+          headerShown: true,
+          title: t("Settings"),
+          headerTitleAlign: "center",
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerRight: () => <HeaderNavigation showLeft={false} />,
+        }}
+      />
+      <Stack.Screen
+        name="language"
+        options={{
+          headerShown: true,
+          title: t("Change Language"),
+          headerTitleAlign: "center",
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerRight: () => <HeaderNavigation showLeft={false} />,
+        }}
+      />
+      <Stack.Screen
+        name="fontsize"
+        options={{
+          headerShown: true,
+          title: t("Change Font Size"),
+          headerTitleAlign: "center",
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerRight: () => <HeaderNavigation showLeft={false} />,
         }}
       />
     </Stack>

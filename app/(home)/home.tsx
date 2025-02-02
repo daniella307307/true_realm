@@ -29,7 +29,7 @@ const HomeScreen = () => {
     {
       icon: <TabBarIcon name="chart-simple" family="FontAwesome6" />,
       title: t("HomePage.statistics"),
-      route: "/(home)/",
+      route: "/(statistics)/",
     },
     {
       icon: <TabBarIcon name="account-star" family="MaterialCommunityIcons" />,
@@ -39,7 +39,7 @@ const HomeScreen = () => {
     {
       icon: <TabBarIcon name="video" family="Entypo" />,
       title: t("HomePage.videos"),
-      route: "/(home)/home",
+      route: "/(videos)/video",
     },
     {
       icon: <TabBarIcon name="settings" family="Ionicons" />,
@@ -74,7 +74,7 @@ const HomeScreen = () => {
               router.push(link.route as Href);
             }}
             key={index}
-            className="flex flex-col bg-[#A23A910D] border border-[#0000001A]  items-center gap-6 py-6 rounded-xl w-[48%] mb-4"
+            className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center gap-6 py-6 rounded-xl w-[48%] mb-4"
           >
             {link.icon}
             <Text className="text-sm">{link.title}</Text>

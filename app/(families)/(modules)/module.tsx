@@ -1,5 +1,11 @@
-import { View, Text, FlatList, Pressable, ActivityIndicator } from "react-native";
-import React, { useState } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
+import React from "react";
 import { useGetCategories } from "~/services/category";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -55,22 +61,50 @@ const ModuleScreen = () => {
           <SkeletonLoader />
         </>
       ) : (
-        <FlatList
-          data={categories?.data}
-          keyExtractor={(item: ICategories) => item.id.toString()}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.push("/(families)/(forms)/forms")}
-              className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
-            >
-              <TabBarIcon name="chat" family="MaterialIcons" size={24} color="#71717A"/>
-              <View className="ml-4">
-                <Text className="text-lg font-semibold">{item.name}</Text>
-                <Text className="text-sm text-gray-600">{item.description}</Text>
-              </View>
-            </Pressable>
-          )}
-        />
+        <>
+          <Pressable
+            onPress={() => router.push("/(families)/(forms)/forms")}
+            className="p-4 border flex-row items-center mb-4 border-red-500 rounded-xl bg-red-50"
+          >
+            <TabBarIcon
+              name="warning"
+              family="MaterialIcons"
+              size={24}
+              color="#D92020"
+            />
+            <View className="ml-4">
+              <Text className="text-lg font-semibold text-red-500">
+                Risk of Harm
+              </Text>
+              <Text className="text-sm text-red-600">
+                This module is a high priority for your attention.
+              </Text>
+            </View>
+          </Pressable>
+          <FlatList
+            data={categories?.data}
+            keyExtractor={(item: ICategories) => item.id.toString()}
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => router.push("/(families)/(forms)/forms")}
+                className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
+              >
+                <TabBarIcon
+                  name="chat"
+                  family="MaterialIcons"
+                  size={24}
+                  color="#71717A"
+                />
+                <View className="ml-4">
+                  <Text className="text-lg font-semibold">{item.name}</Text>
+                  <Text className="text-sm text-gray-600">
+                    {item.description}
+                  </Text>
+                </View>
+              </Pressable>
+            )}
+          />
+        </>
       )}
     </View>
   );
