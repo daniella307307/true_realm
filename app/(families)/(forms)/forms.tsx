@@ -1,4 +1,4 @@
-import { View, Text, FlatList, Pressable } from "react-native";
+import { View, FlatList, Pressable } from "react-native";
 import React from "react";
 import { useGetForms } from "~/services/forms";
 import { useQuery } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { Href, router } from "expo-router";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { IForms } from "~/types";
+import { Text } from "~/components/ui/text";
 
 const FormsScreen = () => {
   const { data: forms, isLoading } = useQuery({
@@ -17,10 +18,20 @@ const FormsScreen = () => {
     queryFn: useGetForms,
   });
   const { t } = useTranslation();
-  const { control } = useForm({
-    resolver: zodResolver(z.object({ searchQuery: z.string() })),
+  const { control, handleSubmit, watch } = useForm({
+    resolver: zodResolver(
+      z.object({
+        searchQuery: z.string(),
+      })
+    ),
     mode: "onChange",
   });
+
+  const searchQuery = watch("searchQuery").toLowerCase();
+
+  const filteredForms = forms?.data?.data.filter((form: IForms) =>
+    form.name.toLowerCase().includes(searchQuery)
+  );
 
   return (
     <View className="flex-1 p-4 bg-white">
@@ -50,7 +61,7 @@ const FormsScreen = () => {
         </View>
       ) : (
         <FlatList
-          data={forms?.data?.data || []}
+          data={filteredForms}
           keyExtractor={(item: IForms) => item.id.toString()}
           ListEmptyComponent={() => (
             <Text className="text-center text-gray-500 mt-6">
@@ -60,9 +71,7 @@ const FormsScreen = () => {
           renderItem={({ item }: { item: IForms }) => (
             <Pressable
               onPress={() =>
-                router.push(
-                  `/(families)/(forms)/(elements)/${item.id}`
-                )
+                router.push(`/(families)/(forms)/(elements)/${item.id}`)
               }
               className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
             >
@@ -74,7 +83,7 @@ const FormsScreen = () => {
               />
               <View className="ml-4">
                 <Text className="text-lg font-semibold">{item.name}</Text>
-                <Text className="text-sm text-gray-600">
+                <Text className="text-sm py-2 text-gray-600">
                   {item.description || "No description available"}
                 </Text>
               </View>

@@ -54,6 +54,7 @@ export type IResponseError = {
 export type IResponse<T> = {
     data: T;
     message: string;
+    current_page: number;
     status: string;
     timestamp: string;
 };
@@ -218,4 +219,35 @@ export interface IForm {
     path?: string;
     description: string;
     data: IFormElement[];
+}
+
+export interface IComment {
+    id: number;
+    user_id: number;
+    post_id: number;
+    comment: string;
+    created_at: string;
+    updated_at: string;
+    user: IUsers;
+}
+
+export interface ILikes {
+    id: number;
+    user_id: number;
+    post_id: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface IPost {
+    id: number;
+    user_id: number;
+    title: string;
+    body: string;
+    flagged: number;
+    created_at: string;
+    updated_at: string;
+    user: IUsers;
+    comments: IComment[];
+    likes: ILikes[];
 }

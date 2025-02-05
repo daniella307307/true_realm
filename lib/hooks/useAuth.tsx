@@ -1,10 +1,6 @@
 import { AxiosError } from "axios";
 import { useMemo, useState, useEffect } from "react";
-import {
-  ILoginDetails,
-  ILoginResponse,
-  IResponseError,
-} from "~/types";
+import { ILoginDetails, ILoginResponse, IResponseError } from "~/types";
 import { useMainStore } from "../store/main";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
@@ -23,9 +19,16 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const user = useMemo(() => mainStore.user!, [mainStore.user]);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const isLoggedIn = useMemo(() => !!user, [user]);
+  const isLoggedIn = useMemo(async () => {
+    const token = await AsyncStorage.getItem("tknToken");
+    return !!(user && token);
+  }, [user]);
 
   useEffect(() => {
+    const checkLoginStatus = async () => {
+      console.log("is loggedIn: ", await isLoggedIn);
+    };
+    checkLoginStatus();
     checkAuthStatus();
   }, []);
 

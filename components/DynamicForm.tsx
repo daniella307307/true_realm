@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Switch, ScrollView } from "react-native";
+import { View, TextInput, Switch, ScrollView } from "react-native";
 import { Controller, useForm } from "react-hook-form";
 import {
   Select,
@@ -10,6 +10,7 @@ import {
 } from "./ui/select";
 import { Button } from "./ui/button";
 import { IFormElement } from "~/types";
+import { Text } from "./ui/text";
 
 const TextArea: React.FC<{ field: IFormElement; control: any }> = ({
   field,

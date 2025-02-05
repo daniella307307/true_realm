@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
-import { router } from 'expo-router';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const env = process.env['EXPO_PUBLIC_API_ENV'] || 'development';
 export const BASE_URL = process.env['EXPO_PUBLIC_API_URL'];
@@ -8,36 +7,35 @@ console.log('The base url: ', BASE_URL);
 
 const baseInstance = axios.create({
   baseURL: BASE_URL + '/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-function baseRequestInterceptor(config: InternalAxiosRequestConfig) {
-  const token = AsyncStorage.getItem('tknToken');
-
-  if (!config.url?.includes('/login')) {
-    config.headers['Authorization'] = token ? `Bearer ${token}` : undefined;
-  }
-  return config;
-}
-function baseRequestSuccessResponseInterceptor(response: AxiosResponse) {
-  return response;
-}
-
-function baseRequestErrorResponseInterceptor(error: AxiosError) {
-  const status = error.response?.status;
-  const url = error.request.responseURL;
-
-  if (status === 401) {
-    // if this is not a login request or chart request
-    if (!url?.includes('/login') && !url?.includes('chart')) {
-      AsyncStorage.removeItem('tknToken');
-      router.push('/(user-management)/login');
+baseInstance.interceptors.request.use(
+  async (config: InternalAxiosRequestConfig) => {
+    try {
+      const token = await AsyncStorage.getItem('tknToken');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error('Error retrieving token:', error);
     }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+baseInstance.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    console.log('The error:', error.response?.data);
+    if (error.response?.status === 401) {
+      await AsyncStorage.removeItem('tknToken'); // Ensure token is cleared
+    }
+    return Promise.reject(error);
   }
-  return Promise.reject(error);
-}
-
-baseInstance.interceptors.request.use(baseRequestInterceptor);
-
-baseInstance.interceptors.response.use(baseRequestSuccessResponseInterceptor, baseRequestErrorResponseInterceptor);
+);
 
 export { baseInstance };

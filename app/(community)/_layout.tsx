@@ -1,9 +1,8 @@
 import React from "react";
-import { router, Stack } from "expo-router";
-import { TouchableOpacity } from "react-native";
-import { ChevronLeft } from "lucide-react-native";
+import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
+import Logo from "~/components/Logo";
 
 const CommunityLayout = () => {
   const { t } = useTranslation();
@@ -28,6 +27,16 @@ const CommunityLayout = () => {
         options={{
           headerShown: true,
           title: t("Create Post"),
+          headerTitleAlign: "center",
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerRight: () => <HeaderNavigation showLeft={false} />,
+        }}
+      />
+      <Stack.Screen
+        name="[postId]"
+        options={{
+          headerShown: true,
+          headerTitle: () => <Logo horizontal size={32} />,
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

@@ -53,8 +53,7 @@ const families: IFamilies[] = [
 const HistoryScreen = () => {
   const cohortId: number | "all" = 1;
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const { control, handleSubmit } = useForm({
+  const { control, handleSubmit, watch } = useForm({
     resolver: zodResolver(
       z.object({
         searchQuery: z.string(),
@@ -63,12 +62,19 @@ const HistoryScreen = () => {
     mode: "onChange",
   });
 
-  // Filter families based on cohortId
-  const filteredFamilies =
-    cohortId.toString() === "all"
-      ? families
-      : families.filter((family) => family.cohort === Number(cohortId));
+  const searchQuery = watch("searchQuery").toLowerCase();
 
+  // Filter families based on cohortId
+  const filteredFamilies = families
+    .filter(
+      (family) =>
+        cohortId.toString() === "all" || family.cohort === Number(cohortId)
+    )
+    .filter(
+      (family) =>
+        family.name.toLowerCase().includes(searchQuery) ||
+        family.id.toLowerCase().includes(searchQuery)
+    );
   if (!cohortId) {
     return (
       <View className="flex-1 bg-white justify-center items-center gap-6">

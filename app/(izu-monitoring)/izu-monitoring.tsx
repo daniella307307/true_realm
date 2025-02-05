@@ -36,8 +36,7 @@ const izuMembers = [
 
 const IzuMonitoringScreen = () => {
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const { control, handleSubmit } = useForm({
+  const { control, handleSubmit, watch } = useForm({
     resolver: zodResolver(
       z.object({
         searchQuery: z.string(),
@@ -45,6 +44,12 @@ const IzuMonitoringScreen = () => {
     ),
     mode: "onChange",
   });
+
+  const searchQuery = watch("searchQuery").toLowerCase();
+
+  const filteredIzuMembers = izuMembers.filter((member) =>
+    member.name.toLowerCase().includes(searchQuery)
+  );
 
   return (
     <View className="flex-1 p-4 bg-white">
@@ -57,7 +62,7 @@ const IzuMonitoringScreen = () => {
         accessibilityLabel={t("searchIzu")}
       />
       <FlatList
-        data={izuMembers}
+        data={filteredIzuMembers}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Pressable

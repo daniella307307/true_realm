@@ -1,10 +1,4 @@
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  ActivityIndicator,
-} from "react-native";
+import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
 import React from "react";
 import { useGetCategories } from "~/services/category";
 import { useQuery } from "@tanstack/react-query";
@@ -16,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { router } from "expo-router";
 import { ICategories } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
+import { Text } from "~/components/ui/text";
 
 const SkeletonLoader = () => {
   return (
@@ -35,7 +30,7 @@ const ModuleScreen = () => {
     queryFn: useGetCategories,
   });
   const { t } = useTranslation();
-  const { control } = useForm({
+  const { control, handleSubmit, watch } = useForm({
     resolver: zodResolver(
       z.object({
         searchQuery: z.string(),
@@ -43,6 +38,15 @@ const ModuleScreen = () => {
     ),
     mode: "onChange",
   });
+
+  const searchQuery = watch("searchQuery").toLowerCase();
+
+  const filteredCategories =
+    // if searchQuery is empty, return all categories
+    // else return categories that match the searchQuery
+    categories?.data.filter((category) =>
+      category.name.toLowerCase().includes(searchQuery)
+    );
 
   return (
     <View className="flex-1 p-4 bg-white">
@@ -76,13 +80,13 @@ const ModuleScreen = () => {
               <Text className="text-lg font-semibold text-red-500">
                 Risk of Harm
               </Text>
-              <Text className="text-sm text-red-600">
+              <Text className="text-sm py-2 text-red-600">
                 This module is a high priority for your attention.
               </Text>
             </View>
           </Pressable>
           <FlatList
-            data={categories?.data}
+            data={filteredCategories}
             keyExtractor={(item: ICategories) => item.id.toString()}
             renderItem={({ item }) => (
               <Pressable
@@ -97,7 +101,7 @@ const ModuleScreen = () => {
                 />
                 <View className="ml-4">
                   <Text className="text-lg font-semibold">{item.name}</Text>
-                  <Text className="text-sm text-gray-600">
+                  <Text className="text-sm py-2 text-gray-600">
                     {item.description}
                   </Text>
                 </View>

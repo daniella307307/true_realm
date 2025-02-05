@@ -70,7 +70,7 @@ const CohortPage = () => {
         >
           <TabBarIcon name="family-restroom" family="MaterialIcons" />
           <View>
-            <Text className="text-sm text-[#71717A]">
+            <Text className="text-sm py-2 text-[#71717A]">
               {totalFamilies} {t("HomePage.families")}
             </Text>
             <Text className="text-md font-semibold">
@@ -87,7 +87,7 @@ const CohortPage = () => {
           >
             <TabBarIcon name="family-restroom" family="MaterialIcons" />
             <View>
-              <Text className="text-sm text-[#71717A]">
+              <Text className="text-sm py-2 text-[#71717A]">
                 {t("CohortPage.cohort")} {data.cohort}
               </Text>
               <Text className="text-md font-semibold">

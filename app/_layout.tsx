@@ -34,14 +34,24 @@ export default function RootLayout() {
 
 function Layout() {
   const { isLoggedIn } = useAuth({});
-
   useEffect(() => {
-    SplashScreen.hideAsync();
-    if (isLoggedIn) {
-      router.push("/(home)/home");
-    } else {
-      router.push("/(user-management)/login");
-    }
+    const checkLoginStatus = async () => {
+      try {
+        SplashScreen.hideAsync();
+        const loginStatus = await isLoggedIn;
+        console.log("Is Logged In:", loginStatus);
+        if (loginStatus) {
+          router.push("/(home)/home");
+        } else {
+          router.push("/(user-management)/login");
+        }
+      } catch (error) {
+        console.error("Error checking login status:", error);
+        router.push("/(user-management)/login");
+      }
+    };
+
+    checkLoginStatus();
   }, [isLoggedIn]);
 
   return (

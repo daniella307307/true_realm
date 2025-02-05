@@ -1,4 +1,4 @@
-import { View, Text } from "react-native";
+import { View } from "react-native";
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
@@ -6,6 +6,7 @@ import { Button } from "~/components/ui/button";
 import { useGetFormElements } from "~/services/formElements";
 import DynamicForm from "~/components/DynamicForm";
 import Skeleton from "~/components/ui/skeleton";
+import { Text } from "~/components/ui/text";
 
 const FormElementIndexScreen = () => {
   const { formId } = useLocalSearchParams();
@@ -41,7 +42,7 @@ const FormElementIndexScreen = () => {
     <View className="flex-1 p-4 bg-white">
       <View>
         <Text className="text-lg font-semibold">{formElements?.name}</Text>
-        <Text className="text-sm text-gray-600">
+        <Text className="text-sm py-2 text-gray-600">
           {formElements?.description}
         </Text>
       </View>

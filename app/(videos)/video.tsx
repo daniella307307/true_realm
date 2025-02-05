@@ -1,9 +1,10 @@
-import { Entypo, Feather } from "@expo/vector-icons";
-import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Pressable } from "react-native";
-import { useVideoPlayer, VideoView } from "expo-video";
+import React from "react";
+import { View, TouchableOpacity, Pressable, Alert, Platform } from "react-native";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { router } from "expo-router";
+import { Text } from "~/components/ui/text";
+import RNFS from "react-native-fs";
+import { check, PERMISSIONS, request, RESULTS } from "react-native-permissions";
 
 const VideoScreen = () => {
   const videos = [
@@ -29,11 +30,57 @@ const VideoScreen = () => {
     },
   ];
 
-  const handleDownload = (video: any) => {
-    console.log(`Downloading: ${video.title}`);
-  };
+  const handleDownload = async (video: any) => {
+    try {
+      // Request storage permissions
+      const permission =
+        Platform.OS === "android"
+          ? PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE
+          : PERMISSIONS.IOS.MEDIA_LIBRARY;
 
-  
+      const status = await check(permission);
+
+      if (status !== RESULTS.GRANTED) {
+        const requestStatus = await request(permission);
+        if (requestStatus !== RESULTS.GRANTED) {
+          Alert.alert(
+            "Permission Required",
+            "Please grant storage permissions to download videos."
+          );
+          return;
+        }
+      }
+
+      // Define the download path
+      const downloadPath = `${RNFS.DownloadDirectoryPath}/${video.title}.mp4`;
+
+      // Start the download
+      const download = RNFS.downloadFile({
+        fromUrl: video.source,
+        toFile: downloadPath,
+        progress: (res) => {
+          const progressPercent = (res.bytesWritten / res.contentLength) * 100;
+          console.log(`Download Progress: ${progressPercent.toFixed(2)}%`);
+        },
+      });
+
+      // Wait for the download to complete
+      await download.promise;
+
+      Alert.alert(
+        "Download Complete",
+        `Video saved to: ${downloadPath}`,
+        [{ text: "OK" }]
+      );
+      console.log(`Video downloaded to: ${downloadPath}`);
+    } catch (error) {
+      console.error("Download failed:", error);
+      Alert.alert(
+        "Download Failed",
+        "An error occurred while downloading the video."
+      );
+    }
+  };
 
   return (
     <View className="bg-background flex-1">
@@ -46,7 +93,7 @@ const VideoScreen = () => {
           >
             <View className="flex flex-row justify-between gap-x-12">
               <TabBarIcon name={"video"} family="Entypo" />
-              <TouchableOpacity onPress={handleDownload}>
+              <TouchableOpacity onPress={() => handleDownload(vid)}>
                 <TabBarIcon name={"download"} family="Feather" />
               </TouchableOpacity>
             </View>
@@ -59,4 +106,5 @@ const VideoScreen = () => {
     </View>
   );
 };
+
 export default VideoScreen;

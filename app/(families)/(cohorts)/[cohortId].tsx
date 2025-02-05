@@ -52,8 +52,7 @@ const families: IFamilies[] = [
 const CohortIndexScreen = () => {
   const { cohortId } = useLocalSearchParams();
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const { control, handleSubmit } = useForm({
+  const { control, handleSubmit, watch } = useForm({
     resolver: zodResolver(
       z.object({
         searchQuery: z.string(),
@@ -62,12 +61,18 @@ const CohortIndexScreen = () => {
     mode: "onChange",
   });
 
+  const searchQuery = watch("searchQuery").toLowerCase();
 
   // Filter families based on cohortId
-  const filteredFamilies =
-    cohortId === "all"
-      ? families
-      : families.filter((family) => family.cohort === Number(cohortId));
+  const filteredFamilies = families
+    .filter(
+      (family) => cohortId === "all" || family.cohort === Number(cohortId)
+    )
+    .filter(
+      (family) =>
+        family.name.toLowerCase().includes(searchQuery) ||
+        family.id.toLowerCase().includes(searchQuery)
+    );
 
   if (!cohortId) {
     return (
@@ -94,14 +99,19 @@ const CohortIndexScreen = () => {
         data={filteredFamilies}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <Pressable onPress={() => router.push("/(families)/(modules)/module")} className="p-4 border flex-row justify-between mb-4 border-gray-200 rounded-xl">
+          <Pressable
+            onPress={() => router.push("/(families)/(modules)/module")}
+            className="p-4 border flex-row justify-between mb-4 border-gray-200 rounded-xl"
+          >
             <View>
-              <Text className="text-sm text-gray-600">{item.id}</Text>
+              <Text className="text-sm py-2 text-gray-600">{item.id}</Text>
               <Text className="text-lg font-semibold">{item.name}</Text>
-              <Text className="text-sm text-gray-600">{item.location}</Text>
+              <Text className="text-sm py-2 text-gray-600">
+                {item.location}
+              </Text>
             </View>
             <View>
-              <Text className="text-sm text-gray-600">
+              <Text className="text-sm py-2 text-gray-600">
                 {t("CohortPage.cohort")} {item.cohort}
               </Text>
             </View>

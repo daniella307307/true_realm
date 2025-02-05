@@ -29,7 +29,6 @@ const CustomDrawerContent = () => {
       >
         <Text className="text-lg">{t("Change Font Size")}</Text>
       </TouchableOpacity>
-      // Logout with red color
       <TouchableOpacity
         className="p-4 border-b border-gray-200"
         onPress={() => logout()}
