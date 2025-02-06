@@ -11,7 +11,7 @@ const HomeScreenLayout = () => {
         options={{
           headerShown: true,
           headerTitleAlign: "center",
-          headerLeft: () => (
+          headerRight: () => (
             <HeaderNavigation showLeft={false} />
           ),
           headerTitle: () => <Logo horizontal size={32} />,

@@ -52,7 +52,7 @@ const families: IFamilies[] = [
 const CohortIndexScreen = () => {
   const { cohortId } = useLocalSearchParams();
   const { t } = useTranslation();
-  const { control, handleSubmit, watch } = useForm({
+  const { control, watch } = useForm({
     resolver: zodResolver(
       z.object({
         searchQuery: z.string(),
@@ -61,18 +61,20 @@ const CohortIndexScreen = () => {
     mode: "onChange",
   });
 
-  const searchQuery = watch("searchQuery").toLowerCase();
+  const searchQuery = watch("searchQuery");
 
-  // Filter families based on cohortId
+  
   const filteredFamilies = families
     .filter(
       (family) => cohortId === "all" || family.cohort === Number(cohortId)
     )
-    .filter(
-      (family) =>
-        family.name.toLowerCase().includes(searchQuery) ||
-        family.id.toLowerCase().includes(searchQuery)
-    );
+    .filter((family) => {
+      if (!searchQuery) return true;
+      return (
+        family.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        family.id.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    });
 
   if (!cohortId) {
     return (

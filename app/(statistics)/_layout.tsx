@@ -15,7 +15,7 @@ const StatisticsLayout = () => {
         name="index"
         options={{
           headerShown: true,
-          title: t("Statistics"),
+          title: t("StatisticsPage.statistics"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
@@ -25,7 +25,7 @@ const StatisticsLayout = () => {
         name="statistics"
         options={{
           headerShown: true,
-          title: t("Statistics"),
+          title: t("StatisticsPage.statistics"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

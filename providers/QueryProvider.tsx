@@ -5,17 +5,6 @@ import { Alert } from 'react-native';
 import { useReactQueryDevTools } from "@dev-plugins/react-query";
 
 export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 0,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
-    mutations: {
-      retry: 0,
-    },
-  },
   queryCache: new QueryCache({
     onError: (error: Error | any, query) => {
       if (error.response) {

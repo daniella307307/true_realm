@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   View,
-  Text,
   Image,
   TextInput,
   TouchableOpacity,
@@ -11,15 +10,40 @@ import {
 import { useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { baseInstance } from "~/utils/axios";
-import { IPost, IComment, IResponse } from "~/types";
+import { IPost } from "~/types";
 import { usePostManipulate } from "~/lib/hooks/usePost";
 import { format, formatDistanceToNow } from "date-fns";
+import { Text } from "~/components/ui/text";
+import { TabBarIcon } from "~/components/ui/tabbar-icon";
+import { z } from "zod";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useGetPost } from "~/services/posts";
+import { useAuth } from "~/lib/hooks/useAuth";
+
+const commentSchema = z.object({
+  comment: z.string().min(1, "Comment is required"),
+});
 
 const PostScreen: React.FC = () => {
   const { postId } = useLocalSearchParams<{ postId: string }>();
-  const [commentText, setCommentText] = useState("");
-  const { usePostComment, isLoading: isCommentLoading } = usePostManipulate();
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(commentSchema),
+    defaultValues: { comment: "" },
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth({});
+
+  const {
+    usePostComment,
+    useDeleteComment,
+    useLikePost,
+    useUnlikePost,
+  } = usePostManipulate();
 
   const {
     data: post,
@@ -27,23 +51,42 @@ const PostScreen: React.FC = () => {
     refetch,
   } = useQuery<IPost>({
     queryKey: ["post", postId],
-    queryFn: async () => {
-      const res = await baseInstance.get(`/posts/${postId}`);
-      return res.data;
-    },
+    queryFn: () => useGetPost({ id: parseInt(postId) }),
   });
 
-  const handleAddComment = () => {
-    if (commentText.trim() === "") return;
+  const handleAddComment = async (data: { comment: string }) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     usePostComment(
-      { id: parseInt(postId), comment: commentText },
+      { id: parseInt(postId), comment: data.comment },
       {
         onSuccess: () => {
           refetch();
-          setCommentText("");
+          setIsSubmitting(false);
         },
       }
     );
+    control._reset({ comment: "" });
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    useDeleteComment(
+      { commentId },
+      {
+        onSuccess: () => {
+          refetch();
+        },
+      }
+    );
+  };
+  const currentUserId = user.id;
+  const isLiked = post?.likes.some((like) => like.user_id === currentUserId);
+  const handleLikePress = () => {
+    if (isLiked) {
+      useUnlikePost({ id: post?.id || 0 });
+    } else {
+      useLikePost({ id: post?.id || 0 });
+    }
   };
 
   if (isLoading) {
@@ -55,8 +98,8 @@ const PostScreen: React.FC = () => {
   }
 
   return (
-    <View className="flex-1 bg-background p-4">
-      <View className="bg-white p-4 rounded-lg shadow">
+    <View className="flex-1 bg-background relative">
+      <View className="bg-white p-4 rounded-lg">
         <View className="flex-row items-center mb-2">
           <Image
             source={{ uri: post?.user?.picture }}
@@ -75,36 +118,67 @@ const PostScreen: React.FC = () => {
             </Text>
           </View>
         </View>
-        <Text className="text-base">{post?.body}</Text>
+        <Text className="text-lg font-semibold">{post?.title}</Text>
+        <Text className="text-gray-600 mt-4">{post?.body}</Text>
 
         {/* Post Actions */}
-        <View className="flex-row justify-between items-center mt-3">
-          {/* Comment Count */}
+        <View className="flex-row gap-x-4 mt-4">
+          <TouchableOpacity
+            onPress={handleLikePress}
+            className="flex-row flex justify-center items-center"
+          >
+            <TabBarIcon
+              name={isLiked ? "heart" : "heart-outline"}
+              size={16}
+              color={isLiked ? "red" : "grey"}
+              family="MaterialCommunityIcons"
+            />
+            <Text className="ml-2 text-gray-500">{post?.likes.length}</Text>
+          </TouchableOpacity>
           <View className="flex-row items-center">
-            <Ionicons name="chatbubble-outline" size={20} color="#6b7280" />
-            <Text className="ml-1 text-gray-500">{post?.comments.length}</Text>
+            <TabBarIcon
+              name="comment"
+              size={16}
+              color="grey"
+              family="FontAwesome6"
+            />
+            <Text className="ml-2 text-gray-500">{post?.comments.length}</Text>
           </View>
-
-          {/* Flagged Icon */}
-          <Ionicons
-            name="flag"
-            size={20}
-            color={post?.flagged === 1 ? "red" : "#6b7280"}
-          />
+          <View className="flex-row items-center">
+            <TabBarIcon
+              name="flag"
+              size={16}
+              color={post?.flagged === 1 ? "red" : "gray"}
+              family="FontAwesome6"
+            />
+          </View>
         </View>
       </View>
 
-      {/* Comment Input */}
-      <View className="flex-row items-center mt-4 bg-white py-1 pr-4 rounded-lg border border-gray-300">
-        <TextInput
-          className="flex-1 px-3 bg-red-10"
-          placeholder="Add a comment..."
-          value={commentText}
-          onChangeText={setCommentText}
-          aria-disabled={isCommentLoading}
+      <View className="flex-row items-center mt-4 pr-4 rounded-lg border-b-2 bottom-4 border-primary mx-4">
+        <Controller
+          control={control}
+          name="comment"
+          render={({ field: { value, onChange } }) => (
+            <TextInput
+              className="px-2 flex-1"
+              placeholder="Write your comment ......"
+              value={value}
+              style={{ height: 40 }}
+              onChangeText={onChange}
+            />
+          )}
         />
-        <TouchableOpacity onPress={handleAddComment}>
-          <Ionicons name="send" size={20} color="#A23A91" />
+        <TouchableOpacity
+          onPress={handleSubmit(handleAddComment)}
+          disabled={isSubmitting || !!errors.comment}
+        >
+          <TabBarIcon
+            name="send"
+            family="Ionicons"
+            size={20}
+            color={isSubmitting || errors.comment ? "grey" : "#A23A91"}
+          />
         </TouchableOpacity>
       </View>
 
@@ -112,30 +186,39 @@ const PostScreen: React.FC = () => {
       <FlatList
         data={[...(post?.comments || [])].reverse()}
         renderItem={({ item }) => (
-          <View className="bg-white p-3 mt-2 rounded-lg shadow">
-            <View className="flex-row items-center">
-              <Image
-                source={{ uri: item.user.picture }}
-                className="w-8 h-8 rounded-full"
-              />
-              <View className="ml-3">
-                <Text className="font-semibold">{item.user.name}</Text>
-                <Text className="text-gray-500 text-sm">
-                  {item?.created_at &&
-                    `${format(
-                      new Date(item.created_at),
-                      "MMM dd, yyyy"
-                    )} - ${formatDistanceToNow(new Date(item.created_at), {
-                      addSuffix: true,
-                    })}`}
-                </Text>
-                <Text className="text-base mt-1">{item.comment}</Text>
+          <View className="bg-white mb-4 border border-slate-100 p-4 mx-4 rounded-xl shadow">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center">
+                <Image
+                  source={{ uri: item.user.picture }}
+                  className="w-8 h-8 rounded-full"
+                />
+                <View className="ml-3">
+                  <Text className="font-semibold">{item.user.name}</Text>
+                  <Text className="text-gray-500 text-sm">
+                    {item?.created_at &&
+                      `${format(
+                        new Date(item.created_at),
+                        "MMM dd, yyyy"
+                      )} - ${formatDistanceToNow(new Date(item.created_at), {
+                        addSuffix: true,
+                      })}`}
+                  </Text>
+                </View>
               </View>
+              {item.user.id === post?.user?.id && (
+                <TouchableOpacity
+                  className="bg-slate-100 p-2 rounded-full"
+                  onPress={() => handleDeleteComment(item.id)}
+                >
+                  <Ionicons name="trash" size={16} color="grey" />
+                </TouchableOpacity>
+              )}
             </View>
+            <Text className="text-base mt-1">{item.comment}</Text>
           </View>
         )}
         keyExtractor={(item) => item.id.toString()}
-        className="mt-4"
       />
     </View>
   );

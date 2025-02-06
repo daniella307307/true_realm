@@ -11,6 +11,7 @@ import {
 import { Button } from "./ui/button";
 import { IFormElement } from "~/types";
 import { Text } from "./ui/text";
+import { useTranslation } from "react-i18next";
 
 const TextArea: React.FC<{ field: IFormElement; control: any }> = ({
   field,
@@ -228,11 +229,12 @@ const DynamicField: React.FC<{ field: IFormElement; control: any }> = ({
   }
 };
 
-const DynamicForm: React.FC<{ fields: IFormElement[]; wholeComponent?: boolean }> = ({
-  fields,
-  wholeComponent = false,
-}) => {
+const DynamicForm: React.FC<{
+  fields: IFormElement[];
+  wholeComponent?: boolean;
+}> = ({ fields, wholeComponent = false }) => {
   const { control, handleSubmit } = useForm();
+  const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(0);
 
   const onSubmit = (data: any) => {
@@ -262,11 +264,17 @@ const DynamicForm: React.FC<{ fields: IFormElement[]; wholeComponent?: boolean }
         </View>
       )}
 
-      {wholeComponent
-        ? fields.map((field) => (
-            <DynamicField key={field.key} field={field} control={control} />
-          ))
-        : <DynamicField key={fields[currentPage].key} field={fields[currentPage]} control={control} />}
+      {wholeComponent ? (
+        fields.map((field) => (
+          <DynamicField key={field.key} field={field} control={control} />
+        ))
+      ) : (
+        <DynamicField
+          key={fields[currentPage].key}
+          field={fields[currentPage]}
+          control={control}
+        />
+      )}
 
       {!wholeComponent && (
         <View className="flex flex-row justify-between mt-4">
@@ -275,15 +283,21 @@ const DynamicForm: React.FC<{ fields: IFormElement[]; wholeComponent?: boolean }
             disabled={currentPage === 0}
             className={`${currentPage === 0 ? "opacity-50" : ""}`}
           >
-            <Text className="text-white dark:text-black font-semibold">Previous</Text>
+            <Text className="text-white dark:text-black font-semibold">
+              {t("FormElementPage.previous")}
+            </Text>
           </Button>
           {currentPage < fields.length - 1 ? (
             <Button onPress={handleNext}>
-              <Text className="text-white dark:text-black font-semibold">Next</Text>
+              <Text className="text-white dark:text-black font-semibold">
+                {t("FormElementPage.next")}
+              </Text>
             </Button>
           ) : (
             <Button onPress={handleSubmit(onSubmit)}>
-              <Text className="text-white dark:text-black font-semibold">Submit</Text>
+              <Text className="text-white dark:text-black font-semibold">
+                {t("FormElementPage.submit")}
+              </Text>
             </Button>
           )}
         </View>
@@ -291,7 +305,9 @@ const DynamicForm: React.FC<{ fields: IFormElement[]; wholeComponent?: boolean }
 
       {wholeComponent && (
         <Button onPress={handleSubmit(onSubmit)} className="mt-4">
-          <Text className="text-white dark:text-black font-semibold">Submit</Text>
+          <Text className="text-white dark:text-black font-semibold">
+            {t("FormElementPage.submit")}
+          </Text>
         </Button>
       )}
     </ScrollView>

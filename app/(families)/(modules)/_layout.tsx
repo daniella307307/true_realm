@@ -17,7 +17,7 @@ const ModuleLayout = () => {
         name="module"
         options={{
           headerShown: true,
-          title: t("Modules"),
+          title: t("ModulePage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

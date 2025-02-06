@@ -36,7 +36,7 @@ const CohortStatisticsScreen = () => {
             {monitoredFamilies} / {totalFamilies}
           </Text>
           <Text className="text-gray-500">
-            {t("Number of families visited")}
+            {t("StatisticsPage.number_of_families_visited")}
           </Text>
         </View>
 
@@ -44,7 +44,7 @@ const CohortStatisticsScreen = () => {
           <Text className="text-2xl font-bold text-primary">
             {monitoringPercentage}%
           </Text>
-          <Text className="text-gray-500">{t("Monitoring Behavior")}</Text>
+          <Text className="text-gray-500">{t("StatisticsPage.monitoring_behaviors")}</Text>
         </View>
       </View>
     </View>

@@ -15,7 +15,7 @@ const VideoLayout = () => {
         name="video"
         options={{
           headerShown: true,
-          title: t("Videos"),
+          title: t("Videos.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
@@ -25,7 +25,7 @@ const VideoLayout = () => {
         name="[vidId]"
         options={{
           headerShown: true,
-          title: t("Videos"),
+          title: t("Videos.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

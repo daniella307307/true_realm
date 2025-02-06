@@ -11,10 +11,10 @@ export default function PasswordVerificationSent() {
     <SafeAreaView className="flex-1 justify-center items-center flex-col gap-y-12 p-8 bg-background">
       <View>
         <Text className="mb-2 text-xl text-center font-medium text-[#050F2B]">
-          {t("We have sent a password recover intructions to your email")}
+          {t("PasswordVerification.description")}
         </Text>
         <Text className="text-[#6E7191] text-center">
-          {t("Did not receive the email? check you spam filter or resend")}
+          {t("PasswordVerification.didNotReceive")}
         </Text>
       </View>
     </SafeAreaView>

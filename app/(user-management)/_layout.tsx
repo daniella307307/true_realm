@@ -42,7 +42,7 @@ const AuthLayout = () => {
       <Stack.Screen
         name="password-verification-sent"
         options={{
-          title: t("Password Verification"), // Add the respective translation key here
+          title: t("PasswordVerification.title"),
           headerShown: true,
           contentStyle: {
             elevation: 0,

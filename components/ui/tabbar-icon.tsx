@@ -99,7 +99,7 @@ export function TabBarIcon({
       name={name as any}
       size={size}
       color={color ? color : "#A23A91"}
-      style={[{ marginBottom: -3 }, style]}
+      style={[style]}
       {...rest}
     />
   );

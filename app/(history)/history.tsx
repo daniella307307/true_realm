@@ -62,7 +62,7 @@ const HistoryScreen = () => {
     mode: "onChange",
   });
 
-  const searchQuery = watch("searchQuery").toLowerCase();
+  const searchQuery = watch("searchQuery");
 
   // Filter families based on cohortId
   const filteredFamilies = families
@@ -99,9 +99,9 @@ const HistoryScreen = () => {
       <CustomInput
         control={control}
         name="searchQuery"
-        placeholder={t("CohortPage.search_family")}
+        placeholder={t("HistoryPage.search_family")}
         keyboardType="default"
-        accessibilityLabel={t("CohortPage.search_family")}
+        accessibilityLabel={t("HistoryPage.search_family")}
       />
       <FlatList
         data={filteredFamilies}

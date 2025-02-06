@@ -1,15 +1,19 @@
 import { AxiosError } from "axios";
 import { useMemo, useState, useEffect } from "react";
-import { ILoginDetails, ILoginResponse, IResponseError } from "~/types";
+import { ILoginDetails, ILoginResponse, IResponseError, User } from "~/types";
 import { useMainStore } from "../store/main";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { userLogin, userLogout } from "~/services/user";
+import {
+  useGetCurrentLoggedInProfile,
+  userLogin,
+  userLogout,
+} from "~/services/user";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type AuthOptions = {
-  onLogin?: (data: ILoginResponse) => void;
+  onLogin?: (data: User) => void;
   onLogout?: () => void;
 };
 
@@ -109,41 +113,15 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         Toast.show({
           text1: "Loading essential data...",
           type: "success",
-          position: "bottom",
-          visibilityTime: 3000,
-          autoHide: true,
-          topOffset: 30,
         });
-
-        // 1. store token in cookie storage
         const tokenStoredInCookie = await storeTokenInAsynStorage(data.token);
-
-        if (!tokenStoredInCookie)
-          throw new Error("Auth Token was not stored in cookie.");
-
-        // 2. fetch the information of the logged in user
-        const authUser = data;
-
-        // if not authUser, return null
-        if (!authUser) {
-          Toast.show({
-            text1: "An error occurred",
-            text2: "Please try again",
-            type: "error",
-            position: "bottom",
-            visibilityTime: 3000,
-            autoHide: true,
-            topOffset: 30,
-          });
-          setIsLoggingIn(false);
-          setIsLoading(false);
+        if (!tokenStoredInCookie) throw new Error("Auth Token was not stored.");
+        const profileData = await useGetCurrentLoggedInProfile();
+        if (!profileData) {
+          Toast.show({ text1: "Profile fetch failed", type: "error" });
           return;
         }
-
-        // 3. Now that we have the user's information, we save them in a persisted state
-        const didStoreUserInfo = mainStore.login({ userAccount: authUser! });
-
-        // 4. If the user's information was saved successfully, we call the onLogin callback
+        const didStoreUserInfo = mainStore.login({ userAccount: profileData });
         if (didStoreUserInfo) {
           Toast.show({
             text1: "Login successful",
@@ -155,8 +133,19 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
           });
           setIsLoggingIn(false);
           setIsLoading(false);
-          onLogin?.(authUser!);
+          onLogin?.(profileData);
         }
+      } else {
+        Toast.show({
+          text1: "Login failed. Please check your credentials",
+          type: "error",
+          position: "bottom",
+          visibilityTime: 3000,
+          autoHide: true,
+          topOffset: 30,
+        });
+        setIsLoggingIn(false);
+        setIsLoading(false);
       }
     },
   });

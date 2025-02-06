@@ -1,85 +1,59 @@
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
-import React, { useState, useEffect } from "react";
+import { FontAwesome5, Ionicons } from "@expo/vector-icons";
+import React, { useState, useCallback } from "react";
 import {
   FlatList,
   TouchableOpacity,
   View,
-  Text,
   Image,
   Modal,
   TextInput,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useQuery } from "@tanstack/react-query";
-import { IPost } from "~/types";
-import { Button } from "~/components/ui/button";
-import { useGetPosts } from "~/services/posts";
 import { format, formatDistanceToNow } from "date-fns";
 import { usePostManipulate } from "~/lib/hooks/usePost";
+import { Text } from "~/components/ui/text";
+import { useGetPosts } from "~/services/posts";
+import { IPost } from "~/types";
+import { useAuth } from "~/lib/hooks/useAuth";
+import { Button } from "~/components/ui/button";
+import { TabBarIcon } from "~/components/ui/tabbar-icon";
 
 const CommunityScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [reportText, setReportText] = useState("");
-  const [localPosts, setLocalPosts] = useState<IPost[]>([]); // Local state for posts
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const { user } = useAuth({});
 
-  const { data: posts, isLoading } = useQuery({
+  const {
+    data: posts,
+    refetch,
+    isLoading,
+  } = useQuery({
     queryKey: ["posts"],
     queryFn: useGetPosts,
-    retryOnMount: true,
-    retry: 1,
-    refetchOnReconnect: true,
-    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
-  useEffect(() => {
-    if (posts?.data) {
-      setLocalPosts(posts.data);
-    }
-  }, [posts]);
+  const { useLikePost, useUnlikePost, useDeletePost, useReportPost } =
+    usePostManipulate();
 
-  const { useLikePost, useUnlikePost } = usePostManipulate();
-
-  const handleLikePress = async (post: IPost) => {
-    const currentUserId = 1; // Replace with the actual current user ID
+  const handleLikePress = (post: IPost) => {
+    const currentUserId = user.id;
     const isLiked = post.likes.some((like) => like.user_id === currentUserId);
 
-    // Optimistically update the UI
-    const updatedPosts = localPosts.map((p) =>
-      p.id === post.id
-        ? {
-            ...p,
-            likes: isLiked
-              ? p.likes.filter((like) => like.user_id !== currentUserId) // Unlike
-              : [...p.likes, {
-                  id: Date.now(), // Temporary ID
-                  user_id: currentUserId,
-                  post_id: p.id,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                }], // Like
-          }
-        : p
-    );
-    setLocalPosts(updatedPosts);
-
-    try {
-      if (isLiked) {
-        await useUnlikePost({ id: post.id }); // API call to unlike
-      } else {
-        await useLikePost({ id: post.id }); // API call to like
-      }
-    } catch (error) {
-      // Revert the UI change if the API call fails
-      setLocalPosts(localPosts);
-      console.error("Error updating like:", error);
+    if (isLiked) {
+      useUnlikePost({ id: post.id });
+    } else {
+      useLikePost({ id: post.id });
     }
   };
 
-  const handlePostPress = (postId: number) => {
-    router.push(`/(community)/${postId}`);
+  const handleDeletePost = (postId: number) => {
+    useDeletePost({ id: postId });
   };
 
   const handleReportPress = () => {
@@ -87,10 +61,14 @@ const CommunityScreen: React.FC = () => {
   };
 
   const handleSendReport = () => {
-    console.log("Report Sent:", reportText);
+    useReportPost({ id: 1, report: reportText });
     setModalVisible(false);
-    setReportText("");
   };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    refetch().finally(() => setRefreshing(false));
+  }, []);
 
   if (isLoading) {
     return (
@@ -101,12 +79,15 @@ const CommunityScreen: React.FC = () => {
   }
 
   const renderPost = ({ item }: { item: IPost }) => {
-    const currentUserId = 1; // Replace with the actual current user ID
+    const currentUserId = user.id;
     const isLiked = item.likes.some((like) => like.user_id === currentUserId);
+    const isOwner = item.user.id === currentUserId;
 
     return (
       <View className="bg-white p-4 m-2 rounded-lg shadow">
-        <TouchableOpacity onPress={() => handlePostPress(item.id)}>
+        <TouchableOpacity
+          onPress={() => router.push(`/(community)/${item.id}`)}
+        >
           {/* User Info */}
           <View className="flex-row items-center justify-between mb-2">
             <View className="flex-row items-center">
@@ -126,6 +107,7 @@ const CommunityScreen: React.FC = () => {
                 </Text>
               </View>
             </View>
+
             <TouchableOpacity
               onPress={handleReportPress}
               className="h-10 w-10 bg-gray-50 flex-row justify-center items-center rounded-xl"
@@ -141,40 +123,54 @@ const CommunityScreen: React.FC = () => {
 
           {/* Post Content */}
           <Text className="text-lg font-semibold">{item.title}</Text>
-          <Text className="text-base">{item.body}</Text>
+          <Text className="text-gray-600">{item.body}</Text>
 
-          {/* Post Actions: Comments & Like */}
-          <View className="flex-row items-center justify-between mt-3">
-            {/* Comments */}
-            <View className="flex-row items-center gap-x-4">
+          {/* Actions */}
+          <View className="flex-row justify-between mt-3">
+            <View className="flex-row gap-x-4">
+              <TouchableOpacity
+                onPress={() => handleLikePress(item)}
+                className="flex-row flex justify-center items-center"
+              >
+                <TabBarIcon
+                  name={isLiked ? "heart" : "heart-outline"}
+                  size={16}
+                  color={isLiked ? "red" : "grey"}
+                  family="MaterialCommunityIcons"
+                />
+                <Text className="ml-2 text-gray-500">{item.likes.length}</Text>
+              </TouchableOpacity>
               <View className="flex-row items-center">
-                <FontAwesome5 name="comment-alt" size={16} color="gray" />
-                <Text className="text-gray-600 ml-2">
+                <TabBarIcon
+                  name="comment"
+                  size={16}
+                  color="grey"
+                  family="FontAwesome6"
+                />
+                <Text className="ml-2 text-gray-500">
                   {item.comments.length}
                 </Text>
               </View>
-              <View className="flex-row items-center gap-x-4">
-                <TouchableOpacity onPress={() => handleLikePress(item)}>
-                  <View className="flex-row items-center">
-                    <FontAwesome5
-                      name="heart"
-                      size={16}
-                      color={isLiked ? "red" : "gray"}
-                    />
-                    <Text className="text-gray-600 ml-2">
-                      {item.likes.length}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+              <View className="flex-row items-center">
+                <TabBarIcon
+                  name="flag"
+                  size={16}
+                  color={item.flagged === 1 ? "red" : "gray"}
+                  family="FontAwesome6"
+                />
               </View>
             </View>
 
-            {/* Flag (Red if flagged) */}
-            <FontAwesome5
-              name="flag"
-              size={16}
-              color={item.flagged === 1 ? "red" : "gray"}
-            />
+            <View className="flex-row gap-x-4">
+              {isOwner && (
+                <TouchableOpacity
+                  className="bg-slate-100 p-2 rounded-full"
+                  onPress={() => handleDeletePost(item.id)}
+                >
+                  <Ionicons name="trash" size={16} color="grey" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </TouchableOpacity>
       </View>
@@ -182,43 +178,42 @@ const CommunityScreen: React.FC = () => {
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1 bg-slate-50">
       <FlatList
-        data={localPosts} // Use localPosts instead of posts.data
-        renderItem={renderPost}
+        data={posts?.data || []}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        renderItem={renderPost}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       />
       <TouchableOpacity
         onPress={() => router.push("/add-post")}
         className="absolute bottom-16 right-6 bg-primary rounded-full p-4"
       >
-        <Ionicons name="pencil" size={24} color="white" />
+        <TabBarIcon name="add" size={24} color="white" family="Ionicons" />
       </TouchableOpacity>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
+      <Modal visible={modalVisible} transparent animationType="slide">
         <View className="flex-1 justify-center items-center bg-black/50">
           <View className="bg-white p-6 rounded-lg w-4/5">
-            <Text className="text-lg font-semibold mb-2">Report Issue</Text>
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-lg font-bold">Report Issue</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={24} color="black" />
+              </TouchableOpacity>
+            </View>
+
             <TextInput
-              className={`w-full px-4 h-44 border border-[#E4E4E7] rounded-lg dark:text-white bg-white dark:bg-[#1E1E1E]`}
-              placeholder={"Add your post description here"}
+              className="h-32 border px-2 border-[#E4E4E7] rounded-lg justify-start items-start flex-col"
+              placeholder="Add your post description here"
               value={reportText}
-              onChangeText={(text: string) => setReportText(text)}
+              onChangeText={setReportText}
               multiline
               numberOfLines={4}
             />
-
-            <Button
-              onPress={handleSendReport}
-              className="bg-primary p-4 rounded-lg flex-row items-center justify-center mt-4"
-            >
-              <Text className="ml-2 text-white font-semibold">Send Now</Text>
+            <Button onPress={handleSendReport} className="mt-4">
+              <Text>Submit</Text>
             </Button>
           </View>
         </View>

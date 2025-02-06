@@ -21,7 +21,7 @@ export default function LoginScreen() {
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const { login, isLoggingIn } = useAuth({
     onLogin: (authUser) => {
-      if (authUser.token) {
+      if (authUser.id !== undefined) {
         router.push("/(home)/home");
       } else {
         console.log("No token found");

@@ -16,7 +16,7 @@ const CommunityLayout = () => {
         name="community"
         options={{
           headerShown: true,
-          title: t("Community"),
+          title: t("CommunityPage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
@@ -26,7 +26,7 @@ const CommunityLayout = () => {
         name="add-post"
         options={{
           headerShown: true,
-          title: t("Create Post"),
+          title: t("CommunityPage.create_post"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

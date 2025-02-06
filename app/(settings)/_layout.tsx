@@ -15,37 +15,7 @@ const SettingsLayout = () => {
         name="index"
         options={{
           headerShown: true,
-          title: t("Settings"),
-          headerTitleAlign: "center",
-          headerLeft: () => <HeaderNavigation showLeft={true} />,
-          headerRight: () => <HeaderNavigation showLeft={false} />,
-        }}
-      />
-      <Stack.Screen
-        name="account"
-        options={{
-          headerShown: true,
-          title: t("Settings"),
-          headerTitleAlign: "center",
-          headerLeft: () => <HeaderNavigation showLeft={true} />,
-          headerRight: () => <HeaderNavigation showLeft={false} />,
-        }}
-      />
-      <Stack.Screen
-        name="language"
-        options={{
-          headerShown: true,
-          title: t("Change Language"),
-          headerTitleAlign: "center",
-          headerLeft: () => <HeaderNavigation showLeft={true} />,
-          headerRight: () => <HeaderNavigation showLeft={false} />,
-        }}
-      />
-      <Stack.Screen
-        name="fontsize"
-        options={{
-          headerShown: true,
-          title: t("Change Font Size"),
+          title: t("SettingsPage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

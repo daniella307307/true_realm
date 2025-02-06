@@ -33,6 +33,15 @@
         "requiredEmail": "Email is required"
       }
     },
+    "PasswordVerification": {
+      "title": "Password Verification",
+      "description": "We have sent a password recover instructions to your email",
+      "didNotReceive": "Did not receive the email? check you spam filter or resend",
+      "verificationCode": "Verification Code",
+      "verificationCodePlaceholder": "Enter verification code",
+      "submit": "Submit",
+      "resend": "Resend Code"
+    },
     "HomePage": {
       "title": "Hello, ",
       "description": "How can we help you today",
@@ -51,6 +60,27 @@
       "cohort": "Cohort",
       "assigned_Family": "Assigned Family",
       "search_family": "Search Family"
+    },
+    "ModulePage": {
+      "title": "Modules",
+      "module": "Module",
+      "search_module": "Search Modules",
+      "risk_of_harm": "Risk of Harm",
+      "risk_of_harm_description": "This module is a high priority for your attention."
+    },
+    "FormPage": {
+      "title": "Forms",
+      "form": "Form",
+      "search_form": "Search Forms",
+      "empty_forms": "No forms available"
+    },
+    "FormElementPage": {
+      "title": "Form Questions",
+      "form": "questions",
+      "next": "Next",
+      "previous": "Previous",
+      "page_of": "Page of",
+      "submit": "Submit"
     },
     "HistoryPage": {
       "title": "History",
@@ -75,11 +105,36 @@
     },
     "SettingsPage": {
       "title": "Settings",
+      "account": "Account",
       "language": "Language",
-      "theme": "Theme",
-      "dark": "Dark",
-      "light": "Light",
-      "logout": "Logout"
+      "account_details": "Account Details",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Telephone",
+      "user_code": "User Code",
+      "date_of_enrollment": "Date of Enrollment",
+      "incentives": "Incentives",
+      "change_language": "Change Language",
+      "select_language": "Select Language",
+      "change_font_size": "Change Font Size",
+      "adjust_font_size": "Adjust Font Size",
+      "preview_text": "Preview Text",
+      "close": "Close"
+    },
+    "CommunityPage": {
+      "title": "Community",
+      "report_issue": "Report Issue",
+      "send_feedback": "Send Feedback",
+      "post_title": "Post Title",
+      "post_title_placeholder": "Enter post title",
+      "post_description": "Post Description",
+      "post_description_placeholder": "Enter post description",
+      "create_post": "Create Post",
+      "write_comment": "Write a comment"
+    },
+    "Videos": {
+      "title": "Videos",
+      "downloaded": "Downloaded"
     }
 }
   

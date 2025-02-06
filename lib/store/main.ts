@@ -1,15 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { ILoginResponse } from '~/types';
+import { ILoginResponse, User } from '~/types';
 type State = {
-    user: ILoginResponse | null;
+    user: User | null;
 };
 
 type Action = {
-    login: (loginDetails: { userAccount: ILoginResponse }) => boolean;
+    login: (loginDetails: { userAccount: User }) => boolean;
     logout: () => boolean;
-    setUser: (user: ILoginResponse) => void;
+    setUser: (user: User) => void;
 };
 
 const useMainStore = create(

@@ -1,4 +1,4 @@
-import { ILoginDetails, ILoginResponse, IResponse } from "~/types";
+import { ILoginDetails, ILoginResponse, IResponse, User } from "~/types";
 import { baseInstance } from "~/utils/axios";
 
 export async function userLogout() {
@@ -16,5 +16,10 @@ export async function userLogin(values: ILoginDetails) {
                     Authorization: undefined,
                 },
             });
+    return res.data;
+}
+
+export async function useGetCurrentLoggedInProfile() {
+    const res = await baseInstance.post<User>(`/profile`);
     return res.data;
 }

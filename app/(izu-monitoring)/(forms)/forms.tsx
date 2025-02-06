@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, FlatList } from 'react-native';
-import { useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
-import { router, Href } from 'expo-router';
-import CustomInput from '~/components/ui/input';
-import { TabBarIcon } from '~/components/ui/tabbar-icon';
+import React, { useState, useEffect } from "react";
+import { View, Text, Pressable, FlatList } from "react-native";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { router, Href } from "expo-router";
+import CustomInput from "~/components/ui/input";
+import { TabBarIcon } from "~/components/ui/tabbar-icon";
 
 const staticForms = [
   {
@@ -23,11 +23,11 @@ const staticForms = [
           labelPosition: "top",
           placeholder: "Enter your full name",
           validate: {
-            required: true
-          }
-        }
-      }
-    ]
+            required: true,
+          },
+        },
+      },
+    ],
   },
   {
     id: 2,
@@ -45,11 +45,11 @@ const staticForms = [
           labelPosition: "top",
           validate: {
             required: true,
-            minLength: 10
-          }
-        }
-      }
-    ]
+            minLength: 10,
+          },
+        },
+      },
+    ],
   },
   {
     id: 3,
@@ -68,12 +68,12 @@ const staticForms = [
           values: [
             { label: "Excellent", value: "excellent" },
             { label: "Good", value: "good" },
-            { label: "Fair", value: "fair" }
-          ]
-        }
-      }
-    ]
-  }
+            { label: "Fair", value: "fair" },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 const IZUForms = () => {
@@ -81,8 +81,8 @@ const IZUForms = () => {
   const { t } = useTranslation();
   const { control } = useForm({
     defaultValues: {
-      searchQuery: ''
-    }
+      searchQuery: "",
+    },
   });
 
   useEffect(() => {
@@ -99,9 +99,9 @@ const IZUForms = () => {
       <CustomInput
         control={control}
         name="searchQuery"
-        placeholder={t("Search for forms")}
+        placeholder={t("FormPage.search_form")}
         keyboardType="default"
-        accessibilityLabel={t("search_forms")}
+        accessibilityLabel={t("FormPage.search_form")}
       />
 
       {isLoading ? (
@@ -125,16 +125,12 @@ const IZUForms = () => {
           keyExtractor={(item) => item.id.toString()}
           ListEmptyComponent={() => (
             <Text className="text-center text-gray-500 mt-6">
-              {t("No forms available")}
+              {t("FormPage.empty_forms")}
             </Text>
           )}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() =>
-                router.push(
-                  `/(elements)/${item.id}` as Href
-                )
-              }
+              onPress={() => router.push(`/(elements)/${item.id}` as Href)}
               className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
             >
               <TabBarIcon

@@ -1,56 +1,137 @@
-
 {
-    "language": "kin",
-    "Login": {
-      "title": "Injiramo",
-      "email": "Imeli",
-      "password": "Ijambobanga",
-      "emailPlaceholder": "Andika imeli yawe",
-      "passwordPlaceholder": "Andika Ijambobanga ryawe",
-      "login": "Injiramo",
-      "forgotPassword": "Wibagiwe ijambobanga?",
-      "Select Language": "Hitamo Ururimi",
-      "Validation": {
-        "invalidEmail": "Imeri yanditswe nabi",
-        "requiredEmail": "Imeri irakenewe",
-        "requiredPassword": "Ijambo ry'ibanga rirakenewe",
-        "passwordMin": "Ijambo ry'ibanga rigomba kuba rifite nibura inyuguti 5",
-        "passwordUppercase": "Ijambo ry'ibanga rigomba kugira inyuguti nini nibura imwe",
-        "passwordSymbol": "Ijambo ry'ibanga rigomba kugira ikimenyetso nibura kimwe",
-        "passwordDigit": "Ijambo ry'ibanga rigomba kugira umubare nibura umwe"
-      }
-    },
-    "ForgotPassword": {
-      "title": "Wibagiwe Ijambobanga",
-      "email": "Imeli",
-      "description": "Andika imeli yawe hano hanyuma tuzakuganiriza inkuru y'ukubahiriza ijambobanga ryawe.",
-      "emailPlaceholder": "Andika imeli yawe",
-      "send": "Emeza",
-      "rememberPassword": "Uracyibuka ijambobanga ryawe?",
-      "backToLogin": "Subira kuri injiramo",
-      "Validation": {
-        "invalidEmail": "Imeri yanditswe nabi",
-        "requiredEmail": "Imeri irakenewe"
-      }
-    },
-    "HomePage": {
-      "title": "Muraho, ",
-      "description": "Igiki cyawe tuzakurikiraho",
-      "families": "Imiryango",
-      "history": "Amateka",
-      "statistics": "Ibyo wabonye",
-      "IZU_Monitoring": "Genzura IZU",
-      "videos": "Video",
-      "settings": "Icungamimirere",
-      "Izu_telephone_Supervision": "Genzura IZU kuri telefoni",
-      "Community": "Sosiyete"
-    },
-    "CohortPage": {
-      "title": "Amatsinda",
-      "all_cohorts": "Amatsinda yose",
-      "cohort": "Itsinda",
-      "assigned_Family": "Imiryango yahawe",
-      "search_family": "Shakisha Imiryango"
+  "language": "kin",
+  "Login": {
+    "title": "Injiramo",
+    "email": "Imeli",
+    "password": "Ijambobanga",
+    "emailPlaceholder": "Andika imeli yawe",
+    "passwordPlaceholder": "Andika Ijambobanga ryawe",
+    "login": "Injiramo",
+    "forgotPassword": "Wibagiwe ijambobanga?",
+    "Select Language": "Hitamo Ururimi",
+    "Validation": {
+      "invalidEmail": "Imeri yanditswe nabi",
+      "requiredEmail": "Imeri irakenewe",
+      "requiredPassword": "Ijambo ry'ibanga rirakenewe",
+      "passwordMin": "Ijambo ry'ibanga rigomba kuba rifite nibura inyuguti 5",
+      "passwordUppercase": "Ijambo ry'ibanga rigomba kugira inyuguti nini nibura imwe",
+      "passwordSymbol": "Ijambo ry'ibanga rigomba kugira ikimenyetso nibura kimwe",
+      "passwordDigit": "Ijambo ry'ibanga rigomba kugira umubare nibura umwe"
     }
+  },
+  "ForgotPassword": {
+    "title": "Wibagiwe Ijambobanga",
+    "email": "Imeli",
+    "description": "Andika imeli yawe hano hanyuma tuzakuganiriza inkuru y'ukubahiriza ijambobanga ryawe.",
+    "emailPlaceholder": "Andika imeli yawe",
+    "send": "Emeza",
+    "rememberPassword": "Uracyibuka ijambobanga ryawe?",
+    "backToLogin": "Subira kuri injiramo",
+    "Validation": {
+      "invalidEmail": "Imeri yanditswe nabi",
+      "requiredEmail": "Imeri irakenewe"
+    }
+  },
+  "PasswordVerification": {
+    "title": "Ukubahiriza Ijambobanga",
+    "description": "Tuzakuganiriza inkuru y'ukubahiriza ijambobanga ryawe kuri imeli yawe",
+    "didNotReceive": "Ntagiye wabonye inkuru? Shyiramo kuri spam cyangwa usangire",
+    "verificationCode": "Ijambo ry'ibanga ry'ukubahiriza",
+    "verificationCodePlaceholder": "Shyiramo ijambo ry'ibanga ry'ukubahiriza",
+    "submit": "Emeza",
+    "resend": "Emeza indi ijambo ry'ibanga ry'ukubahiriza"
+  },
+  "HomePage": {
+    "title": "Muraho, ",
+    "description": "Igiki cyawe tuzakurikiraho",
+    "families": "Imiryango",
+    "history": "Amateka",
+    "statistics": "Ibyo wabonye",
+    "IZU_Monitoring": "Genzura IZU",
+    "videos": "Video",
+    "settings": "Icungamimirere",
+    "Izu_telephone_Supervision": "Genzura IZU kuri telefoni",
+    "community": "Ibitekerezo"
+  },
+  "CohortPage": {
+    "title": "Amatsinda",
+    "all_cohorts": "Amatsinda yose",
+    "cohort": "Itsinda",
+    "assigned_Family": "Imiryango yahawe",
+    "search_family": "Shakisha Imiryango"
+  },
+  "ModulePage": {
+    "title": "Ibyiciro",
+    "module": "Icyiciro",
+    "search_module": "Shakisha ibyiciro",
+    "risk_of_harm": "Iki cyiciro cyateza ibyago",
+    "risk_of_harm_description": "Iki cyiciro kiri mu bintu by'ingenzi bikwiye kwitabwaho."
+  },
+  "FormPage": {
+    "title": "Ifishi",
+    "form": "Ifishi",
+    "search_form": "Shakisha amafishi"
+  },
+  "FormElementPage": {
+    "title": "Ibibazo by'Ibizamini",
+    "form": "ibibazo",
+    "next": "Inyuma",
+    "previous": "Bishize",
+    "page_of": "Igice cy'",
+    "submit": "Ohereza"
+  },
+  "HistoryPage": {
+    "title": "Amateka",
+    "all_history": "Amateka yose",
+    "history": "Amateka",
+    "assigned_Family": "Imiryango yahawe",
+    "search_family": "Shakisha Imiryango"
+  },
+  "StatisticsPage": {
+    "title": "Ibyo Wabonye",
+    "all_statistics": "Ibyo wabonye byose",
+    "statistics": "Ibyo wabonye",
+    "search_izu": "Shakisha IZU",
+    "number_of_families_visited": "Umubare w'imiryango yasuye",
+    "monitoring_behaviors": "Imyitwarire yo gukurikirana"
+  },
+  "IzuMonitoringPage": {
+    "title": "Genzura IZU",
+    "all_izu": "IZU zose",
+    "izu": "IZU",
+    "search_izu": "Shakisha IZU"
+  },
+  "SettingsPage": {
+    "title": "Icungamimirere",
+    "language": "Ururimi",
+    "account": "Konti",
+    "account_details": "Amakuru ku Mudasobwa",
+    "name": "Izina",
+    "email": "Imeli",
+    "phone": "Telefone",
+    "user_code": "Kode y'Umukoresha",
+    "date_of_enrollment": "Itariki y'iyandikwa",
+    "incentives": "Inyungu",
+    "change_language": "Hindura Ururimi",
+    "select_language": "Hitamo Ururimi",
+    "change_font_size": "Hindura Ingano y'inyuguti",
+    "adjust_font_size": "Hindura Ingano y'inyuguti",
+    "preview_text": "Reba ingano",
+    "close": "Funga"
+  },
+  "CommunityPage": {
+    "title": "Ibitekerezo",
+    "report_issue": "Tanga Ikibazo",
+    "send_feedback": "Tanga Igitekerezo",
+    "post_title": "Umubare w'inkuru",
+    "post_title_placeholder": "Andika umutwe w'inkuru",
+    "post_description": "Ibisobanuro by'inkuru",
+    "post_description_placeholder": "Andika ibisobanuro by'inkuru",
+    "create_post": "Kora Inkuru",
+    "write_comment": "Andika igitekerezo"
+  },
+  "Videos": {
+    "title": "Video",
+    "downloaded": "Byatanzwe"
+  }
 }
-  

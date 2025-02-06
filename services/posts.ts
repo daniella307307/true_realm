@@ -3,7 +3,11 @@ import { baseInstance } from "~/utils/axios";
 
 export async function useGetPosts() {
     const res = await baseInstance.get<IResponse<IPost[]>>(`/posts`);
-    console.log('The data: ',res.data);
+    return res.data;
+}
+
+export async function useGetPost({ id }: { id: number }) {
+    const res = await baseInstance.get<IPost>(`/posts/${id}`);
     return res.data;
 }
 
@@ -50,5 +54,10 @@ export async function deleteComment({ commentId }: { commentId: number }) {
 
 export async function updateComment({ commentId, comment }: { commentId: number, comment: string }) {
     const res = await baseInstance.put<IResponse<IComment>>(`/comments/${commentId}`, { comment });
+    return res.data;
+}
+
+export async function reportPost({ id, report }: { id: number, report: string }) {
+    const res = await baseInstance.post<IResponse<{ message: string }>>(`/posts/${id}/report`, { report });
     return res.data;
 }

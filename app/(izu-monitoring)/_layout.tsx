@@ -15,7 +15,7 @@ const IzuMonitoringLayout = () => {
         name="izu-monitoring"
         options={{
           headerShown: true,
-          title: t("Izu"),
+          title: t("IzuMonitoringPage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

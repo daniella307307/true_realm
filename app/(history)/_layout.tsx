@@ -17,7 +17,7 @@ const HistoryLayout = () => {
         name="history"
         options={{
           headerShown: true,
-          title: t("History"),
+          title: t("HistoryPage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

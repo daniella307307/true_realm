@@ -17,7 +17,7 @@ const ModuleLayout = () => {
         name="forms"
         options={{
           headerShown: true,
-          title: t("Forms"),
+          title: t("FormPage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

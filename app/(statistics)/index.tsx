@@ -36,8 +36,7 @@ const izuMembers = [
 
 const StatisticsScreen = () => {
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const { control, handleSubmit } = useForm({
+  const { control, watch } = useForm({
     resolver: zodResolver(
       z.object({
         searchQuery: z.string(),
@@ -46,18 +45,27 @@ const StatisticsScreen = () => {
     mode: "onChange",
   });
 
+  const searchQuery = watch("searchQuery");
+
+  const filteredIzuMembers = izuMembers.filter((member) => {
+    if (!searchQuery) return true;
+    return member.name.toLowerCase().includes(searchQuery);
+  });
+
   return (
     <View className="flex-1 p-4 bg-white">
-      <Text className="text-xl font-bold mb-4">Izu Statistics</Text>
+      <Text className="text-xl font-bold mb-4">
+        {t("IzuMonitoringPage.all_izu")}
+      </Text>
       <CustomInput
         control={control}
         name="searchQuery"
-        placeholder={t("Search Izu")}
+        placeholder={t("IzuMonitoringPage.search_izu")}
         keyboardType="default"
-        accessibilityLabel={t("searchIzu")}
+        accessibilityLabel={t("IzuMonitoringPage.search_izu")}
       />
       <FlatList
-        data={izuMembers}
+        data={filteredIzuMembers}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Pressable
@@ -68,10 +76,13 @@ const StatisticsScreen = () => {
               <Text className="text-lg font-semibold">{item.id}</Text>
               <Text className="text-lg ml-2 font-semibold">{item.name}</Text>
             </View>
-            <Pressable
-              onPress={() => {}}
-            >
-              <TabBarIcon name="arrow-down-left" family="Feather" size={24} color="#71717A" />
+            <Pressable onPress={() => {}}>
+              <TabBarIcon
+                name="arrow-down-left"
+                family="Feather"
+                size={24}
+                color="#71717A"
+              />
             </Pressable>
           </Pressable>
         )}

@@ -16,7 +16,7 @@ const ModuleLayout = () => {
         name="forms"
         options={{
           headerShown: true,
-          title: t("Forms"),
+          title: t("FormPage.title"),
           headerTitleAlign: "center",
           headerLeft: () => (
             <TouchableOpacity

@@ -2,18 +2,20 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { IComment, ILikes, IPost, IResponse, IResponseError } from "~/types";
 import { AxiosError } from "axios";
-import { 
-  createPost, 
-  updatePost, 
-  deletePost, 
-  likePost, 
-  unlikePost, 
-  postComment, 
-  deleteComment, 
-  updateComment 
+import {
+  createPost,
+  updatePost,
+  deletePost,
+  likePost,
+  unlikePost,
+  postComment,
+  deleteComment,
+  updateComment,
+  reportPost,
 } from "~/services/posts";
 import Toast from "react-native-toast-message";
 import { Href, router } from "expo-router";
+import { queryClient } from "~/providers/QueryProvider";
 
 export const usePostManipulate = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +41,7 @@ export const usePostManipulate = () => {
       autoHide: true,
       topOffset: 30,
     });
+    queryClient.invalidateQueries({ queryKey: ["posts"] }); // Refetch posts
     if (navigateTo) {
       router.push(navigateTo as Href);
     }
@@ -53,6 +56,7 @@ export const usePostManipulate = () => {
     onMutate: () => setIsLoading(true),
     onError: handleError,
     onSuccess: (data) => {
+      console.log("The post data: ", data);
       if (data.data?.id != null) {
         handleSuccess("Post created successfully", "/(community)/community");
       }
@@ -144,6 +148,18 @@ export const usePostManipulate = () => {
     onSettled: () => setIsLoading(false),
   });
 
+  const reportPostMutation = useMutation<
+    IResponse<{ message: string }>,
+    AxiosError<IResponseError>,
+    { id: number; report: string }
+  >({
+    mutationFn: reportPost,
+    onMutate: () => setIsLoading(true),
+    onError: handleError,
+    onSuccess: () => handleSuccess("Post reported successfully"),
+    onSettled: () => setIsLoading(false),
+  });
+
   return {
     useCreatePost: createPostMutation.mutate,
     useUpdatePost: updatePostMutation.mutate,
@@ -153,6 +169,7 @@ export const usePostManipulate = () => {
     usePostComment: postCommentMutation.mutate,
     useDeleteComment: deleteCommentMutation.mutate,
     useUpdateComment: updateCommentMutation.mutate,
+    useReportPost: reportPostMutation.mutate,
     isLoading,
   };
 };

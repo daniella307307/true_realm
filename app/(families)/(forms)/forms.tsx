@@ -27,20 +27,21 @@ const FormsScreen = () => {
     mode: "onChange",
   });
 
-  const searchQuery = watch("searchQuery").toLowerCase();
+  const searchQuery = watch("searchQuery");
 
-  const filteredForms = forms?.data?.data.filter((form: IForms) =>
-    form.name.toLowerCase().includes(searchQuery)
-  );
+  const filteredForms = forms?.data?.data.filter((form: IForms) => {
+    if (!searchQuery) return true;
+    return form.name.toLowerCase().includes(searchQuery);
+  });
 
   return (
     <View className="flex-1 p-4 bg-white">
       <CustomInput
         control={control}
         name="searchQuery"
-        placeholder={t("Search for forms")}
+        placeholder={t("FormPage.search_form")}
         keyboardType="default"
-        accessibilityLabel={t("search_forms")}
+        accessibilityLabel={t("FormPage.search_form")}
       />
 
       {isLoading ? (
@@ -65,7 +66,7 @@ const FormsScreen = () => {
           keyExtractor={(item: IForms) => item.id.toString()}
           ListEmptyComponent={() => (
             <Text className="text-center text-gray-500 mt-6">
-              {t("No forms available")}
+              {t("FormPage.empty_forms")}
             </Text>
           )}
           renderItem={({ item }: { item: IForms }) => (

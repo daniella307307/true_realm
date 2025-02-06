@@ -39,23 +39,22 @@ const ModuleScreen = () => {
     mode: "onChange",
   });
 
-  const searchQuery = watch("searchQuery").toLowerCase();
+  const searchQuery = watch("searchQuery");
 
-  const filteredCategories =
-    // if searchQuery is empty, return all categories
-    // else return categories that match the searchQuery
-    categories?.data.filter((category) =>
-      category.name.toLowerCase().includes(searchQuery)
-    );
+  const filteredCategories = categories?.data.filter((category) => {
+    if (!searchQuery) return true;
+    return category.name.toLowerCase().includes(searchQuery);
+  });
+  console.log("Filtered categories: ", filteredCategories);
 
   return (
     <View className="flex-1 p-4 bg-white">
       <CustomInput
         control={control}
         name="searchQuery"
-        placeholder={t("Search Module")}
+        placeholder={t("ModulePage.search_module")}
         keyboardType="default"
-        accessibilityLabel={t("CohortPage.search_module")}
+        accessibilityLabel={t("ModulePage.search_module")}
       />
 
       {isLoading ? (
@@ -78,10 +77,10 @@ const ModuleScreen = () => {
             />
             <View className="ml-4">
               <Text className="text-lg font-semibold text-red-500">
-                Risk of Harm
+                {t("ModulePage.risk_of_harm")}
               </Text>
               <Text className="text-sm py-2 text-red-600">
-                This module is a high priority for your attention.
+                {t("ModulePage.risk_of_harm_description")}
               </Text>
             </View>
           </Pressable>
