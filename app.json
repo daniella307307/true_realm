@@ -25,7 +25,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.sugiramuryango.mobile"
     },
     "web": {
       "bundler": "metro",
@@ -44,6 +45,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "85dc724e-c4ef-4a3e-a657-77a82eb5a1bc"
+      }
     }
   }
 }
