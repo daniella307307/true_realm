@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { View, TextInput, TouchableOpacity } from "react-native";
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -52,49 +58,15 @@ export default function LoginScreen() {
   return (
     <SafeAreaView className="flex-1 justify-center items-center flex-col gap-y-12 p-8 bg-background">
       <Logo size={96} />
-      <View className="w-full">
-        <View>
-          <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-            {t("Login.email")}
-          </Text>
-          <Controller
-            control={control}
-            name="email"
-            render={({
-              field: { onChange, onBlur, value },
-              fieldState: { error },
-            }) => (
-              <>
-                <View
-                  className={`flex flex-row items-center w-full border ${
-                    error ? "border-primary" : "border-border"
-                  } rounded-lg`}
-                >
-                  <TextInput
-                    className="w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]"
-                    placeholder={t("Login.emailPlaceholder")}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    accessibilityLabel={t("Login.email")}
-                  />
-                </View>
-                {error && (
-                  <Text className="text-red-500 mt-2">{error.message}</Text>
-                )}
-              </>
-            )}
-          />
-        </View>
-
-        <View className="mt-4">
-          <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-            {t("Login.password")}
-          </Text>
+      <KeyboardAvoidingView className="w-full" behavior="padding">
+        <ScrollView showsVerticalScrollIndicator={false}>
           <View>
+            <Text className="mb-2 text-lg font-medium text-[#050F2B]">
+              {t("Login.email")}
+            </Text>
             <Controller
               control={control}
-              name="password"
+              name="email"
               render={({
                 field: { onChange, onBlur, value },
                 fieldState: { error },
@@ -107,28 +79,12 @@ export default function LoginScreen() {
                   >
                     <TextInput
                       className="w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]"
-                      placeholder={t("Login.passwordPlaceholder")}
-                      secureTextEntry={!passwordVisible}
+                      placeholder={t("Login.emailPlaceholder")}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
-                      accessibilityLabel={t("Login.password")}
+                      accessibilityLabel={t("Login.email")}
                     />
-                    <TouchableOpacity
-                      onPress={togglePasswordVisibility}
-                      className="flex items-center justify-center ml-2"
-                      accessibilityLabel={
-                        passwordVisible
-                          ? t("Login.Hide password")
-                          : t("Login.Show password")
-                      }
-                    >
-                      {passwordVisible ? (
-                        <Eye width={24} height={24} stroke="#797979" />
-                      ) : (
-                        <EyeOff width={24} height={24} stroke="#797979" />
-                      )}
-                    </TouchableOpacity>
                   </View>
                   {error && (
                     <Text className="text-red-500 mt-2">{error.message}</Text>
@@ -137,34 +93,88 @@ export default function LoginScreen() {
               )}
             />
           </View>
-        </View>
 
-        <View>
-          <Button
-            className="my-6"
-            variant="default"
-            size="default"
-            isLoading={isLoggingIn}
-            onPress={handleSubmit(onSubmit)}
-          >
-            <Text className="text-white font-semibold">{t("Login.login")}</Text>
-          </Button>
-          <TouchableOpacity onPress={() => router.push("/forgot-password")}>
-            <Text className="text-accent text-center">
-              {t("Login.forgotPassword")}
+          <View className="mt-4">
+            <Text className="mb-2 text-lg font-medium text-[#050F2B]">
+              {t("Login.password")}
             </Text>
-          </TouchableOpacity>
+            <View>
+              <Controller
+                control={control}
+                name="password"
+                render={({
+                  field: { onChange, onBlur, value },
+                  fieldState: { error },
+                }) => (
+                  <>
+                    <View
+                      className={`flex flex-row items-center w-full border ${
+                        error ? "border-primary" : "border-border"
+                      } rounded-lg`}
+                    >
+                      <TextInput
+                        className="w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]"
+                        placeholder={t("Login.passwordPlaceholder")}
+                        secureTextEntry={!passwordVisible}
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                        accessibilityLabel={t("Login.password")}
+                      />
+                      <TouchableOpacity
+                        onPress={togglePasswordVisibility}
+                        className="flex items-center justify-center ml-2"
+                        accessibilityLabel={
+                          passwordVisible
+                            ? t("Login.Hide password")
+                            : t("Login.Show password")
+                        }
+                      >
+                        {passwordVisible ? (
+                          <Eye width={24} height={24} stroke="#797979" />
+                        ) : (
+                          <EyeOff width={24} height={24} stroke="#797979" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                    {error && (
+                      <Text className="text-red-500 mt-2">{error.message}</Text>
+                    )}
+                  </>
+                )}
+              />
+            </View>
+          </View>
 
-          <TouchableOpacity
-            onPress={() => setLanguageModalVisible(true)}
-            className="mt-4"
-          >
-            <Text className="text-accent text-center">
-              {t("Login.Select Language")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+          <View>
+            <Button
+              className="my-6"
+              variant="default"
+              size="default"
+              isLoading={isLoggingIn}
+              onPress={handleSubmit(onSubmit)}
+            >
+              <Text className="text-white font-semibold">
+                {t("Login.login")}
+              </Text>
+            </Button>
+            <TouchableOpacity onPress={() => router.push("/forgot-password")}>
+              <Text className="text-accent text-center">
+                {t("Login.forgotPassword")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setLanguageModalVisible(true)}
+              className="mt-4"
+            >
+              <Text className="text-accent text-center">
+                {t("Login.Select Language")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <Modal
         transparent={true}
