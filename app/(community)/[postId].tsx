@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -35,9 +36,11 @@ const PostScreen: React.FC = () => {
     resolver: zodResolver(commentSchema),
     defaultValues: { comment: "" },
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useAuth({});
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const { user } = useAuth({});
+  
   const {
     usePostComment,
     useDeleteComment,
@@ -79,14 +82,22 @@ const PostScreen: React.FC = () => {
       }
     );
   };
+
   const currentUserId = user.id;
   const isLiked = post?.likes.some((like) => like.user_id === currentUserId);
+
   const handleLikePress = () => {
     if (isLiked) {
       useUnlikePost({ id: post?.id || 0 });
     } else {
       useLikePost({ id: post?.id || 0 });
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
   };
 
   if (isLoading) {
@@ -148,7 +159,7 @@ const PostScreen: React.FC = () => {
             <TabBarIcon
               name="flag"
               size={16}
-              color={post?.flagged === 1 ? "red" : "gray"}
+              color={post?.flagged === 1 ? "red" : "grey"}
               family="FontAwesome6"
             />
           </View>
@@ -219,6 +230,9 @@ const PostScreen: React.FC = () => {
           </View>
         )}
         keyExtractor={(item) => item.id.toString()}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       />
     </View>
   );

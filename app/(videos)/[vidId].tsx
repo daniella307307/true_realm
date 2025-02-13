@@ -19,29 +19,36 @@ const VideoIndexScreen = () => {
   const videos = [
     {
       id: 1,
-      title: "Helping Family Matters",
-      source: "https://www.w3schools.com/html/mov_bbb.mp4",
+      title: "Language Development",
+      path: "1733815813_Language%20Development.mp4",
       description:
         "This video provides deep insights into how family dynamics influence individual well-being. It explores the importance of effective communication, mutual respect, and shared responsibilities in building a strong family unit. Through real-life examples and expert opinions, viewers will learn strategies for resolving conflicts, fostering emotional intelligence, and maintaining healthy relationships. The video also sheds light on the psychological impact of family conflicts and offers solutions to strengthen family bonds through meaningful conversations and active listening. Whether you're a parent, sibling, or relative, this resource serves as an essential guide to understanding and navigating family matters in a supportive and constructive manner.",
     },
     {
       id: 2,
-      title: "Family Union Help",
-      source: "https://www.w3schools.com/html/mov_bbb.mp4",
+      title: "Father Engagement.mp4",
+      path: "Father Engagement.mp4",
       description:
         "Family unions are crucial for maintaining emotional and social connections among relatives. This video explores the significance of regular family gatherings, traditions, and shared activities in fostering unity and belonging. Experts discuss the psychological benefits of reconnecting with extended family members and how it contributes to mental well-being. Additionally, practical tips on organizing successful family reunions, managing conflicts, and ensuring inclusivity are provided. The video highlights cultural traditions that emphasize the importance of togetherness and offers actionable steps to create memorable and meaningful family experiences.",
     },
     {
       id: 3,
-      title: "Family Gathering",
-      source: "https://www.w3schools.com/html/mov_bbb.mp4",
+      title: "Observing Proper Nutritional Practices",
+      path: "Observing%20Proper%20Nutritional%20Practices.mp4",
       description:
         "Family gatherings are special occasions that bring loved ones together to celebrate, share stories, and create lasting memories. This video showcases the joy and warmth of family reunions, highlighting the importance of bonding over food, music, and laughter. Viewers will learn about the cultural significance of family gatherings and the role they play in preserving traditions and strengthening relationships. Experts provide insights on the psychological benefits of socializing with family members and offer advice on overcoming common challenges during family events. Whether it's a holiday celebration or a casual get-together, this resource inspires viewers to cherish their family connections and create meaningful experiences together.",
     },
     {
       id: 4,
-      title: "Helping Children",
-      source: "https://www.w3schools.com/html/mov_bbb.mp4",
+      title: "Positive Parenting",
+      path: "Positive%20Parenting%20-26%20July.mp4",
+      description:
+        "Helping children navigate the complexities of family life is essential for their emotional and social development. This video offers practical tips and expert advice on supporting children through various life stages, from infancy to adolescence. Viewers will learn about effective parenting strategies, communication techniques, and conflict resolution skills to nurture healthy family relationships. The video addresses common challenges faced by children and parents, such as sibling rivalry, academic pressure, and emotional distress, and provides guidance on fostering resilience and empathy. By promoting open dialogue and understanding within the family, viewers can create a supportive environment that promotes children's well-being and growth.",
+    },
+    {
+      id: 5,
+      title: "Stress Management & Conflict Resolution Techniques",
+      path: "Positive%20Parenting%20-26%20July.mp4",
       description:
         "Helping children navigate the complexities of family life is essential for their emotional and social development. This video offers practical tips and expert advice on supporting children through various life stages, from infancy to adolescence. Viewers will learn about effective parenting strategies, communication techniques, and conflict resolution skills to nurture healthy family relationships. The video addresses common challenges faced by children and parents, such as sibling rivalry, academic pressure, and emotional distress, and provides guidance on fostering resilience and empathy. By promoting open dialogue and understanding within the family, viewers can create a supportive environment that promotes children's well-being and growth.",
     },
@@ -49,7 +56,7 @@ const VideoIndexScreen = () => {
 
   const video = videos.find((v) => v.id === Number(vidId));
 
-  const videoPlayer = useVideoPlayer(video?.source || "", (playerInstance) => {
+  const videoPlayer = useVideoPlayer(`https://continuous.sugiramuryango.org.rw/public/videos/` + video?.path || "", (playerInstance) => {
     playerInstance.loop = true;
   });
 

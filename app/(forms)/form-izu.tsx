@@ -76,7 +76,7 @@ const staticForms = [
   },
 ];
 
-const IZUForms = () => {
+const IzuFormsScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { t } = useTranslation();
   const { control } = useForm({
@@ -130,7 +130,7 @@ const IZUForms = () => {
           )}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() => router.push(`/(elements)/${item.id}` as Href)}
+              onPress={() => router.push(`/(form-element)/${item.id}` as Href)}
               className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
             >
               <TabBarIcon
@@ -153,4 +153,4 @@ const IZUForms = () => {
   );
 };
 
-export default IZUForms;
+export default IzuFormsScreen;

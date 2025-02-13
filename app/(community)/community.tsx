@@ -155,7 +155,7 @@ const CommunityScreen: React.FC = () => {
                 <TabBarIcon
                   name="flag"
                   size={16}
-                  color={item.flagged === 1 ? "red" : "gray"}
+                  color={item.flagged === 1 ? "red" : "grey"}
                   family="FontAwesome6"
                 />
               </View>

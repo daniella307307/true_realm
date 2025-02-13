@@ -1,4 +1,9 @@
-import { View, TouchableOpacity, Modal, TouchableWithoutFeedback } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  Modal,
+  TouchableWithoutFeedback,
+} from "react-native";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Text } from "./text";
@@ -48,14 +53,26 @@ const CustomDrawerContent = () => {
         <Text className="text-lg">{t("SettingsPage.change_font_size")}</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity
+        className="p-4 border-b border-gray-200"
+        onPress={() => router.push("/(settings)/sync")}
+      >
+        <Text className="text-lg">{t("SettingsPage.sync")}</Text>
+      </TouchableOpacity>
+
       {/* Logout */}
-      <TouchableOpacity className="p-4 border-b border-gray-200" onPress={() => logout()}>
+      <TouchableOpacity
+        className="p-4 border-b border-gray-200"
+        onPress={() => logout()}
+      >
         <Text className="text-lg text-red-500">{t("Logout")}</Text>
       </TouchableOpacity>
 
       {/* Language Modal */}
       <Modal transparent visible={languageModalVisible} animationType="slide">
-        <TouchableWithoutFeedback onPress={() => setLanguageModalVisible(false)}>
+        <TouchableWithoutFeedback
+          onPress={() => setLanguageModalVisible(false)}
+        >
           <View className="flex-1 justify-center items-center bg-black/50" />
         </TouchableWithoutFeedback>
 
@@ -65,20 +82,29 @@ const CustomDrawerContent = () => {
             <Picker.Item label="English" value="en-US" />
             <Picker.Item label="Kinyarwanda" value="rw-RW" />
           </Picker>
-          <TouchableOpacity onPress={() => setLanguageModalVisible(false)} className="mt-4">
-            <Text className="text-center text-accent">{t("SettingsPage.close")}</Text>
+          <TouchableOpacity
+            onPress={() => setLanguageModalVisible(false)}
+            className="mt-4"
+          >
+            <Text className="text-center text-accent">
+              {t("SettingsPage.close")}
+            </Text>
           </TouchableOpacity>
         </View>
       </Modal>
 
       {/* Font Size Modal */}
       <Modal transparent visible={fontSizeModalVisible} animationType="slide">
-        <TouchableWithoutFeedback onPress={() => setFontSizeModalVisible(false)}>
+        <TouchableWithoutFeedback
+          onPress={() => setFontSizeModalVisible(false)}
+        >
           <View className="flex-1 justify-center items-center bg-black/50" />
         </TouchableWithoutFeedback>
 
         <View className="bg-white p-6 rounded-t-lg w-full absolute bottom-0">
-          <Text className="text-lg mb-4">{t("SettingsPage.change_font_size")}</Text>
+          <Text className="text-lg mb-4">
+            {t("SettingsPage.change_font_size")}
+          </Text>
           <Slider
             value={fontSize}
             onValueChange={setFontSize}
@@ -88,9 +114,16 @@ const CustomDrawerContent = () => {
             minimumTrackTintColor="#A23A91"
             maximumTrackTintColor="#ddd"
           />
-          <Text className="text-center mt-2">{t("SettingsPage.preview_text")}</Text>
-          <TouchableOpacity onPress={() => setFontSizeModalVisible(false)} className="mt-4">
-            <Text className="text-center text-accent">{t("SettingsPage.close")}</Text>
+          <Text className="text-center mt-2">
+            {t("SettingsPage.preview_text")}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setFontSizeModalVisible(false)}
+            className="mt-4"
+          >
+            <Text className="text-center text-accent">
+              {t("SettingsPage.close")}
+            </Text>
           </TouchableOpacity>
         </View>
       </Modal>

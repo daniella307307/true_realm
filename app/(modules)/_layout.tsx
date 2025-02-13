@@ -14,10 +14,30 @@ const ModuleLayout = () => {
       }}
     >
       <Stack.Screen
-        name="[formId]"
+        name="families"
         options={{
           headerShown: true,
-          title: t("FormElementPage.title"),
+          title: t("ModulePage.title"),
+          headerTitleAlign: "center",
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerRight: () => <HeaderNavigation showLeft={false} />,
+        }}
+      />
+      <Stack.Screen
+        name="izu-monitoring"
+        options={{
+          headerShown: true,
+          title: t("ModulePage.title"),
+          headerTitleAlign: "center",
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerRight: () => <HeaderNavigation showLeft={false} />,
+        }}
+      />
+      <Stack.Screen
+        name="projects"
+        options={{
+          headerShown: true,
+          title: t("ModulePage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

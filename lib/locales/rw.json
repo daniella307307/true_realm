@@ -51,7 +51,8 @@
     "videos": "Video",
     "settings": "Icungamimirere",
     "Izu_telephone_Supervision": "Genzura IZU kuri telefoni",
-    "community": "Ibitekerezo"
+    "community": "Ibitekerezo",
+    "projects": "Imishinga"
   },
   "CohortPage": {
     "title": "Amatsinda",
@@ -104,6 +105,7 @@
   "SettingsPage": {
     "title": "Icungamimirere",
     "language": "Ururimi",
+    "sync": "Emeza ibishya",
     "account": "Konti",
     "account_details": "Amakuru ku Mudasobwa",
     "name": "Izina",

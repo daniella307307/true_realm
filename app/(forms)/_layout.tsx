@@ -3,7 +3,7 @@ import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 
-const SettingsLayout = () => {
+const FormsLayout = () => {
   const { t } = useTranslation();
   return (
     <Stack
@@ -12,20 +12,30 @@ const SettingsLayout = () => {
       }}
     >
       <Stack.Screen
-        name="index"
+        name="form-family"
         options={{
           headerShown: true,
-          title: t("SettingsPage.title"),
+          title: t("FormPage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
         }}
       />
       <Stack.Screen
-        name="sync"
+        name="form-izu"
         options={{
           headerShown: true,
-          title: t("SettingsPage.sync"),
+          title: t("FormPage.title"),
+          headerTitleAlign: "center",
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerRight: () => <HeaderNavigation showLeft={false} />,
+        }}
+      />
+      <Stack.Screen
+        name="form-project"
+        options={{
+          headerShown: true,
+          title: t("FormPage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
@@ -35,4 +45,4 @@ const SettingsLayout = () => {
   );
 };
 
-export default SettingsLayout;
+export default FormsLayout;

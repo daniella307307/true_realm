@@ -1,0 +1,105 @@
+import { View, FlatList, Pressable, ActivityIndicator } from "react-native";
+import React from "react";
+import { useGetCategories } from "~/services/category";
+import { useQuery } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import CustomInput from "~/components/ui/input";
+import { useTranslation } from "react-i18next";
+import { router } from "expo-router";
+import { ICategories } from "~/types";
+import { TabBarIcon } from "~/components/ui/tabbar-icon";
+import { Text } from "~/components/ui/text";
+import Skeleton from "~/components/ui/skeleton";
+
+const FamilyModulesScreen = () => {
+  const { data: categories, isLoading } = useQuery({
+    queryKey: ["categories"],
+    queryFn: useGetCategories,
+  });
+  const { t } = useTranslation();
+  const { control, watch } = useForm({
+    resolver: zodResolver(
+      z.object({
+        searchQuery: z.string(),
+      })
+    ),
+    mode: "onChange",
+  });
+
+  const searchQuery = watch("searchQuery");
+
+  const filteredCategories = categories?.data.filter((category) => {
+    if (!searchQuery) return true;
+    return category.name.toLowerCase().includes(searchQuery);
+  });
+  console.log("Filtered categories: ", filteredCategories);
+
+  return (
+    <View className="flex-1 p-4 bg-white">
+      <CustomInput
+        control={control}
+        name="searchQuery"
+        placeholder={t("ModulePage.search_module")}
+        keyboardType="default"
+        accessibilityLabel={t("ModulePage.search_module")}
+      />
+
+      {isLoading ? (
+        <>
+          <Skeleton />
+          <Skeleton />
+          <Skeleton />
+        </>
+      ) : (
+        <>
+          <Pressable
+            onPress={() => router.push("/(forms)/form-family")}
+            className="p-4 border flex-row items-center mb-4 border-red-500 rounded-xl bg-red-50"
+          >
+            <TabBarIcon
+              name="warning"
+              family="MaterialIcons"
+              size={24}
+              color="#D92020"
+            />
+            <View className="ml-4">
+              <Text className="text-lg font-semibold text-red-500">
+                {t("ModulePage.risk_of_harm")}
+              </Text>
+              <Text className="text-sm py-2 text-red-600">
+                {t("ModulePage.risk_of_harm_description")}
+              </Text>
+            </View>
+          </Pressable>
+          <FlatList
+            data={filteredCategories}
+            keyExtractor={(item: ICategories) => item.id.toString()}
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => router.push("/(forms)/form-family")}
+                className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
+              >
+                <TabBarIcon
+                  name="chat"
+                  family="MaterialIcons"
+                  size={24}
+                  color="#71717A"
+                />
+                <View className="ml-4">
+                  <Text className="text-lg font-semibold">{item.name}</Text>
+                  <Text className="text-sm py-2 text-gray-600">
+                    {item.description}
+                  </Text>
+                </View>
+              </Pressable>
+            )}
+          />
+        </>
+      )}
+    </View>
+  );
+};
+
+export default FamilyModulesScreen;

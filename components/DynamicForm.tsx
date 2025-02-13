@@ -256,12 +256,17 @@ const DynamicForm: React.FC<{
   return (
     <ScrollView className="bg-background mt-4">
       {!wholeComponent && (
-        <View className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-          <View
-            className="bg-primary h-2.5 rounded-full"
-            style={{ width: `${((currentPage + 1) / fields.length) * 100}%` }}
-          />
-        </View>
+        <>
+          <Text className="text-center mb-2 text-md font-medium text-[#050F2B]">
+            Page {currentPage + 1} of {fields.length}
+          </Text>
+          <View className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+            <View
+              className="bg-primary h-2.5 rounded-full"
+              style={{ width: `${((currentPage + 1) / fields.length) * 100}%` }}
+            />
+          </View>
+        </>
       )}
 
       {wholeComponent ? (

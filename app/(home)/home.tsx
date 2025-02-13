@@ -48,6 +48,11 @@ const HomeScreen = () => {
       route: "/(settings)/",
     },
     {
+      icon: <TabBarIcon name="project" family="Octicons" />,
+      title: t("HomePage.projects"),
+      route: "/(projects)/project",
+    },
+    {
       icon: <TabBarIcon name="phone" family="FontAwesome6" />,
       title: t("HomePage.Izu_telephone_Supervision"),
       route: "/(home)/home",

@@ -102,7 +102,7 @@ const CohortIndexScreen = () => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => router.push("/(families)/(modules)/module")}
+            onPress={() => router.push("/(modules)/families")}
             className="p-4 border flex-row justify-between mb-4 border-gray-200 rounded-xl"
           >
             <View>

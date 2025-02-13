@@ -1,11 +1,9 @@
 import React from "react";
-import { router, Stack } from "expo-router";
-import { TouchableOpacity } from "react-native";
-import { ChevronLeft } from "lucide-react-native";
+import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 
-const ModuleLayout = () => {
+const FormElementLayout = () => {
   const { t } = useTranslation();
   return (
     <Stack
@@ -14,10 +12,10 @@ const ModuleLayout = () => {
       }}
     >
       <Stack.Screen
-        name="forms"
+        name="[formId]"
         options={{
           headerShown: true,
-          title: t("FormPage.title"),
+          title: t("FormElementPage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
@@ -27,4 +25,4 @@ const ModuleLayout = () => {
   );
 };
 
-export default ModuleLayout;
+export default FormElementLayout;

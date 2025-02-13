@@ -52,7 +52,15 @@
       "videos": "Videos",
       "settings": "Settings",
       "Izu_telephone_Supervision": "Izu telephone Supervision",
-      "community": "Community"
+      "community": "Community",
+      "projects": "Projects"
+    },
+    "ProjectPage": {
+      "title": "Projects",
+      "all_projects": "All Projects",
+      "project": "Project",
+      "search_project": "Search Projects",
+      "empty_projects": "No projects available"
     },
     "CohortPage": {
       "title": "Cohorts",
@@ -105,6 +113,7 @@
     },
     "SettingsPage": {
       "title": "Settings",
+      "sync": "Sync",
       "account": "Account",
       "language": "Language",
       "account_details": "Account Details",

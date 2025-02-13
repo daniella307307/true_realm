@@ -511,3 +511,35 @@ export interface User {
     updated_at: string;
     last_seen: string | null;
   }
+
+
+export interface IProject {
+    id: number;
+    name: string;
+    duration: string;
+    progress: string;
+    description: string;
+    status: number;
+    beneficiary: string;
+    projectlead: string;
+    has_modules: number;
+    created_at: string;
+    updated_at: string;
+    project_modules: [];
+}
+
+export interface IModule {
+    id: number;
+    project_id: number;
+    module_name: string;
+    module_description: string;
+    expected_duration: string;
+    module_status: number;
+    source_module_id: number;
+    kin: string;
+    kin_title: string;
+    kin_descriptions: string;
+    order_list: number;
+    created_at: string;
+    updated_at: string;
+}

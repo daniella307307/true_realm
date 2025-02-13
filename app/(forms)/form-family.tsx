@@ -7,18 +7,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import CustomInput from "~/components/ui/input";
 import { useTranslation } from "react-i18next";
-import { Href, router } from "expo-router";
+import { router } from "expo-router";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { IForms } from "~/types";
 import { Text } from "~/components/ui/text";
+import Skeleton from "~/components/ui/skeleton";
 
-const FormsScreen = () => {
+const FamilyFormsScreen = () => {
+    console.log("FamilyFormsScreen");
   const { data: forms, isLoading } = useQuery({
     queryKey: ["forms"],
     queryFn: useGetForms,
   });
   const { t } = useTranslation();
-  const { control, handleSubmit, watch } = useForm({
+  const { control, watch } = useForm({
     resolver: zodResolver(
       z.object({
         searchQuery: z.string(),
@@ -45,19 +47,9 @@ const FormsScreen = () => {
       />
 
       {isLoading ? (
-        // Skeleton Loader while fetching data
         <View className="mt-6">
           {[1, 2, 3].map((item) => (
-            <View
-              key={item}
-              className="p-4 border border-gray-200 flex-row items-center mb-4 rounded-xl bg-gray-100 animate-pulse"
-            >
-              <View className="w-6 h-6 bg-gray-300 rounded-full" />
-              <View className="ml-4 flex-1">
-                <View className="h-4 w-3/5 bg-gray-300 rounded-md mb-2" />
-                <View className="h-3 w-2/3 bg-gray-300 rounded-md" />
-              </View>
-            </View>
+            <Skeleton key={item} />
           ))}
         </View>
       ) : (
@@ -72,7 +64,7 @@ const FormsScreen = () => {
           renderItem={({ item }: { item: IForms }) => (
             <Pressable
               onPress={() =>
-                router.push(`/(families)/(forms)/(elements)/${item.id}`)
+                router.push(`/(form-element)/${item.id}`)
               }
               className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
             >
@@ -96,4 +88,4 @@ const FormsScreen = () => {
   );
 };
 
-export default FormsScreen;
+export default FamilyFormsScreen;

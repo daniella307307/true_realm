@@ -1,23 +1,18 @@
 import React from "react";
-import { router, Stack } from "expo-router";
-import { TouchableOpacity } from "react-native";
-import { ChevronLeft } from "lucide-react-native";
-import { useTranslation } from "react-i18next";
+import { Stack } from "expo-router";
+import Logo from "~/components/Logo";
 import HeaderNavigation from "~/components/ui/header";
+import { useTranslation } from "react-i18next";
 
-const ModuleLayout = () => {
+const ProjectPageLayout = () => {
   const { t } = useTranslation();
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen
-        name="module"
+        name="project"
         options={{
           headerShown: true,
-          title: t("ModulePage.title"),
+          title: t("HomePage.projects"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
@@ -27,4 +22,4 @@ const ModuleLayout = () => {
   );
 };
 
-export default ModuleLayout;
+export default ProjectPageLayout;

@@ -11,20 +11,9 @@ import { router } from "expo-router";
 import { ICategories } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
+import Skeleton from "~/components/ui/skeleton";
 
-const SkeletonLoader = () => {
-  return (
-    <View className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl bg-gray-200 animate-pulse">
-      <View className="w-6 h-6 bg-gray-400 rounded-full" />
-      <View className="ml-4 flex-1">
-        <View className="w-3/4 h-4 bg-gray-400 rounded-md mb-2" />
-        <View className="w-1/2 h-3 bg-gray-300 rounded-md" />
-      </View>
-    </View>
-  );
-};
-
-const ModuleScreen = () => {
+const ProjectModuleScreens = () => {
   const { data: categories, isLoading } = useQuery({
     queryKey: ["categories"],
     queryFn: useGetCategories,
@@ -59,14 +48,14 @@ const ModuleScreen = () => {
 
       {isLoading ? (
         <>
-          <SkeletonLoader />
-          <SkeletonLoader />
-          <SkeletonLoader />
+          <Skeleton />
+          <Skeleton />
+          <Skeleton />
         </>
       ) : (
         <>
-          <Pressable
-            onPress={() => router.push("/(families)/(forms)/forms")}
+          {/* <Pressable
+            onPress={() => router.push("/(forms)/form-family")}
             className="p-4 border flex-row items-center mb-4 border-red-500 rounded-xl bg-red-50"
           >
             <TabBarIcon
@@ -83,7 +72,7 @@ const ModuleScreen = () => {
                 {t("ModulePage.risk_of_harm_description")}
               </Text>
             </View>
-          </Pressable>
+          </Pressable> */}
           <FlatList
             data={filteredCategories}
             keyExtractor={(item: ICategories) => item.id.toString()}
@@ -113,4 +102,4 @@ const ModuleScreen = () => {
   );
 };
 
-export default ModuleScreen;
+export default ProjectModuleScreens;
