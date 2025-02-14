@@ -1,6 +1,6 @@
-import React, { useState, useTransition } from "react";
-import { FlatList, Pressable, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import React from "react";
+import { FlatList, TouchableOpacity, View } from "react-native";
+import { router } from "expo-router";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { IFamilies } from "~/types";
@@ -107,8 +107,8 @@ const HistoryScreen = () => {
         data={filteredFamilies}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <Pressable
-            onPress={() => router.push("/(families)/(modules)/module")}
+          <TouchableOpacity
+            onPress={() => {}}
             className="p-4 border flex-row justify-between mb-4 border-gray-200 rounded-xl"
           >
             <View>
@@ -137,7 +137,7 @@ const HistoryScreen = () => {
                 </View>
               )}
             </View>
-          </Pressable>
+          </TouchableOpacity>
         )}
       />
     </View>

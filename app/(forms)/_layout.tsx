@@ -1,5 +1,5 @@
 import React from "react";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 
@@ -12,32 +12,22 @@ const FormsLayout = () => {
       }}
     >
       <Stack.Screen
-        name="form-family"
-        options={{
-          headerShown: true,
-          title: t("FormPage.title"),
-          headerTitleAlign: "center",
-          headerLeft: () => <HeaderNavigation showLeft={true} />,
-          headerRight: () => <HeaderNavigation showLeft={false} />,
-        }}
-      />
-      <Stack.Screen
         name="form-izu"
         options={{
           headerShown: true,
           title: t("FormPage.title"),
           headerTitleAlign: "center",
-          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerLeft: () => <HeaderNavigation backFunction={() => router.push('/(izu-monitoring)/izu-monitoring')} showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
         }}
       />
       <Stack.Screen
-        name="form-project"
+        name="[modId]"
         options={{
           headerShown: true,
           title: t("FormPage.title"),
           headerTitleAlign: "center",
-          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerLeft: () => <HeaderNavigation backFunction={() => router.push('/(modules)/(families)/')} showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
         }}
       />

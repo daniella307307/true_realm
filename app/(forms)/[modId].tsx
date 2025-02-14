@@ -1,24 +1,57 @@
 import { View, FlatList, Pressable } from "react-native";
 import React from "react";
-import { useGetForms } from "~/services/forms";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import CustomInput from "~/components/ui/input";
 import { useTranslation } from "react-i18next";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import { IForms } from "~/types";
+import { IExistingForm, IForms, IModule } from "~/types";
 import { Text } from "~/components/ui/text";
 import Skeleton from "~/components/ui/skeleton";
+import { Button } from "~/components/ui/button";
+import {
+  useGetAllModules,
+  useGetFormByProjectAndModule,
+} from "~/services/project";
 
-const FamilyFormsScreen = () => {
-    console.log("FamilyFormsScreen");
-  const { data: forms, isLoading } = useQuery({
-    queryKey: ["forms"],
-    queryFn: useGetForms,
+const ProjectFormsScreen = () => {
+  const { modId } = useLocalSearchParams<{ modId: string }>();
+  console.log("Module ID: ", modId);
+  if (!modId) {
+    return (
+      <View>
+        <Text>Missing module id</Text>
+        <Button onPress={() => router.replace("/(home)")}>Go to home</Button>
+      </View>
+    );
+  }
+
+  const { data: modules, isLoading: modLoading } = useQuery({
+    queryKey: ["modules"],
+    queryFn: useGetAllModules,
   });
+
+  const currentModule = Object.entries(modules?.data || {})
+    .flatMap(([_, moduleArray]) => moduleArray)
+    .find((module: IModule) => module.id === parseInt(modId));
+
+  const { data: forms, isLoading } = useQuery({
+    queryKey: ["forms", modId],
+    queryFn: () => {
+      if (!currentModule?.project_id) {
+        throw new Error("Project ID is required");
+      }
+      return useGetFormByProjectAndModule(
+        currentModule.project_id,
+        parseInt(modId)
+      );
+    },
+    enabled: !!currentModule?.project_id,
+  });
+
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -31,7 +64,7 @@ const FamilyFormsScreen = () => {
 
   const searchQuery = watch("searchQuery");
 
-  const filteredForms = forms?.data?.data.filter((form: IForms) => {
+  const filteredForms = forms?.data?.filter((form: IExistingForm) => {
     if (!searchQuery) return true;
     return form.name.toLowerCase().includes(searchQuery);
   });
@@ -55,17 +88,16 @@ const FamilyFormsScreen = () => {
       ) : (
         <FlatList
           data={filteredForms}
-          keyExtractor={(item: IForms) => item.id.toString()}
+          keyExtractor={(item: IExistingForm) => item.id.toString()}
           ListEmptyComponent={() => (
             <Text className="text-center text-gray-500 mt-6">
               {t("FormPage.empty_forms")}
             </Text>
           )}
-          renderItem={({ item }: { item: IForms }) => (
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }: { item: IExistingForm }) => (
             <Pressable
-              onPress={() =>
-                router.push(`/(form-element)/${item.id}`)
-              }
+              onPress={() => router.push(`/(form-element)/${item.id}`)}
               className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
             >
               <TabBarIcon
@@ -76,9 +108,6 @@ const FamilyFormsScreen = () => {
               />
               <View className="ml-4">
                 <Text className="text-lg font-semibold">{item.name}</Text>
-                <Text className="text-sm py-2 text-gray-600">
-                  {item.description || "No description available"}
-                </Text>
               </View>
             </Pressable>
           )}
@@ -88,4 +117,4 @@ const FamilyFormsScreen = () => {
   );
 };
 
-export default FamilyFormsScreen;
+export default ProjectFormsScreen;

@@ -1,11 +1,9 @@
 import React from "react";
-import { router, Stack } from "expo-router";
-import { TouchableOpacity } from "react-native";
-import { ChevronLeft } from "lucide-react-native";
+import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 
-const ModuleLayout = () => {
+const ProjectModuleLayout = () => {
   const { t } = useTranslation();
   return (
     <Stack
@@ -14,7 +12,7 @@ const ModuleLayout = () => {
       }}
     >
       <Stack.Screen
-        name="izu-monitoring"
+        name="[projectId]"
         options={{
           headerShown: true,
           title: t("ModulePage.title"),
@@ -27,4 +25,4 @@ const ModuleLayout = () => {
   );
 };
 
-export default ModuleLayout;
+export default ProjectModuleLayout;

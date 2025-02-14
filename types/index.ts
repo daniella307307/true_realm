@@ -510,7 +510,7 @@ export interface User {
     created_at: string;
     updated_at: string;
     last_seen: string | null;
-  }
+}
 
 
 export interface IProject {
@@ -542,4 +542,20 @@ export interface IModule {
     order_list: number;
     created_at: string;
     updated_at: string;
+}
+
+export interface IExistingForm {
+    id: number;
+    name: string;
+    slug: string;
+    json: string;
+    json2: IFormElement;
+    survey_status: number;
+    module_id: number;
+    is_primary: number;
+    prev_id: string;
+    created_at: string;
+    updated_at: string;
+    order_list: number;
+    project_module_id: number;
 }

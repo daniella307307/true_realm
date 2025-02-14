@@ -1,7 +1,7 @@
 import { Href, router } from "expo-router";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, TouchableOpacity, View } from "react-native";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { IFamilies } from "~/types";
@@ -80,7 +80,7 @@ const CohortPage = () => {
         </Pressable>
 
         {cohortData.map((data, index) => (
-          <Pressable
+          <TouchableOpacity
             onPress={() => router.push(`/(cohorts)/${data.cohort}`)}
             key={index}
             className="flex flex-col bg-[#A23A910D] border border-[#0000001A] justify-between gap-6 p-6 rounded-xl w-[48%] mb-4"
@@ -94,7 +94,7 @@ const CohortPage = () => {
                 {data.count} {t("HomePage.families")}
               </Text>
             </View>
-          </Pressable>
+          </TouchableOpacity>
         ))}
       </View>
     </ScrollView>

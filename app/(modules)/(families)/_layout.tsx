@@ -1,12 +1,11 @@
 import React from "react";
 import { router, Stack } from "expo-router";
-import { TouchableOpacity } from "react-native";
-import { ChevronLeft } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 
-const ModuleLayout = () => {
+const FamilyModuleLayout = () => {
   const { t } = useTranslation();
+
   return (
     <Stack
       screenOptions={{
@@ -14,12 +13,17 @@ const ModuleLayout = () => {
       }}
     >
       <Stack.Screen
-        name="izu-monitoring"
+        name="[familyId]"
         options={{
           headerShown: true,
           title: t("ModulePage.title"),
           headerTitleAlign: "center",
-          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          headerLeft: () => (
+            <HeaderNavigation
+              backFunction={() => router.back()}
+              showLeft={true}
+            />
+          ),
           headerRight: () => <HeaderNavigation showLeft={false} />,
         }}
       />
@@ -27,4 +31,4 @@ const ModuleLayout = () => {
   );
 };
 
-export default ModuleLayout;
+export default FamilyModuleLayout;

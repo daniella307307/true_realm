@@ -1,4 +1,4 @@
-import { View, Text } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Image } from "react-native";
@@ -38,7 +38,7 @@ const SettingsScreen = () => {
 
   return (
     <View className="flex-1 bg-background p-4">
-      <View className="bg-white p-4 rounded-lg shadow-md">
+      <ScrollView showsVerticalScrollIndicator={false} className="bg-white p-4 rounded-lg shadow-md">
         <Text className="text-lg font-semibold mb-2">
           {t("SettingsPage.account_details")}
         </Text>
@@ -73,9 +73,9 @@ const SettingsScreen = () => {
               ? parsedIncentives
               : ["No incentives available"]
           }
-          className="flex-wrap gap-x-2"
+          className="flex-wrap gap-x-2 pb-4"
         />
-      </View>
+      </ScrollView>
     </View>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useTransition } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { FlatList, Pressable, TouchableOpacity, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -101,8 +101,8 @@ const CohortIndexScreen = () => {
         data={filteredFamilies}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <Pressable
-            onPress={() => router.push("/(modules)/families")}
+          <TouchableOpacity
+            onPress={() => router.push(`/(modules)/(families)/${item.id}`)}
             className="p-4 border flex-row justify-between mb-4 border-gray-200 rounded-xl"
           >
             <View>
@@ -117,7 +117,7 @@ const CohortIndexScreen = () => {
                 {t("CohortPage.cohort")} {item.cohort}
               </Text>
             </View>
-          </Pressable>
+          </TouchableOpacity>
         )}
       />
     </View>

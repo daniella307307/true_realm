@@ -7,6 +7,7 @@ import { useGetFormElements } from "~/services/formElements";
 import DynamicForm from "~/components/DynamicForm";
 import Skeleton from "~/components/ui/skeleton";
 import { Text } from "~/components/ui/text";
+import EmptyDynamicComponent from "~/components/EmptyDynamic";
 
 const FormElementIndexScreen = () => {
   const { formId } = useLocalSearchParams();
@@ -19,7 +20,11 @@ const FormElementIndexScreen = () => {
     );
   }
 
-  const { data: formElements, isLoading } = useQuery({
+  const {
+    data: formElements,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["formElements", formId],
     queryFn: () =>
       useGetFormElements({
@@ -30,23 +35,30 @@ const FormElementIndexScreen = () => {
   if (isLoading) {
     return (
       <View className="flex-1 p-4 bg-white">
-        <Skeleton width="100%" height={20} className="mb-2" />
-        <Skeleton width="80%" height={15} className="mb-4" />
-        <Skeleton width="100%" height={50} className="mb-2" />
-        <Skeleton width="100%" height={50} className="mb-2" />
+        <Skeleton />
+        <Skeleton />
+        <Skeleton />
       </View>
     );
   }
 
+  if (isError) {
+    return <EmptyDynamicComponent />;
+  }
+
   return (
     <View className="flex-1 p-4 bg-white">
-      <View>
-        <Text className="text-lg font-semibold">{formElements?.name}</Text>
-        <Text className="text-sm py-2 text-gray-600">
-          {formElements?.description}
-        </Text>
-      </View>
-      <DynamicForm fields={formElements?.data || []} />
+      {formElements?.data?.length ? (
+        <>
+          <Text className="text-lg font-semibold">{formElements?.name}</Text>
+          <Text className="text-sm py-2 text-gray-600">
+            {formElements?.description}
+          </Text>
+          <DynamicForm fields={formElements?.data || []} />
+        </>
+      ) : (
+        <EmptyDynamicComponent />
+      )}
     </View>
   );
 };

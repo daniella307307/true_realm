@@ -1,4 +1,11 @@
-import { View, SafeAreaView, Pressable } from "react-native";
+import {
+  View,
+  SafeAreaView,
+  Pressable,
+  useWindowDimensions,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
 import React from "react";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useTranslation } from "react-i18next";
@@ -13,6 +20,16 @@ const HomeScreen = () => {
     },
   });
   const { t } = useTranslation();
+
+  // Get the screen width dynamically
+  const { width } = useWindowDimensions();
+
+  // Define breakpoints for small and normal-sized phones
+  const isSmallPhone = width < 375; // Adjust this breakpoint as needed
+  const columns = isSmallPhone ? 3 : 2; // 3 columns for small phones, 2 for normal phones
+
+  // Calculate item width dynamically based on the number of columns
+  const itemWidth = (width - 48) / columns; // Subtracting padding (24 on each side)
 
   const activeLinks = [
     {
@@ -63,30 +80,34 @@ const HomeScreen = () => {
       route: "/(community)/community",
     },
   ];
+
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="p-6">
-        <Text className="text-2xl font-bold">
-          {t("HomePage.title") + user?.name}
-        </Text>
-        <Text className="text-lg text-[#71717A]">
-          {t("HomePage.description")}
-        </Text>
-      </View>
-      <View className="flex-row flex-wrap justify-between px-6">
-        {activeLinks.map((link, index) => (
-          <Pressable
-            onPress={() => {
-              router.push(link.route as Href);
-            }}
-            key={index}
-            className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center gap-6 py-6 rounded-xl w-[48%] mb-4"
-          >
-            <>{link.icon}</>
-            <Text className="text-sm p-2">{link.title}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <ScrollView>
+        <View className="p-6">
+          <Text className="text-2xl font-bold">
+            {t("HomePage.title") + user?.name}
+          </Text>
+          <Text className="text-lg text-[#71717A]">
+            {t("HomePage.description")}
+          </Text>
+        </View>
+        <View className="flex-row flex-wrap justify-between px-4">
+          {activeLinks.map((link, index) => (
+            <TouchableOpacity
+              onPress={() => {
+                router.push(link.route as Href);
+              }}
+              key={index} 
+              style={{ width: itemWidth }} // Set dynamic width based on screen size and columns
+              className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl"
+            >
+              <>{link.icon}</>
+              <Text className="text-sm font-semibold text-gray-600 px-1 pt-4">{link.title}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
