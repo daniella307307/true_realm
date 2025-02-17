@@ -188,17 +188,34 @@ export default function LoginScreen() {
           <View className="flex-1 justify-center items-center bg-black opacity-50" />
         </TouchableWithoutFeedback>
 
-        <View className="bg-white p-6 rounded-lg w-full">
-          <Text className="text-lg mb-4">{t("Login.Select Language")}</Text>
-          <Picker selectedValue={i18n.language} onValueChange={changeLanguage}>
-            <Picker.Item label="English" value="en-US" />
-            <Picker.Item label="Kinyarwanda" value="rw-RW" />
-          </Picker>
+        <View className="bg-white p-6 rounded-lg w-full max-w-md">
+          <Text className="text-lg mb-4 text-center">
+            {t("Login.Select Language")}
+          </Text>
+
+          <View className="space-y-4">
+            <TouchableOpacity onPress={() => changeLanguage("en-US")}>
+              <Text className="text-center text-lg font-semibold bg-slate-50 py-3 rounded-lg">
+                English
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="mt-4"
+              onPress={() => changeLanguage("rw-RW")}
+            >
+              <Text className="text-center text-lg font-semibold bg-slate-50 py-3 rounded-lg">
+                Kinyarwanda
+              </Text>
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
             onPress={() => setLanguageModalVisible(false)}
-            className="mt-4"
+            className="mt-6"
           >
-            <Text className="text-center text-accent">{t("Close")}</Text>
+            <Text className="text-center text-accent font-semibold">
+              {t("Close")}
+            </Text>
           </TouchableOpacity>
         </View>
       </Modal>

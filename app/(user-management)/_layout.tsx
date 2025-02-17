@@ -22,8 +22,7 @@ const AuthLayout = () => {
             elevation: 0,
             shadowOpacity: 0,
             borderBottomWidth: 0,
-          },
-          headerLeft: () => <HeaderNavigation showLeft={true} />,
+          }
         }}
       />
       <Stack.Screen
