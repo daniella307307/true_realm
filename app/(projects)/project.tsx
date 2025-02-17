@@ -60,7 +60,7 @@ const ProjectScreen = () => {
           keyExtractor={(item: IProject) => item.id.toString()}
           renderItem={({ item }) => (
             <TouchableOpacity
-              onPress={() => router.push(`/(modules)/(projects)/${item.id}`)}
+              onPress={() => router.push(`/(mods)/(projects)/${item.id}`)}
               className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
             >
               <TabBarIcon
