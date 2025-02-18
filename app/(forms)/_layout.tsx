@@ -27,7 +27,7 @@ const FormsLayout = () => {
           headerShown: true,
           title: t("FormPage.title"),
           headerTitleAlign: "center",
-          headerLeft: () => <HeaderNavigation backFunction={() => router.push('/(modules)/(families)/')} showLeft={true} />,
+          headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
         }}
       />

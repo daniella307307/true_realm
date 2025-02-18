@@ -1,53 +1,16 @@
-import React, { useState, useTransition } from "react";
-import { FlatList, Pressable, TouchableOpacity, View } from "react-native";
+import React, { useState } from "react";
+import { FlatList, RefreshControl, TouchableOpacity, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
-import { IFamilies } from "~/types";
 import { useTranslation } from "react-i18next";
 import CustomInput from "~/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-
-const families: IFamilies[] = [
-  {
-    id: "F-023456-12347",
-    name: "John Doe",
-    location: "Kigali",
-    cohort: 1,
-  },
-  {
-    id: "F-143456-12347",
-    name: "Jane Doe",
-    location: "Kigali",
-    cohort: 2,
-  },
-  {
-    id: "F-823456-12347",
-    name: "John Smith",
-    location: "Musanze",
-    cohort: 2,
-  },
-  {
-    id: "F-423456-12347",
-    name: "Jane Smith",
-    location: "Rubavu",
-    cohort: 1,
-  },
-  {
-    id: "F-148456-12347",
-    name: "Jackson Munyentwari",
-    location: "Karongi",
-    cohort: 1,
-  },
-  {
-    id: "F-101456-12347",
-    name: "Mihigo David",
-    location: "Nyagatare",
-    cohort: 1,
-  },
-];
+import { useGetFamilies } from "~/services/families";
+import { useQuery } from "@tanstack/react-query";
+import Skeleton from "~/components/ui/skeleton";
 
 const CohortIndexScreen = () => {
   const { cohortId } = useLocalSearchParams();
@@ -63,19 +26,31 @@ const CohortIndexScreen = () => {
 
   const searchQuery = watch("searchQuery");
 
-  
-  const filteredFamilies = families
-    .filter(
-      (family) => cohortId === "all" || family.cohort === Number(cohortId)
-    )
+  const {
+    data: families,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["families"],
+    queryFn: useGetFamilies,
+  });
+
+  const filteredFamilies = families?.families
+    .filter((family) => cohortId === "all" || family.cohort === cohortId)
     .filter((family) => {
       if (!searchQuery) return true;
-      return (
-        family.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        family.id.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      return family.hh_head_fullname
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
     });
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
   if (!cohortId) {
     return (
       <View>
@@ -97,29 +72,42 @@ const CohortIndexScreen = () => {
         keyboardType="default"
         accessibilityLabel={t("CohortPage.search_family")}
       />
-      <FlatList
-        data={filteredFamilies}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => router.push(`/(modules)/(families)/${item.id}`)}
-            className="p-4 border flex-row justify-between mb-4 border-gray-200 rounded-xl"
-          >
-            <View>
-              <Text className="text-sm py-2 text-gray-600">{item.id}</Text>
-              <Text className="text-lg font-semibold">{item.name}</Text>
-              <Text className="text-sm py-2 text-gray-600">
-                {item.location}
-              </Text>
-            </View>
-            <View>
-              <Text className="text-sm py-2 text-gray-600">
-                {t("CohortPage.cohort")} {item.cohort}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-      />
+      {isLoading ? (
+        <View className="mt-6">
+          {[1, 2, 3].map((item) => (
+            <Skeleton key={item} />
+          ))}
+        </View>
+      ) : (
+        <FlatList
+          data={filteredFamilies}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => router.push(`/(modules)/(families)/${item.id}`)}
+              className="p-4 border flex-row justify-between mb-4 border-gray-200 rounded-xl"
+            >
+              <View>
+                <Text className="text-sm py-2 text-gray-600">{item.hh_id}</Text>
+                <Text className="text-lg font-semibold">
+                  {item.hh_head_fullname}
+                </Text>
+                <Text className="text-sm py-2 text-gray-600">
+                  {item.village_name}
+                </Text>
+              </View>
+              <View>
+                <Text className="text-sm py-2 text-gray-600">
+                  {t("CohortPage.cohort")} {item.cohort}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        />
+      )}
     </View>
   );
 };

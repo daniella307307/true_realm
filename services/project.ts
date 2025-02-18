@@ -16,11 +16,6 @@ interface I3BaseFormat<T> {
     };
 }
 
-interface I4BaseFormat<T> {
-    current_page: string;
-    data: T[];
-}
-
 export async function useGetAllProjects() {
     const res = await baseInstance
         .get<I2BaseFormat<IProject>>(
@@ -41,14 +36,6 @@ export async function useGetProjectById(id: string) {
     const res = await baseInstance
         .get<IProject>(
             `/v2/projects/${id}`);
-            
-    return res.data;
-}
-
-export async function useGetFormByProjectAndModule(projectId: number, moduleId: number) {
-    const res = await baseInstance
-        .get<I4BaseFormat<IExistingForm>>(
-            `/v2/projects/${projectId}/module/${moduleId}/surveys`);
             
     return res.data;
 }

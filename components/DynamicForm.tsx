@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, TextInput, Switch, ScrollView } from "react-native";
+import { View, TextInput, Switch, ScrollView, TouchableOpacity } from "react-native";
 import { Controller, useForm } from "react-hook-form";
 import {
   Select,
@@ -9,33 +9,76 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Button } from "./ui/button";
-import { IFormElement } from "~/types";
 import { Text } from "./ui/text";
 import { useTranslation } from "react-i18next";
+import { FormField } from "~/types";
 
-const TextArea: React.FC<{ field: IFormElement; control: any }> = ({
+interface DynamicFieldProps {
+  field: FormField;
+  control: any;
+  language?: string;
+}
+
+const getLocalizedTitle = (
+  title: { en: string; kn: string; default: string },
+  language = "en"
+): string => {
+  return title[language as keyof typeof title] || title.default;
+};
+
+const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
+  language = "en",
 }) => (
   <Controller
     control={control}
     name={field.key}
     rules={{
-      required: field.element_properties.validate.required,
-      pattern: field.element_properties.validate.pattern
-        ? new RegExp(field.element_properties.validate.pattern)
-        : undefined,
+      required: field.input,
     }}
     render={({ field: { onChange, value }, fieldState: { error } }) => (
       <View className="mb-4">
         <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {field.label}
+          {getLocalizedTitle(field.title, language)}
         </Text>
         <TextInput
           className={`w-full px-4 py-4 border rounded-lg ${
             error ? "border-primary" : "border-[#E4E4E7]"
           } dark:text-white bg-white dark:bg-[#1E1E1E]`}
-          placeholder={field.element_properties.placeholder}
+          value={value}
+          onChangeText={onChange}
+        />
+        {error && (
+          <Text className="text-red-500 mt-2">
+            {error.message || "This field is required"}
+          </Text>
+        )}
+      </View>
+    )}
+  />
+);
+
+const TextAreaComponent: React.FC<DynamicFieldProps> = ({
+  field,
+  control,
+  language = "en",
+}) => (
+  <Controller
+    control={control}
+    name={field.key}
+    rules={{
+      required: field.input,
+    }}
+    render={({ field: { onChange, value }, fieldState: { error } }) => (
+      <View className="mb-4">
+        <Text className="mb-2 text-md font-medium text-[#050F2B]">
+          {getLocalizedTitle(field.title, language)}
+        </Text>
+        <TextInput
+          className={`w-full px-4 h-44 border rounded-lg ${
+            error ? "border-primary" : "border-[#E4E4E7]"
+          } dark:text-white bg-white dark:bg-[#1E1E1E]`}
           value={value}
           onChangeText={onChange}
           multiline
@@ -43,7 +86,7 @@ const TextArea: React.FC<{ field: IFormElement; control: any }> = ({
         />
         {error && (
           <Text className="text-red-500 mt-2">
-            {error.message || field.element_properties.validate.customMessage}
+            {error.message || "This field is required"}
           </Text>
         )}
       </View>
@@ -51,36 +94,50 @@ const TextArea: React.FC<{ field: IFormElement; control: any }> = ({
   />
 );
 
-const NumberInput: React.FC<{ field: IFormElement; control: any }> = ({
+const RadioBoxComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
+  language = "en",
 }) => (
   <Controller
     control={control}
     name={field.key}
     rules={{
-      required: field.element_properties.validate.required,
-      pattern: field.element_properties.validate.pattern
-        ? new RegExp(field.element_properties.validate.pattern)
-        : undefined,
+      required: field.input,
     }}
     render={({ field: { onChange, value }, fieldState: { error } }) => (
       <View className="mb-4">
         <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {field.label}
+          {getLocalizedTitle(field.title, language)}
         </Text>
-        <TextInput
-          className={`w-full px-4 py-4 border rounded-lg ${
-            error ? "border-primary" : "border-[#E4E4E7]"
-          } dark:text-white bg-white dark:bg-[#1E1E1E]`}
-          placeholder={field.element_properties.placeholder}
-          value={value}
-          onChangeText={(text) => onChange(text.replace(/[^0-9]/g, ""))}
-          keyboardType="numeric"
-        />
+        <View className="flex flex-col flex-wrap mt-4">
+          {field.values
+            ? field.values.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  className="flex flex-row items-center mr-4 mb-4"
+                  onPress={() => onChange(option.value)}
+                >
+                  <View
+                    className={`w-5 h-5 rounded-full border-2 border-primary justify-center items-center
+                  ${value === option.value ? "bg-primary" : "bg-white"}`}
+                  >
+                    {value === option.value && (
+                      <View className="w-3 h-3 rounded-full bg-white" />
+                    )}
+                  </View>
+                  <Text className="ml-2 text-md">
+                    {option.title
+                      ? getLocalizedTitle(option.title, language)
+                      : option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            : null}
+        </View>
         {error && (
           <Text className="text-red-500 mt-2">
-            {error.message || field.element_properties.validate.customMessage}
+            {error.message || "This field is required"}
           </Text>
         )}
       </View>
@@ -88,59 +145,21 @@ const NumberInput: React.FC<{ field: IFormElement; control: any }> = ({
   />
 );
 
-const TextField: React.FC<{ field: IFormElement; control: any }> = ({
+const SelectBoxComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
+  language = "en",
 }) => (
   <Controller
     control={control}
     name={field.key}
     rules={{
-      required: field.element_properties.validate.required,
-      pattern: field.element_properties.validate.pattern
-        ? new RegExp(field.element_properties.validate.pattern)
-        : undefined,
+      required: field.input,
     }}
     render={({ field: { onChange, value }, fieldState: { error } }) => (
       <View className="mb-4">
         <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {field.label}
-        </Text>
-        <TextInput
-          className={`w-full px-4 py-4 border rounded-lg ${
-            error ? "border-primary" : "border-[#E4E4E7]"
-          } dark:text-white bg-white dark:bg-[#1E1E1E]`}
-          placeholder={field.element_properties.placeholder}
-          value={value}
-          onChangeText={onChange}
-        />
-        {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message || field.element_properties.validate.customMessage}
-          </Text>
-        )}
-      </View>
-    )}
-  />
-);
-
-const SelectBox: React.FC<{ field: IFormElement; control: any }> = ({
-  field,
-  control,
-}) => (
-  <Controller
-    control={control}
-    name={field.key}
-    rules={{
-      required: field.element_properties.validate.required,
-      pattern: field.element_properties.validate.pattern
-        ? new RegExp(field.element_properties.validate.pattern)
-        : undefined,
-    }}
-    render={({ field: { onChange, value }, fieldState: { error } }) => (
-      <View className="mb-4 relative">
-        <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {field.label}
+          {getLocalizedTitle(field.title, language)}
         </Text>
         <Select
           value={value}
@@ -150,24 +169,26 @@ const SelectBox: React.FC<{ field: IFormElement; control: any }> = ({
           <SelectTrigger className="w-full h-full outline-none border-none bg-white">
             <SelectValue
               className="text-[#18181B] text-md"
-              placeholder={
-                field.element_properties.placeholder || "Select an option"
-              }
+              placeholder="Select an option"
             />
           </SelectTrigger>
           <SelectContent>
-            {field.element_properties.values?.map((option) => (
+            {field.values?.map((option) => (
               <SelectItem
                 key={option.value}
-                label={option.label}
                 value={option.value}
+                label={
+                  option.title
+                    ? getLocalizedTitle(option.title, language)
+                    : option.label
+                }
               />
             ))}
           </SelectContent>
         </Select>
         {error && (
           <Text className="text-red-500 mt-2">
-            {error.message || field.element_properties.validate.customMessage}
+            {error.message || "This field is required"}
           </Text>
         )}
       </View>
@@ -175,9 +196,10 @@ const SelectBox: React.FC<{ field: IFormElement; control: any }> = ({
   />
 );
 
-const SwitchField: React.FC<{ field: IFormElement; control: any }> = ({
+const SwitchComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
+  language = "en",
 }) => (
   <Controller
     control={control}
@@ -185,7 +207,7 @@ const SwitchField: React.FC<{ field: IFormElement; control: any }> = ({
     render={({ field: { onChange, value } }) => (
       <View className="mb-4">
         <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {field.label}
+          {getLocalizedTitle(field.title, language)}
         </Text>
         <Switch value={value} onValueChange={onChange} />
       </View>
@@ -193,46 +215,73 @@ const SwitchField: React.FC<{ field: IFormElement; control: any }> = ({
   />
 );
 
-const AddressField: React.FC<{ field: IFormElement; control: any }> = ({
+const DynamicField: React.FC<DynamicFieldProps> = ({
   field,
   control,
-}) => (
-  <View>
-    <Text className="mb-2 text-lg font-semibold text-[#050F2B]">
-      {field.label}
-    </Text>
-    {/* {field.element_properties?.components?.map((subField: IFormElement) => (
-      <DynamicField key={subField.key} field={subField} control={control} />
-    ))} */}
-  </View>
-);
-
-const DynamicField: React.FC<{ field: IFormElement; control: any }> = ({
-  field,
-  control,
+  language,
 }) => {
+  // Check if field should be visible based on conditional logic
+  const shouldShowField = () => {
+    if (!field.conditional) return true;
+    // Add your conditional logic here based on the field.conditional properties
+    return field.conditional.show;
+  };
+
+  if (!shouldShowField()) return null;
+
   switch (field.type) {
     case "textfield":
-      return <TextField field={field} control={control} />;
-    case "textarea":
-      return <TextArea field={field} control={control} />;
-    case "number":
-      return <NumberInput field={field} control={control} />;
-    case "selectboxes":
-      return <SelectBox field={field} control={control} />;
+      return (
+        <TextFieldComponent
+          field={field}
+          control={control}
+          language={language}
+        />
+      );
+    case "select":
+      return (
+        <SelectBoxComponent
+          field={field}
+          control={control}
+          language={language}
+        />
+      );
     case "switch":
-      return <SwitchField field={field} control={control} />;
-    case "address":
-      return <AddressField field={field} control={control} />;
+      return (
+        <SwitchComponent field={field} control={control} language={language} />
+      );
+    case "textarea":
+      return (
+        <TextAreaComponent
+          field={field}
+          control={control}
+          language={language}
+        />
+      );
+    case "radio":
+      return (
+        <RadioBoxComponent
+          field={field}
+          control={control}
+          language={language}
+        />
+      );
     default:
       return null;
   }
 };
 
-const DynamicForm: React.FC<{
-  fields: IFormElement[];
+interface DynamicFormProps {
+  fields: FormField[];
   wholeComponent?: boolean;
-}> = ({ fields, wholeComponent = false }) => {
+  language?: string;
+}
+
+const DynamicForm: React.FC<DynamicFormProps> = ({
+  fields,
+  wholeComponent = false,
+  language = "en",
+}) => {
   const { control, handleSubmit } = useForm();
   const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(0);
@@ -253,31 +302,52 @@ const DynamicForm: React.FC<{
     }
   };
 
+  // Filter out fields based on dependencies and visibility conditions
+  const visibleFields = fields.filter((field) => {
+    if (field.dependsOn) {
+      // Add your dependency logic here
+      return true;
+    }
+    if (field.visibleIf) {
+      // Add your visibility condition logic here
+      return true;
+    }
+    return true;
+  });
+
   return (
     <ScrollView className="bg-background mt-4">
       {!wholeComponent && (
         <>
           <Text className="text-center mb-2 text-md font-medium text-[#050F2B]">
-            Page {currentPage + 1} of {fields.length}
+            Page {currentPage + 1} of {visibleFields.length}
           </Text>
           <View className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
             <View
               className="bg-primary h-2.5 rounded-full"
-              style={{ width: `${((currentPage + 1) / fields.length) * 100}%` }}
+              style={{
+                width: `${((currentPage + 1) / visibleFields.length) * 100}%`,
+              }}
             />
           </View>
         </>
       )}
 
       {wholeComponent ? (
-        fields.map((field) => (
-          <DynamicField key={field.key} field={field} control={control} />
+        visibleFields.map((field) => (
+          <DynamicField
+            key={field.key}
+            field={field}
+            control={control}
+            language={language}
+          />
         ))
       ) : (
         <DynamicField
-          key={fields[currentPage].key}
-          field={fields[currentPage]}
+          key={visibleFields[currentPage].key}
+          field={visibleFields[currentPage]}
           control={control}
+          language={language}
         />
       )}
 
@@ -292,7 +362,7 @@ const DynamicForm: React.FC<{
               {t("FormElementPage.previous")}
             </Text>
           </Button>
-          {currentPage < fields.length - 1 ? (
+          {currentPage < visibleFields.length - 1 ? (
             <Button onPress={handleNext}>
               <Text className="text-white dark:text-black font-semibold">
                 {t("FormElementPage.next")}

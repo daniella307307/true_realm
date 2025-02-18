@@ -1,5 +1,5 @@
-import { View, FlatList, Pressable } from "react-native";
-import React from "react";
+import { View, FlatList, TouchableOpacity } from "react-native";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,18 +8,17 @@ import CustomInput from "~/components/ui/input";
 import { useTranslation } from "react-i18next";
 import { router, useLocalSearchParams } from "expo-router";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import { IExistingForm, IForms, IModule } from "~/types";
+import { IExistingForm, IModule } from "~/types";
 import { Text } from "~/components/ui/text";
 import Skeleton from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
-import {
-  useGetAllModules,
-  useGetFormByProjectAndModule,
-} from "~/services/project";
+import { useGetAllModules } from "~/services/project";
+import { useGetFormByProjectAndModule } from "~/services/formElements";
+import EmptyDynamicComponent from "~/components/EmptyDynamic";
+import { RefreshControl } from "react-native";
 
 const ProjectFormsScreen = () => {
   const { modId } = useLocalSearchParams<{ modId: string }>();
-  console.log("Module ID: ", modId);
   if (!modId) {
     return (
       <View>
@@ -29,7 +28,7 @@ const ProjectFormsScreen = () => {
     );
   }
 
-  const { data: modules, isLoading: modLoading } = useQuery({
+  const { data: modules } = useQuery({
     queryKey: ["modules"],
     queryFn: useGetAllModules,
   });
@@ -38,7 +37,11 @@ const ProjectFormsScreen = () => {
     .flatMap(([_, moduleArray]) => moduleArray)
     .find((module: IModule) => module.id === parseInt(modId));
 
-  const { data: forms, isLoading } = useQuery({
+  const {
+    data: forms,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ["forms", modId],
     queryFn: () => {
       if (!currentModule?.project_id) {
@@ -52,6 +55,8 @@ const ProjectFormsScreen = () => {
     enabled: !!currentModule?.project_id,
   });
 
+  console.log("Module ID: ", modId);
+  console.log("Project ID: ", currentModule?.project_id);
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -61,6 +66,14 @@ const ProjectFormsScreen = () => {
     ),
     mode: "onChange",
   });
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
 
   const searchQuery = watch("searchQuery");
 
@@ -72,46 +85,45 @@ const ProjectFormsScreen = () => {
   return (
     <View className="flex-1 p-4 bg-white">
       <CustomInput
-        control={control}
-        name="searchQuery"
-        placeholder={t("FormPage.search_form")}
-        keyboardType="default"
-        accessibilityLabel={t("FormPage.search_form")}
+      control={control}
+      name="searchQuery"
+      placeholder={t("FormPage.search_form")}
+      keyboardType="default"
+      accessibilityLabel={t("FormPage.search_form")}
       />
 
       {isLoading ? (
-        <View className="mt-6">
-          {[1, 2, 3].map((item) => (
-            <Skeleton key={item} />
-          ))}
-        </View>
+      <View className="mt-6">
+        {[1, 2, 3].map((item) => (
+        <Skeleton key={item} />
+        ))}
+      </View>
       ) : (
-        <FlatList
-          data={filteredForms}
-          keyExtractor={(item: IExistingForm) => item.id.toString()}
-          ListEmptyComponent={() => (
-            <Text className="text-center text-gray-500 mt-6">
-              {t("FormPage.empty_forms")}
-            </Text>
-          )}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }: { item: IExistingForm }) => (
-            <Pressable
-              onPress={() => router.push(`/(form-element)/${item.id}`)}
-              className="p-4 border flex-row items-center mb-4 border-gray-200 rounded-xl"
-            >
-              <TabBarIcon
-                name="description"
-                family="MaterialIcons"
-                size={24}
-                color="#71717A"
-              />
-              <View className="ml-4">
-                <Text className="text-lg font-semibold">{item.name}</Text>
-              </View>
-            </Pressable>
-          )}
-        />
+      <FlatList
+        data={filteredForms}
+        keyExtractor={(item: IExistingForm, index) => `${item.id}-${index}`}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={() => <EmptyDynamicComponent />}
+        renderItem={({ item }: { item: IExistingForm }) => (
+        <TouchableOpacity
+          onPress={() => router.push(`/(form-element)/${item.id}`)}
+          className="p-4 border mb-4 border-gray-200 rounded-xl"
+        >
+          <View className="flex-row items-center pr-4 justify-start">
+          <TabBarIcon
+            name="description"
+            family="MaterialIcons"
+            size={24}
+            color="#71717A"
+          />
+          <Text className="text-lg ml-4 font-semibold">{item.name}</Text>
+          </View>
+        </TouchableOpacity>
+        )}
+        refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      />
       )}
     </View>
   );

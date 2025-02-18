@@ -1,60 +1,37 @@
+import { useQuery } from "@tanstack/react-query";
 import { Href, router } from "expo-router";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, TouchableOpacity, View } from "react-native";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
+import { useGetFamilies } from "~/services/families";
 import { IFamilies } from "~/types";
-
-const families: IFamilies[] = [
-  {
-    id: "F-143456-12347",
-    name: "John Doe",
-    cohort: 1,
-  },
-  {
-    id: "F-123456-12347",
-    name: "Jane Doe",
-    cohort: 2,
-  },
-  {
-    id: "F-113456-12347",
-    name: "John Smith",
-    cohort: 2,
-  },
-  {
-    id: "F-193456-12347",
-    name: "Jane Smith",
-    cohort: 1,
-  },
-  {
-    id: "F-148456-12347",
-    name: "Jane Smith",
-    cohort: 1,
-  },
-  {
-    id: "F-101456-12347",
-    name: "Jane Smith",
-    cohort: 1,
-  },
-];
 
 const CohortPage = () => {
   const { t } = useTranslation();
-  // Calculate total number of families
-  const totalFamilies = families.length;
+
+  const {
+    data: families,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["families"],
+    queryFn: useGetFamilies,
+  });
+
+  const totalFamilies = families?.families.length || 0;
 
   // Group families by cohort
-  const familiesByCohort = families.reduce((acc, family) => {
-    if (!acc[family.cohort]) {
-      acc[family.cohort] = [];
+  const familiesByCohort = families?.families.reduce((acc, family) => {
+    if (!acc[parseInt(family.cohort)]) {
+      acc[parseInt(family.cohort)] = [];
     }
-    acc[family.cohort].push(family);
+    acc[parseInt(family.cohort)].push(family);
     return acc;
   }, {} as Record<number, IFamilies[]>);
 
-  // Create an array of cohort data
-  const cohortData = Object.entries(familiesByCohort).map(
+  const cohortData = Object.entries(familiesByCohort ?? {}).map(
     ([cohort, families]) => ({
       cohort: Number(cohort),
       count: families.length,
@@ -65,7 +42,9 @@ const CohortPage = () => {
     <ScrollView className="bg-white pt-6">
       <View className="flex-row flex-wrap justify-between px-6">
         <Pressable
-          onPress={() => {}}
+          // When we click on all cohorts we should navigate to the (cohorts)/${all cohorts combined}
+          // page where we can see all the cohorts combined
+          onPress={() => router.push("/(cohorts)/all")}
           className="flex flex-col bg-[#A23A910D] border border-[#0000001A] justify-between gap-6 p-6 rounded-xl w-[48%] mb-4"
         >
           <TabBarIcon name="family-restroom" family="MaterialIcons" />

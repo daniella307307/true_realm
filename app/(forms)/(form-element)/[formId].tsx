@@ -1,37 +1,32 @@
 import { View } from "react-native";
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
-import { useGetFormElements } from "~/services/formElements";
-import DynamicForm from "~/components/DynamicForm";
-import Skeleton from "~/components/ui/skeleton";
 import { Text } from "~/components/ui/text";
+import Skeleton from "~/components/ui/skeleton";
+import { useGetFormById } from "~/services/formElements";
+import { useQuery } from "@tanstack/react-query";
+import DynamicForm from "~/components/DynamicForm";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 
 const FormElementIndexScreen = () => {
-  const { formId } = useLocalSearchParams();
+  const { formId } = useLocalSearchParams<{ formId: string }>();
+
   if (!formId) {
     return (
       <View>
-        <Text>Missing form id</Text>
+        <Text>Missing form or form id</Text>
         <Button onPress={() => router.replace("/(home)")}>Go to home</Button>
       </View>
     );
   }
 
-  const {
-    data: formElements,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["formElements", formId],
-    queryFn: () =>
-      useGetFormElements({
-        id: parseInt(Array.isArray(formId) ? formId[0] : formId),
-      }),
+  const { data: form, isLoading } = useQuery({
+    queryKey: ["form", formId],
+    queryFn: () => useGetFormById(parseInt(formId)),
   });
 
+  const parsedForm = form?.json2 ? JSON.parse(form.json2) : null;
   if (isLoading) {
     return (
       <View className="flex-1 p-4 bg-white">
@@ -42,19 +37,12 @@ const FormElementIndexScreen = () => {
     );
   }
 
-  if (isError) {
-    return <EmptyDynamicComponent />;
-  }
-
   return (
-    <View className="flex-1 p-4 bg-white">
-      {formElements?.data?.length ? (
+    <View className="flex-1 p-4 bg-background">
+      {parsedForm?.components ? (
         <>
-          <Text className="text-lg font-semibold">{formElements?.name}</Text>
-          <Text className="text-sm py-2 text-gray-600">
-            {formElements?.description}
-          </Text>
-          <DynamicForm fields={formElements?.data || []} />
+          <Text className="text-lg font-semibold">{form?.name}</Text>
+          <DynamicForm fields={parsedForm.components} />
         </>
       ) : (
         <EmptyDynamicComponent />

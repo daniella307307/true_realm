@@ -2,7 +2,7 @@ import React from "react";
 import { Image, View } from "react-native";
 import { Text } from "~/components/ui/text";
 
-const EmptyDynamicComponent = ({ message = "Empty for now", size = 32 }) => {
+const EmptyDynamicComponent = ({ message = "Empty for now", size = 64 }) => {
   return (
     <View className="flex items-center justify-center p-6">
       <Image

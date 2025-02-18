@@ -68,13 +68,6 @@ export interface IDeviceInfo {
     deviceType: string;
 }
 
-export interface IFamilies {
-    id: string;
-    name: string;
-    cohort: number;
-    location?: string;
-}
-
 export interface ICategories {
     id: number;
     name: string;
@@ -544,12 +537,46 @@ export interface IModule {
     updated_at: string;
 }
 
+export interface FormField {
+    key: string;
+    type: string;
+    input: boolean;
+    label: string;
+    title: {
+        en: string;
+        kn: string;
+        default: string;
+    };
+    tableView: boolean;
+    data?: {
+        values: Array<{
+            label: string;
+            value: string;
+        }>;
+    };
+    values?: Array<{
+        label: string;
+        value: string;
+        title?: {
+            en: string;
+            kn: string;
+            default: string;
+        };
+    }>;
+    conditional?: {
+        eq: string;
+        show: boolean;
+        when: string;
+    };
+    dependsOn?: string;
+    visibleIf?: string;
+}
 export interface IExistingForm {
     id: number;
     name: string;
     slug: string;
     json: string;
-    json2: IFormElement;
+    json2: string;
     survey_status: number;
     module_id: number;
     is_primary: number;
@@ -558,4 +585,12 @@ export interface IExistingForm {
     updated_at: string;
     order_list: number;
     project_module_id: number;
+}
+
+export interface IFamilies {
+    id: number;
+    hh_id: string;
+    hh_head_fullname: string;
+    village_name: string;
+    cohort: string;
 }

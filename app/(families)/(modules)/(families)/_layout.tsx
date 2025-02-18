@@ -20,7 +20,6 @@ const FamilyModuleLayout = () => {
           headerTitleAlign: "center",
           headerLeft: () => (
             <HeaderNavigation
-              backFunction={() => router.back()}
               showLeft={true}
             />
           ),
