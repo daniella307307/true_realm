@@ -10,29 +10,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
-
-const izuMembers = [
-  {
-    id: "01",
-    name: "Nyirakanani Donata",
-    location: "Kigali",
-  },
-  {
-    id: "02",
-    name: "Mukamana Marie",
-    location: "Kigali",
-  },
-  {
-    id: "03",
-    name: "Mahoro Nkarimo",
-    location: "Kigali",
-  },
-  {
-    id: "04",
-    name: "Uwimana Alice",
-    location: "Kigali",
-  },
-];
+import { useQuery } from "@tanstack/react-query";
+import { useGetIZUser } from "~/services/user";
+import Skeleton from "~/components/ui/skeleton";
 
 const IzuMonitoringScreen = () => {
   const { t } = useTranslation();
@@ -47,14 +27,25 @@ const IzuMonitoringScreen = () => {
 
   const searchQuery = watch("searchQuery");
 
-  const filteredIzuMembers = izuMembers.filter((member) => {
+  const {
+    data: izuMembers,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["izuMembers"],
+    queryFn: useGetIZUser,
+  });
+
+  const filteredIzuMembers = izuMembers?.izus.filter((member) => {
     if (!searchQuery) return true;
     return member.name.toLowerCase().includes(searchQuery);
   });
 
   return (
     <View className="flex-1 p-4 bg-white">
-      <Text className="text-xl font-bold mb-4">{t("IzuMonitoringPage.all_izu")}</Text>
+      <Text className="text-xl font-bold mb-4">
+        {t("IzuMonitoringPage.all_izu")}
+      </Text>
       <CustomInput
         control={control}
         name="searchQuery"
@@ -62,29 +53,35 @@ const IzuMonitoringScreen = () => {
         keyboardType="default"
         accessibilityLabel={t("IzuMonitoringPage.search_izu")}
       />
-      <FlatList
-        data={filteredIzuMembers}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => router.push("/(forms)/form-izu")}
-            className="p-4 border flex-row items-center justify-between mb-4 border-gray-200 rounded-xl"
-          >
-            <View className="flex-row items-center">
-              <Text className="text-lg font-semibold">{item.id}</Text>
-              <Text className="text-lg ml-2 font-semibold">{item.name}</Text>
-            </View>
-            <Pressable onPress={() => {}}>
-              <TabBarIcon
-                name="arrow-down-left"
-                family="Feather"
-                size={24}
-                color="#71717A"
-              />
+      {isLoading ? (
+        [1, 2, 3, 4].map((index) => (
+          <Skeleton key={index} />
+        ))
+      ) : (
+        <FlatList
+          data={filteredIzuMembers}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => router.push("/(forms)/form-izu")}
+              className="p-4 border flex-row items-center justify-between mb-4 border-gray-200 rounded-xl"
+            >
+              <View className="flex-row items-center">
+                <Text className="text-lg font-semibold">{item.id}</Text>
+                <Text className="text-lg ml-2 font-semibold">{item.name}</Text>
+              </View>
+              <Pressable onPress={() => {}}>
+                <TabBarIcon
+                  name="arrow-down-left"
+                  family="Feather"
+                  size={24}
+                  color="#71717A"
+                />
+              </Pressable>
             </Pressable>
-          </Pressable>
-        )}
-      />
+          )}
+        />
+      )}
     </View>
   );
 };

@@ -123,7 +123,13 @@ const CommunityScreen: React.FC = () => {
 
           {/* Post Content */}
           <Text className="text-lg font-semibold">{item.title}</Text>
-          <Text className="text-gray-600">{item.body}</Text>
+          <Text
+            numberOfLines={3}
+            ellipsizeMode="tail"
+            className="text-gray-600"
+          >
+            {item.body}
+          </Text>
 
           {/* Actions */}
           <View className="flex-row justify-between mt-3">

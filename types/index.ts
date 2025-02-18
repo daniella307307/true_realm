@@ -89,6 +89,13 @@ export interface IForms {
     version: [];
 }
 
+export interface IZUs {
+    id: number;
+    name: string;
+    user_code: string;
+    villages_id: number;
+}
+
 export interface IFormElement {
     id: number;
     form_id: number;

@@ -1,4 +1,4 @@
-import { ILoginDetails, ILoginResponse, IResponse, User } from "~/types";
+import { ILoginDetails, ILoginResponse, IResponse, IZUs, User } from "~/types";
 import { baseInstance } from "~/utils/axios";
 
 export async function userLogout() {
@@ -21,5 +21,10 @@ export async function userLogin(values: ILoginDetails) {
 
 export async function useGetCurrentLoggedInProfile() {
     const res = await baseInstance.post<User>(`/profile`);
+    return res.data;
+}
+
+export async function useGetIZUser() {
+    const res = await baseInstance.get<{izus: IZUs[]}>(`/izus`);
     return res.data;
 }

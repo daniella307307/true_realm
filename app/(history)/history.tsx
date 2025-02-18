@@ -10,45 +10,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
-
-const families: IFamilies[] = [
-  {
-    id: "F-023456-12347",
-    name: "John Doe",
-    location: "Kigali",
-    cohort: 1,
-  },
-  {
-    id: "F-143456-12347",
-    name: "Jane Doe",
-    location: "Kigali",
-    cohort: 2,
-  },
-  {
-    id: "F-823456-12347",
-    name: "John Smith",
-    location: "Musanze",
-    cohort: 2,
-  },
-  {
-    id: "F-423456-12347",
-    name: "Jane Smith",
-    location: "Rubavu",
-    cohort: 1,
-  },
-  {
-    id: "F-148456-12347",
-    name: "Jackson Munyentwari",
-    location: "Karongi",
-    cohort: 1,
-  },
-  {
-    id: "F-101456-12347",
-    name: "Mihigo David",
-    location: "Nyagatare",
-    cohort: 1,
-  },
-];
+import { useQuery } from "@tanstack/react-query";
+import { useGetFamilies } from "~/services/families";
 
 const HistoryScreen = () => {
   const cohortId: number | "all" = 1;
@@ -64,16 +27,22 @@ const HistoryScreen = () => {
 
   const searchQuery = watch("searchQuery");
 
+  const {
+    data: families,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["families"],
+    queryFn: useGetFamilies,
+  });
   // Filter families based on cohortId
-  const filteredFamilies = families
+  const filteredFamilies = families?.families
     .filter(
       (family) =>
-        cohortId.toString() === "all" || family.cohort === Number(cohortId)
+        cohortId.toString() === "all" || parseInt(family.cohort) === cohortId
     )
-    .filter(
-      (family) =>
-        family.name.toLowerCase().includes(searchQuery) ||
-        family.id.toLowerCase().includes(searchQuery)
+    .filter((family) =>
+      family.hh_head_fullname.toLowerCase().includes(searchQuery)
     );
   if (!cohortId) {
     return (
@@ -105,19 +74,19 @@ const HistoryScreen = () => {
       />
       <FlatList
         data={filteredFamilies}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => {}}
             className="p-4 border flex-row justify-between mb-4 border-gray-200 rounded-xl"
           >
             <View>
-              <Text className="text-sm text-gray-600">{item.id}</Text>
-              <Text className="text-lg font-semibold">{item.name}</Text>
-              <Text className="text-sm text-gray-600">{item.location}</Text>
+              <Text className="text-sm text-gray-600">{item.hh_id}</Text>
+              <Text className="text-lg font-semibold">{item.hh_head_fullname}</Text>
+              <Text className="text-sm text-gray-600">{item.village_name}</Text>
             </View>
             <View>
-              {item.location === "Kigali" ? (
+              {item.id === 3276 ? (
                 <View className="flex-col justify-center items-center h-8 w-8 bg-green-500 rounded-full">
                   <TabBarIcon
                     name="check"
