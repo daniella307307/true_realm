@@ -242,6 +242,7 @@ export interface ILikes {
 export interface IPost {
     id: number;
     user_id: number;
+    status: number;
     title: string;
     body: string;
     flagged: number;

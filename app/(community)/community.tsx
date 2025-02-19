@@ -186,7 +186,7 @@ const CommunityScreen: React.FC = () => {
   return (
     <View className="flex-1 bg-slate-50">
       <FlatList
-        data={posts?.data || []}
+        data={posts?.data?.filter((post: IPost) => post.status === 1) || []}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
         refreshControl={
