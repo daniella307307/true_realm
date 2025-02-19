@@ -17,9 +17,14 @@
       "**/*"
     ],
     "ios": {
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      },
       "supportsTablet": true,
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.sugiramuryango.mobile"
+      "bundleIdentifier": "com.sugiramuryango.mobile",
     },
     "android": {
       "adaptiveIcon": {

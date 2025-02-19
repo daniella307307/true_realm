@@ -16,6 +16,7 @@ import { enableScreens } from "react-native-screens";
 import { Drawer } from "expo-router/drawer";
 import CustomDrawerContent from "~/components/ui/custom-drawer";
 import { FontSizeProvider } from "~/providers/FontSizeContext";
+import React from 'react';
 
 enableScreens();
 export default function RootLayout() {
