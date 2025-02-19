@@ -38,6 +38,25 @@ const CohortPage = () => {
     })
   );
 
+  if (isLoading) {
+    return (
+      <ScrollView className="bg-white pt-6">
+        <View className="flex-row flex-wrap justify-between px-6">
+          {[...Array(4)].map((_, index) => (
+            <View
+              key={index}
+              className="bg-[#A23A910D] border border-[#0000001A] rounded-xl w-[48%] mb-4 p-6 animate-pulse"
+            >
+              <View className="w-12 h-12 bg-gray-300 rounded-full mb-4" />
+              <View className="h-4 bg-gray-300 rounded w-24 mb-2" />
+              <View className="h-6 bg-gray-300 rounded w-32" />
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView className="bg-white pt-6">
       <View className="flex-row flex-wrap justify-between px-6">

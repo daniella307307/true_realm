@@ -42,7 +42,7 @@ const HistoryScreen = () => {
         cohortId.toString() === "all" || parseInt(family.cohort) === cohortId
     )
     .filter((family) =>
-      family.hh_head_fullname.toLowerCase().includes(searchQuery)
+      !searchQuery || family.hh_head_fullname.toLowerCase().includes(searchQuery.toLowerCase())
     );
   if (!cohortId) {
     return (
@@ -86,7 +86,7 @@ const HistoryScreen = () => {
               <Text className="text-sm text-gray-600">{item.village_name}</Text>
             </View>
             <View>
-              {item.id === 3276 ? (
+              {item.village_name === "Bweranka" ? (
                 <View className="flex-col justify-center items-center h-8 w-8 bg-green-500 rounded-full">
                   <TabBarIcon
                     name="check"
