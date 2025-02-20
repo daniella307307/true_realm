@@ -173,14 +173,14 @@ const SelectBoxComponent: React.FC<DynamicFieldProps> = ({
             />
           </SelectTrigger>
           <SelectContent>
-            {field.values?.map((option) => (
+            {field?.data?.values?.map((option) => (
               <SelectItem
                 key={option.value}
                 value={option.value}
                 label={
-                  option.title
-                    ? getLocalizedTitle(option.title, language)
-                    : option.label
+                  typeof option.label === 'object'
+                    ? getLocalizedTitle(option.label, language)
+                    : option.label || ''
                 }
               />
             ))}
