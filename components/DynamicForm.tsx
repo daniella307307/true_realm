@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   TextInput,
@@ -18,6 +18,7 @@ import { Button } from "./ui/button";
 import { Text } from "./ui/text";
 import { useTranslation } from "react-i18next";
 import { FormField } from "~/types";
+import i18n from "i18next";
 
 interface DynamicFieldProps {
   field: FormField;
@@ -26,17 +27,26 @@ interface DynamicFieldProps {
   type?: string;
 }
 
+// Helper function to convert locale code to language code
+const getLanguageCode = (locale: string): string => {
+  // Extract just the language part from the locale
+  // e.g., "en-US" -> "en", "rw-RW" -> "rw"
+  return locale.split('-')[0];
+};
+
 const getLocalizedTitle = (
   title: { en: string; kn: string; default: string },
-  language = "en"
+  locale = "en-US"
 ): string => {
+  // Convert locale to the language code used in your title object
+  const language = locale.startsWith('rw') ? 'kn' : 'en';
   return title[language as keyof typeof title] || title.default;
 };
 
 const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
-  language = "en",
+  language = "en-US",
   type = "text",
 }) => (
   <Controller
@@ -75,7 +85,7 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
 const TextAreaComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
-  language = "en",
+  language = "en-US",
 }) => (
   <Controller
     control={control}
@@ -113,7 +123,7 @@ const TextAreaComponent: React.FC<DynamicFieldProps> = ({
 const RadioBoxComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
-  language = "en",
+  language = "en-US",
 }) => (
   <Controller
     control={control}
@@ -139,10 +149,10 @@ const RadioBoxComponent: React.FC<DynamicFieldProps> = ({
                 >
                   <View
                     className={`w-5 h-5 rounded-full border-2 border-primary justify-center items-center
-                  ${value === option.value ? "bg-red-500" : "bg-white"}`}
+                  ${value === option.value ? "bg-primary" : "bg-white"}`}
                   >
                     {value === option.value && (
-                      <View className="w-3 h-3 rounded-full bg-white" />
+                      <View className="w-3 h-3 rounded-full bg-primary" />
                     )}
                   </View>
                   <Text className="ml-2 text-md">
@@ -167,7 +177,7 @@ const RadioBoxComponent: React.FC<DynamicFieldProps> = ({
 const SelectBoxComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
-  language = "en",
+  language = "en-US",
 }) => (
   <Controller
     control={control}
@@ -225,7 +235,7 @@ const SelectBoxComponent: React.FC<DynamicFieldProps> = ({
 const SwitchComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
-  language = "en",
+  language = "en-US",
 }) => (
   <Controller
     control={control}
@@ -329,7 +339,7 @@ interface AnswerPreviewProps {
 const AnswerPreview: React.FC<AnswerPreviewProps> = ({
   fields,
   formData,
-  language = "en",
+  language = "en-US",
   onBack,
   onSubmit,
 }) => {
@@ -417,16 +427,25 @@ interface DynamicFormProps {
 const DynamicForm: React.FC<DynamicFormProps> = ({
   fields,
   wholeComponent = false,
-  language = "en",
+  language,
 }) => {
   const { control, handleSubmit, getValues, trigger, formState } = useForm({
     mode: "onChange", // This enables real-time validation as fields change
   });
-  const { t } = useTranslation();
+  const { t, i18n: i18nInstance } = useTranslation();
   const [currentPage, setCurrentPage] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   const [formData, setFormData] = useState({});
   const [validationError, setValidationError] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState(language || i18nInstance.language);
+
+  // Update the language when i18n changes
+  useEffect(() => {
+    if (!language) {
+      // Only update if language prop is not explicitly provided
+      setCurrentLanguage(i18nInstance.language);
+    }
+  }, [i18nInstance.language, language]);
 
   // Final form submission
   const onSubmit = (data: any) => {
@@ -524,7 +543,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       <AnswerPreview
         fields={visibleFields}
         formData={formData}
-        language={language}
+        language={currentLanguage}
         onBack={handleBackFromPreview}
         onSubmit={handleSubmit(onSubmit)}
       />
@@ -566,7 +585,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             key={field.key}
             field={field}
             control={control}
-            language={language}
+            language={currentLanguage}
           />
         ))
       ) : (
@@ -574,7 +593,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           key={visibleFields[currentPage].key}
           field={visibleFields[currentPage]}
           control={control}
-          language={language}
+          language={currentLanguage}
         />
       )}
 
