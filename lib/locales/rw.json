@@ -135,5 +135,10 @@
   "Videos": {
     "title": "Video",
     "downloaded": "Byatanzwe"
+  },
+  "PinPage": {
+    "title": "Shyiramo Pin",
+    "description": "Shyiramo Pin yawe",
+    "verify": "Emeza"
   }
 }

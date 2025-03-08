@@ -576,6 +576,11 @@ export interface FormField {
         show: boolean;
         when: string;
     };
+    validate?: {
+        required?: boolean;
+        customMessage?: string;
+    };
+    validateWhenHidden?: boolean;
     dependsOn?: string;
     visibleIf?: string;
 }

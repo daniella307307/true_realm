@@ -96,14 +96,19 @@ const HomeScreen = () => {
           {activeLinks.map((link, index) => (
             <TouchableOpacity
               onPress={() => {
-                router.push(link.route as Href);
+                router.push({
+                  pathname: "/(page-auth)/pin-auth",
+                  params: { next: link.route },
+                });
               }}
-              key={index} 
+              key={index}
               style={{ width: itemWidth }} // Set dynamic width based on screen size and columns
               className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl"
             >
               <>{link.icon}</>
-              <Text className="text-sm font-semibold text-gray-600 px-1 pt-4">{link.title}</Text>
+              <Text className="text-sm font-semibold text-gray-600 px-1 pt-4">
+                {link.title}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>

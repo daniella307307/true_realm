@@ -144,6 +144,11 @@
     "Videos": {
       "title": "Videos",
       "downloaded": "Downloaded"
+    },
+    "PinPage": {
+      "title": "Enter Pin",
+      "description": "Enter your pin to continue",
+      "verify": "Verify"
     }
 }
   
