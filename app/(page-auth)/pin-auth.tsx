@@ -27,8 +27,8 @@ const VerificationCode: React.FC = () => {
     setValue: setCode,
   });
   const { user } = useAuth({});
+  console.log("User. Telephone:", user?.telephone);
 
-  console.log("User:", user.telephone);
 
   const handleCodeSubmit = async () => {
     setLoading(true);
@@ -42,10 +42,8 @@ const VerificationCode: React.FC = () => {
         type: "success",
         text1: "Success",
         text2: "Code verified successfully.",
-      });
-      // if the code is same as the user's telephone number last 4 digits
-      // then redirect to the next page
-      const last4Digits = user.telephone?.slice(-4);
+      }); 
+      const last4Digits = user?.telephone?.slice(-4);
       if (code !== last4Digits) {
         setError("Invalid code. Please enter the last 4 digits of your phone number.");
         throw new Error("Invalid code");
