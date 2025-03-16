@@ -139,7 +139,8 @@
       "post_description": "Post Description",
       "post_description_placeholder": "Enter post description",
       "create_post": "Create Post",
-      "write_comment": "Write a comment"
+      "write_comment": "Write a comment",
+      "search_post": "Search Post"
     },
     "Videos": {
       "title": "Videos",
@@ -147,7 +148,7 @@
     },
     "PinPage": {
       "title": "Enter Pin",
-      "description": "Enter your pin to continue",
+      "description": "Enter the last 4 digits, of your phone number",
       "verify": "Verify"
     }
 }

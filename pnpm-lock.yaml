@@ -203,6 +203,9 @@ importers:
       react-native-toast-message:
         specifier: ^2.2.1
         version: 2.2.1(react-native@0.76.7(@babel/core@7.26.7)(@babel/preset-env@7.26.7(@babel/core@7.26.7))(@types/react@18.3.18)(react@18.3.1))(react@18.3.1)
+      react-native-ui-datepicker:
+        specifier: ^3.0.7
+        version: 3.0.7(react-native@0.76.7(@babel/core@7.26.7)(@babel/preset-env@7.26.7(@babel/core@7.26.7))(@types/react@18.3.18)(react@18.3.1))(react@18.3.1)
       react-native-video:
         specifier: ^6.10.0
         version: 6.10.0(react-native@0.76.7(@babel/core@7.26.7)(@babel/preset-env@7.26.7(@babel/core@7.26.7))(@types/react@18.3.18)(react@18.3.1))(react@18.3.1)
@@ -4197,6 +4200,13 @@ packages:
       react: '*'
       react-native: '*'
 
+  react-native-ui-datepicker@3.0.7:
+    resolution: {integrity: sha512-+p5xGLaKTQU8LQRjNxXR8rA9Fd2L+k+bHk+/Gz/JrnTY9K0hpkN1giWO3GbhGeNs8xPHaSPfm88SK/fAmfcxcw==}
+    engines: {node: '>= 18'}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+
   react-native-video@6.10.0:
     resolution: {integrity: sha512-NyDnpSBRJkj7TxMku2dEys54qKynW/l9kSPCVvayyqXWrc24cxHhLvAaxORdJDb6tS4FhUbR8tFIoOY65/XKZg==}
     peerDependencies:
@@ -4652,6 +4662,9 @@ packages:
 
   tailwind-merge@2.6.0:
     resolution: {integrity: sha512-P+Vu1qXfzediirmHOC3xKGAYeZtPcV9g76X+xg2FD4tYgR71ewMA35Y3sCz3zhiN/dwefRpJX0yBcgwi1fXNQA==}
+
+  tailwind-merge@3.0.2:
+    resolution: {integrity: sha512-l7z+OYZ7mu3DTqrL88RiKrKIqO3NcpEO8V/Od04bNpvk0kiIFndGEoqfuzvj4yuhRkHKjRkII2z+KS2HfPcSxw==}
 
   tailwindcss-animate@1.0.7:
     resolution: {integrity: sha512-bl6mpH3T7I3UFxuvDEXLxy/VuFxBk5bbzplh7tXI68mwMokNYd1t9qPBHlnyTwfa4JGC4zP516I1hYYtQ/vspA==}
@@ -9686,6 +9699,15 @@ snapshots:
       react: 18.3.1
       react-native: 0.76.7(@babel/core@7.26.7)(@babel/preset-env@7.26.7(@babel/core@7.26.7))(@types/react@18.3.18)(react@18.3.1)
 
+  react-native-ui-datepicker@3.0.7(react-native@0.76.7(@babel/core@7.26.7)(@babel/preset-env@7.26.7(@babel/core@7.26.7))(@types/react@18.3.18)(react@18.3.1))(react@18.3.1):
+    dependencies:
+      clsx: 2.1.1
+      dayjs: 1.11.13
+      lodash: 4.17.21
+      react: 18.3.1
+      react-native: 0.76.7(@babel/core@7.26.7)(@babel/preset-env@7.26.7(@babel/core@7.26.7))(@types/react@18.3.18)(react@18.3.1)
+      tailwind-merge: 3.0.2
+
   react-native-video@6.10.0(react-native@0.76.7(@babel/core@7.26.7)(@babel/preset-env@7.26.7(@babel/core@7.26.7))(@types/react@18.3.18)(react@18.3.1))(react@18.3.1):
     dependencies:
       react: 18.3.1
@@ -10171,6 +10193,8 @@ snapshots:
   supports-preserve-symlinks-flag@1.0.0: {}
 
   tailwind-merge@2.6.0: {}
+
+  tailwind-merge@3.0.2: {}
 
   tailwindcss-animate@1.0.7(tailwindcss@3.3.5):
     dependencies:

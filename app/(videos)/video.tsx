@@ -6,6 +6,7 @@ import {
   Alert,
   FlatList,
   Image,
+  RefreshControl,
 } from "react-native";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { router } from "expo-router";
@@ -19,18 +20,18 @@ import { useTranslation } from "react-i18next";
 const VideoScreen = () => {
   const { t } = useTranslation();
   const baseUrl = "https://continuous.sugiramuryango.org.rw/public/videos/";
-  
   const [downloadProgress, setDownloadProgress] = useState<{
     [key: number]: number;
   }>({});
-  const [downloading, setDownloading] = useState<{ [key: number]: boolean }>({});
+  const [downloading, setDownloading] = useState<{ [key: number]: boolean }>(
+    {}
+  );
   const [downloaded, setDownloaded] = useState<{ [key: number]: boolean }>({});
   const [downloadResumables, setDownloadResumables] = useState<{
     [key: number]: FileSystem.DownloadResumable | null;
   }>({});
-  const [currentTab, setCurrentTab] = useState<
-    "All" | "Downloaded"
-  >("All");
+  const [currentTab, setCurrentTab] = useState<"All" | "Downloaded">("All");
+  const [refreshing, setRefreshing] = useState(false);
 
   const videos = [
     {
@@ -90,7 +91,7 @@ const VideoScreen = () => {
 
   const handleDownload = async (video: any) => {
     if (!video.source) {
-      console.log('Video source not found', video);
+      console.log("Video source not found", video);
       Alert.alert("Download Error", "Invalid video URL.");
       return;
     }
@@ -166,10 +167,17 @@ const VideoScreen = () => {
   };
 
   // Filter videos based on the current tab
-  const filteredVideos = currentTab === "All" 
-    ? videos 
-    : videos.filter(video => downloaded[video.id]);
+  const filteredVideos =
+    currentTab === "All"
+      ? videos
+      : videos.filter((video) => downloaded[video.id]);
 
+  // const onRefresh = async () => {
+  //   setRefreshing(true);
+  //   // Check if the videos array has no new items 
+    
+  //   setRefreshing(false);
+  // };
   return (
     <View className="flex-1 p-4 bg-background">
       <View className="flex flex-row justify-between items-center p-2 rounded-full my-4 bg-gray-100">
@@ -255,7 +263,9 @@ const VideoScreen = () => {
                     strokeWidth="2"
                     fill="none"
                     strokeDasharray="65"
-                    strokeDashoffset={(65 - (downloadProgress[item.id] || 0) * 0.65)}
+                    strokeDashoffset={
+                      65 - (downloadProgress[item.id] || 0) * 0.65
+                    }
                   />
                 </Svg>
                 <TouchableOpacity

@@ -511,6 +511,28 @@ export interface User {
     created_at: string;
     updated_at: string;
     last_seen: string | null;
+    located: {
+        province: {
+            id: number;
+            province_name: string;
+        },
+        district: {
+            id: number;
+            district_name: string;
+        },
+        sector: {
+            id: number;
+            sector_name: string;
+        },
+        cell: {
+            id: number;
+            cell_name: string;
+        },
+        village: {
+            id: number;
+            village_name: string;
+        }
+    }
 }
 
 
@@ -583,6 +605,7 @@ export interface FormField {
     validateWhenHidden?: boolean;
     dependsOn?: string;
     visibleIf?: string;
+    minDate?: string;
 }
 export interface IExistingForm {
     id: number;

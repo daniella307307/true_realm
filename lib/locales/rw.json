@@ -130,7 +130,8 @@
     "post_description": "Ibisobanuro by'inkuru",
     "post_description_placeholder": "Andika ibisobanuro by'inkuru",
     "create_post": "Kora Inkuru",
-    "write_comment": "Andika igitekerezo"
+    "write_comment": "Andika igitekerezo",
+    "search_post": "Shakisha igitekerezo"
   },
   "Videos": {
     "title": "Video",
@@ -138,7 +139,7 @@
   },
   "PinPage": {
     "title": "Shyiramo Pin",
-    "description": "Shyiramo Pin yawe",
+    "description": "Shyiramo imibare ine (4), yanyuma ya telephone",
     "verify": "Emeza"
   }
 }

@@ -21,6 +21,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const queryClient = useQueryClient();
   const mainStore = useMainStore();
   const user = useMemo(() => mainStore.user!, [mainStore.user]);
+  // console.log("🚀 file: useAuth.tsx, fn: useAuth, line 15", user);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const isLoggedIn = useMemo(async () => {
@@ -43,6 +44,13 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         // You might want to validate the token here
         setIsLoading(true);
         // Add your token validation logic if needed
+      } 
+      if (!token && user) {
+        mainStore.logout();
+      }
+      if (user?.userstatus === 0) {
+        mainStore.logout();
+        // router.push("/(user-management)/login");
       }
     } catch (error) {
       console.error("Auth status check failed:", error);

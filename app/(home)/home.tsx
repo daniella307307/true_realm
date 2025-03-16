@@ -24,12 +24,11 @@ const HomeScreen = () => {
   // Get the screen width dynamically
   const { width } = useWindowDimensions();
 
-  // Define breakpoints for small and normal-sized phones
-  const isSmallPhone = width < 375; // Adjust this breakpoint as needed
-  const columns = isSmallPhone ? 3 : 2; // 3 columns for small phones, 2 for normal phones
+  // Check if the screen width is less than 375px for list view
+  const isSmallScreen = width < 375;
 
-  // Calculate item width dynamically based on the number of columns
-  const itemWidth = (width - 48) / columns; // Subtracting padding (24 on each side)
+  // Calculate item width for grid view (only used when width >= 375)
+  const itemWidth = (width - 48) / 2; // 2 columns for normal phones with padding
 
   const activeLinks = [
     {
@@ -81,6 +80,53 @@ const HomeScreen = () => {
     },
   ];
 
+  // Render list view for small screens
+  const renderListView = () => (
+    <View className="px-4">
+      {activeLinks.map((link, index) => (
+        <TouchableOpacity
+          onPress={() => {
+            router.push({
+              pathname: "/(page-auth)/pin-auth",
+              params: { next: link.route },
+            });
+          }}
+          key={index}
+          className="flex flex-row items-center bg-[#A23A910D] border border-[#0000001A] mb-3 py-4 px-4 rounded-xl"
+        >
+          <View className="mr-4">{link.icon}</View>
+          <Text className="text-sm font-semibold text-gray-600 flex-1">
+            {link.title}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  // Render grid view for normal screens
+  const renderGridView = () => (
+    <View className="flex-row flex-wrap justify-between px-4">
+      {activeLinks.map((link, index) => (
+        <TouchableOpacity
+          onPress={() => {
+            router.push({
+              pathname: "/(page-auth)/pin-auth",
+              params: { next: link.route },
+            });
+          }}
+          key={index}
+          style={{ width: itemWidth }}
+          className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl"
+        >
+          <>{link.icon}</>
+          <Text className="text-sm font-semibold text-gray-600 px-1 pt-4">
+            {link.title}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView>
@@ -92,26 +138,9 @@ const HomeScreen = () => {
             {t("HomePage.description")}
           </Text>
         </View>
-        <View className="flex-row flex-wrap justify-between px-4">
-          {activeLinks.map((link, index) => (
-            <TouchableOpacity
-              onPress={() => {
-                router.push({
-                  pathname: "/(page-auth)/pin-auth",
-                  params: { next: link.route },
-                });
-              }}
-              key={index}
-              style={{ width: itemWidth }} // Set dynamic width based on screen size and columns
-              className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl"
-            >
-              <>{link.icon}</>
-              <Text className="text-sm font-semibold text-gray-600 px-1 pt-4">
-                {link.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        
+        {/* Conditionally render list or grid view based on screen width */}
+        {isSmallScreen ? renderListView() : renderGridView()}
       </ScrollView>
     </SafeAreaView>
   );

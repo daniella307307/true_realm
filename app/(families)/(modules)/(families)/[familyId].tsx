@@ -133,7 +133,7 @@ const FamilyModuleScreen = () => {
                   {item.module_name}
                 </Text>
               </View>
-              <Text className="py-2 text-xs/1 text-gray-600">
+              <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
                 {item.module_description}
               </Text>
             </TouchableOpacity>

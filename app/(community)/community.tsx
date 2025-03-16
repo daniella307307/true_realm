@@ -20,6 +20,11 @@ import { IPost } from "~/types";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { Button } from "~/components/ui/button";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import CustomInput from "~/components/ui/input";
+import { t } from "i18next";
 
 const CommunityScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -27,6 +32,16 @@ const CommunityScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const { user } = useAuth({});
+  const { control, watch } = useForm({
+    resolver: zodResolver(
+      z.object({
+        searchQuery: z.string(),
+      })
+    ),
+    mode: "onChange",
+  });
+
+  const searchQuery = watch("searchQuery");
 
   const {
     data: posts,
@@ -77,6 +92,15 @@ const CommunityScreen: React.FC = () => {
       </View>
     );
   }
+
+  const filteredPosts = posts?.data
+    .filter((post: IPost) => post.status === 1)
+    .filter((post: IPost) => {
+      if (!searchQuery) return true;
+      return post.title.toLowerCase().includes(searchQuery.toLowerCase())
+      || post.body.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      post.user.name.toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
   const renderPost = ({ item }: { item: IPost }) => {
     const currentUserId = user.id;
@@ -185,8 +209,15 @@ const CommunityScreen: React.FC = () => {
 
   return (
     <View className="flex-1 bg-slate-50">
+      <CustomInput
+        control={control}
+        name="searchQuery"
+        placeholder={t("CommunityPage.search_post")}
+        keyboardType="default"
+        accessibilityLabel={t("CommunityPage.search_post")}
+      />
       <FlatList
-        data={posts?.data?.filter((post: IPost) => post.status === 1) || []}
+        data={filteredPosts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}
         refreshControl={
