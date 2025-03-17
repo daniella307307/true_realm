@@ -108,12 +108,22 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
 
             {showPicker && (
               <View className="mt-2 border rounded-lg border-[#E4E4E7] overflow-hidden">
-                <DateTimePicker
-                  mode={"range"}
-                  date={dateValue}
-                  onChange={({ startDate }) => onDateTimeChange(startDate)}
-                  styles={customStyles}
-                />
+                {field.key.includes("dateOfBirth") || field.key.includes("date_of_birth") ? (
+                  <DateTimePicker
+                    mode="single"
+                    date={dateValue}
+                    onChange={({ date }) => onDateTimeChange(date)}
+                    styles={customStyles}
+                    maxDate={new Date()}
+                  />
+                ) : (
+                  <DateTimePicker
+                    mode="range"
+                    startDate={dateValue}
+                    onChange={({ startDate }) => onDateTimeChange(startDate)}
+                    styles={customStyles}
+                  />
+                )}
               </View>
             )}
 
