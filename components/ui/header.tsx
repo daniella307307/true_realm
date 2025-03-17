@@ -6,6 +6,7 @@ import { router, useNavigation } from "expo-router";
 import { NAV_THEME } from "~/lib/constants";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { DrawerActions } from "@react-navigation/native";
+import { Button } from "react-native-paper";
 
 const HeaderNavigation = ({
   showLeft = true,
@@ -24,24 +25,17 @@ const HeaderNavigation = ({
   return (
     <View className={`flex-row items-center justify-center ${className}`}>
       {showLeft ? (
-        <TouchableOpacity
+        <Button
           onPress={backFunction}
           className="h-16 w-16 rounded-full items-center justify-center"
-        >
-          <ChevronLeft color={themeColor} size={size} />
-        </TouchableOpacity>
+          icon={"chevron-left"}
+          children={undefined}
+        />
       ) : (
-        <TouchableOpacity
-          onPress={handleDrawerOpen}
-          className="h-16 w-16 rounded-full items-center justify-center"
-        >
-          <Feather
-            name="menu"
-            size={size}
-            color={themeColor}
-            style={{ marginRight: 12 }}
-          />
-        </TouchableOpacity>
+        <Button
+            onPress={handleDrawerOpen}
+            className="h-16 w-16 rounded-full items-center justify-center"
+            icon={"menu"} children={undefined}        />
       )}
     </View>
   );

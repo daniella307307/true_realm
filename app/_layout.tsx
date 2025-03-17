@@ -16,7 +16,8 @@ import { enableScreens } from "react-native-screens";
 import { Drawer } from "expo-router/drawer";
 import CustomDrawerContent from "~/components/ui/custom-drawer";
 import { FontSizeProvider } from "~/providers/FontSizeContext";
-import React from 'react';
+import { PaperProvider } from "react-native-paper";
+import React from "react";
 
 enableScreens();
 export default function RootLayout() {
@@ -24,9 +25,11 @@ export default function RootLayout() {
   return (
     <FontSizeProvider>
       <QueryProvider>
-        <SplashScreenProvider>
-          <Layout />
-        </SplashScreenProvider>
+        <PaperProvider>
+          <SplashScreenProvider>
+            <Layout />
+          </SplashScreenProvider>
+        </PaperProvider>
         <Toast config={toastConfig} />
       </QueryProvider>
     </FontSizeProvider>
