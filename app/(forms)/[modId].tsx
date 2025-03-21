@@ -33,9 +33,14 @@ const ProjectFormsScreen = () => {
     queryFn: useGetAllModules,
   });
 
+  console.log("Current Module ID: ", modId);
+  console.log("Modules: ", JSON.stringify(modules, null, 2));
+
   const currentModule = Object.entries(modules?.data || {})
     .flatMap(([_, moduleArray]) => moduleArray)
-    .find((module: IModule) => module.id === parseInt(modId));
+    .find((module: IModule) => module.source_module_id === parseInt(modId));
+  
+  console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
 
   const {
     data: forms,
@@ -82,6 +87,7 @@ const ProjectFormsScreen = () => {
     return form.name.toLowerCase().includes(searchQuery);
   });
 
+  // console.log("Forms: ", JSON.stringify(forms, null, 2));
   return (
     <View className="flex-1 p-4 bg-white">
       <CustomInput

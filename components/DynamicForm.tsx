@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   TextInput,
@@ -22,6 +22,7 @@ import i18n from "i18next";
 import DateTimePickerComponent from "./ui/date-time-picker";
 import IzuCodeSelector from "./ui/code-selector";
 import { useAuth } from "~/lib/hooks/useAuth";
+import { Pencil } from "lucide-react-native";
 
 interface DynamicFieldProps {
   field: FormField;
@@ -38,7 +39,6 @@ const getLocalizedTitle = (
   const language = locale.startsWith("rw") ? "kn" : "en";
   return title[language as keyof typeof title] || title.default;
 };
-
 const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
@@ -52,6 +52,12 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
       required: field.validate?.required
         ? field.validate.customMessage || "This field is required"
         : false,
+      ...(field.type === "phoneNumber" && {
+        pattern: {
+          value: /^\d{10}$/,
+          message: "Phone number must be exactly 10 digits",
+        },
+      }),
     }}
     render={({ field: { onChange, value }, fieldState: { error } }) => (
       <View className="mb-4">
@@ -64,9 +70,27 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
             error ? "border-primary" : "border-[#E4E4E7]"
           } dark:text-white bg-white dark:bg-[#1E1E1E]`}
           value={value}
-          keyboardType={field.type === "number" ? "numeric" : "default"}
-          maxLength={field.type === "number" ? 125 : undefined}
-          onChangeText={onChange}
+          keyboardType={
+            field.type === "phoneNumber" || field.type === "number"
+              ? "numeric"
+              : "default"
+          }
+          maxLength={
+            field.type === "phoneNumber"
+              ? 10
+              : field.type === "number"
+              ? 125
+              : undefined
+          }
+          onChangeText={(text) => {
+            if (field.type === "phoneNumber") {
+              // Only allow digits for phone numbers
+              const numbersOnly = text.replace(/[^0-9]/g, "");
+              onChange(numbersOnly);
+            } else {
+              onChange(text);
+            }
+          }}
         />
         {error && (
           <Text className="text-red-500 mt-2">
@@ -375,8 +399,8 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
     if (user?.located) {
       const locationKey = field.key as keyof typeof user.located;
       setTimeout(() => {
-        control._setValue(field.key, user.located[locationKey], { 
-          shouldValidate: true 
+        control._setValue(field.key, user.located[locationKey], {
+          shouldValidate: true,
         });
       }, 0);
     }
@@ -401,6 +425,15 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
           language={language}
         />
       );
+    case "phoneNumber":
+      return (
+        <TextFieldComponent
+          field={field}
+          type="phoneNumber"
+          control={control}
+          language={language}
+        />
+      );
     case "select":
       return (
         <SelectBoxComponent
@@ -414,6 +447,7 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
         <SwitchComponent field={field} control={control} language={language} />
       );
     case "checkbox":
+    case "selectboxes":
       return (
         <CheckBoxComponent
           field={field}
@@ -452,14 +486,12 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
   }
 };
 
-// Format time in minutes and seconds
 const formatTime = (timeInSeconds: number): string => {
   const minutes = Math.floor(timeInSeconds / 60);
   const seconds = timeInSeconds % 60;
   return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
 };
 
-// Answer Preview Component
 interface AnswerPreviewProps {
   fields: FormField[];
   formData: Record<string, any>;
@@ -467,6 +499,7 @@ interface AnswerPreviewProps {
   onBack: () => void;
   onSubmit: () => void;
   timeSpent: number;
+  onEditField?: (fieldKey: string) => void; // New prop for handling edit action
 }
 
 const AnswerPreview: React.FC<AnswerPreviewProps> = ({
@@ -476,6 +509,7 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
   onBack,
   onSubmit,
   timeSpent,
+  onEditField,
 }) => {
   const { t } = useTranslation();
 
@@ -561,12 +595,27 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
           key={field.key}
           className="mb-6 px-4 py-4 bg-white rounded-lg border border-[#E4E4E7]"
         >
-          <Text className="font-medium text-[#050F2B] mb-2">
-            {getLocalizedTitle(field.title, language)}
-            {field.validate?.required && (
-              <Text className="text-primary"> *</Text>
-            )}
-          </Text>
+          <View className="flex flex-row justify-between items-center mb-2">
+            <Text className="font-medium text-[#050F2B] w-10/12 bg-red-400">
+              {getLocalizedTitle(field.title, language)}
+              {field.validate?.required && (
+                <Text className="text-primary"> *</Text>
+              )}
+            </Text>
+
+            {/* Edit icon button */}
+            <TouchableOpacity
+              onPress={() => onEditField && onEditField(field.key)}
+              className="p-2"
+              accessibilityLabel={`Edit ${getLocalizedTitle(
+                field.title,
+                language
+              )}`}
+            >
+              <Pencil size={18} color="#6366F1" />
+            </TouchableOpacity>
+          </View>
+
           <Text className="text-[#52525B]">
             {getDisplayValue(field, formData[field.key])}
           </Text>
@@ -600,9 +649,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   wholeComponent = false,
   language,
 }) => {
-  const { control, handleSubmit, getValues, trigger, formState } = useForm({
-    mode: "onChange", // This enables real-time validation as fields change
-  });
+  const { control, handleSubmit, getValues, trigger, formState, setValue } =
+    useForm({
+      mode: "onChange", // This enables real-time validation as fields change
+    });
   const { t, i18n: i18nInstance } = useTranslation();
   const [currentPage, setCurrentPage] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
@@ -612,10 +662,42 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     language || i18nInstance.language
   );
 
+  // Add this state to track which field is being edited
+  const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null);
+
   // Timer state
   const [timeSpent, setTimeSpent] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(Date.now());
+
+  // First, define visibleFields
+  const visibleFields = fields.filter((field) => {
+    if (field.visibleIf) {
+      // Add your visibility condition logic here
+      return true;
+    }
+
+    // Do not show fields with key=district, sector, cell, village
+    if (
+      field.key === "district" ||
+      field.key === "sector" ||
+      field.key === "cell" ||
+      field.key === "village"
+    ) {
+      return false;
+    }
+
+    return field.key !== "submit"; // Filter out fields with key='submit'
+  });
+
+  // Then create fieldIndexMap after visibleFields is defined
+  const fieldIndexMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    visibleFields.forEach((field, index) => {
+      map[field.key] = index;
+    });
+    return map;
+  }, [visibleFields]);
 
   // Initialize timer when component mounts
   useEffect(() => {
@@ -731,24 +813,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
   };
 
-  const visibleFields = fields.filter((field) => {
-    if (field.visibleIf) {
-      // Add your visibility condition logic here
-      return true;
-    }
+  // New function to handle editing a specific field
+  const handleEditField = (fieldKey: string) => {
+    setEditingFieldKey(fieldKey);
+    setShowPreview(false);
 
-    // Do not show fields with key=district, sector, cell, village
-    if (
-      field.key === "district" ||
-      field.key === "sector" ||
-      field.key === "cell" ||
-      field.key === "village"
-    ) {
-      return false;
+    // Set the current page to the field's index if not in wholeComponent mode
+    if (!wholeComponent && fieldKey in fieldIndexMap) {
+      setCurrentPage(fieldIndexMap[fieldKey]);
     }
-
-    return field.key !== "submit"; // Filter out fields with key='submit'
-  });
+  };
 
   // If we're showing the preview, render that instead of the form
   if (showPreview) {
@@ -760,6 +834,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         onBack={handleBackFromPreview}
         onSubmit={handleSubmit(onSubmit)}
         timeSpent={timeSpent}
+        onEditField={handleEditField}
       />
     );
   }

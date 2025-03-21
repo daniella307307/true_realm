@@ -51,6 +51,12 @@ const FamilyModuleScreen = () => {
   });
 
   const searchQuery = watch("searchQuery");
+  const riskOfHarmModule = Object.entries(modules?.data || {})
+    .flatMap(([_, moduleArray]) => moduleArray)
+    .find((module: IModule) => module.module_name === "Uncategorized");
+
+  console.log("Risk of Harm Module: ", JSON.stringify(riskOfHarmModule, null, 2));
+
   const filteredModules = Object.entries(modules?.data || {})
     .filter(([key]) => Number(key) === 3)
     .flatMap(([_, moduleArray]) =>
@@ -98,7 +104,7 @@ const FamilyModuleScreen = () => {
           ListEmptyComponent={() => <EmptyDynamicComponent />}
           ListHeaderComponent={() => (
             <TouchableOpacity
-              onPress={() => router.push("/(forms)/form-family")}
+              onPress={() => router.push(`/(forms)/${riskOfHarmModule?.source_module_id}`)}
               className="p-4 border mb-4 border-red-500 rounded-xl"
             >
               <View className="flex-row items-center pr-4 justify-start">
