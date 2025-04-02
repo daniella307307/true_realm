@@ -1,6 +1,10 @@
-import { View, FlatList, Pressable, RefreshControl, TouchableOpacity } from "react-native";
+import {
+  View,
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+} from "react-native";
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,7 +15,7 @@ import { IModule } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import Skeleton from "~/components/ui/skeleton";
-import { useGetAllModules } from "~/services/project";
+import { fetchActiveModulesFromRemote, useGetAllModules } from "~/services/project";
 import { Button } from "~/components/ui/button";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 
@@ -27,14 +31,8 @@ const ProjectModuleScreens = () => {
     );
   }
 
-  const {
-    data: modules,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["modules"],
-    queryFn: useGetAllModules,
-  });
+  const storedModules = useGetAllModules();
+  const isLoading = storedModules.length === 0;
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -46,26 +44,25 @@ const ProjectModuleScreens = () => {
   });
 
   const searchQuery = watch("searchQuery");
-  const filteredModules = Object.entries(modules?.data || {})
-    .filter(([key]) => key === projectId)
-    .flatMap(([_, moduleArray]) =>
-      moduleArray.filter(
-        (module: IModule) =>
-          module.module_status !== 0 &&
-          (!searchQuery ||
-            module.module_name
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()) ||
-            module.module_description
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()))
-      )
-    );
+  const filteredModules = storedModules
+    .filter(
+      (module: IModule) =>
+        module.project_id === Number(projectId) &&
+        module.module_status !== 0 &&
+        (!searchQuery ||
+          module.module_name
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          module.module_description
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()))
+    )
+    .sort((a, b) => a.order_list - b.order_list);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetch();
+    await fetchActiveModulesFromRemote();
     setRefreshing(false);
   };
 
@@ -90,7 +87,9 @@ const ProjectModuleScreens = () => {
           data={filteredModules.sort((a, b) => a.order_list - b.order_list)}
           keyExtractor={(item: IModule, index) => `${item.id}-${index}`}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={() => <EmptyDynamicComponent message="No related modules" />}
+          ListEmptyComponent={() => (
+            <EmptyDynamicComponent message="No related modules" />
+          )}
           ListHeaderComponent={() => (
             <TouchableOpacity
               onPress={() => router.push("/(forms)/form-family")}

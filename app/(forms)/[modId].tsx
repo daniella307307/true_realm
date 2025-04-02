@@ -1,6 +1,5 @@
 import { View, FlatList, TouchableOpacity } from "react-native";
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,55 +12,51 @@ import { Text } from "~/components/ui/text";
 import Skeleton from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
 import { useGetAllModules } from "~/services/project";
-import { useGetFormByProjectAndModule } from "~/services/formElements";
+import {
+  fetchFormByProjectAndModuleFromRemote,
+  useGetFormByProjectAndModule,
+} from "~/services/formElements";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { RefreshControl } from "react-native";
+import { Survey } from "~/models/surveys/survey";
 
 const ProjectFormsScreen = () => {
-  const { modId } = useLocalSearchParams<{ modId: string }>();
-  if (!modId) {
+  const { modId, family_id } = useLocalSearchParams<{
+    modId: string;
+    family_id: string;
+  }>();
+
+  if (!modId || !family_id) {
     return (
       <View>
-        <Text>Missing module id</Text>
+        <Text>Missing module or family id</Text>
         <Button onPress={() => router.replace("/(home)")}>Go to home</Button>
       </View>
     );
   }
 
-  const { data: modules } = useQuery({
-    queryKey: ["modules"],
-    queryFn: useGetAllModules,
-  });
+  const storedModules = useGetAllModules();
 
-  console.log("Current Module ID: ", modId);
-  console.log("Modules: ", JSON.stringify(modules, null, 2));
+  const currentModule = storedModules.find(
+    (module: IModule) => module.id === parseInt(modId)
+  );
+  if (!currentModule) {
+    return (
+      <View>
+        <Text>Module not found</Text>
+        <Button onPress={() => router.replace("/(home)")}>Go to home</Button>
+      </View>
+    );
+  }
 
-  const currentModule = Object.entries(modules?.data || {})
-    .flatMap(([_, moduleArray]) => moduleArray)
-    .find((module: IModule) => module.source_module_id === parseInt(modId));
-  
-  console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
-
-  const {
-    data: forms,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["forms", modId],
-    queryFn: () => {
-      if (!currentModule?.project_id) {
-        throw new Error("Project ID is required");
-      }
-      return useGetFormByProjectAndModule(
-        currentModule.project_id,
-        parseInt(modId)
-      );
-    },
-    enabled: !!currentModule?.project_id,
-  });
-
+  const storedForms = useGetFormByProjectAndModule(
+    currentModule?.project_id,
+    parseInt(modId)
+  );
+  const isLoading = storedForms.length === 0;
   console.log("Module ID: ", modId);
   console.log("Project ID: ", currentModule?.project_id);
+  const project_id = currentModule?.project_id;
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -76,60 +71,66 @@ const ProjectFormsScreen = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetch();
+    await fetchFormByProjectAndModuleFromRemote(
+      currentModule?.project_id,
+      parseInt(modId)
+    );
     setRefreshing(false);
   };
 
   const searchQuery = watch("searchQuery");
 
-  const filteredForms = forms?.data?.filter((form: IExistingForm) => {
+  const filteredForms = storedForms.filter((form: Survey) => {
     if (!searchQuery) return true;
-    return form.name.toLowerCase().includes(searchQuery);
+    return form.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  // console.log("Forms: ", JSON.stringify(forms, null, 2));
   return (
     <View className="flex-1 p-4 bg-white">
       <CustomInput
-      control={control}
-      name="searchQuery"
-      placeholder={t("FormPage.search_form")}
-      keyboardType="default"
-      accessibilityLabel={t("FormPage.search_form")}
+        control={control}
+        name="searchQuery"
+        placeholder={t("FormPage.search_form")}
+        keyboardType="default"
+        accessibilityLabel={t("FormPage.search_form")}
       />
 
       {isLoading ? (
-      <View className="mt-6">
-        {[1, 2, 3].map((item) => (
-        <Skeleton key={item} />
-        ))}
-      </View>
+        <View className="mt-6">
+          {[1, 2, 3].map((item) => (
+            <Skeleton key={item} />
+          ))}
+        </View>
       ) : (
-      <FlatList
-        data={filteredForms}
-        keyExtractor={(item: IExistingForm, index) => `${item.id}-${index}`}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={() => <EmptyDynamicComponent />}
-        renderItem={({ item }: { item: IExistingForm }) => (
-        <TouchableOpacity
-          onPress={() => router.push(`/(form-element)/${item.id}`)}
-          className="p-4 border mb-4 border-gray-200 rounded-xl"
-        >
-          <View className="flex-row items-center pr-4 justify-start">
-          <TabBarIcon
-            name="description"
-            family="MaterialIcons"
-            size={24}
-            color="#71717A"
-          />
-          <Text className="text-lg ml-4 font-semibold">{item.name}</Text>
-          </View>
-        </TouchableOpacity>
-        )}
-        refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      />
+        <FlatList
+          data={filteredForms as IExistingForm[]}
+          keyExtractor={(item: IExistingForm, index) => `${item.id}-${index}`}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={() => <EmptyDynamicComponent />}
+          renderItem={({ item }: { item: IExistingForm }) => (
+            <TouchableOpacity
+              onPress={() =>
+                router.push(
+                  `/(form-element)/${item.id}?project_id=${project_id}&family_id=${family_id}`
+                )
+              }
+              className="p-4 border mb-4 border-gray-200 rounded-xl"
+            >
+              <View className="flex-row items-center pr-4 justify-start">
+                <TabBarIcon
+                  name="description"
+                  family="MaterialIcons"
+                  size={24}
+                  color="#71717A"
+                />
+                <Text className="text-lg ml-4 font-semibold">{item.name}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        />
       )}
     </View>
   );

@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "sugira-mobile",
+    "runtimeVersion": "1.0.0",
     "slug": "sugira-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,7 +12,7 @@
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000"
+      "backgroundColor": "#000000"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -56,9 +57,6 @@
       "eas": {
         "projectId": "85dc724e-c4ef-4a3e-a657-77a82eb5a1bc"
       }
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
     },
     "updates": {
       "url": "https://u.expo.dev/85dc724e-c4ef-4a3e-a657-77a82eb5a1bc"

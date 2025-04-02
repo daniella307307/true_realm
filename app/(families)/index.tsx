@@ -1,68 +1,35 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Href, router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, TouchableOpacity, View } from "react-native";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { useGetFamilies } from "~/services/families";
-import { IFamilies } from "~/types";
 
 const CohortPage = () => {
   const { t } = useTranslation();
+  const families = useGetFamilies();
 
-  const {
-    data: families,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["families"],
-    queryFn: useGetFamilies,
-  });
+  const totalFamilies = families.length;
+  console.log("Total families:", totalFamilies);
 
-  const totalFamilies = families?.families.length || 0;
-
-  // Group families by cohort
-  const familiesByCohort = families?.families.reduce((acc, family) => {
-    if (!acc[parseInt(family.cohort)]) {
-      acc[parseInt(family.cohort)] = [];
+  const familiesByCohort = families.reduce((acc, family) => {
+    const cohortNumber = parseInt(family.cohort);
+    if (!acc[cohortNumber]) {
+      acc[cohortNumber] = families.filtered(`cohort == "${family.cohort}"`);
     }
-    acc[parseInt(family.cohort)].push(family);
     return acc;
-  }, {} as Record<number, IFamilies[]>);
+  }, {} as Record<number, typeof families>);
 
-  const cohortData = Object.entries(familiesByCohort ?? {}).map(
-    ([cohort, families]) => ({
-      cohort: Number(cohort),
-      count: families.length,
-    })
-  );
-
-  if (isLoading) {
-    return (
-      <ScrollView className="bg-white pt-6">
-        <View className="flex-row flex-wrap justify-between px-6">
-          {[...Array(4)].map((_, index) => (
-            <View
-              key={index}
-              className="bg-[#A23A910D] border border-[#0000001A] rounded-xl w-[48%] mb-4 p-6 animate-pulse"
-            >
-              <View className="w-12 h-12 bg-gray-300 rounded-full mb-4" />
-              <View className="h-4 bg-gray-300 rounded w-24 mb-2" />
-              <View className="h-6 bg-gray-300 rounded w-32" />
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    );
-  }
+  const cohortData = Object.entries(familiesByCohort).map(([cohort, fams]) => ({
+    cohort: Number(cohort),
+    count: fams.length,
+  }));
 
   return (
     <ScrollView className="bg-white pt-6">
       <View className="flex-row flex-wrap justify-between px-6">
         <Pressable
-          // When we click on all cohorts we should navigate to the (cohorts)/${all cohorts combined}
-          // page where we can see all the cohorts combined
           onPress={() => router.push("/(cohorts)/all")}
           className="flex flex-col bg-[#A23A910D] border border-[#0000001A] justify-between gap-6 p-6 rounded-xl w-[48%] mb-4"
         >

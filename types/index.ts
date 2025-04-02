@@ -511,7 +511,7 @@ export interface User {
     created_at: string;
     updated_at: string;
     last_seen: string | null;
-    located: {
+    location: {
         province: {
             id: number;
             province_name: string;
@@ -543,12 +543,12 @@ export interface IProject {
     progress: string;
     description: string;
     status: number;
-    beneficiary: string;
-    projectlead: string;
+    beneficiary?: string; // <-- Make it optional
+    projectlead?: string; // <-- Make it optional
     has_modules: number;
-    created_at: string;
-    updated_at: string;
-    project_modules: [];
+    created_at?: string; // <-- Make it optional
+    updated_at?: string; // <-- Make it optional
+    project_modules: string[]; // <-- Use string[] for project_modules
 }
 
 export interface IModule {
@@ -556,15 +556,16 @@ export interface IModule {
     project_id: number;
     module_name: string;
     module_description: string;
-    expected_duration: string;
+    expected_duration?: string;
     module_status: number;
     source_module_id: number;
-    kin: string;
-    kin_title: string;
-    kin_descriptions: string;
+    kin?: string;
+    kin_title?: string;
+    kin_descriptions?: string;
     order_list: number;
-    created_at: string;
-    updated_at: string;
+    project?: string;
+    created_at?: Date;
+    updated_at?: Date;
 }
 
 export interface FormField {
@@ -609,19 +610,27 @@ export interface FormField {
 }
 export interface IExistingForm {
     id: number;
+    parent_id?: number;
     name: string;
-    slug: string;
-    json: string;
+    name_kin?: string;
+    slug?: string | null;
+    json?: string | null;
     json2: string;
+    json2_bkp?: string | null;
     survey_status: number;
-    module_id: number;
+    module_id?: number | null;
     is_primary: number;
-    prev_id: string;
+    table_name?: string;
+    post_data?: string;
+    fetch_data?: string | null;
+    loads?: string | null;
+    prev_id?: string | null;
     created_at: string;
     updated_at: string;
     order_list: number;
     project_module_id: number;
 }
+
 
 export interface IFamilies {
     id: number;
@@ -630,3 +639,36 @@ export interface IFamilies {
     village_name: string;
     cohort: string;
 }
+
+export interface I2BaseFormat<T> {
+    current_page: string;
+    data: {
+        current_page: string;
+        data: T[];
+    };
+}
+
+export interface I3BaseFormat<T> {
+    success: boolean;
+    data: {
+        [key: string]: T[];
+    };
+}
+
+
+export interface IFormSubmissionDetail {
+    id: number;
+    table_name?: string;
+    project_module_id?: number;
+    source_module_id?: number;
+    project_id?: number;
+    post_data?: string;
+    province: number;
+    district: number;
+    sector: number;
+    cell: number;
+    village: number;
+    family: number;
+    izucode: string;
+    userId: number;
+  }

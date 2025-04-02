@@ -1,5 +1,5 @@
 import React from "react";
-import { router, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 

@@ -17,12 +17,15 @@ import {
 import { Button } from "./ui/button";
 import { Text } from "./ui/text";
 import { useTranslation } from "react-i18next";
-import { FormField } from "~/types";
+import { FormField, IFormSubmissionDetail } from "~/types";
 import i18n from "i18next";
 import DateTimePickerComponent from "./ui/date-time-picker";
 import IzuCodeSelector from "./ui/code-selector";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { Pencil } from "lucide-react-native";
+import { Realm } from "@realm/react";
+import { SurveySubmission } from "~/models/surveys/survey-submission";
+import { saveSurveySubmission } from "~/services/survey-submission";
 
 interface DynamicFieldProps {
   field: FormField;
@@ -396,10 +399,10 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
     field.key === "cell" ||
     field.key === "village"
   ) {
-    if (user?.located) {
-      const locationKey = field.key as keyof typeof user.located;
+    if (user?.location) {
+      const locationKey = field.key as keyof typeof user.location;
       setTimeout(() => {
-        control._setValue(field.key, user.located[locationKey], {
+        control._setValue(field.key, user.location[locationKey], {
           shouldValidate: true,
         });
       }, 0);
@@ -596,7 +599,7 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
           className="mb-6 px-4 py-4 bg-white rounded-lg border border-[#E4E4E7]"
         >
           <View className="flex flex-row justify-between items-center mb-2">
-            <Text className="font-medium text-[#050F2B] w-10/12 bg-red-400">
+            <Text className="font-medium text-[#050F2B] w-10/12">
               {getLocalizedTitle(field.title, language)}
               {field.validate?.required && (
                 <Text className="text-primary"> *</Text>
@@ -642,11 +645,13 @@ interface DynamicFormProps {
   fields: FormField[];
   wholeComponent?: boolean;
   language?: string;
+  formStructure: IFormSubmissionDetail;
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
   fields,
   wholeComponent = false,
+  formStructure,
   language,
 }) => {
   const { control, handleSubmit, getValues, trigger, formState, setValue } =
@@ -662,22 +667,17 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     language || i18nInstance.language
   );
 
-  // Add this state to track which field is being edited
   const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null);
 
-  // Timer state
   const [timeSpent, setTimeSpent] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(Date.now());
 
-  // First, define visibleFields
   const visibleFields = fields.filter((field) => {
     if (field.visibleIf) {
-      // Add your visibility condition logic here
       return true;
     }
 
-    // Do not show fields with key=district, sector, cell, village
     if (
       field.key === "district" ||
       field.key === "sector" ||
@@ -690,7 +690,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     return field.key !== "submit"; // Filter out fields with key='submit'
   });
 
-  // Then create fieldIndexMap after visibleFields is defined
   const fieldIndexMap = useMemo(() => {
     const map: Record<string, number> = {};
     visibleFields.forEach((field, index) => {
@@ -699,7 +698,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     return map;
   }, [visibleFields]);
 
-  // Initialize timer when component mounts
   useEffect(() => {
     startTimeRef.current = Date.now();
     timerRef.current = setInterval(() => {
@@ -716,60 +714,79 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     };
   }, []);
 
-  // Update the language when i18n changes
   useEffect(() => {
     if (!language) {
-      // Only update if language prop is not explicitly provided
       setCurrentLanguage(i18nInstance.language);
     }
   }, [i18nInstance.language, language]);
 
-  // Final form submission
-  const onSubmit = (data: any) => {
-    // Add timeSpent to form data
+  const onSubmit = async (data: any) => {
+    const realm = await Realm.open({
+      schema: [SurveySubmission],
+      deleteRealmIfMigrationNeeded: true,
+      schemaVersion: 1,
+    });
+
     const dataWithTime = {
       ...data,
-      timeSpent: timeSpent,
+      table_name: formStructure.table_name,
+      project_module_id: formStructure.project_module_id,
+      source_module_id: formStructure.source_module_id,
+      project_id: formStructure.project_id,
+      survey_id: formStructure.id,
+      post_data: formStructure.post_data,
+      province: formStructure.province,
+      district: formStructure.district,
+      sector: formStructure.sector,
+      cell: formStructure.cell,
+      village: formStructure.village,
+      family: formStructure.family,
+      izucode: formStructure.izucode,
+      userId: formStructure.userId,
+      language: currentLanguage,
       timeSpentFormatted: formatTime(timeSpent),
     };
 
-    console.log("Form Data:", dataWithTime);
-
-    // In preview mode, this is the final submission
     if (showPreview) {
-      // Handle the final form submission
       console.log("Final submission:", dataWithTime);
-      // Add your form submission logic here
-      // For example, send data to your API
+
+      saveSurveySubmission(realm, dataWithTime, visibleFields)
+        .then(() => {
+          console.log("Wow, working!");
+        })
+        .catch((error) => {
+          console.error("Error saving survey submission:", error);
+        });
+      // Reset the form and state
+      setFormData({});
+      setShowPreview(false);
+      setCurrentPage(0);
+      setValidationError(false);
+      setTimeSpent(0);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     } else {
-      // Show preview before final submission
       setFormData(dataWithTime);
       setShowPreview(true);
     }
   };
 
   const validateAndProceed = async () => {
-    // Get the current field's key
     const currentField = visibleFields[currentPage];
-    console.log("Validating field:", currentField.label);
-
-    // Validate just this field
     const isValid = await trigger(currentField.key);
-
     if (isValid) {
       setValidationError(false);
-      // Only increment if we're not already at the last page
       if (currentPage < visibleFields.length - 1) {
         setCurrentPage(currentPage + 1);
       }
     } else {
       setValidationError(true);
-      // Show validation error for 2 seconds
       setTimeout(() => setValidationError(false), 2000);
     }
   };
 
-  // Also update the handleNext function:
   const handleNext = () => {
     if (currentPage < visibleFields.length - 1) {
       validateAndProceed();
@@ -787,9 +804,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     setShowPreview(false);
   };
 
-  // Handle validation before showing preview
   const handlePreview = async () => {
-    // For single-page view, validate the current field
     if (!wholeComponent) {
       const currentField = visibleFields[currentPage];
       const isValid = await trigger(currentField.key);
@@ -813,18 +828,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
   };
 
-  // New function to handle editing a specific field
   const handleEditField = (fieldKey: string) => {
     setEditingFieldKey(fieldKey);
     setShowPreview(false);
 
-    // Set the current page to the field's index if not in wholeComponent mode
     if (!wholeComponent && fieldKey in fieldIndexMap) {
       setCurrentPage(fieldIndexMap[fieldKey]);
     }
   };
 
-  // If we're showing the preview, render that instead of the form
   if (showPreview) {
     return (
       <AnswerPreview
@@ -841,7 +853,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   return (
     <View className="bg-background mt-4">
-      {/* Timer display at the top */}
       <View className="mb-4 p-3 bg-white rounded-lg flex flex-row justify-end items-center">
         <Text className="text-primary font-semibold">
           {formatTime(timeSpent)}

@@ -1,6 +1,5 @@
 import { View, FlatList, TouchableOpacity, RefreshControl } from "react-native";
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,19 +9,14 @@ import { router } from "expo-router";
 import { IProject } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
-import { useGetAllProjects } from "~/services/project";
+import {
+  fetchActiveProjectsFromRemote,
+  useGetAllProjects,
+} from "~/services/project";
 import Skeleton from "~/components/ui/skeleton";
 
 const ProjectScreen = () => {
-  const {
-    data: projects,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["projects"],
-    queryFn: useGetAllProjects,
-  });
-
+  const storedProjects = useGetAllProjects();
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -35,18 +29,17 @@ const ProjectScreen = () => {
 
   const searchQuery = watch("searchQuery");
   const [refreshing, setRefreshing] = useState(false);
-
+  const isLoading = storedProjects.length === 0;
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetch();
+    await fetchActiveProjectsFromRemote();
     setRefreshing(false);
   };
 
-  // Organize projects with Risk Management at the top
   const organizedProjects = useMemo(() => {
-    if (!projects?.data.data) return [];
+    if (!storedProjects) return [];
 
-    const activeProjects = projects.data.data.filter(
+    const activeProjects = storedProjects.filter(
       (project) => project.status === 1
     );
 
@@ -63,11 +56,10 @@ const ProjectScreen = () => {
       return [...riskProjects, ...otherProjects];
     }
 
-    // If there's a search query, filter all projects
     return activeProjects.filter((project) =>
       project.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [projects?.data.data, searchQuery]);
+  }, [storedProjects, searchQuery]);
 
   const renderItem = ({ item, index }: { item: IProject; index: number }) => {
     const isRiskManagement = item.name
@@ -118,6 +110,21 @@ const ProjectScreen = () => {
     );
   };
 
+  const transformedProjects: IProject[] = organizedProjects.map((project) => ({
+    id: project.id,
+    name: project.name,
+    duration: project.duration || "",
+    progress: project.progress || "",
+    description: project.description || "",
+    status: project.status,
+    beneficiary: project.beneficiary || "",
+    projectlead: project.projectlead || "",
+    has_modules: project.has_modules,
+    created_at: project.created_at ? new Date(project.created_at).toDateString() : undefined,
+    updated_at: project.updated_at ? new Date(project.updated_at).toDateString() : undefined,
+    project_modules: Array.from(project.project_modules), // Convert Realm List to array
+  }));
+
   return (
     <View className="flex-1 p-4 bg-white">
       <CustomInput
@@ -136,7 +143,7 @@ const ProjectScreen = () => {
         </>
       ) : (
         <FlatList
-          data={organizedProjects}
+          data={transformedProjects}
           ListHeaderComponent={ListHeader}
           showsVerticalScrollIndicator={false}
           keyExtractor={(item: IProject, index) => `${item.id}-${index}`}

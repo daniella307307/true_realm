@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { FlatList, RefreshControl, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { FlatList, RefreshControl, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -8,8 +8,7 @@ import CustomInput from "~/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useGetFamilies } from "~/services/families";
-import { useQuery } from "@tanstack/react-query";
+import { useGetFamilies, fetchFamiliesFromRemote } from "~/services/families";
 import Skeleton from "~/components/ui/skeleton";
 
 const CohortIndexScreen = () => {
@@ -18,7 +17,7 @@ const CohortIndexScreen = () => {
   const { control, watch } = useForm({
     resolver: zodResolver(
       z.object({
-        searchQuery: z.string(),
+        searchQuery: z.string().optional(),
       })
     ),
     mode: "onChange",
@@ -26,31 +25,31 @@ const CohortIndexScreen = () => {
 
   const searchQuery = watch("searchQuery");
 
-  const {
-    data: families,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["families"],
-    queryFn: useGetFamilies,
-  });
-
-  const filteredFamilies = families?.families
-    .filter((family) => cohortId === "all" || family.cohort === cohortId)
-    .filter((family) => {
-      if (!searchQuery) return true;
-      return family.hh_head_fullname
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-    });
-
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const families = useGetFamilies();
+
+  useEffect(() => {
+    if (families.length > 0) {
+      setIsLoading(false);
+    }
+  }, [families]);
+
+  const filteredFamilies = families
+    .filter((family) => cohortId === "all" || family.cohort === cohortId)
+    .filter((family) =>
+      searchQuery
+        ? family.hh_head_fullname.toLowerCase().includes(searchQuery.toLowerCase())
+        : true
+    );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetch();
+    await fetchFamiliesFromRemote();
     setRefreshing(false);
   };
+
   if (!cohortId) {
     return (
       <View>
@@ -78,6 +77,10 @@ const CohortIndexScreen = () => {
             <Skeleton key={item} />
           ))}
         </View>
+      ) : filteredFamilies.length === 0 ? (
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-gray-600">{t("CohortPage.no_families")}</Text>
+        </View>
       ) : (
         <FlatList
           data={filteredFamilies}
@@ -92,9 +95,7 @@ const CohortIndexScreen = () => {
                 <Text className="text-lg font-semibold">
                   {item.hh_head_fullname}
                 </Text>
-                <Text className="text-sm py-2 text-gray-600">
-                  {item.village_name}
-                </Text>
+                <Text className="text-sm py-2 text-gray-600">{item.village_name}</Text>
               </View>
               <View>
                 <Text className="text-sm py-2 text-gray-600">

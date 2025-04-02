@@ -76,6 +76,13 @@
       "risk_of_harm": "Risk of Harm",
       "risk_of_harm_description": "This module is a high priority for your attention."
     },
+    "IzuCodeSelectionPage": {
+      "title": "Select Izu Code",
+      "description": "Select the Izu code you want to use",
+      "izu_code": "Izu Code",
+      "search_izu_code": "Search Izu Code",
+      "empty_izu_codes": "No Izu codes available"
+    },
     "FormPage": {
       "title": "Forms",
       "form": "Form",

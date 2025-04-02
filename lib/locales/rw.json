@@ -68,6 +68,13 @@
     "risk_of_harm": "Iki cyiciro cyateza ibyago",
     "risk_of_harm_description": "Iki cyiciro kiri mu bintu by'ingenzi bikwiye kwitabwaho."
   },
+  "IzuCodeSelectionPage": {
+    "title": "Hitamo Izu",
+    "description": "Hitamo izu ushaka gukurikirana",
+    "izu_code": "Izu Code",
+    "izu_name": "Izina ry'izu",
+    "search_izu": "Shakisha izu"
+  },
   "FormPage": {
     "title": "Ifishi",
     "form": "Ifishi",

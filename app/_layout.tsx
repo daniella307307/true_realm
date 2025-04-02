@@ -8,6 +8,7 @@ import { Appearance } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SplashScreenProvider } from "~/providers/SplashScreenProvider";
 import "~/utils/i18n";
+import 'react-native-get-random-values';
 import { useEffect } from "react";
 import QueryProvider from "~/providers/QueryProvider";
 import Toast from "react-native-toast-message";
@@ -18,16 +19,27 @@ import CustomDrawerContent from "~/components/ui/custom-drawer";
 import { FontSizeProvider } from "~/providers/FontSizeContext";
 import { PaperProvider } from "react-native-paper";
 import React from "react";
+import { RealmProvider } from "@realm/react";
+import { Families } from "~/models/family/families";
+import * as FileSystem from "expo-file-system";
+import { Module } from "~/models/modules/module";
+import { Project } from "~/models/projects/project";
+import { Survey } from "~/models/surveys/survey";
+import { SurveySubmission } from "~/models/surveys/survey-submission";
 
 enableScreens();
 export default function RootLayout() {
+  const realmPath = `${FileSystem.documentDirectory}/sugiramuryango-offline-db.realm`;
+
   Appearance.setColorScheme("light");
   return (
     <FontSizeProvider>
       <QueryProvider>
         <PaperProvider>
           <SplashScreenProvider>
-            <Layout />
+            <RealmProvider schema={[Families, Module, Project, Survey, SurveySubmission]} path={realmPath}>
+              <Layout />
+            </RealmProvider>
           </SplashScreenProvider>
         </PaperProvider>
         <Toast config={toastConfig} />
