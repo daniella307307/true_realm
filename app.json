@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "sugira-mobile",
+    "name": "sugira muryango",
     "runtimeVersion": "1.0.0",
     "slug": "sugira-mobile",
     "version": "1.0.0",
@@ -12,7 +12,7 @@
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
       "**/*"
