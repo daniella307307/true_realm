@@ -152,7 +152,12 @@ const SubmissionListByModuleScreen = () => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={() => <EmptyDynamicComponent />}
         renderItem={({ item }: { item: any }) => (
-          <TouchableOpacity className="p-4 border mb-4 border-gray-200 rounded-xl">
+          <TouchableOpacity
+            onPress={() =>
+              router.push(`/(sub-detail)/${item._id}`)
+            }
+            className="p-4 border mb-4 border-gray-200 rounded-xl"
+          >
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-lg font-semibold">{item.table_name}</Text>
               <View

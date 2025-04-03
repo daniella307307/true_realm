@@ -79,7 +79,8 @@
       "all": "All",
       "synced": "Synced",
       "pending": "Pending",
-      "search_form": "Search Form"
+      "search_form": "Search Form",
+      "submission_detail": "Submission Detail"
     },
     "CohortPage": {
       "title": "Cohorts",

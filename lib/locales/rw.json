@@ -121,7 +121,8 @@
     "pending": "Ibitaragenda",
     "submissions": "Ibyabaruwe",
     "lastSubmission": "Itariki y'ubarura",
-    "search_form": "Shakisha amafishi"
+    "search_form": "Shakisha amafishi",
+    "submission_detail": "Ibyabaruwe"
   },
   "IzuMonitoringPage": {
     "title": "Genzura IZU",

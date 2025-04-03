@@ -59,6 +59,11 @@ export type IResponse<T> = {
     timestamp: string;
 };
 
+export interface I4BaseFormat<T> {
+    status: boolean;
+    data: T;
+}
+
 export interface IDeviceInfo {
     userAgent: string;
     location: {

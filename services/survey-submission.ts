@@ -162,7 +162,6 @@ export const syncPendingSubmissions = async () => {
 
 export const useGetAllSurveySubmissions = () => {
   const surveySubmissions = useQuery(SurveySubmission);
-  console.log("Survey Submissions: ", surveySubmissions);
   return {
     surveySubmissions: surveySubmissions.map((submission) => ({
       ...submission,

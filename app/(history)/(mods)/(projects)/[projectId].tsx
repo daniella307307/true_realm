@@ -76,7 +76,6 @@ const ProjectModuleScreens = () => {
       .sort((a, b) => a.order_list - b.order_list);
   }, [storedModules.modules, surveySubmissions, projectId, searchQuery]);
 
-  console.log("Filtered Modules: ", filteredModules);
 
   const onRefresh = async () => {
     setRefreshing(true);

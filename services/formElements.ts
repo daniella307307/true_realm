@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Survey } from "~/models/surveys/survey";
-import { IExistingForm } from "~/types";
+import { I4BaseFormat, IExistingForm } from "~/types";
 import { baseInstance } from "~/utils/axios";
 import { useNetworkStatus } from "./network";
 import { RealmContext } from "~/providers/RealContextProvider";
 
-interface I4BaseFormat<T> {
-    status: boolean;
-    data: T;
-}
+
 
 const { useRealm, useQuery } = RealmContext;
 

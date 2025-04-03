@@ -12,10 +12,10 @@ const FormElementLayout = () => {
       }}
     >
       <Stack.Screen
-        name="[formId]"
+        name="[submissionId]"
         options={{
           headerShown: true,
-          title: t("FormElementPage.title"),
+          title: t("History.submission_detail"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
