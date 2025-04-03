@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { View, TouchableOpacity, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { router, useNavigation } from "expo-router";
+import { router, useNavigation, useRouter } from "expo-router";
 import { NAV_THEME } from "~/lib/constants";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { DrawerActions } from "@react-navigation/native";
@@ -13,6 +13,7 @@ const HeaderNavigation = ({
   className = "",
 }) => {
   const navigation = useNavigation();
+  const router = useRouter();
   const { colorScheme } = useColorScheme();
   const themeColor = NAV_THEME[colorScheme]?.primary ?? "#A23A91";
 
@@ -20,28 +21,34 @@ const HeaderNavigation = ({
   const handleBackPress = useCallback(() => {
     try {
       console.log("Back button pressed");
-      backFunction()
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        // If we can't go back, try the router
+        try {
+          backFunction();
+        } catch (error) {
+          console.error("Error in back function:", error);
+          // Last resort: try to navigate to a safe screen
+          router.replace("/");
+        }
+      }
     } catch (error) {
       console.error("Error in back button handler:", error);
-      // Fallback
-      try {
-        router.back();
-      } catch (fallbackError) {
-        console.error("Fallback navigation failed:", fallbackError);
-      }
+      // Fallback to home screen
+      router.replace("/");
     }
-  }, []);
+  }, [navigation, backFunction, router]);
 
   // More robust handling of drawer open
   const handleDrawerOpen = useCallback(() => {
     try {
-      Alert.alert("Menu button pressed");
       console.log("Opening drawer");
       navigation.dispatch(DrawerActions.openDrawer());
     } catch (error) {
       console.error("Error opening drawer:", error);
     }
-  }, [navigation]);
+  }, [navigation, router]);
 
   return (
     <View className={`flex-row items-center justify-center ${className}`}>

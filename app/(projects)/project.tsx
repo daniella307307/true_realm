@@ -29,7 +29,7 @@ const ProjectScreen = () => {
 
   const searchQuery = watch("searchQuery");
   const [refreshing, setRefreshing] = useState(false);
-  const isLoading = storedProjects.length === 0;
+  const isLoading = storedProjects.projects.length === 0;
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchActiveProjectsFromRemote();
@@ -39,7 +39,7 @@ const ProjectScreen = () => {
   const organizedProjects = useMemo(() => {
     if (!storedProjects) return [];
 
-    const activeProjects = storedProjects.filter(
+    const activeProjects = storedProjects.projects.filter(
       (project) => project.status === 1
     );
 

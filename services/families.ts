@@ -1,53 +1,78 @@
-import { useEffect } from "react";
-import { useRealm, useQuery as useRealmQuery } from "@realm/react";
+import { useCallback, useEffect, useState } from "react";
+import { Realm } from "@realm/react";
 import { IFamilies } from "~/types";
 import { baseInstance } from "~/utils/axios";
 import { Families } from "~/models/family/families";
+import { useNetworkStore } from "~/services/network";
+import { RealmContext } from "~/providers/RealContextProvider";
+const { useRealm, useQuery } = RealmContext;
 
 export async function fetchFamiliesFromRemote() {
     const res = await baseInstance.get<{ families: IFamilies[] }>("/families");
     return res.data.families;
 }
+
 export function useGetFamilies() {
     const realm = useRealm();
-    const storedFamilies = useRealmQuery(Families);
+    const storedFamilies = useQuery(Families);
+    const isConnected = useNetworkStore((state) => state.isConnected);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
+    const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-    console.log("Realm path:", realm.path);
+    const syncFamilies = useCallback(async () => {
+        if (!isConnected) {
+            console.log("Offline mode: Using local families data");
+            return;
+        }
 
-    useEffect(() => {
-        async function fetchAndStoreFamilies() {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            console.log("Fetching families from remote");
             const apiFamilies = await fetchFamiliesFromRemote();
+            
+            if (!realm || realm.isClosed) {
+                console.warn("Skipping Realm write: Realm is closed");
+                setError(new Error("Realm is closed"));
+                return;
+            }
 
             realm.write(() => {
-                const existingFamilies = storedFamilies.map(fam => fam.id);
-                const newFamilies = apiFamilies.filter(fam => !existingFamilies.includes(fam.id));
-
-                // Only add new families if they don't exist in Realm
-                if (newFamilies.length > 0) {
-                    newFamilies.forEach(fam => {
+                apiFamilies.forEach(fam => {
+                    try {
                         realm.create(Families, {
                             ...fam,
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString(),
                         }, Realm.UpdateMode.Modified);
-                    });
-                } else {
-                    // For families already stored, ensure the updated_at field is updated
-                    storedFamilies.forEach(fam => {
-                        const updatedFamily = apiFamilies.find(apiFam => apiFam.id === fam.id);
-                        if (updatedFamily) {
-                            fam.updated_at = new Date().toISOString();
-                            realm.create(Families, fam, Realm.UpdateMode.Modified);
-                        }
-                    });
-                }
+                    } catch (error) {
+                        console.error("Error creating/updating family:", error);
+                    }
+                });
             });
-        }
 
-        if (storedFamilies.length === 0) {
-            fetchAndStoreFamilies();
+            setLastSyncTime(new Date());
+        } catch (error) {
+            console.error("Error fetching families:", error);
+            setError(error instanceof Error ? error : new Error(String(error)));
+        } finally {
+            setIsLoading(false);
         }
-    }, [storedFamilies]);
+    }, [isConnected, realm]);
 
-    return storedFamilies;
+    useEffect(() => {
+        if (isConnected) {
+            syncFamilies();
+        }
+    }, [isConnected, syncFamilies]);
+
+    return {
+        data: storedFamilies,
+        isLoading,
+        error,
+        lastSyncTime,
+        refresh: syncFamilies
+    };
 }

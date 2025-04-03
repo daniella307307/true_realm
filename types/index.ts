@@ -615,7 +615,7 @@ export interface IExistingForm {
     name_kin?: string;
     slug?: string | null;
     json?: string | null;
-    json2: string;
+    json2: string | any;
     json2_bkp?: string | null;
     survey_status: number;
     module_id?: number | null;
@@ -663,12 +663,5 @@ export interface IFormSubmissionDetail {
     source_module_id?: number;
     project_id?: number;
     post_data?: string;
-    province: number;
-    district: number;
-    sector: number;
-    cell: number;
-    village: number;
-    family: number;
-    izucode: string;
     userId: number;
   }

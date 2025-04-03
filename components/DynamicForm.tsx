@@ -5,27 +5,26 @@ import {
   Switch,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { Controller, useForm } from "react-hook-form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import Dropdown from "./ui/select";
 import { Button } from "./ui/button";
 import { Text } from "./ui/text";
 import { useTranslation } from "react-i18next";
 import { FormField, IFormSubmissionDetail } from "~/types";
-import i18n from "i18next";
 import DateTimePickerComponent from "./ui/date-time-picker";
-import IzuCodeSelector from "./ui/code-selector";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { Pencil } from "lucide-react-native";
-import { Realm } from "@realm/react";
 import { SurveySubmission } from "~/models/surveys/survey-submission";
+import { baseInstance } from "~/utils/axios";
+import i18n from "~/utils/i18n";
+import { FlowState } from "./FormFlowManager";
 import { saveSurveySubmission } from "~/services/survey-submission";
+import { router } from "expo-router";
+import { RealmContext } from "~/providers/RealContextProvider";
+
+const { useRealm, useQuery } = RealmContext;
 
 interface DynamicFieldProps {
   field: FormField;
@@ -34,9 +33,9 @@ interface DynamicFieldProps {
   type?: string;
 }
 
-const getLocalizedTitle = (
+export const getLocalizedTitle = (
   title: { en: string; kn: string; default: string },
-  locale = "en-US"
+  locale = i18n.language
 ): string => {
   // Convert locale to the language code used in your title object
   const language = locale.startsWith("rw") ? "kn" : "en";
@@ -46,7 +45,6 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
   language = "en-US",
-  type = "text",
 }) => (
   <Controller
     control={control}
@@ -216,35 +214,16 @@ const SelectBoxComponent: React.FC<DynamicFieldProps> = ({
           {getLocalizedTitle(field.title, language)}
           {field.validate?.required && <Text className="text-primary"> *</Text>}
         </Text>
-        <Select
-          value={value}
-          onValueChange={onChange}
-          className="w-full h-14 rounded-lg"
-        >
-          <SelectTrigger
-            className={`w-full h-full outline-none border ${
-              error ? "border-primary" : "border-[#E4E4E7]"
-            } bg-white`}
-          >
-            <SelectValue
-              className="text-[#18181B] text-md"
-              placeholder="Select an option"
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {field?.data?.values?.map((option, index) => (
-              <SelectItem
-                key={option.value + index}
-                value={option.value}
-                label={
-                  typeof option.label === "object"
-                    ? getLocalizedTitle(option.label, language)
-                    : option.label || ""
-                }
-              />
-            ))}
-          </SelectContent>
-        </Select>
+        <Dropdown
+          data={
+            field?.data?.values?.map((option) => ({
+              value: option.value,
+              label: option.label,
+            })) || []
+          }
+          onChange={(item) => onChange(item.value)}
+          placeholder="Select an option"
+        />
         {error && (
           <Text className="text-red-500 mt-2">
             {error.message || "This field is required"}
@@ -387,12 +366,6 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
 
   if (!shouldShowField()) return null;
 
-  if (field.key === "izucode" || field.key === "izu_id") {
-    return (
-      <IzuCodeSelector field={field} control={control} language={language} />
-    );
-  }
-
   if (
     field.key === "district" ||
     field.key === "sector" ||
@@ -495,6 +468,7 @@ const formatTime = (timeInSeconds: number): string => {
   return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
 };
 
+
 interface AnswerPreviewProps {
   fields: FormField[];
   formData: Record<string, any>;
@@ -502,7 +476,8 @@ interface AnswerPreviewProps {
   onBack: () => void;
   onSubmit: () => void;
   timeSpent: number;
-  onEditField?: (fieldKey: string) => void; // New prop for handling edit action
+  onEditField?: (fieldKey: string) => void;
+  flowState: FlowState;
 }
 
 const AnswerPreview: React.FC<AnswerPreviewProps> = ({
@@ -513,11 +488,44 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
   onSubmit,
   timeSpent,
   onEditField,
+  flowState,
 }) => {
   const { t } = useTranslation();
+  const [isSubmitting, setIsSubmitting] = useState(false); // Add loading state
 
   const getDisplayValue = (field: any, value: any) => {
+    // Your existing getDisplayValue function
     if (value === undefined || value === null) return "-";
+
+    // Handle flow state values
+    if (field.key === "izucode" || field.key === "izu_id") {
+      return flowState?.selectedValues?.izus?.user_code || "-";
+    }
+    if (field.key === "cohort") {
+      return flowState?.selectedValues?.cohorts?.cohort || "-";
+    }
+    if (field.key === "family") {
+      return flowState?.selectedValues?.families?.hh_id || "-";
+    }
+    if (field.key === "province") {
+      return (
+        flowState?.selectedValues?.locations?.province?.province_name || "-"
+      );
+    }
+    if (field.key === "district") {
+      return (
+        flowState?.selectedValues?.locations?.district?.district_name || "-"
+      );
+    }
+    if (field.key === "sector") {
+      return flowState?.selectedValues?.locations?.sector?.sector_name || "-";
+    }
+    if (field.key === "cell") {
+      return flowState?.selectedValues?.locations?.cell?.cell_name || "-";
+    }
+    if (field.key === "village") {
+      return flowState?.selectedValues?.locations?.village?.village_name || "-";
+    }
 
     switch (field.type) {
       case "switch":
@@ -580,6 +588,13 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
     }
   };
 
+  // Handle submission with loading state
+  const handleSubmit = () => {
+    if (isSubmitting) return; // Prevent multiple submissions
+    setIsSubmitting(true);
+    onSubmit();
+  };
+
   return (
     <ScrollView className="bg-background mt-4">
       <Text className="text-center text-xl font-bold mb-6 text-[#050F2B]">
@@ -593,6 +608,104 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
         <Text className="text-[#52525B]">{formatTime(timeSpent)}</Text>
       </View>
 
+      {/* Flow State Values */}
+      {flowState?.selectedValues && (
+        <View className="mb-6 px-4 py-4 bg-white rounded-lg border border-[#E4E4E7]">
+          <Text className="font-medium text-[#050F2B] mb-4">
+            {t("FormElementPage.flowStateValues", "Core Values")}
+          </Text>
+
+          {/* IZU */}
+          {flowState.selectedValues.izus?.user_code && (
+            <View className="mb-4">
+              <View className="flex flex-row justify-between items-center mb-2">
+                <Text className="font-medium text-[#050F2B]">
+                  {t("FormElementPage.izu", "IZU")}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => onEditField && onEditField("izucode")}
+                  className="p-2"
+                >
+                  <Pencil size={18} color="#6366F1" />
+                </TouchableOpacity>
+              </View>
+              <Text className="text-[#52525B]">
+                {flowState.selectedValues.izus.user_code}
+              </Text>
+            </View>
+          )}
+
+          {/* Cohort */}
+          {flowState.selectedValues.cohorts?.cohort && (
+            <View className="mb-4">
+              <View className="flex flex-row justify-between items-center mb-2">
+                <Text className="font-medium text-[#050F2B]">
+                  {t("FormElementPage.cohort", "Cohort")}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => onEditField && onEditField("cohorts")}
+                  className="p-2"
+                >
+                  <Pencil size={18} color="#6366F1" />
+                </TouchableOpacity>
+              </View>
+              <Text className="text-[#52525B]">
+                {flowState.selectedValues.cohorts.cohort}
+              </Text>
+            </View>
+          )}
+
+          {/* Family */}
+          {flowState.selectedValues.families?.hh_id && (
+            <View className="mb-4">
+              <View className="flex flex-row justify-between items-center mb-2">
+                <Text className="font-medium text-[#050F2B]">
+                  {t("FormElementPage.family", "Family")}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => onEditField && onEditField("family")}
+                  className="p-2"
+                >
+                  <Pencil size={18} color="#6366F1" />
+                </TouchableOpacity>
+              </View>
+              <Text className="text-[#52525B]">
+                {flowState.selectedValues.families.hh_id}
+              </Text>
+            </View>
+          )}
+
+          {/* Location */}
+          {flowState.selectedValues.locations?.province && (
+            <View className="mb-4">
+              <View className="flex flex-row justify-between items-center mb-2">
+                <Text className="font-medium text-[#050F2B]">
+                  {t("FormElementPage.location", "Location")}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => onEditField && onEditField("province")}
+                  className="p-2"
+                >
+                  <Pencil size={18} color="#6366F1" />
+                </TouchableOpacity>
+              </View>
+              <Text className="text-[#52525B]">
+                {[
+                  flowState.selectedValues.locations.province?.province_name,
+                  flowState.selectedValues.locations.district?.district_name,
+                  flowState.selectedValues.locations.sector?.sector_name,
+                  flowState.selectedValues.locations.cell?.cell_name,
+                  flowState.selectedValues.locations.village?.village_name,
+                ]
+                  .filter(Boolean)
+                  .join(" > ")}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Form Fields */}
       {fields.map((field) => (
         <View
           key={field.key}
@@ -606,7 +719,6 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
               )}
             </Text>
 
-            {/* Edit icon button */}
             <TouchableOpacity
               onPress={() => onEditField && onEditField(field.key)}
               className="p-2"
@@ -626,14 +738,24 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
       ))}
 
       <View className="flex flex-row justify-between mt-6 mb-10">
-        <Button onPress={onBack} className="bg-gray-500">
+        <Button 
+          onPress={onBack} 
+          className="bg-gray-500"
+          disabled={isSubmitting}
+        >
           <Text className="text-white font-semibold">
             {t("FormElementPage.back", "Back")}
           </Text>
         </Button>
-        <Button onPress={onSubmit}>
+        <Button 
+          onPress={handleSubmit} 
+          disabled={isSubmitting}
+          className={isSubmitting ? "opacity-70" : ""}
+        >
           <Text className="text-white dark:text-black font-semibold">
-            {t("FormElementPage.finalSubmit", "Submit")}
+            {isSubmitting 
+              ? t("FormElementPage.submitting", "Submitting...") 
+              : t("FormElementPage.finalSubmit", "Submit")}
           </Text>
         </Button>
       </View>
@@ -645,14 +767,20 @@ interface DynamicFormProps {
   fields: FormField[];
   wholeComponent?: boolean;
   language?: string;
-  formStructure: IFormSubmissionDetail;
+  flowState: FlowState;
+  formSubmissionMandatoryFields: IFormSubmissionDetail;
+  timeSpent: number;
+  onEditFlowState: (step: string) => void;
 }
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
   fields,
   wholeComponent = false,
-  formStructure,
+  flowState,
+  formSubmissionMandatoryFields,
   language,
+  timeSpent,
+  onEditFlowState,
 }) => {
   const { control, handleSubmit, getValues, trigger, formState, setValue } =
     useForm({
@@ -666,16 +794,18 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [currentLanguage, setCurrentLanguage] = useState(
     language || i18nInstance.language
   );
-
+  const [submitting, setSubmitting] = useState(false);
   const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null);
-
-  const [timeSpent, setTimeSpent] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const startTimeRef = useRef<number>(Date.now());
+  const realm = useRealm(); // Move useRealm to component level
 
   const visibleFields = fields.filter((field) => {
     if (field.visibleIf) {
       return true;
+    }
+
+    // Hide izucode fields since we handle them in flow state
+    if (field.key === "izucode" || field.key === "izu_id") {
+      return false;
     }
 
     if (
@@ -699,76 +829,76 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   }, [visibleFields]);
 
   useEffect(() => {
-    startTimeRef.current = Date.now();
-    timerRef.current = setInterval(() => {
-      const elapsedSeconds = Math.floor(
-        (Date.now() - startTimeRef.current) / 1000
-      );
-      setTimeSpent(elapsedSeconds);
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     if (!language) {
       setCurrentLanguage(i18nInstance.language);
     }
   }, [i18nInstance.language, language]);
 
   const onSubmit = async (data: any) => {
-    const realm = await Realm.open({
-      schema: [SurveySubmission],
-      deleteRealmIfMigrationNeeded: true,
-      schemaVersion: 1,
-    });
-
-    const dataWithTime = {
-      ...data,
-      table_name: formStructure.table_name,
-      project_module_id: formStructure.project_module_id,
-      source_module_id: formStructure.source_module_id,
-      project_id: formStructure.project_id,
-      survey_id: formStructure.id,
-      post_data: formStructure.post_data,
-      province: formStructure.province,
-      district: formStructure.district,
-      sector: formStructure.sector,
-      cell: formStructure.cell,
-      village: formStructure.village,
-      family: formStructure.family,
-      izucode: formStructure.izucode,
-      userId: formStructure.userId,
-      language: currentLanguage,
-      timeSpentFormatted: formatTime(timeSpent),
-    };
-
+    if (submitting) return; // Prevent multiple submissions
+    
+    // Only process final submission when actually submitting (not when previewing)
     if (showPreview) {
-      console.log("Final submission:", dataWithTime);
+      setSubmitting(true);
+      
+      try {
+        console.log("Final submission:", data);
 
-      saveSurveySubmission(realm, dataWithTime, visibleFields)
-        .then(() => {
-          console.log("Wow, working!");
-        })
-        .catch((error) => {
-          console.error("Error saving survey submission:", error);
-        });
-      // Reset the form and state
-      setFormData({});
-      setShowPreview(false);
-      setCurrentPage(0);
-      setValidationError(false);
-      setTimeSpent(0);
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+        const dataWithTime = {
+          ...data,
+          table_name: formSubmissionMandatoryFields.table_name,
+          project_module_id: formSubmissionMandatoryFields.project_module_id,
+          source_module_id: formSubmissionMandatoryFields.source_module_id,
+          project_id: formSubmissionMandatoryFields.project_id,
+          survey_id: formSubmissionMandatoryFields.id,
+          post_data: formSubmissionMandatoryFields.post_data,
+          userId: formSubmissionMandatoryFields.userId,
+          province:
+            Number(flowState?.selectedValues?.locations?.province?.id) ?? null,
+          district:
+            Number(flowState?.selectedValues?.locations?.district?.id) ?? null,
+          sector:
+            Number(flowState?.selectedValues?.locations?.sector?.id) ?? null,
+          cell: Number(flowState?.selectedValues?.locations?.cell?.id) ?? null,
+          village:
+            Number(flowState?.selectedValues?.locations?.village?.id) ?? null,
+          family: flowState?.selectedValues?.families?.hh_id ?? null,
+          izucode: flowState?.selectedValues?.izus?.user_code ?? null,
+          cohort: Number(flowState?.selectedValues?.cohorts?.id) ?? null,
+          language: currentLanguage,
+          timeSpentFormatted: formatTime(timeSpent),
+        };
+
+        dataWithTime.post_data = "/sendVisitData";
+        console.log("API URL:", dataWithTime.post_data);
+        
+        // Use a more robust error handling approach
+        const result = await saveSurveySubmission(realm, dataWithTime, fields);
+        console.log("Save result:", result);
+
+        // Show success alert and navigate
+        Alert.alert(
+          "Submission Successful",
+          "Your form has been submitted successfully.",
+          [
+            { 
+              text: "OK", 
+              onPress: () => router.push("/(history)/history") 
+            }
+          ]
+        );
+      } catch (error) {
+        console.error("Error saving survey submission:", error);
+        // Show error message to user
+        Alert.alert(
+          "Submission Error",
+          "There was an error submitting your form. Please try again.",
+          [{ text: "OK", onPress: () => setSubmitting(false) }]
+        );
       }
     } else {
-      setFormData(dataWithTime);
+      // This is the key change - set form data and show preview
+      setFormData(data);
       setShowPreview(true);
     }
   };
@@ -803,28 +933,26 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const handleBackFromPreview = () => {
     setShowPreview(false);
   };
-
+  
   const handlePreview = async () => {
+    let isValid = false;
+
     if (!wholeComponent) {
       const currentField = visibleFields[currentPage];
-      const isValid = await trigger(currentField.key);
-
-      if (isValid) {
-        handleSubmit(onSubmit)();
-      } else {
-        setValidationError(true);
-        setTimeout(() => setValidationError(false), 2000);
-      }
+      isValid = await trigger(currentField.key);
+      console.log("isValid", isValid);
     } else {
-      // For whole component view, validate all fields
-      const isValid = await trigger();
+      isValid = await trigger();
+    }
 
-      if (isValid) {
-        handleSubmit(onSubmit)();
-      } else {
-        setValidationError(true);
-        setTimeout(() => setValidationError(false), 2000);
-      }
+    if (isValid) {
+      // Get the current form values
+      const values = getValues();
+      setFormData(values);
+      setShowPreview(true);
+    } else {
+      setValidationError(true);
+      setTimeout(() => setValidationError(false), 2000);
     }
   };
 
@@ -832,7 +960,18 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     setEditingFieldKey(fieldKey);
     setShowPreview(false);
 
-    if (!wholeComponent && fieldKey in fieldIndexMap) {
+    // Handle flow state fields
+    if (fieldKey === "izucode" || fieldKey === "izu_id") {
+      onEditFlowState("izus");
+    } else if (fieldKey === "cohort") {
+      onEditFlowState("cohorts");
+    } else if (fieldKey === "family") {
+      onEditFlowState("families");
+    } else if (
+      ["province", "district", "sector", "cell", "village"].includes(fieldKey)
+    ) {
+      onEditFlowState("locations");
+    } else if (!wholeComponent && fieldKey in fieldIndexMap) {
       setCurrentPage(fieldIndexMap[fieldKey]);
     }
   };
@@ -847,6 +986,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         onSubmit={handleSubmit(onSubmit)}
         timeSpent={timeSpent}
         onEditField={handleEditField}
+        flowState={flowState}
       />
     );
   }

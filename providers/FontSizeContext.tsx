@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState } from "react";
+import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
 type FontSizeContextType = {
   fontSize: number;
   setFontSize: (size: number) => void;

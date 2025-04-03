@@ -21,12 +21,11 @@ import { RefreshControl } from "react-native";
 import { Survey } from "~/models/surveys/survey";
 
 const ProjectFormsScreen = () => {
-  const { modId, family_id } = useLocalSearchParams<{
+  const { modId } = useLocalSearchParams<{
     modId: string;
-    family_id: string;
   }>();
 
-  if (!modId || !family_id) {
+  if (!modId) {
     return (
       <View>
         <Text>Missing module or family id</Text>
@@ -37,7 +36,7 @@ const ProjectFormsScreen = () => {
 
   const storedModules = useGetAllModules();
 
-  const currentModule = storedModules.find(
+  const currentModule = storedModules.modules.find(
     (module: IModule) => module.id === parseInt(modId)
   );
   if (!currentModule) {
@@ -53,7 +52,7 @@ const ProjectFormsScreen = () => {
     currentModule?.project_id,
     parseInt(modId)
   );
-  const isLoading = storedForms.length === 0;
+  const isLoading = storedForms.storedForms.length === 0;
   console.log("Module ID: ", modId);
   console.log("Project ID: ", currentModule?.project_id);
   const project_id = currentModule?.project_id;
@@ -80,7 +79,7 @@ const ProjectFormsScreen = () => {
 
   const searchQuery = watch("searchQuery");
 
-  const filteredForms = storedForms.filter((form: Survey) => {
+  const filteredForms = storedForms.storedForms.filter((form: Survey) => {
     if (!searchQuery) return true;
     return form.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -111,7 +110,7 @@ const ProjectFormsScreen = () => {
             <TouchableOpacity
               onPress={() =>
                 router.push(
-                  `/(form-element)/${item.id}?project_id=${project_id}&family_id=${family_id}`
+                  `/(form-element)/${item.id}?project_id=${project_id}`
                 )
               }
               className="p-4 border mb-4 border-gray-200 rounded-xl"

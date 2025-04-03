@@ -27,8 +27,6 @@ const VerificationCode: React.FC = () => {
     setValue: setCode,
   });
   const { user } = useAuth({});
-  console.log("User. Telephone:", user?.telephone);
-
 
   const handleCodeSubmit = async () => {
     setLoading(true);
@@ -37,12 +35,6 @@ const VerificationCode: React.FC = () => {
         setError("Please enter a 4-digit code.");
         return;
       }
-      console.log("Submitted code:", code);
-      // Toast.show({
-      //   type: "success",
-      //   text1: "Success",
-      //   text2: "Code verified successfully.",
-      // }); 
       const last4Digits = user?.telephone?.slice(-4);
       if (code !== last4Digits) {
         setError("Invalid code. Please enter the last 4 digits of your phone number.");

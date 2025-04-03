@@ -11,14 +11,17 @@ export class SurveySubmission extends Realm.Object {
   project_id!: number;
   survey_id!: number;
   post_data!: string;
-  province!: number;
-  district!: number;
-  sector!: number;
-  cell!: number;
-  village!: number;
-  izucode!: string;
-  family!: number;
-
+  sync_status!: boolean;
+  syncStatus!: string;
+  lastSyncAttempt!: Date;
+  province!: number | null;
+  district!: number | null;
+  sector!: number | null;
+  cell!: number | null;
+  village!: number | null;
+  izucode!: string | null;
+  family!: number | null;
+  cohort!: number | null;
   static schema = {
     name: 'SurveySubmission',
     primaryKey: '_id',
@@ -29,7 +32,9 @@ export class SurveySubmission extends Realm.Object {
       answers: 'mixed{}', // Allows flexible answer types
       userId: 'int',
       metadata: 'mixed{}', // Allows mixed metadata types
-
+      sync_status: 'bool',
+      syncStatus: 'string',
+      lastSyncAttempt: 'date',
       // New properties
       table_name: 'string',
       project_module_id: 'int',
@@ -37,13 +42,14 @@ export class SurveySubmission extends Realm.Object {
       project_id: 'int',
       survey_id: 'int',
       post_data: 'string',
-      province: 'int',
-      district: 'int',
-      sector: 'int',
-      cell: 'int',
-      village: 'int',
-      izucode: 'string',
-      family: 'int',
+      province: 'int?',
+      district: 'int?',
+      sector: 'int?',
+      cell: 'int?',
+      cohort: 'int?',
+      village: 'int?',
+      izucode: 'string?',
+      family: 'int?',
     }
   };
 }

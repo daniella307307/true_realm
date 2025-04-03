@@ -18,7 +18,7 @@ const FamilyFormsLayout = () => {
         name="index"
         options={{
           headerShown: true,
-          title: t("CohortPage.title"),
+          title: t("ModulePage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,

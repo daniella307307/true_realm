@@ -1,23 +1,18 @@
 import React from "react";
-import { router, Stack } from "expo-router";
-import { TouchableOpacity } from "react-native";
-import { ChevronLeft } from "lucide-react-native";
-import { useTranslation } from "react-i18next";
+import { Stack } from "expo-router";
+import Logo from "~/components/Logo";
 import HeaderNavigation from "~/components/ui/header";
+import { useTranslation } from "react-i18next";
 
-const HistoryLayout = () => {
+const HistoryPageLayout = () => {
   const { t } = useTranslation();
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="history"
         options={{
           headerShown: true,
-          title: t("HistoryPage.title"),
+          title: t("HistoryProjectPage.title"),
           headerTitleAlign: "center",
           headerLeft: () => <HeaderNavigation showLeft={true} />,
           headerRight: () => <HeaderNavigation showLeft={false} />,
@@ -27,4 +22,4 @@ const HistoryLayout = () => {
   );
 };
 
-export default HistoryLayout;
+export default HistoryPageLayout;

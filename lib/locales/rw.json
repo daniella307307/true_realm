@@ -103,6 +103,26 @@
     "number_of_families_visited": "Umubare w'imiryango yasuye",
     "monitoring_behaviors": "Imyitwarire yo gukurikirana"
   },
+  "HistoryProjectPage": {
+    "title": "Imishinga ibaruye",
+    "all_history_project": "Imishinga ibaruye yose",
+    "history_project": "Umushinga ubaruye",
+    "search_history_project": "Shakisha umushinga"
+  },
+  "HistoryModulePage": {
+    "title": "Ibyiciro ibaruye",
+    "all_history_module": "Ibyiciro ibaruye yose",
+    "history_module": "Ibyiciro ubaruye",
+    "search_history_module": "Shakisha ibyiciro"
+  },
+  "History": {
+    "all": "All",
+    "synced": "Ibishya",
+    "pending": "Ibitaragenda",
+    "submissions": "Ibyabaruwe",
+    "lastSubmission": "Itariki y'ubarura",
+    "search_form": "Shakisha amafishi"
+  },
   "IzuMonitoringPage": {
     "title": "Genzura IZU",
     "all_izu": "IZU zose",

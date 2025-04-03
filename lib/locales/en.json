@@ -62,6 +62,25 @@
       "search_project": "Search Projects",
       "empty_projects": "No projects available"
     },
+    "HistoryProjectPage": {
+      "title": "Saved Projects",
+      "all_history_project": "All Saved Project",
+      "history_project": "Saved Project",
+      "search_history_project": "Search Saved Project"
+    },
+    "HistoryModulePage": {
+      "title": "Saved Modules",
+      "all_history_module": "All Saved Modules",
+      "history_module": "Saved Module",
+      "search_history_module": "Search Saved Module"
+    },
+    "History": {
+      "submissions": "Submissions",
+      "all": "All",
+      "synced": "Synced",
+      "pending": "Pending",
+      "search_form": "Search Form"
+    },
     "CohortPage": {
       "title": "Cohorts",
       "all_cohorts": "All Cohorts",

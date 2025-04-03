@@ -12,8 +12,12 @@ import { useTranslation } from "react-i18next";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Href, router } from "expo-router";
 import { Text } from "~/components/ui/text";
+import i18n from "~/utils/i18n";
+import { isOnline } from "~/services/network";
 
 const HomeScreen = () => {
+
+  console.log("Is ONLINE: ", isOnline());
   const { user, logout } = useAuth({
     onLogout: () => {
       router.push("/(user-management)/login");
@@ -30,6 +34,7 @@ const HomeScreen = () => {
   // Calculate item width for grid view (only used when width >= 375)
   const itemWidth = (width - 48) / 2; // 2 columns for normal phones with padding
 
+  console.log("The language: ", i18n.language);
   const activeLinks = [
     {
       icon: <TabBarIcon name="family-restroom" family="MaterialIcons" />,

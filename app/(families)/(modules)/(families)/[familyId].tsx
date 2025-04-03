@@ -41,12 +41,12 @@ const FamilyModuleScreen = () => {
 
   const searchQuery = watch("searchQuery");
   const storedModules = useGetAllModules();
-  const isLoading = storedModules.length === 0;
+  const isLoading = storedModules.modules.length === 0;
 
-  const riskOfHarmModule = storedModules.find(
+  const riskOfHarmModule = storedModules.modules.find(
     (module: IModule) => module.module_name === "Uncategorized"
   );
-  const filteredModules = storedModules
+  const filteredModules = storedModules.modules
     .filter(
       (module: IModule) =>
         module.project_id === 3 &&

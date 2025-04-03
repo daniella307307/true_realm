@@ -1,173 +1,138 @@
-import * as SelectPrimitive from '@rn-primitives/select';
-import * as React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { Check } from '~/lib/icons/Check';
-import { ChevronDown } from '~/lib/icons/ChevronDown';
-import { ChevronUp } from '~/lib/icons/ChevronUp';
-import { cn } from '~/lib/utils';
+import React, { useCallback, useRef, useState } from "react";
+import { View, Text, TouchableOpacity, Modal, TouchableWithoutFeedback, Platform, FlatList } from "react-native";
+import { Check } from "~/lib/icons/Check";
+import { ChevronDown } from "~/lib/icons/ChevronDown";
+import { ChevronUp } from "~/lib/icons/ChevronUp";
+import { cn } from "~/lib/utils";
 
-type Option = SelectPrimitive.Option;
-
-const Select = SelectPrimitive.Root;
-
-const SelectGroup = SelectPrimitive.Group;
-
-const SelectValue = SelectPrimitive.Value;
-
-const SelectTrigger = React.forwardRef<SelectPrimitive.TriggerRef, SelectPrimitive.TriggerProps>(
-  ({ className, children, ...props }, ref) => (
-    <SelectPrimitive.Trigger
-      ref={ref}
-      className={cn(
-        'flex flex-row items-center text-sm justify-between rounded-md border border-[#E4E4E7] bg-background px-3 py-2 web:ring-offset-background text-[#18181B] web:focus:outline-none web:focus:ring-2 web:focus:ring-ring web:focus:ring-offset-2 [&>span]:line-clamp-1',
-        props.disabled && 'web:cursor-not-allowed opacity-50',
-        className
-      )}
-      {...props}
-    >
-      <>{children}</>
-      <ChevronDown size={16} aria-hidden={true} className='text-foreground opacity-50' />
-    </SelectPrimitive.Trigger>
-  )
-);
-SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
-
-/**
- * Platform: WEB ONLY
- */
-const SelectScrollUpButton = ({ className, ...props }: SelectPrimitive.ScrollUpButtonProps) => {
-  if (Platform.OS !== 'web') {
-    return null;
-  }
-  return (
-    <SelectPrimitive.ScrollUpButton
-      className={cn('flex web:cursor-default items-center justify-center py-1', className)}
-      {...props}
-    >
-      <ChevronUp size={14} className='text-foreground' />
-    </SelectPrimitive.ScrollUpButton>
-  );
+type OptionItem = {
+  value: string;
+  label: string;
 };
 
-/**
- * Platform: WEB ONLY
- */
-const SelectScrollDownButton = ({ className, ...props }: SelectPrimitive.ScrollDownButtonProps) => {
-  if (Platform.OS !== 'web') {
-    return null;
-  }
+interface DropdownProps {
+  data: OptionItem[];
+  onChange: (item: OptionItem) => void;
+  placeholder: string;
+  disabled?: boolean;
+  className?: string;
+}
+
+export default function Dropdown({
+  data,
+  onChange,
+  placeholder,
+  disabled = false,
+  className,
+}: DropdownProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<OptionItem | null>(null);
+  const [top, setTop] = useState(0);
+  
+  const buttonRef = useRef<View>(null);
+
+  const toggleExpanded = useCallback(() => {
+    if (!disabled) {
+      setExpanded(!expanded);
+    }
+  }, [expanded, disabled]);
+
+  const onSelect = useCallback((item: OptionItem) => {
+    onChange(item);
+    setSelectedItem(item);
+    setExpanded(false);
+  }, [onChange]);
+
   return (
-    <SelectPrimitive.ScrollDownButton
-      className={cn('flex web:cursor-default items-center justify-center py-1', className)}
-      {...props}
+    <View
+      ref={buttonRef}
+      className={cn("relative", className)}
+      onLayout={(event) => {
+        const layout = event.nativeEvent.layout;
+        const topOffset = layout.y;
+        const heightOfComponent = layout.height;
+        const finalValue = topOffset + heightOfComponent + (Platform.OS === "android" ? -32 : 3);
+        setTop(finalValue);
+      }}
     >
-      <ChevronDown size={14} className='text-foreground' />
-    </SelectPrimitive.ScrollDownButton>
-  );
-};
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={toggleExpanded}
+        className={cn(
+          "flex flex-row items-center justify-between h-12 px-4 bg-white rounded-lg border border-[#E4E4E7]",
+          disabled && "opacity-50"
+        )}
+      >
+        <Text className="text-sm text-[#18181B] opacity-80">
+          {selectedItem?.label || placeholder}
+        </Text>
+        {expanded ? (
+          <ChevronUp size={16} className="text-foreground opacity-60" />
+        ) : (
+          <ChevronDown size={16} className="text-foreground opacity-60" />
+        )}
+      </TouchableOpacity>
 
-const SelectContent = React.forwardRef<
-  SelectPrimitive.ContentRef,
-  SelectPrimitive.ContentProps & { portalHost?: string }
->(({ className, children, position = 'popper', portalHost, ...props }, ref) => {
-  const { open } = SelectPrimitive.useRootContext();
-
-  return (
-    <SelectPrimitive.Portal hostName={portalHost}>
-      <SelectPrimitive.Overlay style={Platform.OS !== 'web' ? StyleSheet.absoluteFill : undefined}>
-        <Animated.View className='z-50' entering={FadeIn} exiting={FadeOut}>
-          <SelectPrimitive.Content
-            ref={ref}
-            className={cn(
-              'relative z-50 max-h-96 w-11/12 rounded-md border border-[#E4E4E7] bg-popover shadow-md shadow-foreground/10 py-2 px-1 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-              position === 'popper' &&
-                'data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1',
-              open
-                ? 'web:zoom-in-95 web:animate-in web:fade-in-0'
-                : 'web:zoom-out-95 web:animate-out web:fade-out-0',
-              className
-            )}
-            position={position}
-            {...props}
-          >
-            <SelectScrollUpButton />
-            <SelectPrimitive.Viewport
-              className={cn(
-                'p-1',
-                position === 'popper' &&
-                  'h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]'
-              )}
-            >
-              {children}
-            </SelectPrimitive.Viewport>
-            <SelectScrollDownButton />
-          </SelectPrimitive.Content>
-        </Animated.View>
-      </SelectPrimitive.Overlay>
-    </SelectPrimitive.Portal>
-  );
-});
-SelectContent.displayName = SelectPrimitive.Content.displayName;
-
-const SelectLabel = React.forwardRef<SelectPrimitive.LabelRef, SelectPrimitive.LabelProps>(
-  ({ className, ...props }, ref) => (
-    <SelectPrimitive.Label
-      ref={ref}
-      className={cn(
-        'py-1.5 native:pb-2 pl-8 native:pl-10 pr-2 text-popover-foreground text-sm native:text-base font-semibold',
-        className
+      {expanded && (
+        <Modal visible={expanded} transparent>
+          <TouchableOpacity onPress={() => setExpanded(false)}>
+            <View className="flex-1 justify-center items-center px-5">
+              <View
+                className="absolute bg-white w-full rounded-lg shadow-lg" 
+                style={{ 
+                  top,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 5,
+                  maxHeight: 250,
+                }}
+              >
+                <FlatList
+                  keyExtractor={(item) => item.value}
+                  data={data}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => onSelect(item)}
+                      className={cn(
+                        "flex flex-row items-center h-10 px-4 web:hover:bg-gray-100",
+                        selectedItem?.value === item.value && "bg-primary"
+                      )}
+                    >
+                      <View className="flex-1">
+                        <Text 
+                          className={cn(
+                            "text-sm",
+                            selectedItem?.value === item.value && "text-white"
+                          )}
+                        >
+                          {item.label}
+                        </Text>
+                      </View>
+                      {selectedItem?.value === item.value && (
+                        <Check size={16} strokeWidth={3} className="text-white" />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  ItemSeparatorComponent={() => (
+                    <View className="h-1" />
+                  )}
+                  className="py-2"
+                />
+              </View>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       )}
-      {...props}
-    />
-  )
-);
-SelectLabel.displayName = SelectPrimitive.Label.displayName;
+    </View>
+  );
+}
 
-const SelectItem = React.forwardRef<SelectPrimitive.ItemRef, SelectPrimitive.ItemProps>(
-  ({ className, children, ...props }, ref) => (
-    <SelectPrimitive.Item
-      ref={ref}
-      className={cn(
-        'relative web:group flex flex-row w-full web:cursor-default web:select-none items-center rounded-sm py-1.5 native:py-3 pl-8 native:pl-10 pr-2 web:hover:bg-accent/50 active:bg-accent web:outline-none active:text-white web:focus:bg-accent',
-        props.disabled && 'web:pointer-events-none opacity-50',
-        className
-      )}
-      {...props}
-    >
-      <View className='absolute left-2 native:left-3.5 flex h-3.5 native:pt-px w-3.5 items-center justify-center'>
-        <SelectPrimitive.ItemIndicator>
-          <Check size={16} strokeWidth={3} className='text-popover-foreground' />
-        </SelectPrimitive.ItemIndicator>
-      </View>
-      <SelectPrimitive.ItemText className='text-sm native:text-md text-popover-foreground active:text-white web:group-focus:text-white' />
-    </SelectPrimitive.Item>
-  )
-);
-SelectItem.displayName = SelectPrimitive.Item.displayName;
-
-const SelectSeparator = React.forwardRef<
-  SelectPrimitive.SeparatorRef,
-  SelectPrimitive.SeparatorProps
->(({ className, ...props }, ref) => (
-  <SelectPrimitive.Separator
-    ref={ref}
-    className={cn('-mx-1 my-1 h-px bg-muted', className)}
-    {...props}
-  />
-));
-SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
-
-export {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-  type Option,
-};
+// For use as a replacement for Select components
+export const Select = Dropdown;
+export const SelectTrigger = ({ children, ...props }: { children: React.ReactNode, props: any }) => <View {...props}>{children}</View>;
+export const SelectValue = ({ placeholder }: { placeholder: string }) => <Text>{placeholder}</Text>;
+export const SelectContent = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+export const SelectItem = ({ value, label }: { value: string, label: string }) => ({ value, label });

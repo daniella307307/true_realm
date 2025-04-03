@@ -87,7 +87,7 @@ const CohortIndexScreen = () => {
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
             <TouchableOpacity
-              onPress={() => router.push(`/(modules)/(families)/${item.id}`)}
+              onPress={() => router.push(`/(modules)/(families)/${item.hh_id}`)}
               className="p-4 border flex-row justify-between mb-4 border-gray-200 rounded-xl"
             >
               <View>

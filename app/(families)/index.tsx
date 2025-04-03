@@ -1,69 +1,130 @@
-import React from "react";
-import { Href, router } from "expo-router";
+import { useState } from "react";
+import { View, FlatList, TouchableOpacity, RefreshControl } from "react-native";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import CustomInput from "~/components/ui/input";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, TouchableOpacity, View } from "react-native";
+import { router } from "expo-router";
+import { IModule } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
-import { useGetFamilies } from "~/services/families";
+import Skeleton from "~/components/ui/skeleton";
+import {
+  fetchActiveModulesFromRemote,
+  useGetAllModules,
+} from "~/services/project";
+import EmptyDynamicComponent from "~/components/EmptyDynamic";
+import { Module } from "~/models/modules/module";
 
-const CohortPage = () => {
+const FamiliesPage = () => {
   const { t } = useTranslation();
-  const families = useGetFamilies();
+  const { control, watch } = useForm({
+    resolver: zodResolver(
+      z.object({
+        searchQuery: z.string(),
+      })
+    ),
+    mode: "onChange",
+  });
 
-  const totalFamilies = families.length;
-  console.log("Total families:", totalFamilies);
+  const searchQuery = watch("searchQuery");
+  const storedModules = useGetAllModules();
+  const isLoading = storedModules.modules.length === 0;
 
-  const familiesByCohort = families.reduce((acc, family) => {
-    const cohortNumber = parseInt(family.cohort);
-    if (!acc[cohortNumber]) {
-      acc[cohortNumber] = families.filtered(`cohort == "${family.cohort}"`);
-    }
-    return acc;
-  }, {} as Record<number, typeof families>);
+  const riskOfHarmModule = storedModules.modules.find(
+    (module: IModule) => module.module_name === "Uncategorized"
+  );
+  const filteredModules = storedModules.modules
+    .filter(
+      (module: IModule) =>
+        module.project_id === 3 &&
+        module.module_status !== 0 &&
+        (!searchQuery || module.module_name.toLowerCase().includes(searchQuery))
+    )
+    .sort((a, b) => a.order_list - b.order_list);
 
-  const cohortData = Object.entries(familiesByCohort).map(([cohort, fams]) => ({
-    cohort: Number(cohort),
-    count: fams.length,
-  }));
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchActiveModulesFromRemote();
+    setRefreshing(false);
+  };
 
   return (
-    <ScrollView className="bg-white pt-6">
-      <View className="flex-row flex-wrap justify-between px-6">
-        <Pressable
-          onPress={() => router.push("/(cohorts)/all")}
-          className="flex flex-col bg-[#A23A910D] border border-[#0000001A] justify-between gap-6 p-6 rounded-xl w-[48%] mb-4"
-        >
-          <TabBarIcon name="family-restroom" family="MaterialIcons" />
-          <View>
-            <Text className="text-sm py-2 text-[#71717A]">
-              {totalFamilies} {t("HomePage.families")}
-            </Text>
-            <Text className="text-md font-semibold">
-              {t("CohortPage.all_cohorts")}
-            </Text>
-          </View>
-        </Pressable>
+    <View className="flex-1 p-4 bg-white">
+      <CustomInput
+        control={control}
+        name="searchQuery"
+        placeholder={t("ModulePage.search_module")}
+        keyboardType="default"
+        accessibilityLabel={t("ModulePage.search_module")}
+      />
 
-        {cohortData.map((data, index) => (
-          <TouchableOpacity
-            onPress={() => router.push(`/(cohorts)/${data.cohort}`)}
-            key={index}
-            className="flex flex-col bg-[#A23A910D] border border-[#0000001A] justify-between gap-6 p-6 rounded-xl w-[48%] mb-4"
-          >
-            <TabBarIcon name="family-restroom" family="MaterialIcons" />
-            <View>
-              <Text className="text-sm py-2 text-[#71717A]">
-                {t("CohortPage.cohort")} {data.cohort}
+      {isLoading ? (
+        <>
+          <Skeleton />
+          <Skeleton />
+          <Skeleton />
+        </>
+      ) : (
+        <FlatList<Module>
+          data={filteredModules}
+          keyExtractor={(item: Module, index) => `${item.id}-${index}`}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={() => <EmptyDynamicComponent />}
+          ListHeaderComponent={() => (
+            <TouchableOpacity
+              onPress={() =>
+                router.push(`/(forms)/${riskOfHarmModule?.source_module_id}`)
+              }
+              className="p-4 border mb-4 border-red-500 rounded-xl"
+            >
+              <View className="flex-row items-center pr-4 justify-start">
+                <TabBarIcon
+                  name="warning"
+                  family="MaterialIcons"
+                  size={24}
+                  color="#D92020"
+                />
+                <Text className="text-lg font-semibold ml-2 text-red-500">
+                  {t("ModulePage.risk_of_harm")}
+                </Text>
+              </View>
+              <Text className="text-sm py-2 text-red-600">
+                {t("ModulePage.risk_of_harm_description")}
               </Text>
-              <Text className="text-md font-semibold">
-                {data.count} {t("HomePage.families")}
+            </TouchableOpacity>
+          )}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => router.push(`/(forms)/${item.id}`)}
+              className="p-4 border mb-4 border-gray-200 rounded-xl"
+            >
+              <View className="flex-row items-center pr-4 justify-start">
+                <TabBarIcon
+                  name="chat"
+                  family="MaterialIcons"
+                  size={24}
+                  color="#71717A"
+                />
+                <Text className="text-lg ml-2 font-semibold">
+                  {item.module_name}
+                </Text>
+              </View>
+              <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
+                {item.module_description}
               </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </ScrollView>
+            </TouchableOpacity>
+          )}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        />
+      )}
+    </View>
   );
 };
 
-export default CohortPage;
+export default FamiliesPage;
