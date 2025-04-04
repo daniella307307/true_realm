@@ -35,6 +35,7 @@ export function useGetStakeholders() {
         try {
             console.log("Fetching stakeholders from remote");
             const apiStakeholders = await fetchStakeholdersFromRemote();
+            // console.log("apiStakeholders", apiStakeholders);
 
             if (!realm || realm.isClosed) {
                 console.warn("Skipping Realm write: Realm is closed");

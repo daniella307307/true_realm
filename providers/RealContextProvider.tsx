@@ -14,7 +14,7 @@ import { Cell } from "~/models/locations/cell";
 import { Village } from "~/models/locations/village";
 import { Stakeholder } from "~/models/stakeholders/stakeholder";
 
-const realmPath = `${FileSystem.documentDirectory}/sugiramuryango-offline-db.realm`;
+const realmPath = `${FileSystem.documentDirectory}sugiramuryango-offline-db.realm`;
 
 const schemas = [
   Families,
@@ -35,3 +35,5 @@ export const RealmContext = createRealmContext({
   schema: schemas,
   path: realmPath,
 });
+
+console.log("Realm Path", realmPath);

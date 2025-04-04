@@ -4,9 +4,6 @@ import { I4BaseFormat, IExistingForm } from "~/types";
 import { baseInstance } from "~/utils/axios";
 import { useNetworkStatus } from "./network";
 import { RealmContext } from "~/providers/RealContextProvider";
-
-
-
 const { useRealm, useQuery } = RealmContext;
 
 // Remote data fetching functions
@@ -16,6 +13,65 @@ export async function fetchFormByProjectAndModuleFromRemote(projectId: number, m
   );
   return res.data;
 }
+
+export async function fetchFormsFromRemote() {
+  const res = await baseInstance.get<I4BaseFormat<IExistingForm[]>>(
+    `/v2/surveys`
+  );
+  return res.data;
+}
+
+export function useGetForms() {
+  const realm = useRealm();
+  const storedForms = useQuery(Survey);
+  const { isConnected } = useNetworkStatus();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  
+  const syncForms = useCallback(async () => {
+    if (!isConnected) {
+      console.log("Offline mode: Using local forms data");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const apiForms = await fetchFormsFromRemote();
+      
+      if (!realm || realm.isClosed) {
+        console.warn("Skipping Realm write: Realm is closed");
+        setError(new Error("Realm is closed"));
+        return;
+      }
+      
+      realm.write(() => {
+        apiForms.data.forEach((form) => {
+          realm.create("Survey", form, Realm.UpdateMode.Modified);
+        });
+      });
+      
+      setLastSyncTime(new Date());
+    } catch (error) {
+      console.error("Error fetching forms:", error);
+      setError(error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isConnected, realm]);
+
+  useEffect(() => {
+
+    if (isConnected) {
+      syncForms();
+    }
+  }, [isConnected, syncForms]);
+
+  return { storedForms, isLoading, error, lastSyncTime, refresh: syncForms };
+}
+
 
 export async function fetchFormByIdFromRemote(id: number) {
   const res = await baseInstance.get(`/v2/surveys/${id}`);
@@ -149,3 +205,4 @@ export function useGetFormById(id: number) {
 
   return { form, isLoading, error };
 }
+

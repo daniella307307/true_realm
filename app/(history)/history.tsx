@@ -1,4 +1,10 @@
-import { View, Text, TouchableOpacity, FlatList, RefreshControl } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  RefreshControl,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,10 +17,16 @@ import CustomInput from "~/components/ui/input";
 import Skeleton from "~/components/ui/skeleton";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { IProject } from "~/types";
+import EmptyDynamicComponent from "~/components/EmptyDynamic";
 
 const HistoryProjectScreen = () => {
   const storedProjects = useGetAllProjects();
-  const { surveySubmissions, isLoading: surveySubmissionsLoading, error: surveySubmissionsError, refetch: refetchSurveySubmissions } = useGetAllSurveySubmissions();
+  const {
+    surveySubmissions,
+    isLoading: surveySubmissionsLoading,
+    error: surveySubmissionsError,
+    refetch: refetchSurveySubmissions,
+  } = useGetAllSurveySubmissions();
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -42,12 +54,13 @@ const HistoryProjectScreen = () => {
 
     // Get unique project IDs from survey submissions
     const projectIdsWithSubmissions = new Set(
-      surveySubmissions.map(submission => submission.project_id)
+      surveySubmissions.map((submission) => submission.project_id)
     );
 
     // Filter projects that have survey submissions
     const activeProjects = storedProjects.projects.filter(
-      (project) => project.status === 1 && projectIdsWithSubmissions.has(project.id)
+      (project) =>
+        project.status === 1 && projectIdsWithSubmissions.has(project.id)
     );
 
     if (!searchQuery) {
@@ -76,7 +89,7 @@ const HistoryProjectScreen = () => {
 
     // Get submissions for this project
     const projectSubmissions = surveySubmissions.filter(
-      submission => submission.project_id === item.id
+      (submission) => submission.project_id === item.id
     );
 
     return (
@@ -104,21 +117,23 @@ const HistoryProjectScreen = () => {
         <Text className="text-sm py-2 text-gray-600">{item.description}</Text>
         <View className="flex flex-row justify-between items-center mt-2">
           <Text className="text-sm text-gray-500">
-            {t("History.submissions", "Submissions")}: {projectSubmissions.length}
+            {t("History.submissions", "Submissions")}:{" "}
+            {projectSubmissions.length}
           </Text>
           <Text className="text-sm text-gray-500">
-            {t("History.lastSubmission", "Last submission")}: {
-              projectSubmissions.length > 0 
-                ? new Date(projectSubmissions[projectSubmissions.length - 1].submittedAt).toLocaleDateString('en-GB', {
-                    day: '2-digit',
-                    month: '2-digit', 
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                  })
-                : t("History.noSubmissions", "No submissions")
-            }
+            {t("History.lastSubmission", "Last submission")}:{" "}
+            {projectSubmissions.length > 0
+              ? new Date(
+                  projectSubmissions[projectSubmissions.length - 1].submittedAt
+                ).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })
+              : t("History.noSubmissions", "No submissions")}
           </Text>
         </View>
       </TouchableOpacity>
@@ -151,8 +166,12 @@ const HistoryProjectScreen = () => {
     beneficiary: project.beneficiary || "",
     projectlead: project.projectlead || "",
     has_modules: project.has_modules,
-    created_at: project.created_at ? new Date(project.created_at).toDateString() : undefined,
-    updated_at: project.updated_at ? new Date(project.updated_at).toDateString() : undefined,
+    created_at: project.created_at
+      ? new Date(project.created_at).toDateString()
+      : undefined,
+    updated_at: project.updated_at
+      ? new Date(project.updated_at).toDateString()
+      : undefined,
     project_modules: Array.from(project.project_modules),
   }));
 
@@ -172,6 +191,13 @@ const HistoryProjectScreen = () => {
           <Skeleton />
           <Skeleton />
         </>
+      ) : transformedProjects.length === 0 ? (
+        <View className="flex-1 justify-center items-center mt-8">
+          <EmptyDynamicComponent />
+          <Text className="text-gray-500 text-center">
+            {t("History.noLocalSubmissions", "No local submissions yet!")}
+          </Text>
+        </View>
       ) : (
         <FlatList
           data={transformedProjects}

@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { View, FlatList, TouchableOpacity, TextInput } from 'react-native';
-import { Text } from './text';
-import { useGetStakeholders } from '~/services/stakeholders';
-import { IStakeholder } from '~/models/stakeholders/stakeholder';
+import React, { useState, useMemo } from "react";
+import { View, FlatList, TouchableOpacity, TextInput } from "react-native";
+import { Text } from "./text";
+import { useGetStakeholders } from "~/services/stakeholders";
+import { IStakeholder } from "~/models/stakeholders/stakeholder";
 import { Ionicons } from "@expo/vector-icons";
 import { getLocalizedTitle } from "../DynamicForm";
 import i18n from "~/utils/i18n";
@@ -45,19 +45,23 @@ const StakeholderItem = ({
   </TouchableOpacity>
 );
 
-const StakeholderSelector: React.FC<StakeholderSelectorProps> = ({ onSelect, onBack, initialValue }) => {
+const StakeholderSelector: React.FC<StakeholderSelectorProps> = ({
+  onSelect,
+  onBack,
+  initialValue,
+}) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStakeholders, setSelectedStakeholders] = useState<IStakeholder[]>(initialValue || []);
-  const { data: stakeholders, isLoading } = useGetStakeholders();
+  const [selectedStakeholders, setSelectedStakeholders] = useState<
+    IStakeholder[]
+  >(initialValue || []);
+  const { stakeholders, isLoading } = useGetStakeholders();
   const language = i18n.language;
 
-  // console.log("stakeholders", stakeholders);
-
   const handleSelect = (stakeholder: IStakeholder) => {
-    setSelectedStakeholders(prev => {
-      const isAlreadySelected = prev.some(s => s.id === stakeholder.id);
+    setSelectedStakeholders((prev) => {
+      const isAlreadySelected = prev.some((s) => s.id === stakeholder.id);
       if (isAlreadySelected) {
-        return prev.filter(s => s.id !== stakeholder.id);
+        return prev.filter((s) => s.id !== stakeholder.id);
       }
       return [...prev, stakeholder];
     });
@@ -71,9 +75,10 @@ const StakeholderSelector: React.FC<StakeholderSelectorProps> = ({ onSelect, onB
 
   const filteredStakeholders = useMemo(() => {
     if (!stakeholders) return [];
-    return stakeholders.filter(stakeholder => 
-      stakeholder.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      stakeholder.is_stakeholder === 1
+    return stakeholders.filter(
+      (stakeholder: IStakeholder) =>
+        stakeholder.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        stakeholder.is_stakeholder === 1
     );
   }, [stakeholders, searchQuery]);
 
@@ -115,7 +120,7 @@ const StakeholderSelector: React.FC<StakeholderSelectorProps> = ({ onSelect, onB
         renderItem={({ item }) => (
           <StakeholderItem
             stakeholder={item}
-            isSelected={selectedStakeholders.some(s => s.id === item.id)}
+            isSelected={selectedStakeholders.some((s) => s.id === item.id)}
             onSelect={handleSelect}
           />
         )}
@@ -158,4 +163,4 @@ const StakeholderSelector: React.FC<StakeholderSelectorProps> = ({ onSelect, onB
   );
 };
 
-export default StakeholderSelector; 
+export default StakeholderSelector;

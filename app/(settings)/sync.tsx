@@ -102,7 +102,6 @@ const SyncPage = () => {
         // Get all unique project_module_ids from the modules
         const projectModuleIds = [...new Set(modules.map(module => module.id))];
         
-        console.log("projectModuleIds", projectModuleIds);
         // Sync forms for each project module
         for (const projectModuleId of projectModuleIds) {
           try {
@@ -289,7 +288,13 @@ const SyncPage = () => {
       {
         key: "data",
         name: "Sync Data",
-        status: isSyncing && syncType === "Data" ? "Syncing" : lastSyncDate && syncType === "Data" ? "Success" : "Not Synced",
+        status: pendingSubmissions.length === 0 
+          ? "No Pending Submissions" 
+          : isSyncing && syncType === "Data" 
+            ? "Syncing" 
+            : lastSyncDate && syncType === "Data" 
+              ? "Success" 
+              : "Not Synced",
         progress: syncType === "Data" ? syncProgress : undefined,
         lastSyncDate: lastSyncDate,
       },
