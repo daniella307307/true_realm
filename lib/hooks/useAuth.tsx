@@ -11,6 +11,7 @@ import {
 } from "~/services/user";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { setAuthenticationStatus } from "~/utils/axios";
 
 type AuthOptions = {
   onLogin?: (data: User) => void;
@@ -23,15 +24,25 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const user = useMemo(() => mainStore.user!, [mainStore.user]);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  
+  // Memoized getter for login status
   const isLoggedIn = useMemo(async () => {
     const token = await AsyncStorage.getItem("tknToken");
-    return !!(user && token);
+    const loggedIn = !!(user && token);
+    // Update the global auth status when checked
+    setAuthenticationStatus(loggedIn);
+    return loggedIn;
   }, [user]);
 
+  // Check login status on initial load
   useEffect(() => {
     const checkLoginStatus = async () => {
-      console.log("is loggedIn: ", await isLoggedIn);
+      const loggedIn = await isLoggedIn;
+      console.log("is loggedIn: ", loggedIn);
+      setAuthChecked(true);
     };
+    
     checkLoginStatus();
     checkAuthStatus();
   }, []);
@@ -39,19 +50,25 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const checkAuthStatus = async () => {
     try {
       const token = await AsyncStorage.getItem("tknToken");
+      // Update global auth state based on token existence
+      setAuthenticationStatus(!!(token && user));
+      
       if (token && !user) {
-        // You might want to validate the token here
+        // Token exists but no user - maybe need to fetch profile
         setIsLoading(true);
         // Add your token validation logic if needed
       }
       if (!token && user) {
         mainStore.logout();
+        setAuthenticationStatus(false);
       }
       if (user?.userstatus === 0) {
         mainStore.logout();
+        setAuthenticationStatus(false);
       }
     } catch (error) {
       console.error("Auth status check failed:", error);
+      setAuthenticationStatus(false);
     } finally {
       setIsLoading(false);
     }
@@ -62,6 +79,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       queryClient.clear();
       queryClient.invalidateQueries();
       AsyncStorage.removeItem("tknToken");
+      setAuthenticationStatus(false);
       router.push("/(user-management)/login");
     }
     onLogout?.();
@@ -90,6 +108,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       const token = await AsyncStorage.getItem("tknToken");
       if (token) {
         mainStore.logout();
+        setAuthenticationStatus(false);
       }
       Toast.show({
         text1: "Logging in...",
@@ -122,9 +141,14 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         });
         const tokenStoredInCookie = await storeTokenInAsynStorage(data.token);
         if (!tokenStoredInCookie) throw new Error("Auth Token was not stored.");
+        
+        // Set auth status to true as soon as token is stored
+        setAuthenticationStatus(true);
+        
         const profileData = await useGetCurrentLoggedInProfile();
         if (!profileData) {
           Toast.show({ text1: "Profile fetch failed", type: "error" });
+          setAuthenticationStatus(false);
           return;
         }
         const didStoreUserInfo = mainStore.login({ userAccount: profileData });
@@ -152,6 +176,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         });
         setIsLoggingIn(false);
         setIsLoading(false);
+        setAuthenticationStatus(false);
       }
     },
   });
@@ -167,6 +192,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     isLoggingIn,
     isLoggedIn,
     isLoading,
+    authChecked, // New property to track if auth has been checked
   };
 };
 

@@ -9,7 +9,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SplashScreenProvider } from "~/providers/SplashScreenProvider";
 import "~/utils/i18n";
 import "react-native-get-random-values";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import QueryProvider from "~/providers/QueryProvider";
 import Toast from "react-native-toast-message";
 import toastConfig from "~/providers/toastConfig";
@@ -25,7 +25,6 @@ import { RealmContext } from "~/providers/RealContextProvider";
 
 enableScreens();
 export default function RootLayout() {
-  
   Appearance.setColorScheme("light");
   return (
     <FontSizeProvider>
@@ -44,53 +43,62 @@ export default function RootLayout() {
 }
 
 function Layout() {
-  const { isLoggedIn } = useAuth({});
+  const { isLoggedIn, authChecked } = useAuth({});
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    // Initialize network and sync services
+    // Wait for auth check to complete before proceeding
     const initializeServices = async () => {
-      const networkUnsubscribe = await initializeNetworkListener();
-      const syncUnsubscribe = initializeSyncService();
+      try {
+        // Only proceed once auth has been checked
+        if (!authChecked) return;
 
-      const checkLoginStatus = async () => {
-        try {
-          SplashScreen.hideAsync();
-          const loginStatus = await isLoggedIn;
-          console.log("Is Logged In:", loginStatus);
-          if (loginStatus) {
-            router.push("/(home)/home");
-            // Check and show internet connectivity status
-            const netInfo = await NetInfo.fetch();
-            console.log("NetInfo", netInfo);
-            Toast.show({
-              type: netInfo.isConnected ? "success" : "error",
-              text1: "Network Status",
-              text2: netInfo.isConnected
-                ? "You are connected to the internet"
-                : "You are offline",
-              position: "top",
-              visibilityTime: 3000,
-            });
-          } else {
-            router.push("/(user-management)/login");
-          }
-        } catch (error) {
-          console.error("Error checking login status:", error);
+        const loginStatus = await isLoggedIn;
+        console.log("Is Logged In:", loginStatus);
+
+        // Only initialize network services if logged in
+        if (loginStatus) {
+          const networkUnsubscribe = await initializeNetworkListener();
+          const syncUnsubscribe = initializeSyncService();
+
+          router.push("/(home)/home");
+
+          // Check and show internet connectivity status
+          const netInfo = await NetInfo.fetch();
+          console.log("NetInfo", netInfo);
+          Toast.show({
+            type: netInfo.isConnected ? "success" : "error",
+            text1: "Network Status",
+            text2: netInfo.isConnected
+              ? "You are connected to the internet"
+              : "You are offline",
+            position: "top",
+            visibilityTime: 3000,
+          });
+
+          return () => {
+            networkUnsubscribe();
+            syncUnsubscribe();
+          };
+        } else {
           router.push("/(user-management)/login");
         }
-      };
-
-      await checkLoginStatus();
-
-      // Cleanup
-      return () => {
-        networkUnsubscribe();
-        syncUnsubscribe();
-      };
+      } catch (error) {
+        console.error("Error checking login status:", error);
+        router.push("/(user-management)/login");
+      } finally {
+        SplashScreen.hideAsync();
+        setIsInitialized(true);
+      }
     };
 
     initializeServices();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, authChecked]);
+
+  // Show splash screen until auth is checked and initialization is complete
+  if (!authChecked || !isInitialized) {
+    return null; // Or a loading component
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

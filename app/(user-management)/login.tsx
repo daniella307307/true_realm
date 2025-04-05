@@ -36,6 +36,8 @@ export default function LoginScreen() {
     },
   });
 
+  console.log("Login screen rendered");
+
   const { control, handleSubmit } = useForm<ILoginDetails>({
     resolver: zodResolver(loginSchema),
     mode: "onChange",

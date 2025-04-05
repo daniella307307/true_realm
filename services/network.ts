@@ -46,11 +46,10 @@ export const isOnline = () => {
 export const useNetworkStatus = () => {
   const { isConnected, lastOnlineTimestamp } = useNetworkStore();
   
+  console.log('isConnected: ', isConnected);
   useEffect(() => {
-    // This effect runs whenever the connection status changes
     if (isConnected) {
       console.log('Device is now online - triggering data refresh');
-      // You could trigger global refresh actions here
     } else {
       console.log('Device is now offline - switching to local data');
     }
@@ -59,6 +58,6 @@ export const useNetworkStatus = () => {
   return { 
     isConnected,
     lastOnlineTimestamp,
-    isOnline // For backward compatibility
+    isOnline 
   };
 };

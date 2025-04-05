@@ -3,10 +3,8 @@ import { useMemo, useState } from "react";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useGetAllProjects } from "~/services/project";
 import { useGetAllModules } from "~/services/project";
-import { fetchFormByProjectAndModuleFromRemote, useGetFormByProjectAndModule } from "~/services/formElements";
+import { fetchFormByProjectAndModuleFromRemote } from "~/services/formElements";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
-import { SurveySubmission } from "~/models/surveys/survey-submission";
-import { Stakeholder } from "~/models/stakeholders/stakeholder";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { baseInstance } from "~/utils/axios";
 import { useGetStakeholders } from "~/services/stakeholders";
@@ -362,7 +360,7 @@ const SyncPage = () => {
         )}
       </View>
       <TouchableOpacity
-        className="bg-primary flex items-center justify-center h-12 w-12 flex-col rounded-full ml-4"
+        className={`flex items-center justify-center h-12 w-12 flex-col rounded-full ml-4 ${isSyncing && syncType === item.key ? 'bg-gray-700' : 'bg-primary'}`}
         onPress={() => {
           if (item.key === "Forms") {
             syncFormsAndSurveys();
