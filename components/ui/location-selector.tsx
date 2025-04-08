@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
+
 import { View, ScrollView, TouchableOpacity } from "react-native";
-import { Text } from "./text";
-import { Button } from "./button";
-import HeaderNavigation from "./header";
+
+import i18n from "~/utils/i18n";
 import {
   useGetProvinces,
   useGetDistricts,
@@ -10,14 +10,15 @@ import {
   useGetCells,
   useGetVillages,
 } from "~/services/locations";
-import { IProvince } from "~/models/locations/province";
-import { IDistrict } from "~/models/locations/district";
 import { ICell } from "~/models/locations/cell";
+import { IDistrict } from "~/models/locations/district";
+import { IProvince } from "~/models/locations/province";
 import { ISector } from "~/models/locations/sector";
 import { IVillage } from "~/models/locations/village";
-import { getLocalizedTitle } from "../DynamicForm";
-import i18n from "~/utils/i18n";
+
 import Dropdown from "./select";
+import { Text } from "./text";
+import { getLocalizedTitle } from "../DynamicForm";
 
 interface LocationSelectorProps {
   onSelect: (value: {
@@ -27,7 +28,6 @@ interface LocationSelectorProps {
     cell: ICell | null;
     village: IVillage | null;
   }) => void;
-  onBack: () => void;
   initialValues?: {
     province?: IProvince | null;
     district?: IDistrict | null;
@@ -39,7 +39,6 @@ interface LocationSelectorProps {
 
 const LocationSelector: React.FC<LocationSelectorProps> = ({
   onSelect,
-  onBack,
   initialValues,
 }) => {
   const [selectedProvince, setSelectedProvince] = useState<IProvince | null>(
@@ -111,30 +110,16 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     }
   }, [selectedCell]);
 
-  const handleNext = () => {
-    if (
-      selectedProvince &&
-      selectedDistrict &&
-      selectedSector &&
-      selectedCell &&
-      selectedVillage
-    ) {
-      onSelect({
-        province: selectedProvince,
-        district: selectedDistrict,
-        sector: selectedSector,
-        cell: selectedCell,
-        village: selectedVillage,
-      });
-    }
-  };
-
-  const isComplete =
-    selectedProvince &&
-    selectedDistrict &&
-    selectedSector &&
-    selectedCell &&
-    selectedVillage;
+  // Call onSelect whenever any selection changes
+  useEffect(() => {
+    onSelect({
+      province: selectedProvince,
+      district: selectedDistrict,
+      sector: selectedSector,
+      cell: selectedCell,
+      village: selectedVillage,
+    });
+  }, [selectedProvince, selectedDistrict, selectedSector, selectedCell, selectedVillage, onSelect]);
 
   const language = i18n.language;
 
@@ -175,7 +160,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           onChange={(item) => {
             const province = provinces?.find((p) => p.id === item.value);
             setSelectedProvince(province || null);
-            setSelectedDistrict(null);
           }}
           placeholder="Select Province"
           disabled={provincesLoading}
@@ -206,7 +190,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           onChange={(item) => {
             const district = districts?.find((d) => d.id === item.value);
             setSelectedDistrict(district || null);
-            setSelectedSector(null);
           }}
           placeholder="Select District"
           disabled={!selectedProvince || districtsLoading}
@@ -237,7 +220,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           onChange={(item) => {
             const sector = sectors?.find((s) => s.id === item.value);
             setSelectedSector(sector || null);
-            setSelectedCell(null);
           }}
           placeholder="Select Sector"
           disabled={!selectedDistrict || sectorsLoading}
@@ -268,7 +250,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           onChange={(item) => {
             const cell = cells?.find((c) => c.id === item.value);
             setSelectedCell(cell || null);
-            setSelectedVillage(null);
           }}
           placeholder="Select Cell"
           disabled={!selectedSector || cellsLoading}
@@ -304,34 +285,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           disabled={!selectedCell || villagesLoading}
           // value={selectedVillage?.id}
         />
-      </View>
-
-      <View className="flex-row justify-between mt-4 gap-4">
-        <TouchableOpacity
-          onPress={onBack}
-          className="flex-1 py-4 rounded-lg bg-gray-200"
-        >
-          <Text className="text-center text-gray-700 font-medium">
-            {getLocalizedTitle(
-              { en: "Previous", kn: "Gusubira inyuma", default: "Previous" },
-              language
-            )}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleNext}
-          disabled={!isComplete}
-          className={`flex-1 py-4 rounded-lg ${
-            isComplete ? "bg-primary" : "bg-gray-300"
-          }`}
-        >
-          <Text className="text-center text-white font-medium">
-            {getLocalizedTitle(
-              { en: "Next", kn: "Komeza", default: "Next" },
-              language
-            )}
-          </Text>
-        </TouchableOpacity>
       </View>
     </ScrollView>
   );

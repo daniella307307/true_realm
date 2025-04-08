@@ -1,3 +1,5 @@
+import { Realm } from "@realm/react";
+
 export class SurveySubmission extends Realm.Object {
   _id!: Realm.BSON.ObjectId;
   submittedAt!: Date;
@@ -20,7 +22,7 @@ export class SurveySubmission extends Realm.Object {
   cell!: number | null;
   village!: number | null;
   izucode!: string | null;
-  family!: number | null;
+  family!: string | null;
   cohort!: number | null;
   static schema = {
     name: 'SurveySubmission',
@@ -49,7 +51,7 @@ export class SurveySubmission extends Realm.Object {
       cohort: 'int?',
       village: 'int?',
       izucode: 'string?',
-      family: 'int?',
+      family: 'string?',
     }
   };
 }

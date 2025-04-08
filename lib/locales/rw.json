@@ -2,8 +2,8 @@
   "language": "kin",
   "Login": {
     "title": "Injiramo",
-    "email": "Imeli",
-    "password": "Ijambobanga",
+    "emailOrPhone": "Imeli cyangwa telefone",
+    "password": "Ijambobanππga",
     "emailPlaceholder": "Andika imeli yawe",
     "passwordPlaceholder": "Andika Ijambobanga ryawe",
     "login": "Injiramo",
@@ -163,6 +163,7 @@
   },
   "Videos": {
     "title": "Video",
+    "single_video": "Video",
     "downloaded": "Byatanzwe"
   },
   "PinPage": {

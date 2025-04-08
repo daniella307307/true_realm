@@ -1,4 +1,10 @@
-import { View, FlatList, TouchableOpacity, RefreshControl } from "react-native";
+import {
+  View,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  SafeAreaView,
+} from "react-native";
 import React, { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,9 +20,14 @@ import {
   useGetAllProjects,
 } from "~/services/project";
 import Skeleton from "~/components/ui/skeleton";
+import HeaderNavigation from "~/components/ui/header";
 
 const ProjectScreen = () => {
-  const storedProjects = useGetAllProjects();
+  const {
+    projects: storedProjects,
+    isLoading,
+    refresh,
+  } = useGetAllProjects();
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -27,9 +38,9 @@ const ProjectScreen = () => {
     mode: "onChange",
   });
 
+  console.log("storedProjects", JSON.stringify(storedProjects, null, 2));
   const searchQuery = watch("searchQuery");
   const [refreshing, setRefreshing] = useState(false);
-  const isLoading = storedProjects.projects.length === 0;
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchActiveProjectsFromRemote();
@@ -39,7 +50,7 @@ const ProjectScreen = () => {
   const organizedProjects = useMemo(() => {
     if (!storedProjects) return [];
 
-    const activeProjects = storedProjects.projects.filter(
+    const activeProjects = storedProjects.filter(
       (project) => project.status === 1
     );
 
@@ -120,40 +131,51 @@ const ProjectScreen = () => {
     beneficiary: project.beneficiary || "",
     projectlead: project.projectlead || "",
     has_modules: project.has_modules,
-    created_at: project.created_at ? new Date(project.created_at).toDateString() : undefined,
-    updated_at: project.updated_at ? new Date(project.updated_at).toDateString() : undefined,
+    created_at: project.created_at
+      ? new Date(project.created_at).toDateString()
+      : undefined,
+    updated_at: project.updated_at
+      ? new Date(project.updated_at).toDateString()
+      : undefined,
     project_modules: Array.from(project.project_modules), // Convert Realm List to array
   }));
 
   return (
-    <View className="flex-1 p-4 bg-white">
-      <CustomInput
-        control={control}
-        name="searchQuery"
-        placeholder={t("ProjectPage.search_project")}
-        keyboardType="default"
-        accessibilityLabel={t("ProjectPage.search_project")}
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("HomePage.projects")}
       />
-
-      {isLoading ? (
-        <>
-          <Skeleton />
-          <Skeleton />
-          <Skeleton />
-        </>
-      ) : (
-        <FlatList
-          data={transformedProjects}
-          ListHeaderComponent={ListHeader}
-          showsVerticalScrollIndicator={false}
-          keyExtractor={(item: IProject, index) => `${item.id}-${index}`}
-          renderItem={renderItem}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+      <View className="flex-1 p-4 bg-white">
+        <CustomInput
+          control={control}
+          name="searchQuery"
+          placeholder={t("ProjectPage.search_project")}
+          keyboardType="default"
+          accessibilityLabel={t("ProjectPage.search_project")}
         />
-      )}
-    </View>
+
+        {isLoading ? (
+          <>
+            <Skeleton />
+            <Skeleton />
+            <Skeleton />
+          </>
+        ) : (
+          <FlatList
+            data={transformedProjects}
+            ListHeaderComponent={ListHeader}
+            showsVerticalScrollIndicator={false}
+            keyExtractor={(item: IProject, index) => `${item.id}-${index}`}
+            renderItem={renderItem}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 

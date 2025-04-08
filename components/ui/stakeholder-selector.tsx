@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { View, FlatList, TouchableOpacity, TextInput } from "react-native";
 import { Text } from "./text";
 import { useGetStakeholders } from "~/services/stakeholders";
@@ -9,7 +9,6 @@ import i18n from "~/utils/i18n";
 
 interface StakeholderSelectorProps {
   onSelect: (value: IStakeholder[]) => void;
-  onBack: () => void;
   initialValue?: IStakeholder[];
 }
 
@@ -47,13 +46,12 @@ const StakeholderItem = ({
 
 const StakeholderSelector: React.FC<StakeholderSelectorProps> = ({
   onSelect,
-  onBack,
   initialValue,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStakeholders, setSelectedStakeholders] = useState<
-    IStakeholder[]
-  >(initialValue || []);
+  const [selectedStakeholders, setSelectedStakeholders] = useState<IStakeholder[]>(
+    initialValue || []
+  );
   const { stakeholders, isLoading } = useGetStakeholders();
   const language = i18n.language;
 
@@ -67,11 +65,10 @@ const StakeholderSelector: React.FC<StakeholderSelectorProps> = ({
     });
   };
 
-  const handleNext = () => {
-    if (selectedStakeholders.length > 0) {
-      onSelect(selectedStakeholders);
-    }
-  };
+  // Call onSelect whenever selection changes
+  useEffect(() => {
+    onSelect(selectedStakeholders);
+  }, [selectedStakeholders, onSelect]);
 
   const filteredStakeholders = useMemo(() => {
     if (!stakeholders) return [];
@@ -132,33 +129,6 @@ const StakeholderSelector: React.FC<StakeholderSelectorProps> = ({
           </View>
         }
       />
-      <View className="flex-row justify-between mt-4 gap-4">
-        <TouchableOpacity
-          onPress={onBack}
-          className="flex-1 py-4 rounded-lg bg-gray-200"
-        >
-          <Text className="text-center text-gray-700 font-medium">
-            {getLocalizedTitle(
-              { en: "Previous", kn: "Gusubira inyuma", default: "Previous" },
-              language
-            )}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleNext}
-          disabled={selectedStakeholders.length === 0}
-          className={`flex-1 py-4 rounded-lg ${
-            selectedStakeholders.length > 0 ? "bg-primary" : "bg-gray-300"
-          }`}
-        >
-          <Text className="text-center text-white font-medium">
-            {getLocalizedTitle(
-              { en: "Next", kn: "Komeza", default: "Next" },
-              language
-            )}
-          </Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };

@@ -4,10 +4,13 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  SafeAreaView,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
+import HeaderNavigation from "~/components/ui/header";
+import { useTranslation } from "react-i18next";
 
 const VideoIndexScreen = () => {
   const { vidId } = useLocalSearchParams();
@@ -56,9 +59,13 @@ const VideoIndexScreen = () => {
 
   const video = videos.find((v) => v.id === Number(vidId));
 
-  const videoPlayer = useVideoPlayer(`https://continuous.sugiramuryango.org.rw/public/videos/` + video?.path || "", (playerInstance) => {
-    playerInstance.loop = true;
-  });
+  const videoPlayer = useVideoPlayer(
+    `https://continuous.sugiramuryango.org.rw/public/videos/` + video?.path ||
+      "",
+    (playerInstance) => {
+      playerInstance.loop = true;
+    }
+  );
 
   useEffect(() => {
     if (videoPlayer) {
@@ -84,40 +91,52 @@ const VideoIndexScreen = () => {
     );
   }
 
+  const { t } = useTranslation();
   return (
-    <ScrollView className="flex-1 bg-background p-4">
-      <View className="w-full h-56 rounded-lg overflow-hidden bg-gray-100">
-        {isLoading && (
-          <View className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-            <ActivityIndicator size="large" color="#0000ff" />
-            <Text className="mt-2 text-gray-600">Loading video...</Text>
-          </View>
-        )}
-        {player && (
-          <VideoView
-            player={player}
-            className="w-full h-full"
-            allowsFullscreen
-            allowsPictureInPicture
-            style={{
-              width: "100%",
-              height: "100%",
-              backgroundColor: "#000",
-            }}
-          />
-        )}
-        <TouchableOpacity
-          onPress={togglePlayPause}
-          className="absolute top-4 right-4 bg-white/80 px-4 py-2 rounded-full z-20"
-        >
-          <Text className="font-semibold">{isPlaying ? "Pause" : "Play"}</Text>
-        </TouchableOpacity>
-      </View>
-      <Text className="text-xl font-bold text-gray-800 mt-4">
-        {video.title}
-      </Text>
-      <Text className="text-gray-600 mt-2 text-base">{video.description}</Text>
-    </ScrollView>
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("Videos.single_video")}
+      />
+      <ScrollView showsVerticalScrollIndicator={false} className="p-4 px-6">
+        <View className="w-full h-56 rounded-lg overflow-hidden bg-gray-100">
+          {isLoading && (
+            <View className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+              <ActivityIndicator size="large" color="#0000ff" />
+              <Text className="mt-2 text-gray-600">Loading video...</Text>
+            </View>
+          )}
+          {player && (
+            <VideoView
+              player={player}
+              className="w-full h-full"
+              allowsFullscreen
+              allowsPictureInPicture
+              style={{
+                width: "100%",
+                height: "100%",
+                backgroundColor: "#000",
+              }}
+            />
+          )}
+          <TouchableOpacity
+            onPress={togglePlayPause}
+            className="absolute top-4 right-4 bg-white/80 px-4 py-2 rounded-full z-20"
+          >
+            <Text className="font-semibold">
+              {isPlaying ? "Pause" : "Play"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <Text className="text-xl font-bold text-gray-800 mt-4">
+          {video.title}
+        </Text>
+        <Text className="text-gray-600 mt-2 text-base">
+          {video.description}
+        </Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 

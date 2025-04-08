@@ -15,12 +15,17 @@ export interface IUsers {
     last_seen: Date;
 }
 
+const phoneRegex = /^[0-9]{10,}$/; // Numbers only, minimum 10 digits
 
 export const loginSchema = z.object({
-    email: z
+    identifier: z
         .string()
-        .email("Invalid email address")
-        .nonempty("Email is required"),
+        .nonempty("Email or Phone number is required")
+        .refine(
+            (value) => phoneRegex.test(value) || z.string().email().safeParse(value).success,
+            "Invalid email or phone number format"
+        ),
+        
     password: z
         .string()
         .nonempty("Password is required")

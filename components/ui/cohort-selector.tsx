@@ -9,7 +9,6 @@ import i18n from "~/utils/i18n";
 
 interface CohortSelectorProps {
   onSelect: (value: ICohort) => void;
-  onBack: () => void;
   initialValue?: ICohort;
 }
 
@@ -53,29 +52,20 @@ const CohortItem = ({
 
 const CohortSelector: React.FC<CohortSelectorProps> = ({
   onSelect,
-  onBack,
   initialValue,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCohort, setSelectedCohort] = useState<ICohort | undefined>(
     initialValue
   );
-  console.log("selectedCohort v2:", selectedCohort);
   const { data: cohorts, isLoading } = useGetCohorts();
   const language = i18n.language;
 
   const handleSelect = (cohort: ICohort) => {
     // Create a fresh copy to avoid reference issues
     const cohortCopy = { ...cohort };
-    console.log("Cohort selected in selector:", cohortCopy);
     setSelectedCohort(cohortCopy);
-  };
-
-  const handleNext = () => {
-    console.log("Next button clicked, selected cohort:", selectedCohort);
-    if (selectedCohort) {
-      onSelect(selectedCohort);
-    }
+    onSelect(cohortCopy);
   };
 
   const filteredCohorts = cohorts?.filter((cohort) => {
@@ -146,33 +136,6 @@ const CohortSelector: React.FC<CohortSelectorProps> = ({
         windowSize={10}
         initialNumToRender={10}
       />
-      <View className="flex-row justify-between mt-4 gap-4">
-        <TouchableOpacity
-          onPress={onBack}
-          className="flex-1 py-4 rounded-lg bg-gray-200"
-        >
-          <Text className="text-center text-gray-700 font-medium">
-            {getLocalizedTitle(
-              { en: "Previous", kn: "Gusubira inyuma", default: "Previous" },
-              language
-            )}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleNext}
-          disabled={!selectedCohort}
-          className={`flex-1 py-4 rounded-lg ${
-            selectedCohort ? "bg-primary" : "bg-gray-300"
-          }`}
-        >
-          <Text className="text-center text-white font-medium">
-            {getLocalizedTitle(
-              { en: "Next", kn: "Komeza", default: "Next" },
-              language
-            )}
-          </Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };

@@ -9,7 +9,6 @@ import i18n from "~/utils/i18n";
 
 interface FamilySelectorProps {
   onSelect: (value: IFamilies) => void;
-  onBack: () => void;
   initialValue?: IFamilies;
 }
 
@@ -51,9 +50,9 @@ const FamilyItem = ({
 
       {family.village_name && (
         <Text
-          className={`text-sm ${isSelected ? "text-primary" : "text-gray-600"}`}
+          className={`text-[12px] ${isSelected ? "text-primary" : "text-gray-600"}`}
         >
-          {family.village_name}
+          Village: {family.village_name}
         </Text>
       )}
     </View>
@@ -62,7 +61,6 @@ const FamilyItem = ({
 
 const FamilySelector: React.FC<FamilySelectorProps> = ({
   onSelect,
-  onBack,
   initialValue,
 }) => {
   const [selectedFamily, setSelectedFamily] = useState<IFamilies | null>(initialValue || null);
@@ -71,12 +69,7 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
 
   const handleSelect = (family: IFamilies) => {
     setSelectedFamily(family);
-  };
-
-  const handleNext = () => {
-    if (selectedFamily) {
-      onSelect(selectedFamily);
-    }
+    onSelect(family);
   };
 
   // Filter families based on search query
@@ -102,7 +95,7 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
   const language = i18n.language;
 
   return (
-    <View className="p-4 flex-1">
+    <View className="flex-1 p-4">
       <Text className="mb-2 text-md font-medium text-[#050F2B]">
         {getLocalizedTitle(
           { en: "Select Family", kn: "Hitamo Umuryango", default: "Select Family" },
@@ -138,28 +131,7 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
             <Text className="text-gray-500">No families found</Text>
           </View>
         }
-        className="h-1/2"
       />
-
-      <View className="flex-row justify-between mt-4 gap-4">
-        <TouchableOpacity
-          onPress={onBack}
-          className="flex-1 py-4 rounded-lg bg-gray-200"
-        >
-          <Text className="text-center text-gray-700 font-medium">
-            Previous
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleNext}
-          disabled={!selectedFamily}
-          className={`flex-1 py-4 rounded-lg ${
-            selectedFamily ? "bg-primary" : "bg-gray-300"
-          }`}
-        >
-          <Text className="text-center text-white font-medium">Next</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };

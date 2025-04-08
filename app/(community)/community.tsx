@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  SafeAreaView,
 } from "react-native";
 
 import { useRouter } from "expo-router";
@@ -29,6 +30,7 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Post } from "~/models/posts/post";
+import HeaderNavigation from "~/components/ui/header";
 
 const CommunityScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -53,7 +55,9 @@ const CommunityScreen: React.FC = () => {
 
   const handleLikePress = (post: Post) => {
     const currentUserId = user.id;
-    const isLiked = JSON.parse(post.likes).some((like: ILikes) => like.user_id === currentUserId);
+    const isLiked = JSON.parse(post.likes).some(
+      (like: ILikes) => like.user_id === currentUserId
+    );
 
     if (isLiked) {
       useUnlikePost({ id: post.id });
@@ -99,7 +103,9 @@ const CommunityScreen: React.FC = () => {
 
   const renderPost = ({ item }: { item: Post }) => {
     const currentUserId = user.id;
-    const isLiked = JSON.parse(item.likes).some((like: ILikes) => like.user_id === currentUserId);
+    const isLiked = JSON.parse(item.likes).some(
+      (like: ILikes) => like.user_id === currentUserId
+    );
     const isOwner = JSON.parse(item.user).id === currentUserId;
 
     return (
@@ -115,7 +121,9 @@ const CommunityScreen: React.FC = () => {
                 className="w-10 h-10 rounded-full"
               />
               <View className="ml-3">
-                <Text className="font-semibold">{JSON.parse(item.user).name}</Text>
+                <Text className="font-semibold">
+                  {JSON.parse(item.user).name}
+                </Text>
                 <Text className="text-gray-500 text-sm">
                   {`${format(
                     new Date(item.created_at),
@@ -203,54 +211,58 @@ const CommunityScreen: React.FC = () => {
   };
 
   return (
-    <View className="flex-1 bg-slate-50">
-      <CustomInput
-        control={control}
-        name="searchQuery"
-        placeholder={t("CommunityPage.search_post")}
-        keyboardType="default"
-        accessibilityLabel={t("CommunityPage.search_post")}
-      />
-      <FlatList<Post>
-        data={filteredPosts}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderPost}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      />
-      <TouchableOpacity
-        onPress={() => router.push("/add-post")}
-        className="absolute bottom-16 right-6 bg-primary rounded-full p-4"
-      >
-        <TabBarIcon name="add" size={24} color="white" family="Ionicons" />
-      </TouchableOpacity>
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation showLeft={true} showRight={true} title={t("CommunityPage.title")} />
+      <View className="bg-slate-50 relative">
+        <CustomInput
+          control={control}
+          name="searchQuery"
+          placeholder={t("CommunityPage.search_post")}
+          keyboardType="default"
+          accessibilityLabel={t("CommunityPage.search_post")}
+        />
+        <FlatList<Post>
+          data={filteredPosts}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderPost}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          contentContainerStyle={{ paddingBottom: 200 }}
+        />
+        <TouchableOpacity
+          onPress={() => router.push("/add-post")}
+          className="absolute bottom-60 right-6 bg-primary rounded-full p-4"
+        >
+          <TabBarIcon name="add" size={24} color="white" family="Ionicons" />
+        </TouchableOpacity>
 
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View className="flex-1 justify-center items-center bg-black/50">
-          <View className="bg-white p-6 rounded-lg w-4/5">
-            <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-lg font-bold">Report Issue</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="black" />
-              </TouchableOpacity>
+        <Modal visible={modalVisible} transparent animationType="slide">
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <View className="bg-white p-6 rounded-lg w-4/5">
+              <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-lg font-bold">Report Issue</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="black" />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                className="h-32 border px-2 border-[#E4E4E7] rounded-lg justify-start items-start flex-col"
+                placeholder="Add your post description here"
+                value={reportText}
+                onChangeText={setReportText}
+                multiline
+                numberOfLines={4}
+              />
+              <Button onPress={handleSendReport} className="mt-4">
+                <Text>Submit</Text>
+              </Button>
             </View>
-
-            <TextInput
-              className="h-32 border px-2 border-[#E4E4E7] rounded-lg justify-start items-start flex-col"
-              placeholder="Add your post description here"
-              value={reportText}
-              onChangeText={setReportText}
-              multiline
-              numberOfLines={4}
-            />
-            <Button onPress={handleSendReport} className="mt-4">
-              <Text>Submit</Text>
-            </Button>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
+    </SafeAreaView>
   );
 };
 

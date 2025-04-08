@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { SafeAreaView, View, FlatList } from "react-native";
 import React from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
@@ -9,20 +9,23 @@ import FormFlowManager from "~/components/FormFlowManager";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { IFormSubmissionDetail } from "~/types";
+import HeaderNavigation from "~/components/ui/header";
+import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const FormElementIndexScreen = () => {
   const { formId, project_id } = useLocalSearchParams<{
     formId: string;
     project_id: string;
   }>();
-  // create an object with the formId, project_id and family_id
+  const insets = useSafeAreaInsets();
   const formIdNumber = parseInt(formId);
   const projectIdNumber = parseInt(project_id);
   console.log("Form ID: ", formIdNumber);
   console.log("Project ID: ", projectIdNumber);
   const { user } = useAuth({});
 
-  if (!formId || !project_id ) {
+  if (!formId || !project_id) {
     return (
       <View>
         <Text>Missing form or form id or family ID</Text>
@@ -48,8 +51,7 @@ const FormElementIndexScreen = () => {
       </View>
     );
   }
-  
-  
+
   const formStructure: IFormSubmissionDetail = {
     id: form?.form?.id ?? 0,
     table_name: form?.form?.table_name,
@@ -60,21 +62,30 @@ const FormElementIndexScreen = () => {
     userId: user.id ?? 0,
   };
 
+  const { t } = useTranslation();
+
   return (
-    <View className="flex-1 p-4 bg-background">
-      {parsedForm?.components ? (
-        <>
-          <Text className="text-lg font-semibold mb-4">{form?.form?.name}</Text>
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("FormElementPage.title")}
+      />
+      <View className="flex-1">
+        <View className="px-4 pt-4">
+          <Text className="text-lg font-semibold mb-4">
+            {form?.form?.name}
+          </Text>
+        </View>
+        <View className="flex-1">
           <FormFlowManager
             form={form}
             formSubmissionMandatoryFields={formStructure}
-            fields={parsedForm.components}
+            fields={parsedForm?.components || []}
           />
-        </>
-      ) : (
-        <EmptyDynamicComponent />
-      )}
-    </View>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 };
 

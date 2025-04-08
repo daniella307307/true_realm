@@ -4,6 +4,7 @@ import {
   TouchableOpacity,
   FlatList,
   RefreshControl,
+  SafeAreaView,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
@@ -18,15 +19,18 @@ import Skeleton from "~/components/ui/skeleton";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { IProject } from "~/types";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
+import HeaderNavigation from "~/components/ui/header";
 
 const HistoryProjectScreen = () => {
   const storedProjects = useGetAllProjects();
+  console.log("storedProjects", JSON.stringify(storedProjects, null, 2));
   const {
     surveySubmissions,
     isLoading: surveySubmissionsLoading,
     error: surveySubmissionsError,
     refetch: refetchSurveySubmissions,
   } = useGetAllSurveySubmissions();
+  // console.log("surveySubmissions", JSON.stringify(surveySubmissions, null, 2));
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -39,7 +43,6 @@ const HistoryProjectScreen = () => {
 
   const searchQuery = watch("searchQuery");
   const [refreshing, setRefreshing] = useState(false);
-  const isLoading = storedProjects.projects.length === 0;
 
   // console.log("Projects: ", storedProjects.projects);
 
@@ -114,8 +117,7 @@ const HistoryProjectScreen = () => {
             {item.name}
           </Text>
         </View>
-        <Text className="text-sm py-2 text-gray-600">{item.description}</Text>
-        <View className="flex flex-row justify-between items-center mt-2">
+        <View className="flex flex-col justify-between items-start mt-2">
           <Text className="text-sm text-gray-500">
             {t("History.submissions", "Submissions")}:{" "}
             {projectSubmissions.length}
@@ -176,41 +178,48 @@ const HistoryProjectScreen = () => {
   }));
 
   return (
-    <View className="flex-1 p-4 bg-white">
-      <CustomInput
-        control={control}
-        name="searchQuery"
-        placeholder={t("HistoryProjectPage.search_history_project")}
-        keyboardType="default"
-        accessibilityLabel={t("HistoryProjectPage.search_history_project")}
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("HistoryProjectPage.title")}
       />
-
-      {isLoading ? (
-        <>
-          <Skeleton />
-          <Skeleton />
-          <Skeleton />
-        </>
-      ) : transformedProjects.length === 0 ? (
-        <View className="flex-1 justify-center items-center mt-8">
-          <EmptyDynamicComponent />
-          <Text className="text-gray-500 text-center">
-            {t("History.noLocalSubmissions", "No local submissions yet!")}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={transformedProjects}
-          ListHeaderComponent={ListHeader}
-          showsVerticalScrollIndicator={false}
-          keyExtractor={(item: IProject, index) => `${item.id}-${index}`}
-          renderItem={renderItem}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+      <View className="px-4">
+        <CustomInput
+          control={control}
+          name="searchQuery"
+          placeholder={t("HistoryProjectPage.search_history_project")}
+          keyboardType="default"
+          accessibilityLabel={t("HistoryProjectPage.search_history_project")}
         />
-      )}
-    </View>
+
+        {surveySubmissionsLoading ? (
+          <>
+            <Skeleton />
+            <Skeleton />
+            <Skeleton />
+          </>
+        ) : transformedProjects.length === 0 ? (
+          <View className="flex-1 justify-center items-start mt-8">
+            <EmptyDynamicComponent />
+            <Text className="text-gray-500 text-center">
+              {t("History.noLocalSubmissions", "No local submissions yet!")}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={transformedProjects}
+            ListHeaderComponent={ListHeader}
+            showsVerticalScrollIndicator={false}
+            keyExtractor={(item: IProject, index) => `${item.id}-${index}`}
+            renderItem={renderItem}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 

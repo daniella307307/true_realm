@@ -1,4 +1,4 @@
-import { View, FlatList, RefreshControl, TouchableOpacity } from "react-native";
+import { View, FlatList, RefreshControl, TouchableOpacity, SafeAreaView } from "react-native";
 import React, { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,6 +17,7 @@ import {
 import { Button } from "~/components/ui/button";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
+import HeaderNavigation from "~/components/ui/header";
 
 const ProjectModuleScreens = () => {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -76,7 +77,6 @@ const ProjectModuleScreens = () => {
       .sort((a, b) => a.order_list - b.order_list);
   }, [storedModules.modules, surveySubmissions, projectId, searchQuery]);
 
-
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchActiveModulesFromRemote();
@@ -96,79 +96,143 @@ const ProjectModuleScreens = () => {
   }, [surveySubmissions, projectId]);
 
   return (
-    <View className="flex-1 p-4 bg-white">
-      <CustomInput
-        control={control}
-        name="searchQuery"
-        placeholder={t("HistoryModulePage.search_history_module")}
-        keyboardType="default"
-        accessibilityLabel={t("HistoryModulePage.search_history_module")}
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("HistoryModulePage.title")}
       />
+      <View className="p-4">
+        <CustomInput
+          control={control}
+          name="searchQuery"
+          placeholder={t("HistoryModulePage.search_history_module")}
+          keyboardType="default"
+          accessibilityLabel={t("HistoryModulePage.search_history_module")}
+        />
 
-      {isLoading ? (
-        <>
-          <Skeleton />
-          <Skeleton />
-          <Skeleton />
-        </>
-      ) : (
-        <FlatList
-          data={filteredModules}
-          keyExtractor={(item: IModule, index) => `${item.id}-${index}`}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={() => (
-            <EmptyDynamicComponent message="No modules with submissions found" />
-          )}
-          ListHeaderComponent={() =>
-            hasRiskOfHarmWithSubmissions ? (
-              <TouchableOpacity
-                onPress={() => router.push(`/(sub-survey)/24`)}
-                className="p-4 border mb-4 border-red-500 rounded-xl"
-              >
-                <View className="flex-row items-center pr-4 justify-start">
-                  <TabBarIcon
-                    name="warning"
-                    family="MaterialIcons"
-                    size={24}
-                    color="#D92020"
-                  />
-                  <Text className="text-lg font-semibold ml-2 text-red-500">
-                    {t("HistoryModulePage.risk_of_harm")}
+        {isLoading ? (
+          <>
+            <Skeleton />
+            <Skeleton />
+            <Skeleton />
+          </>
+        ) : (
+          <FlatList
+            data={filteredModules}
+            keyExtractor={(item: IModule, index) => `${item.id}-${index}`}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={() => (
+              <EmptyDynamicComponent message="No modules with submissions found" />
+            )}
+            ListHeaderComponent={() =>
+              hasRiskOfHarmWithSubmissions ? (
+                <TouchableOpacity
+                  onPress={() => router.push(`/(sub-survey)/24`)}
+                  className="p-4 border mb-4 border-red-500 rounded-xl"
+                >
+                  <View className="flex-row items-center pr-4 justify-start">
+                    <TabBarIcon
+                      name="warning"
+                      family="MaterialIcons"
+                      size={24}
+                      color="#D92020"
+                    />
+                    <Text className="text-lg font-semibold ml-2 text-red-500">
+                      {t("HistoryModulePage.risk_of_harm")}
+                    </Text>
+                  </View>
+                  <Text className="text-sm py-2 text-red-600">
+                    {t("HistoryModulePage.risk_of_harm_description")}
                   </Text>
-                </View>
-                <Text className="text-sm py-2 text-red-600">
-                  {t("HistoryModulePage.risk_of_harm_description")}
-                </Text>
-                <View className="flex flex-row justify-between items-center mt-2">
-                  <Text className="text-sm text-gray-500">
-                    {t("History.submissions", "Submissions")}:{" "}
-                    {
-                      surveySubmissions.filter(
-                        (submission) =>
-                          submission.project_id === Number(projectId) &&
-                          submission.source_module_id === 24 
-                      ).length
-                    }
-                  </Text>
-                  <Text className="text-sm text-gray-500">
-                    {t("History.lastSubmission", "Last submission")}:{" "}
-                    {(() => {
-                      const riskSubmissions = surveySubmissions
-                        .filter(
+                  <View className="flex flex-row justify-between items-center mt-2">
+                    <Text className="text-sm text-gray-500">
+                      {t("History.submissions", "Submissions")}:{" "}
+                      {
+                        surveySubmissions.filter(
                           (submission) =>
                             submission.project_id === Number(projectId) &&
                             submission.source_module_id === 24
-                        )
-                        .sort(
-                          (a, b) =>
-                            new Date(b.submittedAt).getTime() -
-                            new Date(a.submittedAt).getTime()
-                        );
+                        ).length
+                      }
+                    </Text>
+                    <Text className="text-sm text-gray-500">
+                      {t("History.lastSubmission", "Last submission")}:{" "}
+                      {(() => {
+                        const riskSubmissions = surveySubmissions
+                          .filter(
+                            (submission) =>
+                              submission.project_id === Number(projectId) &&
+                              submission.source_module_id === 24
+                          )
+                          .sort(
+                            (a, b) =>
+                              new Date(b.submittedAt).getTime() -
+                              new Date(a.submittedAt).getTime()
+                          );
 
-                      return riskSubmissions.length > 0
-                        ? new Date(
-                            riskSubmissions[0].submittedAt
-                          ).toLocaleDateString("en-GB", {
+                        return riskSubmissions.length > 0
+                          ? new Date(
+                              riskSubmissions[0].submittedAt
+                            ).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            })
+                          : t("History.noSubmissions", "No submissions");
+                      })()}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ) : null
+            }
+            renderItem={({ item }) => {
+              const moduleSubmissions = surveySubmissions.filter(
+                (submission) => submission.source_module_id === item.id
+              );
+
+              // Sort submissions by date (most recent first)
+              const sortedSubmissions = [...moduleSubmissions].sort(
+                (a, b) =>
+                  new Date(b.submittedAt).getTime() -
+                  new Date(a.submittedAt).getTime()
+              );
+
+              const lastSubmission =
+                sortedSubmissions.length > 0
+                  ? sortedSubmissions[0].submittedAt
+                  : null;
+
+              return (
+                <TouchableOpacity
+                  onPress={() => router.push(`/(sub-survey)/${item.id}`)}
+                  className="p-4 border mb-4 border-gray-200 rounded-xl"
+                >
+                  <View className="flex-row items-center pr-4 justify-start">
+                    <TabBarIcon
+                      name="chat"
+                      family="MaterialIcons"
+                      size={24}
+                      color="#71717A"
+                    />
+                    <Text className="text-lg ml-2 font-semibold">
+                      {item.module_name}
+                    </Text>
+                  </View>
+                  <Text className="py-2 text-xs/1 text-gray-600">
+                    {item.module_description}
+                  </Text>
+                  <View className="flex flex-col justify-between items-start mt-2">
+                    <Text className="text-sm text-gray-500">
+                      {t("History.submissions", "Submissions")}:{" "}
+                      {moduleSubmissions.length}
+                    </Text>
+                    <Text className="text-sm text-gray-500">
+                      Last Submission: {lastSubmission
+                        ? new Date(lastSubmission).toLocaleDateString("en-GB", {
                             day: "2-digit",
                             month: "2-digit",
                             year: "numeric",
@@ -176,76 +240,19 @@ const ProjectModuleScreens = () => {
                             minute: "2-digit",
                             hour12: false,
                           })
-                        : t("History.noSubmissions", "No submissions");
-                    })()}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ) : null
-          }
-          renderItem={({ item }) => {
-            const moduleSubmissions = surveySubmissions.filter(
-              (submission) => submission.source_module_id === item.id
-            );
-
-            // Sort submissions by date (most recent first)
-            const sortedSubmissions = [...moduleSubmissions].sort(
-              (a, b) =>
-                new Date(b.submittedAt).getTime() -
-                new Date(a.submittedAt).getTime()
-            );
-
-            const lastSubmission =
-              sortedSubmissions.length > 0
-                ? sortedSubmissions[0].submittedAt
-                : null;
-
-            return (
-              <TouchableOpacity
-                onPress={() => router.push(`/(sub-survey)/${item.id}`)}
-                className="p-4 border mb-4 border-gray-200 rounded-xl"
-              >
-                <View className="flex-row items-center pr-4 justify-start">
-                  <TabBarIcon
-                    name="chat"
-                    family="MaterialIcons"
-                    size={24}
-                    color="#71717A"
-                  />
-                  <Text className="text-lg ml-2 font-semibold">
-                    {item.module_name}
-                  </Text>
-                </View>
-                <Text className="py-2 text-xs/1 text-gray-600">
-                  {item.module_description}
-                </Text>
-                <View className="flex flex-row justify-between items-center mt-2">
-                  <Text className="text-sm text-gray-500">
-                    {t("History.submissions", "Submissions")}:{" "}
-                    {moduleSubmissions.length}
-                  </Text>
-                  <Text className="text-sm text-gray-500">
-                    {lastSubmission
-                      ? new Date(lastSubmission).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: false,
-                        })
-                      : t("History.noSubmissions", "No submissions")}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        />
-      )}
-    </View>
+                        : t("History.noSubmissions", "No submissions")}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 

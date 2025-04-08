@@ -1,4 +1,12 @@
-import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  Alert,
+  ActivityIndicator,
+  SafeAreaView,
+} from "react-native";
 import { useMemo, useState } from "react";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useGetAllProjects } from "~/services/project";
@@ -8,6 +16,8 @@ import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { baseInstance } from "~/utils/axios";
 import { useGetStakeholders } from "~/services/stakeholders";
+import HeaderNavigation from "~/components/ui/header";
+import { useTranslation } from "react-i18next";
 const { useRealm, useQuery } = RealmContext;
 
 interface SyncItem {
@@ -34,7 +44,7 @@ const SyncPage = () => {
     Projects: "Not Synced",
     Modules: "Not Synced",
     Forms: "Not Synced",
-    Stakeholders: "Not Synced"
+    Stakeholders: "Not Synced",
   });
 
   const { projects, refresh: refreshProjects } = useGetAllProjects();
@@ -48,7 +58,7 @@ const SyncPage = () => {
 
   const syncFormsAndSurveys = async () => {
     if (isSyncing) return;
-    
+
     setIsSyncing(true);
     setSyncType("Forms");
     setSyncProgress(0);
@@ -61,7 +71,7 @@ const SyncPage = () => {
       Projects: "Syncing",
       Modules: "Not Synced",
       Forms: "Not Synced",
-      Stakeholders: "Not Synced"
+      Stakeholders: "Not Synced",
     });
 
     try {
@@ -69,58 +79,68 @@ const SyncPage = () => {
       setCurrentSyncItem("Projects");
       try {
         await refreshProjects();
-        setSyncStatuses(prev => ({ ...prev, Projects: "Success" }));
+        setSyncStatuses((prev) => ({ ...prev, Projects: "Success" }));
         successCount++;
       } catch (error) {
         console.error("Error syncing projects:", error);
-        setSyncStatuses(prev => ({ ...prev, Projects: "Failed" }));
+        setSyncStatuses((prev) => ({ ...prev, Projects: "Failed" }));
         hasErrors = true;
       }
       setSyncProgress((successCount / totalItems) * 100);
 
       // Sync Modules
       setCurrentSyncItem("Modules");
-      setSyncStatuses(prev => ({ ...prev, Modules: "Syncing" }));
+      setSyncStatuses((prev) => ({ ...prev, Modules: "Syncing" }));
       try {
         await refreshModules();
-        setSyncStatuses(prev => ({ ...prev, Modules: "Success" }));
+        setSyncStatuses((prev) => ({ ...prev, Modules: "Success" }));
         successCount++;
       } catch (error) {
         console.error("Error syncing modules:", error);
-        setSyncStatuses(prev => ({ ...prev, Modules: "Failed" }));
+        setSyncStatuses((prev) => ({ ...prev, Modules: "Failed" }));
         hasErrors = true;
       }
       setSyncProgress((successCount / totalItems) * 100);
 
       // Sync Forms
       setCurrentSyncItem("Forms");
-      setSyncStatuses(prev => ({ ...prev, Forms: "Syncing" }));
-      
+      setSyncStatuses((prev) => ({ ...prev, Forms: "Syncing" }));
+
       try {
         // Get all unique project_module_ids from the modules
-        const projectModuleIds = [...new Set(modules.map(module => module.id))];
-        
+        const projectModuleIds = [
+          ...new Set(modules.map((module) => module.id)),
+        ];
+
         // Sync forms for each project module
         for (const projectModuleId of projectModuleIds) {
           try {
             // Find a module with this id to get the project_id
-            const module = modules.find(m => m.id === projectModuleId);
+            const module = modules.find((m) => m.id === projectModuleId);
             console.log("module", module);
             if (module) {
               // Call the remote fetch function directly instead of using the hook
-              const formData = await fetchFormByProjectAndModuleFromRemote(module.project_id, module.id);
-              
+              const formData = await fetchFormByProjectAndModuleFromRemote(
+                module.project_id,
+                module.id
+              );
+
               // Update Realm directly
               if (realm && !realm.isClosed) {
                 realm.write(() => {
                   formData.data.forEach((form) => {
                     try {
-                      realm.create("Survey", 
+                      realm.create(
+                        "Survey",
                         {
                           ...form,
-                          json2: typeof form.json2 !== "string" ? JSON.stringify(form.json2) : form.json2,
-                        }, 
-                        Realm.UpdateMode.Modified);
+                          json2:
+                            typeof form.json2 !== "string"
+                              ? JSON.stringify(form.json2)
+                              : form.json2,
+                        },
+                        Realm.UpdateMode.Modified
+                      );
                     } catch (error) {
                       console.error("Error creating/updating form:", error);
                     }
@@ -129,40 +149,43 @@ const SyncPage = () => {
               }
             }
           } catch (error) {
-            console.error(`Error syncing forms for project module ${projectModuleId}:`, error);
+            console.error(
+              `Error syncing forms for project module ${projectModuleId}:`,
+              error
+            );
             // Continue with other modules even if one fails
           }
         }
-        
-        setSyncStatuses(prev => ({ ...prev, Forms: "Success" }));
+
+        setSyncStatuses((prev) => ({ ...prev, Forms: "Success" }));
         successCount++;
       } catch (error) {
         console.error("Error syncing forms:", error);
-        setSyncStatuses(prev => ({ ...prev, Forms: "Failed" }));
+        setSyncStatuses((prev) => ({ ...prev, Forms: "Failed" }));
         hasErrors = true;
       }
       setSyncProgress((successCount / totalItems) * 100);
 
       // Sync Stakeholders
       setCurrentSyncItem("Stakeholders");
-      setSyncStatuses(prev => ({ ...prev, Stakeholders: "Syncing" }));
+      setSyncStatuses((prev) => ({ ...prev, Stakeholders: "Syncing" }));
       try {
         await refreshStakeholders();
-        setSyncStatuses(prev => ({ ...prev, Stakeholders: "Success" }));
+        setSyncStatuses((prev) => ({ ...prev, Stakeholders: "Success" }));
         successCount++;
       } catch (error) {
         console.error("Error syncing stakeholders:", error);
-        setSyncStatuses(prev => ({ ...prev, Stakeholders: "Failed" }));
+        setSyncStatuses((prev) => ({ ...prev, Stakeholders: "Failed" }));
         hasErrors = true;
       }
       setSyncProgress((successCount / totalItems) * 100);
 
       setLastSyncDate(new Date());
-      
+
       // Show appropriate alert based on whether there were errors
       if (hasErrors) {
         Alert.alert(
-          "Partial Success", 
+          "Partial Success",
           "Some components failed to sync. Check the status for details."
         );
       } else {
@@ -180,11 +203,11 @@ const SyncPage = () => {
 
   const syncData = async () => {
     if (isSyncing) return;
-    
+
     setIsSyncing(true);
     setSyncType("Data");
     setSyncProgress(0);
-    
+
     try {
       const pendingCount = pendingSubmissions.length;
       if (pendingCount === 0) {
@@ -193,7 +216,7 @@ const SyncPage = () => {
         setSyncType(null);
         return;
       }
-      
+
       let syncedCount = 0;
       let failedCount = 0;
 
@@ -205,14 +228,14 @@ const SyncPage = () => {
             answers: submission.answers,
             _id: submission._id.toString(),
             submittedAt: submission.submittedAt.toISOString(),
-            lastSyncAttempt: new Date().toISOString()
+            lastSyncAttempt: new Date().toISOString(),
           });
 
           if (response.data && response.data.result) {
             // Update the local record after successful sync
             realm.write(() => {
               submission.sync_status = true;
-              submission.syncStatus = 'synced';
+              submission.syncStatus = "synced";
               submission.lastSyncAttempt = new Date();
             });
             syncedCount++;
@@ -221,27 +244,30 @@ const SyncPage = () => {
             throw new Error("Invalid response from server");
           }
         } catch (error) {
-          console.error('Error syncing submission:', error);
+          console.error("Error syncing submission:", error);
           realm.write(() => {
             submission.sync_status = false;
-            submission.syncStatus = 'failed';
+            submission.syncStatus = "failed";
             submission.lastSyncAttempt = new Date();
           });
           failedCount++;
         }
-        
+
         setSyncProgress(((syncedCount + failedCount) / pendingCount) * 100);
       }
-      
+
       setLastSyncDate(new Date());
-      
+
       if (failedCount > 0) {
         Alert.alert(
-          "Partial Success", 
+          "Partial Success",
           `Synced ${syncedCount} submissions, ${failedCount} failed`
         );
       } else {
-        Alert.alert("Success", `Successfully synced ${syncedCount} submissions`);
+        Alert.alert(
+          "Success",
+          `Successfully synced ${syncedCount} submissions`
+        );
       }
     } catch (error) {
       console.error("Error during data sync:", error);
@@ -257,13 +283,16 @@ const SyncPage = () => {
       {
         key: "Forms",
         name: "Sync Forms/Surveys",
-        status: isSyncing && syncType === "Forms" 
-          ? "Syncing" 
-          : lastSyncDate && syncType === "Forms" && !Object.values(syncStatuses).includes("Failed")
-            ? "Success" 
+        status:
+          isSyncing && syncType === "Forms"
+            ? "Syncing"
+            : lastSyncDate &&
+              syncType === "Forms" &&
+              !Object.values(syncStatuses).includes("Failed")
+            ? "Success"
             : Object.values(syncStatuses).includes("Failed")
-              ? "Failed"
-              : "Not Synced",
+            ? "Failed"
+            : "Not Synced",
         progress: syncType === "Forms" ? syncProgress : undefined,
         lastSyncDate: lastSyncDate,
         items: [
@@ -292,18 +321,26 @@ const SyncPage = () => {
       {
         key: "data",
         name: "Sync Data",
-        status: pendingSubmissions.length === 0 
-          ? "No Pending Submissions" 
-          : isSyncing && syncType === "Data" 
-            ? "Syncing" 
-            : lastSyncDate && syncType === "Data" 
-              ? "Success" 
-              : "Not Synced",
+        status:
+          pendingSubmissions.length === 0
+            ? "No Pending Submissions"
+            : isSyncing && syncType === "Data"
+            ? "Syncing"
+            : lastSyncDate && syncType === "Data"
+            ? "Success"
+            : "Not Synced",
         progress: syncType === "Data" ? syncProgress : undefined,
         lastSyncDate: lastSyncDate,
       },
     ],
-    [isSyncing, currentSyncItem, syncProgress, lastSyncDate, syncType, syncStatuses]
+    [
+      isSyncing,
+      currentSyncItem,
+      syncProgress,
+      lastSyncDate,
+      syncType,
+      syncStatuses,
+    ]
   );
 
   const renderItem = ({ item }: { item: SyncItem }) => (
@@ -315,15 +352,17 @@ const SyncPage = () => {
             <ActivityIndicator size="small" color="#0000ff" />
           )}
         </View>
-        <Text className={
-          item.status === "Success"
-            ? "text-green-500"
-            : item.status === "Failed"
-            ? "text-red-500"
-            : item.status === "Syncing"
-            ? "text-blue-500"
-            : "text-gray-500"
-        }>
+        <Text
+          className={
+            item.status === "Success"
+              ? "text-green-500"
+              : item.status === "Failed"
+              ? "text-red-500"
+              : item.status === "Syncing"
+              ? "text-blue-500"
+              : "text-gray-500"
+          }
+        >
           {item.status}
         </Text>
         {item.progress !== undefined && (
@@ -366,7 +405,9 @@ const SyncPage = () => {
         )}
       </View>
       <TouchableOpacity
-        className={`flex items-center justify-center h-12 w-12 flex-col rounded-full ml-4 ${isSyncing && syncType === item.key ? 'bg-gray-700' : 'bg-primary'}`}
+        className={`flex items-center justify-center h-12 w-12 flex-col rounded-full ml-4 ${
+          isSyncing && syncType === item.key ? "bg-gray-700" : "bg-primary"
+        }`}
         onPress={() => {
           if (item.key === "Forms") {
             syncFormsAndSurveys();
@@ -376,24 +417,30 @@ const SyncPage = () => {
         }}
         disabled={isSyncing}
       >
-        <TabBarIcon 
-          name={isSyncing && syncType === item.key ? "hourglass-empty" : "sync"} 
-          family="MaterialIcons" 
-          size={24} 
-          color="#FFFFFF" 
+        <TabBarIcon
+          name={isSyncing && syncType === item.key ? "hourglass-empty" : "sync"}
+          family="MaterialIcons"
+          size={24}
+          color="#FFFFFF"
         />
       </TouchableOpacity>
     </View>
   );
 
+  const { t } = useTranslation();
   return (
-    <View className="flex-1">
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("SettingsPage.sync")}
+      />
       <FlatList
         data={services as SyncItem[]}
         renderItem={renderItem}
         keyExtractor={(item) => item.key}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

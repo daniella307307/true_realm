@@ -65,6 +65,7 @@ export const saveSurveySubmission = async (
   try {
     const submission = createSurveySubmission(formData, fields);
     const isConnected = isOnline();
+    let result;
 
     // If online, first try to submit to API
     if (isConnected) {
@@ -74,8 +75,7 @@ export const saveSurveySubmission = async (
         });
 
         // If API submission is successful and has result object
-        if (response.data && response.data.result) {
-          console.log("Submission from good response.");
+        if (response.data || response.data.result) {
           realm.write(() => {
             const submissionWithSyncStatus = {
               ...submission,
@@ -83,10 +83,14 @@ export const saveSurveySubmission = async (
               syncStatus: "synced",
               lastSyncAttempt: new Date(),
             };
-            realm.create(SurveySubmission, submissionWithSyncStatus);
+            console.log(
+              "Submission with sync status:",
+              submissionWithSyncStatus
+            );
+            result = realm.create(SurveySubmission, submissionWithSyncStatus);
           });
           console.log("Submission saved to realm.");
-          return;
+          return result; // Return the result
         }
       } catch (apiError) {
         console.error("Error submitting to API:", apiError);
@@ -95,6 +99,7 @@ export const saveSurveySubmission = async (
     }
 
     // If offline or API submission failed, save locally with pending status
+    let offlineResult;
     realm.write(() => {
       const submissionWithSyncStatus = {
         ...submission,
@@ -102,10 +107,11 @@ export const saveSurveySubmission = async (
         syncStatus: "pending",
         lastSyncAttempt: new Date(),
       };
-      realm.create(SurveySubmission, submissionWithSyncStatus);
+      offlineResult = realm.create(SurveySubmission, submissionWithSyncStatus);
     });
 
     console.log("Survey submission saved locally!");
+    return offlineResult; // Return the result for offline submissions
   } catch (error) {
     console.error("Error saving survey submission:", error);
     throw error;

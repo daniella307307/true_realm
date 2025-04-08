@@ -1,16 +1,36 @@
 import React, { useCallback } from "react";
-import { View, TouchableOpacity, Alert } from "react-native";
+import { View, TouchableOpacity, Text, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router, useNavigation, useRouter } from "expo-router";
 import { NAV_THEME } from "~/lib/constants";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { DrawerActions } from "@react-navigation/native";
+import Logo from "~/components/Logo";
+
+type FeatherIconName = keyof typeof Feather.glyphMap;
 
 const HeaderNavigation = ({
   showLeft = true,
+  showRight = false,
   backFunction = () => router.back(),
+  rightFunction = () => {},
   size = 24,
   className = "",
+  rightIcon = "menu" as FeatherIconName,
+  title = "",
+  showLogo = false,
+  logoSize = 32,
+}: {
+  showLeft?: boolean;
+  showRight?: boolean;
+  backFunction?: () => void;
+  rightFunction?: () => void;
+  size?: number;
+  className?: string;
+  rightIcon?: FeatherIconName;
+  title?: string;
+  showLogo?: boolean;
+  logoSize?: number;
 }) => {
   const navigation = useNavigation();
   const router = useRouter();
@@ -40,59 +60,81 @@ const HeaderNavigation = ({
     }
   }, [navigation, backFunction, router]);
 
-  // More robust handling of drawer open
-  const handleDrawerOpen = useCallback(() => {
+  // More robust handling of right button press
+  const handleRightPress = useCallback(() => {
     try {
-      console.log("Opening drawer");
-      navigation.dispatch(DrawerActions.openDrawer());
+      if (rightIcon === "menu") {
+        navigation.dispatch(DrawerActions.openDrawer());
+      } else {
+        rightFunction();
+      }
     } catch (error) {
-      console.error("Error opening drawer:", error);
+      console.error("Error in right button handler:", error);
     }
-  }, [navigation, router]);
+  }, [navigation, rightFunction, rightIcon]);
 
   return (
-    <View className={`flex-row items-center justify-center ${className}`}>
-      {showLeft ? (
-        <TouchableOpacity
-          onPress={handleBackPress}
-          activeOpacity={0.7}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-          style={{
-            width: size * 2,
-            height: size * 2,
-            borderRadius: 999,
-            backgroundColor: "rgba(0, 0, 0, 0.1)",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Feather
-            name="chevron-left"
-            size={size}
-            color={themeColor}
-          />
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity
-          onPress={handleDrawerOpen}
-          activeOpacity={0.7}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-          style={{
-            width: size * 2,
-            height: size * 2,
-            borderRadius: 999,
-            backgroundColor: "rgba(0, 0, 0, 0.1)",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Feather
-            name="menu"
-            size={size}
-            color={themeColor}
-          />
-        </TouchableOpacity>
-      )}
+    <View className={` ${Platform.OS === "ios" ? "mt-0" : "mt-10"} flex-row items-center px-6 justify-between ${className}`}>
+      <View style={{ width: size * 2 }}>
+        {showLeft && (
+          <TouchableOpacity
+            onPress={handleBackPress}
+            activeOpacity={0.7}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            style={{
+              width: size * 2,
+              height: size * 2,
+              borderRadius: 999,
+              backgroundColor: "rgba(0, 0, 0, 0.1)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Feather
+              name="chevron-left"
+              size={size}
+              color={themeColor}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View className="flex-1 items-center">
+        {showLogo ? (
+          <Logo horizontal size={logoSize} />
+        ) : title ? (
+          <Text 
+            className="text-lg font-semibold"
+            style={{ color: themeColor }}
+          >
+            {title}
+          </Text>
+        ) : null}
+      </View>
+
+      <View style={{ width: size * 2 }}>
+        {showRight && (
+          <TouchableOpacity
+            onPress={handleRightPress}
+            activeOpacity={0.7}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            style={{
+              width: size * 2,
+              height: size * 2,
+              borderRadius: 999,
+              backgroundColor: "rgba(0, 0, 0, 0.1)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Feather
+              name={rightIcon}
+              size={size}
+              color={themeColor}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 };

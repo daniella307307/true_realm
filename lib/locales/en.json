@@ -3,9 +3,9 @@
     "language": "en",
     "Login": {
       "title": "Login",
-      "email": "Email Address",
+      "emailOrPhone": "Email or Phone Number",
+      "emailOrPhonePlaceholder": "Enter your email or phone number",
       "password": "Password",
-      "emailPlaceholder": "Enter your email",
       "passwordPlaceholder": "Enter your password",
       "login": "Login",
       "forgotPassword": "Forgot Password?",
@@ -171,6 +171,7 @@
     },
     "Videos": {
       "title": "Videos",
+      "single_video": "Video",
       "downloaded": "Downloaded"
     },
     "PinPage": {

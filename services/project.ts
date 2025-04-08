@@ -95,14 +95,34 @@ export function useGetAllProjects() {
 
 // Hook for getting all modules with offline support
 export function useGetAllModules() {
-  const realm = useRealm();
-  const storedModules = useQuery(Module);
+  const storedProjects = useQuery(Project);
   const { isConnected } = useNetworkStatus();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-  const syncModules = useCallback(async () => {
+  const getModulesFromProjects = useCallback(() => {
+    try {
+      // Parse and flatten all modules from all projects
+      const allModules = storedProjects.flatMap((project) => {
+        return project.project_modules.map((moduleString) => {
+          try {
+            return JSON.parse(moduleString);
+          } catch (parseError) {
+            console.error("Error parsing module:", parseError);
+            return null;
+          }
+        }).filter(Boolean); // Remove any null values from failed parses
+      });
+
+      return allModules;
+    } catch (error) {
+      console.error("Error getting modules from projects:", error);
+      return [];
+    }
+  }, [storedProjects]);
+
+  const syncModules = useCallback(async () => { 
     if (!isConnected) {
       console.log("Offline mode: Using local modules data");
       return;
@@ -112,49 +132,28 @@ export function useGetAllModules() {
     setError(null);
 
     try {
-      console.log("Fetching modules from remote");
-      const apiModules = await fetchActiveModulesFromRemote();
-
-      if (!realm || realm.isClosed) {
-        console.warn("Skipping Realm write: Realm is closed");
-        setError(new Error("Realm is closed"));
-        return;
-      }
-
-      realm.write(() => {
-        Object.entries(apiModules.data || {})
-          .flatMap(([_, moduleArray]) => moduleArray)
-          .forEach((mod) => {
-            try {
-              realm.create(
-                "Module",
-                { ...mod, project: JSON.stringify(mod.project) },
-                Realm.UpdateMode.Modified
-              );
-            } catch (error) {
-              console.error("Error creating/updating module:", error);
-            }
-          });
-      });
-
+      // For online mode, we can potentially sync with remote here
+      // For now, we'll just update the last sync time
       setLastSyncTime(new Date());
     } catch (error) {
-      console.error("Error fetching modules:", error);
+      console.error("Error syncing modules:", error);
       setError(error instanceof Error ? error : new Error(String(error)));
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected, realm]);
+  }, [isConnected]);
 
-  // Initial load and when network state changes
   useEffect(() => {
     if (isConnected) {
       syncModules();
     }
   }, [isConnected, syncModules]);
 
+  // Always return modules from Realm, regardless of connection status
+  const modules = getModulesFromProjects();
+
   return {
-    modules: storedModules,
+    modules,
     isLoading,
     error,
     lastSyncTime,

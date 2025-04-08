@@ -14,6 +14,7 @@ import { Href, router } from "expo-router";
 import { Text } from "~/components/ui/text";
 import i18n from "~/utils/i18n";
 import { isOnline } from "~/services/network";
+import HeaderNavigation from "~/components/ui/header";
 
 const HomeScreen = () => {
 
@@ -134,6 +135,7 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation showLeft={false} showRight={true} showLogo={true} logoSize={32} />
       <ScrollView>
         <View className="p-6">
           <Text className="text-2xl font-bold">

@@ -12,6 +12,7 @@ import { Text } from "~/components/ui/text";
 import { Button } from "~/components/ui/button";
 import { t } from "i18next";
 import { useAuth } from "~/lib/hooks/useAuth";
+import HeaderNavigation from "~/components/ui/header";
 
 const CELL_COUNT = 4;
 
@@ -42,6 +43,7 @@ const VerificationCode: React.FC = () => {
       }
       
       if (next) {
+        setCode("");
         router.push(next as Href); // Redirect to the intended page after verification
       } else {
         router.push("/"); // Default fallback route
@@ -59,6 +61,7 @@ const VerificationCode: React.FC = () => {
 
   return (
     <SafeAreaView className="flex-1 h-screen bg-white">
+      <HeaderNavigation title={t("PinPage.title")} showLeft={true} showRight={true} />
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, padding: 20 }}
         showsVerticalScrollIndicator={false}

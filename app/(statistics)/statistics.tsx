@@ -1,7 +1,8 @@
 import React from "react";
-import { View } from "react-native";
+import { SafeAreaView, View } from "react-native";
 import { Text } from "~/components/ui/text";
 import { useTranslation } from "react-i18next";
+import HeaderNavigation from "~/components/ui/header";
 
 const CohortStatisticsScreen = () => {
   const { t } = useTranslation();
@@ -29,25 +30,34 @@ const CohortStatisticsScreen = () => {
   ).toFixed(2);
 
   return (
-    <View className="flex-1 p-4 bg-background">
-      <View className="flex-row justify-between">
-        <View className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center gap-6 py-6 rounded-xl w-[48%] mb-4">
-          <Text className="text-2xl font-bold text-primary">
-            {monitoredFamilies} / {totalFamilies}
-          </Text>
-          <Text className="text-gray-500">
-            {t("StatisticsPage.number_of_families_visited")}
-          </Text>
-        </View>
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("StatisticsPage.statistics")}
+      />
+      <View className="flex-1 p-4 bg-background">
+        <View className="flex-row justify-between">
+          <View className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center gap-6 py-6 rounded-xl w-[48%] mb-4">
+            <Text className="text-2xl font-bold text-primary">
+              {monitoredFamilies} / {totalFamilies}
+            </Text>
+            <Text className="text-gray-500">
+              {t("StatisticsPage.number_of_families_visited")}
+            </Text>
+          </View>
 
-        <View className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center gap-6 py-6 rounded-xl w-[48%] mb-4">
-          <Text className="text-2xl font-bold text-primary">
-            {monitoringPercentage}%
-          </Text>
-          <Text className="text-gray-500">{t("StatisticsPage.monitoring_behaviors")}</Text>
+          <View className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center gap-6 py-6 rounded-xl w-[48%] mb-4">
+            <Text className="text-2xl font-bold text-primary">
+              {monitoringPercentage}%
+            </Text>
+            <Text className="text-gray-500">
+              {t("StatisticsPage.monitoring_behaviors")}
+            </Text>
+          </View>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 

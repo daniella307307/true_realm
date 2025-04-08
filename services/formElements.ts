@@ -81,7 +81,8 @@ export async function fetchFormByIdFromRemote(id: number) {
 // Hook for fetching forms by project and module with offline support
 export function useGetFormByProjectAndModule(projectId: number, moduleId: number) {
   const realm = useRealm();
-  const storedForms = useQuery(Survey);
+  const allStoredForms = useQuery(Survey);
+  const storedForms = allStoredForms.filtered('project_module_id == $0', moduleId);
   const { isConnected } = useNetworkStatus();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -99,6 +100,12 @@ export function useGetFormByProjectAndModule(projectId: number, moduleId: number
     try {
       console.log("Fetching forms from remote");
       const apiForms = await fetchFormByProjectAndModuleFromRemote(projectId, moduleId);
+
+      console.log("API Forms: ", JSON.stringify(apiForms.data.map(form => ({
+        ...form,
+        json: '[content omitted]',
+        json2: '[content omitted]'
+      })), null, 2));
 
       if (!realm || realm.isClosed) {
         console.warn("Skipping Realm write: Realm is closed");
@@ -148,59 +155,9 @@ export function useGetFormById(id: number) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    async function fetchForm() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const localForm = realm.objectForPrimaryKey<Survey>("Survey", id);
-        
-        if (localForm) {
-          setForm(localForm);
-
-          if (isConnected) {
-            try {
-              const remoteForm = await fetchFormByIdFromRemote(id);
-
-              if (!realm || realm.isClosed) {
-                console.warn("Skipping Realm write: Realm is closed");
-              } else {
-                realm.write(() => {
-                  realm.create("Survey", {
-                    ...remoteForm,
-                    is_primary: remoteForm.is_primary === true ? 1 : 0,
-                    json2: typeof remoteForm.json2 !== "string" ? JSON.stringify(remoteForm.json2) : remoteForm.json2,
-                  }, Realm.UpdateMode.Modified);
-                  setForm(remoteForm);
-                });
-              }
-            } catch (remoteError) {
-              console.error("Error fetching remote form:", remoteError);
-            }
-          }
-        } else if (isConnected) {
-          const remoteForm = await fetchFormByIdFromRemote(id);
-
-          if (!realm || realm.isClosed) {
-            setForm(remoteForm);
-          } else {
-            realm.write(() => {
-              realm.create("Survey", remoteForm, Realm.UpdateMode.Modified);
-              setForm(remoteForm);
-            });
-          }
-        } else {
-          setError(new Error("Form not found locally and device is offline"));
-        }
-      } catch (error) {
-        console.error("Error in useGetFormById:", error);
-        setError(error instanceof Error ? error : new Error(String(error)));
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchForm();
+    // Both online and offline mode just search in the Survey 
+    const localForm = realm.objectForPrimaryKey<Survey>("Survey", id);
+    setForm(localForm);
   }, [id, isConnected, realm]);
 
   return { form, isLoading, error };

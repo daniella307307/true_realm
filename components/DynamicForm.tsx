@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Controller, useForm } from "react-hook-form";
 import Dropdown from "./ui/select";
@@ -41,6 +43,7 @@ export const getLocalizedTitle = (
   const language = locale.startsWith("rw") ? "kn" : "en";
   return title[language as keyof typeof title] || title.default;
 };
+
 const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
@@ -457,6 +460,7 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
           language={language}
         />
       );
+   
     default:
       return null;
   }
@@ -467,7 +471,6 @@ const formatTime = (timeInSeconds: number): string => {
   const seconds = timeInSeconds % 60;
   return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
 };
-
 
 interface AnswerPreviewProps {
   fields: FormField[];
@@ -738,8 +741,8 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
       ))}
 
       <View className="flex flex-row justify-between mt-6 mb-10">
-        <Button 
-          onPress={onBack} 
+        <Button
+          onPress={onBack}
           className="bg-gray-500"
           disabled={isSubmitting}
         >
@@ -747,16 +750,23 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
             {t("FormElementPage.back", "Back")}
           </Text>
         </Button>
-        <Button 
-          onPress={handleSubmit} 
+        <Button
+          onPress={handleSubmit}
           disabled={isSubmitting}
-          className={isSubmitting ? "opacity-70" : ""}
+          className={isSubmitting ? "bg-primary opacity-70" : "bg-primary"}
         >
-          <Text className="text-white dark:text-black font-semibold">
-            {isSubmitting 
-              ? t("FormElementPage.submitting", "Submitting...") 
-              : t("FormElementPage.finalSubmit", "Submit")}
-          </Text>
+          {isSubmitting ? (
+            <View className="flex flex-row items-center">
+              {/* You could add a loading spinner here if available */}
+              <Text className="text-white dark:text-black font-semibold">
+                {t("FormElementPage.submitting", "Submitting...")}
+              </Text>
+            </View>
+          ) : (
+            <Text className="text-white dark:text-black font-semibold">
+              {t("FormElementPage.finalSubmit", "Submit")}
+            </Text>
+          )}
         </Button>
       </View>
     </ScrollView>
@@ -836,43 +846,76 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const onSubmit = async (data: any) => {
     if (submitting) return; // Prevent multiple submissions
-    
+
     // Only process final submission when actually submitting (not when previewing)
     if (showPreview) {
       setSubmitting(true);
-      
+
       try {
+        const projectId = formSubmissionMandatoryFields.project_id || 0;
+        const sourceModuleId = formSubmissionMandatoryFields.source_module_id || 0;
+        const surveyId = formSubmissionMandatoryFields.id || 0;
+        const familyId = flowState?.selectedValues?.families?.hh_id || null;
+
+        // Check for existing submission before proceeding
+        const existingSubmission = realm.objects<SurveySubmission>('SurveySubmission').filtered(
+          'project_id == $0 AND source_module_id == $1 AND survey_id == $2 AND family == $3',
+          projectId,
+          sourceModuleId,
+          surveyId,
+          familyId
+        );
+
+        if (existingSubmission.length > 0) {
+          Alert.alert(
+            t("SubmissionExists.title", "Submission Already Exists"),
+            t("SubmissionExists.message", "A submission for this form and family already exists."),
+            [{ text: t("Common.ok", "OK") }]
+          );
+          setSubmitting(false); // Reset submitting state
+          return; // Stop the submission process
+        }
+
         console.log("Final submission:", data);
 
         const dataWithTime = {
           ...data,
           table_name: formSubmissionMandatoryFields.table_name,
-          project_module_id: formSubmissionMandatoryFields.project_module_id,
-          source_module_id: formSubmissionMandatoryFields.source_module_id,
-          project_id: formSubmissionMandatoryFields.project_id,
-          survey_id: formSubmissionMandatoryFields.id,
+          project_module_id:
+            formSubmissionMandatoryFields.project_module_id || 0,
+          source_module_id: formSubmissionMandatoryFields.source_module_id || 0,
+          project_id: formSubmissionMandatoryFields.project_id || 0,
+          survey_id: formSubmissionMandatoryFields.id || 0,
           post_data: formSubmissionMandatoryFields.post_data,
-          userId: formSubmissionMandatoryFields.userId,
-          province:
-            Number(flowState?.selectedValues?.locations?.province?.id) ?? null,
-          district:
-            Number(flowState?.selectedValues?.locations?.district?.id) ?? null,
-          sector:
-            Number(flowState?.selectedValues?.locations?.sector?.id) ?? null,
-          cell: Number(flowState?.selectedValues?.locations?.cell?.id) ?? null,
-          village:
-            Number(flowState?.selectedValues?.locations?.village?.id) ?? null,
-          family: flowState?.selectedValues?.families?.hh_id ?? null,
-          izucode: flowState?.selectedValues?.izus?.user_code ?? null,
-          cohort: Number(flowState?.selectedValues?.cohorts?.id) ?? null,
+          userId: formSubmissionMandatoryFields.userId || 0,
+          province: flowState?.selectedValues?.locations?.province?.id
+            ? Number(flowState.selectedValues.locations.province.id)
+            : 0,
+          district: flowState?.selectedValues?.locations?.district?.id
+            ? Number(flowState.selectedValues.locations.district.id)
+            : 0,
+          sector: flowState?.selectedValues?.locations?.sector?.id
+            ? Number(flowState.selectedValues.locations.sector.id)
+            : 0,
+          cell: flowState?.selectedValues?.locations?.cell?.id
+            ? Number(flowState.selectedValues.locations.cell.id)
+            : 0,
+          village: flowState?.selectedValues?.locations?.village?.id
+            ? Number(flowState.selectedValues.locations.village.id)
+            : 0,
+          family: familyId,
+          izucode: flowState?.selectedValues?.izus?.user_code || null,
+          cohort: flowState?.selectedValues?.cohorts?.id
+            ? Number(flowState.selectedValues.cohorts.id)
+            : 0,
           language: currentLanguage,
           timeSpentFormatted: formatTime(timeSpent),
         };
 
         dataWithTime.post_data = "/sendVisitData";
+        console.log("dataWithTime", dataWithTime);
         console.log("API URL:", dataWithTime.post_data);
-        
-        // Use a more robust error handling approach
+
         const result = await saveSurveySubmission(realm, dataWithTime, fields);
         console.log("Save result:", result);
 
@@ -881,10 +924,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           "Submission Successful",
           "Your form has been submitted successfully.",
           [
-            { 
-              text: "OK", 
-              onPress: () => router.push("/(history)/history") 
-            }
+            {
+              text: "OK",
+              onPress: () => router.push("/(history)/history"),
+            },
           ]
         );
       } catch (error) {
@@ -893,11 +936,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         Alert.alert(
           "Submission Error",
           "There was an error submitting your form. Please try again.",
-          [{ text: "OK", onPress: () => setSubmitting(false) }]
+          [{ text: "OK" }]
         );
+      } finally {
+        // This ensures submitting state is reset whether success or failure
+        setSubmitting(false);
       }
     } else {
-      // This is the key change - set form data and show preview
+      // This is just for preview, set form data and show preview
       setFormData(data);
       setShowPreview(true);
     }
@@ -933,7 +979,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const handleBackFromPreview = () => {
     setShowPreview(false);
   };
-  
+
   const handlePreview = async () => {
     let isValid = false;
 
@@ -992,93 +1038,100 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   }
 
   return (
-    <View className="bg-background mt-4">
-      <View className="mb-4 p-3 bg-white rounded-lg flex flex-row justify-end items-center">
-        <Text className="text-primary font-semibold">
-          {formatTime(timeSpent)}
-        </Text>
-      </View>
-
-      {!wholeComponent && (
-        <>
-          <Text className="text-center mb-2 text-md font-medium text-[#050F2B]">
-            Page {currentPage + 1} of {visibleFields.length}
-          </Text>
-          <View className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-            <View
-              className="bg-primary h-2.5 rounded-full"
-              style={{
-                width: `${((currentPage + 1) / visibleFields.length) * 100}%`,
-              }}
-            />
-          </View>
-        </>
-      )}
-
-      {validationError && (
-        <View className="mb-4 p-3 bg-red-100 rounded-lg">
-          <Text className="text-red-500 text-center">
-            {t(
-              "FormElementPage.validation",
-              "Please complete all required fields before proceeding"
-            )}
-          </Text>
-        </View>
-      )}
-
-      {wholeComponent ? (
-        visibleFields.map((field) => (
-          <DynamicField
-            key={field.key}
-            field={field}
-            control={control}
-            language={currentLanguage}
-          />
-        ))
-      ) : (
-        <DynamicField
-          key={visibleFields[currentPage].key}
-          field={visibleFields[currentPage]}
-          control={control}
-          language={currentLanguage}
-        />
-      )}
-
-      {!wholeComponent && (
-        <View className="flex flex-row justify-between mt-4">
-          <Button
-            onPress={handlePrevious}
-            disabled={currentPage === 0}
-            className={`${currentPage === 0 ? "opacity-50" : ""}`}
-          >
-            <Text className="text-white dark:text-black font-semibold">
-              {t("FormElementPage.previous")}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      className="flex-1"
+    >
+      <ScrollView className="bg-background">
+        <View className="mt-4 p-4">
+          <View className="mb-4 p-3 bg-white rounded-lg flex flex-row justify-end items-center">
+            <Text className="text-primary font-semibold">
+              {formatTime(timeSpent)}
             </Text>
-          </Button>
-          {currentPage < visibleFields.length - 1 ? (
-            <Button onPress={handleNext}>
-              <Text className="text-white dark:text-black font-semibold">
-                {t("FormElementPage.next")}
+          </View>
+
+          {!wholeComponent && (
+            <>
+              <Text className="text-center mb-2 text-md font-medium text-[#050F2B]">
+                Page {currentPage + 1} of {visibleFields.length}
               </Text>
-            </Button>
+              <View className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                <View
+                  className="bg-primary h-2.5 rounded-full"
+                  style={{
+                    width: `${((currentPage + 1) / visibleFields.length) * 100}%`,
+                  }}
+                />
+              </View>
+            </>
+          )}
+
+          {validationError && (
+            <View className="mb-4 p-3 bg-red-100 rounded-lg">
+              <Text className="text-red-500 text-center">
+                {t(
+                  "FormElementPage.validation",
+                  "Please complete all required fields before proceeding"
+                )}
+              </Text>
+            </View>
+          )}
+
+          {wholeComponent ? (
+            visibleFields.map((field) => (
+              <DynamicField
+                key={field.key}
+                field={field}
+                control={control}
+                language={currentLanguage}
+              />
+            ))
           ) : (
-            <Button onPress={handlePreview}>
+            <DynamicField
+              key={visibleFields[currentPage].key}
+              field={visibleFields[currentPage]}
+              control={control}
+              language={currentLanguage}
+            />
+          )}
+
+          {!wholeComponent && (
+            <View className="flex flex-row justify-between mt-4">
+              <Button
+                onPress={handlePrevious}
+                disabled={currentPage === 0}
+                className={`${currentPage === 0 ? "opacity-50" : ""}`}
+              >
+                <Text className="text-white dark:text-black font-semibold">
+                  {t("FormElementPage.previous")}
+                </Text>
+              </Button>
+              {currentPage < visibleFields.length - 1 ? (
+                <Button onPress={handleNext}>
+                  <Text className="text-white dark:text-black font-semibold">
+                    {t("FormElementPage.next")}
+                  </Text>
+                </Button>
+              ) : (
+                <Button onPress={handlePreview}>
+                  <Text className="text-white dark:text-black font-semibold">
+                    {t("FormElementPage.preview", "Preview")}
+                  </Text>
+                </Button>
+              )}
+            </View>
+          )}
+
+          {wholeComponent && (
+            <Button onPress={handlePreview} className="mt-4">
               <Text className="text-white dark:text-black font-semibold">
                 {t("FormElementPage.preview", "Preview")}
               </Text>
             </Button>
           )}
         </View>
-      )}
-
-      {wholeComponent && (
-        <Button onPress={handlePreview} className="mt-4">
-          <Text className="text-white dark:text-black font-semibold">
-            {t("FormElementPage.preview", "Preview")}
-          </Text>
-        </Button>
-      )}
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useTransition } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { FlatList, Pressable, SafeAreaView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
@@ -13,6 +13,7 @@ import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useQuery } from "@tanstack/react-query";
 import { useGetIZUser } from "~/services/user";
 import Skeleton from "~/components/ui/skeleton";
+import HeaderNavigation from "~/components/ui/header";
 
 const StatisticsScreen = () => {
   const { t } = useTranslation();
@@ -41,10 +42,16 @@ const StatisticsScreen = () => {
   });
 
   return (
-    <View className="flex-1 p-4 bg-white">
-      <Text className="text-xl font-bold mb-4">
-        {t("IzuMonitoringPage.all_izu")}
-      </Text>
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("StatisticsPage.statistics")}
+      />
+      <View className="flex-1 p-4 bg-white">
+        <Text className="text-xl font-bold mb-4">
+          {t("IzuMonitoringPage.all_izu")}
+        </Text>
       <CustomInput
         control={control}
         name="searchQuery"
@@ -79,7 +86,8 @@ const StatisticsScreen = () => {
           )}
         />
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 

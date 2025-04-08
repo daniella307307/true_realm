@@ -64,11 +64,11 @@ export default function LoginScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           <View>
             <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-              {t("Login.email")}
+              {t("Login.emailOrPhone")}
             </Text>
             <Controller
               control={control}
-              name="email"
+              name="identifier"
               render={({
                 field: { onChange, onBlur, value },
                 fieldState: { error },
@@ -81,11 +81,13 @@ export default function LoginScreen() {
                   >
                     <TextInput
                       className="w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]"
-                      placeholder={t("Login.emailPlaceholder")}
+                      placeholder={t("Login.emailOrPhonePlaceholder")}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
-                      accessibilityLabel={t("Login.email")}
+                      accessibilityLabel={t("Login.emailOrPhone")}
+                      keyboardType="default"
+                      autoCapitalize="none"
                     />
                   </View>
                   {error && (

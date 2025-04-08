@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text } from "react-native";
+import { View, Text, Alert } from "react-native";
 
 import DynamicForm from "./DynamicForm";
 import IzuSelector from "./ui/izu-selector";
@@ -15,6 +15,12 @@ import { IVillage } from "~/models/locations/village";
 import { ISector } from "~/models/locations/sector";
 import { IIzu } from "~/models/izus/izu";
 import { ICohort } from "~/models/cohorts/cohort";
+import FormNavigation from "./ui/form-navigation";
+import { RealmContext } from "~/providers/RealContextProvider";
+import { SurveySubmission } from "~/models/surveys/survey-submission";
+import { useTranslation } from "react-i18next";
+
+const { useRealm } = RealmContext;
 
 interface FormFlowManagerProps {
   form: any;
@@ -78,6 +84,8 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   });
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(Date.now());
+  const realm = useRealm();
+  const { t } = useTranslation();
 
   useEffect(() => {
     startTimeRef.current = Date.now();
@@ -96,64 +104,56 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   }, []);
 
   const loads = form.loads ? JSON.parse(form.loads) : {};
+  if (formSubmissionMandatoryFields.project_id === 3) {
+    loads.families = true;
+  }
 
   const flowSteps = Object.entries(loads)
     .filter(([key, value]) => value === true && key !== "onPhone")
     .map(([key]) => key);
 
-  const handleNext = (value?: any) => {
+  const handleNext = () => {
     const currentStepKey = flowSteps[currentStep] as FlowStepKey;
-    console.log("value", value);
-    if (value) {
-      setFlowState((prev) => {
-        const newSelectedValues = { ...prev.selectedValues };
-        if (currentStepKey === "locations") {
-          newSelectedValues.locations = {
-            ...newSelectedValues.locations,
-            ...value,
-          };
-        } else {
-          switch (currentStepKey) {
-            case "izus":
-              newSelectedValues.izus = value;
-              break;
-            case "cohorts":
-              console.log("VAlues of cohorts", value);
-              newSelectedValues.cohorts = value;
-              break;
-            case "families":
-              newSelectedValues.families = value;
-              break;
-            case "stakeholders":
-              newSelectedValues.stakeholders = value;
-              break;
-          }
+
+    if (currentStepKey === "families") {
+      const familyId = flowState.selectedValues.families?.hh_id || null;
+      const surveyId = formSubmissionMandatoryFields.id || 0;
+      const projectId = formSubmissionMandatoryFields.project_id || 0;
+      const sourceModuleId = formSubmissionMandatoryFields.source_module_id || 0;
+
+      if (familyId && surveyId && projectId && sourceModuleId) {
+        const existingSubmission = realm.objects<SurveySubmission>('SurveySubmission').filtered(
+          'project_id == $0 AND source_module_id == $1 AND survey_id == $2 AND family == $3',
+          projectId,
+          sourceModuleId,
+          surveyId,
+          familyId
+        );
+
+        if (existingSubmission.length > 0) {
+          Alert.alert(
+            t("SubmissionExists.title", "Submission Already Exists"),
+            t("SubmissionExists.message", "A submission for this form and family already exists."),
+            [{ text: t("Common.ok", "OK") }]
+          );
+          return;
         }
-        return {
-          currentStep: currentStep + 1,
-          selectedValues: newSelectedValues,
-        };
-      });
+      }
     }
 
-    // Update currentStep and check if we're at the end
     const nextStep = currentStep + 1;
-    setCurrentStep(nextStep);
-
-    // If this was the last step, force a re-render to show the dynamic form
     if (nextStep >= flowSteps.length) {
-      setFlowState((prev) => ({
-        ...prev,
-        currentStep: nextStep,
-      }));
+      // If we're at the last step, show the dynamic form
+      setCurrentStep(nextStep);
+    } else {
+      setCurrentStep(nextStep);
     }
   };
 
   const handleBack = () => {
-    setFlowState((prev) => ({
-      ...prev,
-      currentStep: prev.currentStep - 1,
-    }));
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleEditFlowState = (step: string) => {
@@ -164,61 +164,113 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   };
 
   const renderStep = () => {
-    switch (flowSteps[currentStep]) {
+    const currentStepKey = flowSteps[currentStep] as FlowStepKey;
+    const currentValue = flowState.selectedValues[currentStepKey as keyof typeof flowState.selectedValues];
+
+    switch (currentStepKey) {
       case "izus":
         return (
           <IzuSelector
-            onSelect={(value) => handleNext(value)}
-            onBack={handleBack}
-            initialValue={flowState.selectedValues.izus ?? undefined}
-            onNext={() =>
-              handleNext(
-                flowState.selectedValues[
-                  flowSteps[
-                    currentStep
-                  ] as keyof typeof flowState.selectedValues
-                ]
-              )
-            }
+            onSelect={(value) => {
+              setFlowState(prev => ({
+                ...prev,
+                selectedValues: {
+                  ...prev.selectedValues,
+                  izus: value
+                }
+              }));
+            }}
+            initialValue={currentValue as IIzu}
           />
         );
       case "cohorts":
         return (
           <CohortSelector
             onSelect={(value) => {
-              console.log("Cohort selected:", value);
-              handleNext(value);
+              setFlowState(prev => ({
+                ...prev,
+                selectedValues: {
+                  ...prev.selectedValues,
+                  cohorts: value
+                }
+              }));
             }}
-            onBack={handleBack}
-            initialValue={flowState.selectedValues.cohorts ?? undefined}
+            initialValue={currentValue as ICohort}
           />
         );
       case "families":
         return (
           <FamilySelector
-            onSelect={(value) => handleNext(value)}
-            onBack={handleBack}
-            initialValue={flowState.selectedValues.families ?? undefined}
+            onSelect={(value) => {
+              setFlowState(prev => ({
+                ...prev,
+                selectedValues: {
+                  ...prev.selectedValues,
+                  families: value
+                }
+              }));
+            }}
+            initialValue={currentValue as IFamilies}
           />
         );
       case "locations":
         return (
           <LocationSelector
-            onSelect={(value) => handleNext(value)}
-            onBack={handleBack}
-            initialValues={flowState.selectedValues.locations ?? undefined}
+            onSelect={(value) => {
+              setFlowState(prev => ({
+                ...prev,
+                selectedValues: {
+                  ...prev.selectedValues,
+                  locations: value
+                }
+              }));
+            }}
+            initialValues={currentValue as FlowState["selectedValues"]["locations"]}
           />
         );
       case "stakeholders":
         return (
           <StakeholderSelector
-            onSelect={(value) => handleNext(value)}
-            onBack={handleBack}
-            initialValue={flowState.selectedValues.stakeholders ?? undefined}
+            onSelect={(value) => {
+              setFlowState(prev => ({
+                ...prev,
+                selectedValues: {
+                  ...prev.selectedValues,
+                  stakeholders: value
+                }
+              }));
+            }}
+            initialValue={currentValue as any[]}
           />
         );
       default:
         return null;
+    }
+  };
+
+  const isStepComplete = (stepKey: FlowStepKey) => {
+    const value = flowState.selectedValues[stepKey as keyof typeof flowState.selectedValues];
+    
+    switch (stepKey) {
+      case "izus":
+        return value !== null && value !== undefined;
+      case "cohorts":
+        return value !== null && value !== undefined;
+      case "families":
+        return value !== null && value !== undefined;
+      case "locations":
+        const locations = value as FlowState["selectedValues"]["locations"];
+        return (
+          locations?.province &&
+          locations?.district &&
+          locations?.sector &&
+          locations?.cell &&
+          locations?.village
+        );
+      case "stakeholders":
+        return Array.isArray(value) && value.length > 0;
+      default:
+        return false;
     }
   };
 
@@ -242,7 +294,15 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
           {formatTime(timeSpent)}
         </Text>
       </View>
-      {renderStep()}
+      <View className="flex-1">
+        {renderStep()}
+      </View>
+      <FormNavigation
+        onBack={handleBack}
+        onNext={handleNext}
+        isNextDisabled={!isStepComplete(flowSteps[currentStep] as FlowStepKey)}
+        showBack={currentStep > 0}
+      />
     </View>
   );
 };

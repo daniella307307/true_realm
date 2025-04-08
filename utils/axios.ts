@@ -17,8 +17,8 @@ export const setAuthenticationStatus = (status: boolean) => {
 // Define routes that don't require authentication
 const publicRoutes = [
   '/login',
-  '/forgot-password',
-  '/password-verification-sent'
+  '/user/reset-password',
+  '/user/verify-code'
 ];
 
 const baseInstance = axios.create({

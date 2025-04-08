@@ -7,6 +7,7 @@ import {
   FlatList,
   Image,
   RefreshControl,
+  SafeAreaView,
 } from "react-native";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { router } from "expo-router";
@@ -16,6 +17,7 @@ import * as MediaLibrary from "expo-media-library";
 import { PermissionStatus } from "expo-media-library";
 import Svg, { Circle } from "react-native-svg";
 import { useTranslation } from "react-i18next";
+import HeaderNavigation from "~/components/ui/header";
 
 const VideoScreen = () => {
   const { t } = useTranslation();
@@ -174,136 +176,143 @@ const VideoScreen = () => {
 
   // const onRefresh = async () => {
   //   setRefreshing(true);
-  //   // Check if the videos array has no new items 
-    
+  //   // Check if the videos array has no new items
+
   //   setRefreshing(false);
   // };
   return (
-    <View className="flex-1 p-4 bg-background">
-      <View className="flex flex-row justify-between items-center p-2 rounded-full my-4 bg-gray-100">
-        <TouchableOpacity
-          onPress={() => handleTabSwitch("All")}
-          className={`flex-1 p-4 items-center ${
-            currentTab === "All" ? "bg-white" : "bg-transparent"
-          } rounded-full`}
-        >
-          <Text
-            className={`text-sm font-semibold ${
-              currentTab === "All" ? "text-primary" : "text-gray-800"
-            }`}
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("Videos.title")}
+      />
+      <View className="p-4">
+        <View className="flex flex-row justify-between items-center p-2 rounded-full my-4 bg-gray-100">
+          <TouchableOpacity
+            onPress={() => handleTabSwitch("All")}
+            className={`flex-1 p-4 items-center ${
+              currentTab === "All" ? "bg-white" : "bg-transparent"
+            } rounded-full`}
           >
-            All
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => handleTabSwitch("Downloaded")}
-          className={`flex-1 p-4 items-center ${
-            currentTab === "Downloaded" ? "bg-white" : "bg-transparent"
-          } rounded-full`}
-        >
-          <Text
-            className={`text-sm font-semibold ${
-              currentTab === "Downloaded" ? "text-primary" : "text-gray-800"
-            }`}
+            <Text
+              className={`text-sm font-semibold ${
+                currentTab === "All" ? "text-primary" : "text-gray-800"
+              }`}
+            >
+              All
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleTabSwitch("Downloaded")}
+            className={`flex-1 p-4 items-center ${
+              currentTab === "Downloaded" ? "bg-white" : "bg-transparent"
+            } rounded-full`}
           >
-            Downloaded
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <FlatList
-        data={filteredVideos}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => router.push(`/(videos)/${item.id}`)}
-            className="p-4 border flex flex-row justify-between bg-white border-[#0000001A] items-center rounded-xl w-full mb-4"
-          >
-            <View className="flex-row gap-x-4">
-              <TabBarIcon name="video" family="Entypo" />
-              <View className="w-3/4">
-                <Text className="text-lg font-semibold flex-wrap w-full">
-                  {item.title}
-                </Text>
-                <Text className="text-gray-500 text-xs/1 line-clamp-2 line py-2">
-                  {item.description}
-                </Text>
-                <View className="flex-row gap-x-2 items-center justify-start">
-                  {downloaded[item.id] ? (
-                    <>
-                      <TabBarIcon
-                        name="checkmark-done-outline"
-                        family="Ionicons"
-                        size={20}
-                        color="#4CAF50"
-                      />
-                      <Text className="text-green-600 font-semibold text-xs/1">
-                        {t("Video downloaded") || "Downloaded"}
-                      </Text>
-                    </>
-                  ) : null}
+            <Text
+              className={`text-sm font-semibold ${
+                currentTab === "Downloaded" ? "text-primary" : "text-gray-800"
+              }`}
+            >
+              Downloaded
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={filteredVideos}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => router.push(`/(videos)/${item.id}`)}
+              className="p-4 border flex flex-row justify-between bg-white border-[#0000001A] items-center rounded-xl w-full mb-4"
+            >
+              <View className="flex-row gap-x-4">
+                <TabBarIcon name="video" family="Entypo" />
+                <View className="w-3/4">
+                  <Text className="text-lg font-semibold flex-wrap w-full">
+                    {item.title}
+                  </Text>
+                  <Text className="text-gray-500 text-xs/1 line-clamp-2 line py-2">
+                    {item.description}
+                  </Text>
+                  <View className="flex-row gap-x-2 items-center justify-start">
+                    {downloaded[item.id] ? (
+                      <>
+                        <TabBarIcon
+                          name="checkmark-done-outline"
+                          family="Ionicons"
+                          size={20}
+                          color="#4CAF50"
+                        />
+                        <Text className="text-green-600 font-semibold text-xs/1">
+                          {t("Video downloaded") || "Downloaded"}
+                        </Text>
+                      </>
+                    ) : null}
+                  </View>
                 </View>
               </View>
-            </View>
-            {downloading[item.id] ? (
-              <View className="flex-col items-center gap-2">
-                <Svg height={24} width={24}>
-                  <Circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="#A23A91"
-                    strokeWidth="2"
-                    fill="none"
-                  />
-                  <Circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="#808080"
-                    strokeWidth="2"
-                    fill="none"
-                    strokeDasharray="65"
-                    strokeDashoffset={
-                      65 - (downloadProgress[item.id] || 0) * 0.65
-                    }
-                  />
-                </Svg>
+              {downloading[item.id] ? (
+                <View className="flex-col items-center gap-2">
+                  <Svg height={24} width={24}>
+                    <Circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="#A23A91"
+                      strokeWidth="2"
+                      fill="none"
+                    />
+                    <Circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="#808080"
+                      strokeWidth="2"
+                      fill="none"
+                      strokeDasharray="65"
+                      strokeDashoffset={
+                        65 - (downloadProgress[item.id] || 0) * 0.65
+                      }
+                    />
+                  </Svg>
+                  <TouchableOpacity
+                    onPress={() => handleCancelDownload(item.id)}
+                    className="bg-red-500 rounded-full h-8 w-8 flex flex-col justify-center items-center"
+                  >
+                    <TabBarIcon
+                      name="close-circle-outline"
+                      family="Ionicons"
+                      size={24}
+                      color="white"
+                    />
+                  </TouchableOpacity>
+                </View>
+              ) : !downloaded[item.id] ? (
                 <TouchableOpacity
-                  onPress={() => handleCancelDownload(item.id)}
-                  className="bg-red-500 rounded-full h-8 w-8 flex flex-col justify-center items-center"
+                  onPress={() => handleDownload(item)}
+                  className="bg-transparent rounded-full h-8 w-8 flex flex-col justify-center items-center"
                 >
                   <TabBarIcon
-                    name="close-circle-outline"
-                    family="Ionicons"
-                    size={24}
-                    color="white"
+                    name="download"
+                    family="Feather"
+                    color="#A23A91"
+                    size={20}
                   />
                 </TouchableOpacity>
-              </View>
-            ) : !downloaded[item.id] ? (
-              <TouchableOpacity
-                onPress={() => handleDownload(item)}
-                className="bg-transparent rounded-full h-8 w-8 flex flex-col justify-center items-center"
-              >
+              ) : (
                 <TabBarIcon
-                  name="download"
+                  name="check-circle"
                   family="Feather"
-                  color="#A23A91"
+                  color="#4CAF50"
                   size={20}
                 />
-              </TouchableOpacity>
-            ) : (
-              <TabBarIcon
-                name="check-circle"
-                family="Feather"
-                color="#4CAF50"
-                size={20}
-              />
-            )}
-          </Pressable>
-        )}
-      />
-    </View>
+              )}
+            </Pressable>
+          )}
+        />
+      </View>
+    </SafeAreaView>
   );
 };
 

@@ -1,8 +1,9 @@
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, SafeAreaView } from "react-native";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Image } from "react-native";
 import { useAuth } from "~/lib/hooks/useAuth";
+import HeaderNavigation from "~/components/ui/header";
 
 const SettingsScreen = () => {
   const { t } = useTranslation();
@@ -37,8 +38,16 @@ const SettingsScreen = () => {
   );
 
   return (
-    <View className="flex-1 bg-background p-4">
-      <ScrollView showsVerticalScrollIndicator={false} className="bg-white p-4 rounded-lg shadow-md">
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("SettingsPage.title")}
+      />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        className="bg-white p-4 rounded-lg shadow-md"
+      >
         <Text className="text-lg font-semibold mb-2">
           {t("SettingsPage.account_details")}
         </Text>
@@ -76,7 +85,7 @@ const SettingsScreen = () => {
           className="flex-wrap gap-x-2 pb-4"
         />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -1,5 +1,11 @@
-import { View, FlatList, TouchableOpacity, ScrollView } from "react-native";
-import React, { useState } from "react";
+import {
+  View,
+  FlatList,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+} from "react-native";
+import React, { useState, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,16 +27,38 @@ import { RefreshControl } from "react-native";
 import { Survey } from "~/models/surveys/survey";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { SurveySubmission } from "~/models/surveys/survey-submission";
-import { CheckCheckIcon } from "lucide-react-native";
+import { CheckCheckIcon, CrossIcon } from "lucide-react-native";
+import HeaderNavigation from "~/components/ui/header";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useGetFamilies } from "~/services/families";
+import { IFamilies } from "~/types";
+import { ListRenderItemInfo } from "react-native";
+import { Entypo } from "@expo/vector-icons";
 
-type SubmissionItem = {
-  _id: string;
-  table_name: string;
+// Define an interface for the plain submission object
+interface PlainSubmission {
+  _id: any; // Realm ObjectId might not serialize perfectly, use any for simplicity here or a string conversion
+  table_name?: string | null;
   sync_status: boolean;
   survey_id: number;
   source_module_id: number;
   submittedAt: Date;
-};
+  family?: string | null; // This holds the hh_id
+  last_sync_date?: Date | null;
+  // Add other fields from SurveySubmission if needed
+}
+
+// Define an interface for the plain, processed submission object for the list
+interface ProcessedSubmission {
+  _id: string; // Always string after conversion
+  table_name?: string | null;
+  sync_status: boolean;
+  survey_id: number;
+  source_module_id: number;
+  submittedAt?: Date | null; // Make optional if source can be null/undefined
+  family?: string | null; // This holds the hh_id string
+  lastSyncAttempt?: Date | null; // Correct field name
+}
 
 const SubmissionListByModuleScreen = () => {
   const { submodId } = useLocalSearchParams<{
@@ -76,6 +104,7 @@ const SubmissionListByModuleScreen = () => {
   });
 
   const [refreshing, setRefreshing] = useState(false);
+  const { data: families, isLoading: familiesLoading } = useGetFamilies();
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -88,18 +117,31 @@ const SubmissionListByModuleScreen = () => {
 
   const searchQuery = watch("searchQuery");
 
-  const filteredSubmissions = surveySubmissions
-    .filter((submission: any) => {
+  const filteredAndSortedSubmissions = useMemo(() => {
+    const processed: ProcessedSubmission[] = Array.from(surveySubmissions).map(
+      (sub: any) => ({
+        // Cast sub to any
+        _id: sub._id.toString(),
+        table_name: sub.table_name,
+        sync_status: sub.sync_status,
+        survey_id: sub.survey_id,
+        source_module_id: sub.source_module_id,
+        submittedAt: sub.submittedAt,
+        family: sub.family,
+        lastSyncAttempt: sub.lastSyncAttempt, // Use correct field name
+      })
+    );
+
+    const filtered = processed.filter((submission: ProcessedSubmission) => {
       // Filter by module ID
       if (submission.source_module_id !== parseInt(submodId)) return false;
 
       // Filter by search query
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
-        return (
-          submission.table_name?.toLowerCase().includes(searchLower) ||
-          submission.survey_id.toString().includes(searchLower)
-        );
+        // Add null checks for potentially null fields being searched
+        return submission.family?.toLowerCase().includes(searchLower);
+        // search by family name not table name
       }
 
       // Filter by sync status
@@ -111,94 +153,156 @@ const SubmissionListByModuleScreen = () => {
         default:
           return true;
       }
-    })
-    .sort(
-      (a: any, b: any) =>
-        new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+    });
+
+    // 3. Sort the filtered plain objects
+    return filtered.sort(
+      (a: ProcessedSubmission, b: ProcessedSubmission) =>
+        (b.submittedAt ? new Date(b.submittedAt).getTime() : 0) -
+        (a.submittedAt ? new Date(a.submittedAt).getTime() : 0)
     );
+  }, [surveySubmissions, submodId, searchQuery, activeTab]);
 
   const renderTab = (tab: "all" | "synced" | "pending", label: string) => (
     <TouchableOpacity
       onPress={() => setActiveTab(tab)}
-      className={`px-4 py-3 flex-1 items-center justify-center rounded-full ${
+      className={`py-3 flex-1 items-center justify-center rounded-full ${
         activeTab === tab ? "bg-primary" : "bg-white"
       }`}
     >
-      <Text className={`font-medium ${activeTab === tab ? "text-white" : "text-gray-700"}`}>
+      <Text
+        className={`text-sm whitespace-nowrap ${
+          activeTab === tab ? "text-white" : "text-gray-700"
+        }`}
+      >
         {label}
       </Text>
     </TouchableOpacity>
   );
 
+  const insets = useSafeAreaInsets();
+
+  // This will be the header component for our FlatList
+  const ListHeaderComponent = useCallback(
+    () => (
+      <>
+        <CustomInput
+          control={control}
+          name="searchQuery"
+          placeholder={t("History.search_form")}
+          keyboardType="default"
+          accessibilityLabel={t("History.search_form")}
+        />
+
+        <View className="flex flex-row justify-between items-center p-2 gap-2 rounded-full mb-4 bg-gray-100">
+          {renderTab("all", t("History.all", "All"))}
+          {renderTab("synced", t("History.synced", "Synced"))}
+          {renderTab("pending", t("History.pending", "Pending"))}
+        </View>
+      </>
+    ),
+    [control, t, activeTab]
+  );
+
   return (
-    <View className="flex-1 p-4 bg-white">
-      <CustomInput
-        control={control}
-        name="searchQuery"
-        placeholder={t("History.search_form")}
-        keyboardType="default"
-        accessibilityLabel={t("History.search_form")}
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("History.submissions")}
       />
 
-      <View className="flex flex-row justify-between items-center p-2 gap-4 rounded-full mb-4 bg-gray-100">
-        {renderTab("all", t("History.all", "All"))}
-        {renderTab("synced", t("History.synced", "Synced"))}
-        {renderTab("pending", t("History.pending", "Pending"))}
-      </View>
-
       <FlatList
-        data={filteredSubmissions}
-        keyExtractor={(item: any) => item._id.toString()}
+        data={filteredAndSortedSubmissions}
+        keyExtractor={(item: ProcessedSubmission) => item._id}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponentStyle={{ paddingHorizontal: 0, paddingTop: 16 }}
         ListEmptyComponent={() => <EmptyDynamicComponent />}
-        renderItem={({ item }: { item: any }) => (
-          <TouchableOpacity
-            onPress={() =>
-              router.push(`/(sub-detail)/${item._id}`)
-            }
-            className="p-4 border mb-4 border-gray-200 rounded-xl"
-          >
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-lg font-semibold">{item.table_name}</Text>
-              <View
-                className={`px-2 py-1 rounded ${
-                  item.sync_status ? "bg-green-100" : "bg-yellow-100"
-                }`}
-              >
-                <Text
-                  className={`text-sm ${
-                    item.sync_status ? "text-green-700" : "text-yellow-700"
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingBottom: insets.bottom + 24,
+          flexGrow: 1,
+        }}
+        renderItem={({ item }: ListRenderItemInfo<ProcessedSubmission>) => {
+          // Find the family based on the hh_id stored in item.family
+          const foundFamily = families?.find(
+            (fam: IFamilies) => fam.hh_id === item.family
+          );
+
+          return (
+            <TouchableOpacity
+              onPress={() => router.push(`/(sub-detail)/${item._id}`)}
+              className="p-4 border mb-4 border-gray-200 rounded-xl bg-white"
+            >
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-lg font-semibold text-gray-800">
+                  {foundFamily?.hh_id ?? item.family ?? "Unknown Family"}
+                </Text>
+                <View
+                  className={`px-2 py-1 rounded-full ${
+                    item.sync_status ? "bg-green-100" : "bg-yellow-100"
                   }`}
                 >
                   {item.sync_status ? (
-                    <>
-                      <CheckCheckIcon size={24} color="green" />
-                    </>
+                    <View className="flex-row items-center">
+                      <CheckCheckIcon
+                        size={24}
+                        color="green"
+                        className="mr-1"
+                      />
+                    </View>
                   ) : (
-                    t("History.pending", "Pending")
+                    <View>
+                      <Entypo name="circle-with-cross" size={24} color="red" />
+                    </View>
                   )}
-                </Text>
+                </View>
               </View>
-            </View>
-            <View className="space-y-1">
-              <Text className="text-sm text-gray-600">
-                {t("History.surveyId", "Survey ID")}: {item.survey_id}
-              </Text>
-              <Text className="text-sm text-gray-600">
-                {t("History.moduleId", "Module ID")}: {item.source_module_id}
-              </Text>
-              <Text className="text-sm text-gray-600">
-                {t("History.createdAt", "Created At")}:{" "}
-                {new Date(item.submittedAt).toLocaleString()}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
+              <View className="space-y-1 mb-3">
+                {foundFamily && (
+                  <>
+                    <Text className="text-sm text-gray-600">
+                      {t("Common.headName", "Head Name")}:{" "}
+                      {foundFamily.hh_head_fullname}
+                    </Text>
+                    {foundFamily.village_name && (
+                      <Text className="text-sm text-gray-600">
+                        {t("Common.village", "Village")}:{" "}
+                        {foundFamily.village_name}
+                      </Text>
+                    )}
+                  </>
+                )}
+                <Text className="text-sm text-gray-600">
+                  {t("History.surveyId", "Survey ID")}: {item.survey_id}
+                </Text>
+                <Text className="text-sm text-gray-600">
+                  {t("History.moduleId", "Module ID")}: {item.source_module_id}
+                </Text>
+                <Text className="text-sm text-gray-600">
+                  {t("History.createdAt", "Created At")}:{" "}
+                  {item.submittedAt
+                    ? new Date(item.submittedAt).toLocaleString()
+                    : "-"}
+                </Text>
+                {item.lastSyncAttempt && (
+                  <Text className="text-sm text-gray-600">
+                    {t("History.lastSync", "Last Synced")}:{" "}
+                    {item.lastSyncAttempt
+                      ? new Date(item.lastSyncAttempt).toLocaleString()
+                      : "-"}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

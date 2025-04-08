@@ -9,10 +9,9 @@ import i18n from "~/utils/i18n";
 
 interface IzuSelectorProps {
   onSelect: (value: IIzu) => void;
-  onBack: () => void;
-  onNext: () => void;
   initialValue?: IIzu;
 }
+
 const IzuCodeItem = ({
   item,
   onSelect,
@@ -44,7 +43,7 @@ const IzuCodeItem = ({
   </TouchableOpacity>
 );
 
-const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, onBack, initialValue }) => {
+const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, initialValue }) => {
   const [selectedIzu, setSelectedIzu] = useState<IIzu | null>(initialValue || null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -59,6 +58,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, onBack, initialValu
 
   const handleSelect = (izu: IIzu) => {
     setSelectedIzu(izu);
+    onSelect(izu);
   };
 
   if (isLoading) {
@@ -91,7 +91,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, onBack, initialValu
       <View className="flex-row items-center space-x-2">
         <Ionicons name="search" size={20} color="#A0A3BD" className="mr-2" />
         <TextInput
-          className=" w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white dark:bg-[#1E1E1E] dark:text-white mb-2"
+          className="w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white dark:bg-[#1E1E1E] dark:text-white mb-2"
           placeholder="Search IZU codes..."
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -118,22 +118,6 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, onBack, initialValu
           }
         />
       </View>
-
-      {/* Next Button */}
-      <TouchableOpacity
-        onPress={() => selectedIzu && onSelect(selectedIzu)}
-        disabled={!selectedIzu}
-        className={`mt-4 py-4 rounded-lg ${
-          selectedIzu ? "bg-primary" : "bg-gray-300"
-        }`}
-      >
-        <Text className="text-center text-white font-medium">
-          {getLocalizedTitle(
-            { en: "Next", kn: "Komeza", default: "Next" },
-            language
-          )}
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 };
