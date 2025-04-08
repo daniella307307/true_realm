@@ -1,5 +1,5 @@
-import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import React, { useState, useCallback } from "react";
+
 import {
   FlatList,
   TouchableOpacity,
@@ -10,21 +10,25 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+
 import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import { format, formatDistanceToNow } from "date-fns";
-import { usePostManipulate } from "~/lib/hooks/usePost";
-import { Text } from "~/components/ui/text";
-import { useGetPosts } from "~/services/posts";
-import { IPost } from "~/types";
-import { useAuth } from "~/lib/hooks/useAuth";
-import { Button } from "~/components/ui/button";
-import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+
 import CustomInput from "~/components/ui/input";
+import { Button } from "~/components/ui/button";
+import { FontAwesome5, Ionicons } from "@expo/vector-icons";
+import { ILikes, IPost } from "~/types";
+import { TabBarIcon } from "~/components/ui/tabbar-icon";
+import { Text } from "~/components/ui/text";
+import { format, formatDistanceToNow } from "date-fns";
 import { t } from "i18next";
+import { useAuth } from "~/lib/hooks/useAuth";
+import { useForm } from "react-hook-form";
+import { useGetPosts } from "~/services/posts";
+import { usePostManipulate } from "~/lib/hooks/usePost";
+import { useQuery } from "@tanstack/react-query";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Post } from "~/models/posts/post";
 
 const CommunityScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -42,23 +46,14 @@ const CommunityScreen: React.FC = () => {
   });
 
   const searchQuery = watch("searchQuery");
-
-  const {
-    data: posts,
-    refetch,
-    isLoading,
-  } = useQuery({
-    queryKey: ["posts"],
-    queryFn: useGetPosts,
-    staleTime: 0,
-  });
+  const { posts, isLoading, refresh } = useGetPosts();
 
   const { useLikePost, useUnlikePost, useDeletePost, useReportPost } =
     usePostManipulate();
 
-  const handleLikePress = (post: IPost) => {
+  const handleLikePress = (post: Post) => {
     const currentUserId = user.id;
-    const isLiked = post.likes.some((like) => like.user_id === currentUserId);
+    const isLiked = JSON.parse(post.likes).some((like: ILikes) => like.user_id === currentUserId);
 
     if (isLiked) {
       useUnlikePost({ id: post.id });
@@ -82,7 +77,7 @@ const CommunityScreen: React.FC = () => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    refetch().finally(() => setRefreshing(false));
+    refresh().finally(() => setRefreshing(false));
   }, []);
 
   if (isLoading) {
@@ -92,20 +87,20 @@ const CommunityScreen: React.FC = () => {
       </View>
     );
   }
-
-  const filteredPosts = posts?.data
-    .filter((post: IPost) => post.status === 1)
-    .filter((post: IPost) => {
+  const filteredPosts = posts
+    .filter((post: Post) => post.status === 1)
+    .filter((post: Post) => {
       if (!searchQuery) return true;
-      return post.title.toLowerCase().includes(searchQuery.toLowerCase())
-      || post.body.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      post.user.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return (
+        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.body.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     });
 
-  const renderPost = ({ item }: { item: IPost }) => {
+  const renderPost = ({ item }: { item: Post }) => {
     const currentUserId = user.id;
-    const isLiked = item.likes.some((like) => like.user_id === currentUserId);
-    const isOwner = item.user.id === currentUserId;
+    const isLiked = JSON.parse(item.likes).some((like: ILikes) => like.user_id === currentUserId);
+    const isOwner = JSON.parse(item.user).id === currentUserId;
 
     return (
       <View className="bg-white p-4 m-2 rounded-lg shadow">
@@ -116,11 +111,11 @@ const CommunityScreen: React.FC = () => {
           <View className="flex-row items-center justify-between mb-2">
             <View className="flex-row items-center">
               <Image
-                source={{ uri: item.user.picture }}
+                source={{ uri: JSON.parse(item.user).picture }}
                 className="w-10 h-10 rounded-full"
               />
               <View className="ml-3">
-                <Text className="font-semibold">{item.user.name}</Text>
+                <Text className="font-semibold">{JSON.parse(item.user).name}</Text>
                 <Text className="text-gray-500 text-sm">
                   {`${format(
                     new Date(item.created_at),
@@ -159,7 +154,7 @@ const CommunityScreen: React.FC = () => {
           <View className="flex-row justify-between mt-3">
             <View className="flex-row gap-x-4">
               <TouchableOpacity
-                onPress={() => handleLikePress(item)}
+                onPress={() => handleLikePress(item as Post)}
                 className="flex-row flex justify-center items-center"
               >
                 <TabBarIcon
@@ -216,7 +211,7 @@ const CommunityScreen: React.FC = () => {
         keyboardType="default"
         accessibilityLabel={t("CommunityPage.search_post")}
       />
-      <FlatList
+      <FlatList<Post>
         data={filteredPosts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPost}

@@ -90,7 +90,10 @@ export default function Dropdown({
                 }}
               >
                 <FlatList
-                  keyExtractor={(item) => item.value}
+                  keyExtractor={(item) => 
+                    // make a unique structure for the item
+                    `${item.value}-${item.label}`
+                  }
                   data={data}
                   renderItem={({ item }) => (
                     <TouchableOpacity

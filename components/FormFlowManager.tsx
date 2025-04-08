@@ -95,15 +95,7 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
     };
   }, []);
 
-  // const loads = form.loads ? JSON.parse(form.loads) : {};
-
-  const loads = {
-    izus: true,
-    locations: true,
-    stakeholders: true,
-    // families: true,
-    // cohorts: true,
-  };
+  const loads = form.loads ? JSON.parse(form.loads) : {};
 
   const flowSteps = Object.entries(loads)
     .filter(([key, value]) => value === true && key !== "onPhone")

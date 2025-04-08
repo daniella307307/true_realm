@@ -257,7 +257,13 @@ const SyncPage = () => {
       {
         key: "Forms",
         name: "Sync Forms/Surveys",
-        status: isSyncing && syncType === "Forms" ? "Syncing" : lastSyncDate && syncType === "Forms" ? "Success" : "Not Synced",
+        status: isSyncing && syncType === "Forms" 
+          ? "Syncing" 
+          : lastSyncDate && syncType === "Forms" && !Object.values(syncStatuses).includes("Failed")
+            ? "Success" 
+            : Object.values(syncStatuses).includes("Failed")
+              ? "Failed"
+              : "Not Synced",
         progress: syncType === "Forms" ? syncProgress : undefined,
         lastSyncDate: lastSyncDate,
         items: [
@@ -333,7 +339,7 @@ const SyncPage = () => {
             </Text>
           </View>
         )}
-        {item.items && (
+        {/* {item.items && (
           <View className="mt-2">
             {item.items.map((subItem) => (
               <View key={subItem.name} className="flex-row justify-between items-center mt-1">
@@ -352,7 +358,7 @@ const SyncPage = () => {
               </View>
             ))}
           </View>
-        )}
+        )} */}
         {item.lastSyncDate && (
           <Text className="text-xs text-gray-500 mt-2">
             Last synced: {item.lastSyncDate.toLocaleString()}

@@ -209,7 +209,7 @@ const SelectBoxComponent: React.FC<DynamicFieldProps> = ({
         : false,
     }}
     render={({ field: { onChange, value }, fieldState: { error } }) => (
-      <View className="mb-4">
+      <View className="mb-4 relative">
         <Text className="mb-2 text-md font-medium text-[#050F2B]">
           {getLocalizedTitle(field.title, language)}
           {field.validate?.required && <Text className="text-primary"> *</Text>}
