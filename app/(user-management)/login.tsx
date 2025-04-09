@@ -68,7 +68,7 @@ export default function LoginScreen() {
         return;
       }
     },
-  });
+  }); 
 
   console.log('Login screen rendered');
 

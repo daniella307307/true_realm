@@ -12,6 +12,7 @@ import {
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setAuthenticationStatus } from '~/utils/axios';
+import { Alert } from 'react-native';
 
 export type AuthOptions = {
   onLogin?: (data: User) => void;
@@ -26,16 +27,13 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
 
-  // Memoized getter for login status
   const isLoggedIn = useMemo(async () => {
     const token = await AsyncStorage.getItem('tknToken');
     const loggedIn = !!(user && token);
-    // Update the global auth status when checked
     setAuthenticationStatus(loggedIn);
     return loggedIn;
   }, [user]);
 
-  // Check login status on initial load
   useEffect(() => {
     const checkLoginStatus = async () => {
       const loggedIn = await isLoggedIn;
@@ -50,13 +48,10 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const checkAuthStatus = async () => {
     try {
       const token = await AsyncStorage.getItem('tknToken');
-      // Update global auth state based on token existence
       setAuthenticationStatus(!!(token && user));
 
       if (token && !user) {
-        // Token exists but no user - maybe need to fetch profile
         setIsLoading(true);
-        // Add your token validation logic if needed
       }
       if (!token && user) {
         mainStore.logout();
@@ -134,10 +129,9 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       );
 
       console.log('Detailed error:', errorDetails);
+      Alert.alert(errorDetails);
 
       Toast.show({
-        // text1: 'Login Error [DEV]',
-        // text2: `${error.response?.status || ''}: ${JSON.stringify(error.response?.data) || error.message || 'Unknown error'}`,
         text1: errorDetails,
         text2: errorDetails,
         type: 'error',

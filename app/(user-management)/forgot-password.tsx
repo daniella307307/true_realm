@@ -120,11 +120,24 @@ export default function ForgotScreen() {
       });
     },
     onError: (error: AxiosError<IResponseError>) => {
+      // Create a detailed error string for debugging
+      const errorDetails = JSON.stringify(
+        {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        },
+        null,
+        2
+      );
       Toast.show({
         type: "error",
         text1: t("Error"),
-        text2:
-          error.response?.data?.message || t("ForgotPassword.genericError"),
+        text2: errorDetails,
+        position: "bottom",
+        visibilityTime: 6000,
+        autoHide: true,
+        topOffset: 30,
       });
     },
   });

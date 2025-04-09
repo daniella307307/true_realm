@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SafeAreaView, ScrollView, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { router, useLocalSearchParams, useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
 import {
   CodeField,
@@ -92,6 +92,7 @@ const PasswordVerificationScreen: React.FC = () => {
           setIsLoggingIn(false);
           setLoading(false);
         }
+        router.push("/(home)/home")
       }
     },
     onError: (error) => {

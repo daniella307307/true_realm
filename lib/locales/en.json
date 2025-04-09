@@ -4,7 +4,7 @@
     "Login": {
       "title": "Login",
       "emailOrPhone": "Email or Phone Number",
-      "emailOrPhonePlaceholder": "Enter your email or phone number",
+      "emailOrPhonePlaceholder": "Enter Email/Phone Number",
       "password": "Password",
       "passwordPlaceholder": "Enter your password",
       "login": "Login",

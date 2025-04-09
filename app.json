@@ -1,13 +1,14 @@
 {
   "expo": {
     "name": "sugiramuryango",
-    "slug": "Sugira Muryango",
+    "slug": "SugiraMuryango",
+    "runtimeVersion": "1.0.0",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "sugiramuryango",
     "userInterfaceStyle": "automatic",
-    "backgroundColor":"#ffffff",
+    "backgroundColor": "#ffffff",
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "cover",
@@ -54,11 +55,11 @@
     },
     "extra": {
       "eas": {
-        "projectId": "85dc724e-c4ef-4a3e-a657-77a82eb5a1bc"
+        "projectId": "c0469619-a729-40c9-b9fe-989c3631c79f"
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/85dc724e-c4ef-4a3e-a657-77a82eb5a1bc"
+      "url": "https://u.expo.dev/c0469619-a729-40c9-b9fe-989c3631c79f"
     }
   }
 }
