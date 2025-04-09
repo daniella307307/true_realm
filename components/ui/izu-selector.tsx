@@ -81,7 +81,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, initialValue }) => 
 
       {/* Selected IZU Code Input */}
       <TextInput
-        className={`w-full px-4 py-4 border rounded-lg border-[#E4E4E7] bg-white dark:bg-[#1E1E1E] dark:text-white mb-2`}
+        className={`w-full px-4 py-4 border rounded-lg border-[#E4E4E7] bg-white mb-2`}
         value={selectedIzu?.user_code || ""}
         placeholder="Select an IZU code"
         editable={false}
@@ -91,7 +91,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, initialValue }) => 
       <View className="flex-row items-center space-x-2">
         <Ionicons name="search" size={20} color="#A0A3BD" className="mr-2" />
         <TextInput
-          className="w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white dark:bg-[#1E1E1E] dark:text-white mb-2"
+          className="w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white mb-2"
           placeholder="Search IZU codes..."
           value={searchQuery}
           onChangeText={setSearchQuery}

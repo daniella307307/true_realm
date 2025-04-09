@@ -10,23 +10,25 @@ import {
 } from "react-native-confirmation-code-field";
 import { Text } from "~/components/ui/text";
 import { Button } from "~/components/ui/button";
-import { useTranslation } from "react-i18next"; // Changed from i18next
+import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 import { useMutation } from "@tanstack/react-query";
-import { verifyPasswordReset } from "~/services/user";
-import { IResponseError } from "~/types";
-import { AxiosError } from "axios";
+import {
+  useGetCurrentLoggedInProfile,
+  verifyPasswordReset,
+} from "~/services/user";
+import { storeTokenInAsynStorage, useAuth } from "~/lib/hooks/useAuth";
+import { setAuthenticationStatus } from "~/utils/axios";
+import { useMainStore } from "~/lib/store/main";
 
 const CELL_COUNT = 4;
 
-// Function to partially hide email
 const maskEmail = (email: string | undefined | string[]): string => {
   if (typeof email !== "string" || !email) {
     return "your email";
   }
   const [localPart, domain] = email.split("@");
-  if (!localPart || !domain) return "your email"; // Handle invalid email format
-
+  if (!localPart || !domain) return "your email";
   const maskedLocalPart =
     localPart.length > 3
       ? `${localPart.substring(0, 3)}****`
@@ -36,13 +38,21 @@ const maskEmail = (email: string | undefined | string[]): string => {
 };
 
 const PasswordVerificationScreen: React.FC = () => {
-  const router = useRouter();
   const { t } = useTranslation();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [code, setCode] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  const { email } = useLocalSearchParams<{ email: string }>(); // Get email param
-
+  const { email } = useLocalSearchParams<{ email: string }>();
+  const mainStore = useMainStore();
+  const [, setIsLoggingIn] = useState<boolean>(false);
+  const { login } = useAuth({
+    onLogin: async (authUser) => {
+      if (authUser.id !== undefined) {
+        setIsLoggingIn(true);
+        setLoading(true);
+      }
+    },
+  });
   const ref = useBlurOnFulfill({ value: code, cellCount: CELL_COUNT });
   const [props, getCellOnLayoutHandler] = useClearByFocusCell({
     value: code,
@@ -52,26 +62,67 @@ const PasswordVerificationScreen: React.FC = () => {
   const verificationMutation = useMutation({
     mutationFn: ({ identifier, code }: { identifier: string; code: string }) =>
       verifyPasswordReset(identifier, code),
-    onSuccess: (data) => {
-      Toast.show({
-        type: "success",
-        text1: t("Success"),
-        text2: t(
-          "PasswordVerification.successMessage",
-          "Code verified successfully!"
-        ),
-      });
+    onSuccess: async (data) => {
+      if (data?.token) {
+        Toast.show({
+          text1: "Loading essential data...",
+          type: "success",
+        });
+        const tokenStoredInCookie = await storeTokenInAsynStorage(data.token);
+        if (!tokenStoredInCookie) throw new Error("Auth Token was not stored.");
+
+        setAuthenticationStatus(true);
+
+        const profileData = await useGetCurrentLoggedInProfile();
+        if (!profileData) {
+          Toast.show({ text1: "Profile fetch failed", type: "error" });
+          setAuthenticationStatus(false);
+          return;
+        }
+        const didStoreUserInfo = mainStore.login({ userAccount: profileData });
+        if (didStoreUserInfo) {
+          Toast.show({
+            text1: "Login successful",
+            type: "success",
+            position: "bottom",
+            visibilityTime: 3000,
+            autoHide: true,
+            topOffset: 30,
+          });
+          setIsLoggingIn(false);
+          setLoading(false);
+        }
+      }
     },
-    onError: (error: AxiosError<{ message?: string }>) => {
-      const errorMessage =
-        error.response?.data?.message ||
-        t("PasswordVerification.apiError", "Invalid code. Please try again.");
-      setError(errorMessage);
+    onError: (error) => {
+      console.log("🚀 file: useAuth.tsx, fn: onError , line 123", error);
+
+      // Create a detailed error string for debugging
+      const errorDetails = JSON.stringify(
+        {
+          message: error.message,
+          response: (error as any)?.response?.data,
+          status: (error as any)?.response?.status,
+        },
+        null,
+        2
+      );
+
+      console.log("Detailed error:", errorDetails);
+
       Toast.show({
+        // text1: 'Login Error [DEV]',
+        // text2: `${error.response?.status || ''}: ${JSON.stringify(error.response?.data) || error.message || 'Unknown error'}`,
+        text1: errorDetails,
+        text2: errorDetails,
         type: "error",
-        text1: t("Error"),
-        text2: errorMessage,
+        position: "bottom",
+        visibilityTime: 6000, // Longer time to read the error details
+        autoHide: true,
+        topOffset: 30,
       });
+      setIsLoggingIn(false);
+      setLoading(false);
     },
   });
 
@@ -139,12 +190,11 @@ const PasswordVerificationScreen: React.FC = () => {
                 key={index}
                 onLayout={getCellOnLayoutHandler(index)}
                 className={`w-16 h-16 border flex-row items-center justify-center rounded-xl ${
-                  // Increased size slightly
                   error
                     ? "border-red-500"
                     : isFocused
                     ? "border-primary"
-                    : "border-slate-400" // Highlight error, focus, or default
+                    : "border-slate-400"
                 }`}
               >
                 <Text className="text-2xl font-semibold">
@@ -152,8 +202,7 @@ const PasswordVerificationScreen: React.FC = () => {
                 </Text>
               </View>
             )}
-            // Style the container for the code fields
-            rootStyle={{ justifyContent: "space-between" }} // Add space between cells
+            rootStyle={{ justifyContent: "space-between" }}
           />
           {error && <Text className="text-red-500 text-xs pt-4">{error}</Text>}
         </View>

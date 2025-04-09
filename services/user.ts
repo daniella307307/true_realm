@@ -37,10 +37,10 @@ export async function requestPasswordReset(identifier: string) {
   return res.data;
 }
 
-export async function verifyPasswordReset(identifier: string, verificationcode: string) {
-  const res = await baseInstance.post<IResponse<{}>>(`/user/verify-code`, {
+export async function verifyPasswordReset(identifier: string, verification_code: string) {
+  const res = await baseInstance.post<ILoginResponse>(`/user/verify-reset-code`, {
     identifier,
-    verificationcode,
+    verification_code,
   });
   return res.data;
 }

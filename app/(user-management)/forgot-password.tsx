@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ScrollView,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useForm, FieldValues, SubmitHandler } from "react-hook-form";
@@ -23,26 +24,63 @@ import { AxiosError } from "axios";
 import { IResponseError } from "~/types";
 import { requestPasswordReset } from "~/services/user";
 import { useMutation } from "@tanstack/react-query";
-import { Video } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 
 const VideoPlayer = () => {
   const videoUrl =
     "https://continuous.sugiramuryango.org.rw/public/videos/1733815813_Language%20Development.mp4";
-  const video = React.useRef(null);
-  const [status, setStatus] = React.useState({});
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [player, setPlayer] = useState<ReturnType<
+    typeof useVideoPlayer
+  > | null>(null);
+
+  const videoPlayer = useVideoPlayer(videoUrl, (playerInstance) => {
+    playerInstance.loop = true;
+  });
+
+  React.useEffect(() => {
+    if (videoPlayer) {
+      setPlayer(videoPlayer);
+      setIsLoading(false);
+    }
+  }, [videoPlayer]);
+
+  const togglePlayPause = () => {
+    if (isPlaying) {
+      player?.pause();
+    } else {
+      player?.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
 
   return (
     <View className="w-full h-40 bg-gray-200 rounded-lg items-center justify-center mb-6 overflow-hidden">
-      <Video
-        ref={video}
-        style={{ width: "100%", height: "100%" }}
-        source={{
-          uri: videoUrl,
-        }}
-        useNativeControls
-        isLooping
-        onPlaybackStatusUpdate={(status: any) => setStatus(() => status)}
-      />
+      {isLoading && (
+        <View className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+          <Text className="text-gray-600">Loading video...</Text>
+        </View>
+      )}
+      {player && (
+        <VideoView
+          player={player}
+          className="w-full h-full"
+          allowsFullscreen
+          allowsPictureInPicture
+          style={{
+            width: "100%",
+            height: "100%",
+            backgroundColor: "#000",
+          }}
+        />
+      )}
+      <TouchableOpacity
+        onPress={togglePlayPause}
+        className="absolute top-4 right-4 bg-white/80 px-4 py-2 rounded-full z-20"
+      >
+        <Text className="font-semibold">{isPlaying ? "Pause" : "Play"}</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -113,64 +151,68 @@ export default function ForgotScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <View className="flex-1 justify-between items-center flex-col gap-y-6 p-8 ">
-          <View className="w-full flex-col items-center justify-start gap-y-8">
-            <Logo className="mt-8" />
-            <View>
-              <Text className="mb-2 text-xl text-center font-medium text-[#050F2B]">
-                {t("ForgotPassword.title")}
-              </Text>
-              <Text className="text-[#6E7191] text-center">
-                {t("ForgotPassword.description")}
-              </Text>
-            </View>
-
-            <VideoPlayer />
-
-            <View className="w-full">
-              <View className="mb-4">
-                <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-                  {t("ForgotPassword.email")}
-                </Text>
-                <CustomInput
-                  control={control}
-                  name="email"
-                  placeholder={t("ForgotPassword.emailPlaceholder")}
-                  keyboardType="email-address"
-                  accessibilityLabel={t("ForgotPassword.email")}
-                />
-              </View>
-
+        <ScrollView 
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="flex-1 justify-between items-center flex-col px-8">
+            <View className="w-full flex-col items-center justify-start gap-y-8">
+              <Logo />
+              <VideoPlayer />
               <View>
-                <Button
-                  variant="default"
-                  size="default"
-                  onPress={handleSubmit(onSubmit)}
-                  isLoading={isLoading}
-                  disabled={!isValid || isLoading}
-                >
-                  <Text className="text-white font-semibold">
-                    {t("ForgotPassword.send")}
+                <Text className="mb-2 text-base text-center font-semibold text-[#050F2B]">
+                  {t("ForgotPassword.title")}
+                </Text>
+                <Text className="text-[#6E7191] text-xs text-center">
+                  {t("ForgotPassword.description")}
+                </Text>
+              </View>
+
+              <View className="w-full">
+                <View className="mb-4">
+                  <Text className="mb-2 text-xs font-medium text-[#050F2B]">
+                    {t("ForgotPassword.email")}
                   </Text>
-                </Button>
+                  <CustomInput
+                    control={control}
+                    name="email"
+                    placeholder={t("ForgotPassword.emailPlaceholder")}
+                    keyboardType="email-address"
+                    accessibilityLabel={t("ForgotPassword.email")}
+                  />
+                </View>
+
+                <View>
+                  <Button
+                    variant="default"
+                    size="default"
+                    onPress={handleSubmit(onSubmit)}
+                    isLoading={isLoading}
+                    disabled={!isValid || isLoading}
+                  >
+                    <Text className="text-white font-semibold">
+                      {t("ForgotPassword.send")}
+                    </Text>
+                  </Button>
+                </View>
               </View>
             </View>
+            <TouchableOpacity className="pb-20">
+              <View className="text-center flex-row justify-center items-center">
+                <View className="w-1/2">
+                  <Text className="text-gray-500 whitespace-nowrap line-clamp-1">
+                    {t("ForgotPassword.rememberPassword")}
+                  </Text>
+                </View>
+                <Pressable onPress={() => router.push("/login")}>
+                  <Text className="text-primary font-semibold ml-1">
+                    {t("ForgotPassword.backToLogin")}
+                  </Text>
+                </Pressable>
+              </View>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity className="absolue bottom-10">
-            <View className="text-center flex-row justify-center items-center">
-              <View className="w-1/2">
-                <Text className="text-gray-500 whitespace-nowrap line-clamp-1">
-                  {t("ForgotPassword.rememberPassword")}
-                </Text>
-              </View>
-              <Pressable onPress={() => router.push("/login")}>
-                <Text className="text-primary font-semibold ml-1">
-                  {t("ForgotPassword.backToLogin")}
-                </Text>
-              </Pressable>
-            </View>
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

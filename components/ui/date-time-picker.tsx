@@ -96,9 +96,9 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
               onPress={togglePicker}
               className={`w-full px-4 py-4 border rounded-lg flex flex-row justify-between items-center ${
                 error ? "border-primary" : "border-[#E4E4E7]"
-              } bg-white dark:bg-[#1E1E1E]`}
+              } bg-white`}
             >
-              <Text className="text-[#18181B] dark:text-white">
+              <Text className="text-[#18181B]">
                 {dateValue
                   ? formatDateTime(dateValue)
                   : t("DateTimePicker.selectDateTime", "Select a date/time")}

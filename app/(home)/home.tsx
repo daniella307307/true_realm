@@ -134,7 +134,7 @@ const HomeScreen = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-white">
       <HeaderNavigation showLeft={false} showRight={true} showLogo={true} logoSize={32} />
       <ScrollView>
         <View className="p-6">

@@ -72,7 +72,7 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
         <TextInput
           className={`w-full px-4 py-4 border rounded-lg ${
             error ? "border-primary" : "border-[#E4E4E7]"
-          } dark:text-white bg-white dark:bg-[#1E1E1E]`}
+          }`}
           value={value}
           keyboardType={
             field.type === "phoneNumber" || field.type === "number"
@@ -128,7 +128,7 @@ const TextAreaComponent: React.FC<DynamicFieldProps> = ({
         <TextInput
           className={`w-full px-4 h-44 border rounded-lg ${
             error ? "border-primary" : "border-[#E4E4E7]"
-          } dark:text-white bg-white dark:bg-[#1E1E1E]`}
+          }`}
           value={value}
           onChangeText={onChange}
           multiline
@@ -758,12 +758,12 @@ const AnswerPreview: React.FC<AnswerPreviewProps> = ({
           {isSubmitting ? (
             <View className="flex flex-row items-center">
               {/* You could add a loading spinner here if available */}
-              <Text className="text-white dark:text-black font-semibold">
+              <Text className="text-white font-semibold">
                 {t("FormElementPage.submitting", "Submitting...")}
               </Text>
             </View>
           ) : (
-            <Text className="text-white dark:text-black font-semibold">
+            <Text className="text-white font-semibold">
               {t("FormElementPage.finalSubmit", "Submit")}
             </Text>
           )}
@@ -1102,19 +1102,19 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 disabled={currentPage === 0}
                 className={`${currentPage === 0 ? "opacity-50" : ""}`}
               >
-                <Text className="text-white dark:text-black font-semibold">
+                <Text className="text-white font-semibold">
                   {t("FormElementPage.previous")}
                 </Text>
               </Button>
               {currentPage < visibleFields.length - 1 ? (
                 <Button onPress={handleNext}>
-                  <Text className="text-white dark:text-black font-semibold">
+                  <Text className="text-white font-semibold">
                     {t("FormElementPage.next")}
                   </Text>
                 </Button>
               ) : (
                 <Button onPress={handlePreview}>
-                  <Text className="text-white dark:text-black font-semibold">
+                  <Text className="text-white font-semibold">
                     {t("FormElementPage.preview", "Preview")}
                   </Text>
                 </Button>
@@ -1124,7 +1124,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
           {wholeComponent && (
             <Button onPress={handlePreview} className="mt-4">
-              <Text className="text-white dark:text-black font-semibold">
+              <Text className="text-white font-semibold">
                 {t("FormElementPage.preview", "Preview")}
               </Text>
             </Button>

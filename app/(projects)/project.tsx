@@ -38,7 +38,6 @@ const ProjectScreen = () => {
     mode: "onChange",
   });
 
-  console.log("storedProjects", JSON.stringify(storedProjects, null, 2));
   const searchQuery = watch("searchQuery");
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {

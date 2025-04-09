@@ -18,7 +18,7 @@ export const setAuthenticationStatus = (status: boolean) => {
 const publicRoutes = [
   '/login',
   '/user/reset-password',
-  '/user/verify-code'
+  '/user/verify-reset-code'
 ];
 
 const baseInstance = axios.create({

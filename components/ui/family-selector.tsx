@@ -107,7 +107,7 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
       <View className="flex-row items-center space-x-2 mb-4">
         <Ionicons name="search" size={20} color="#A0A3BD" className="mr-2" />
         <TextInput
-          className="w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white dark:bg-[#1E1E1E] dark:text-white"
+          className="w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white"
           placeholder="Search families..."
           value={searchQuery}
           onChangeText={setSearchQuery}

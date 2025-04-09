@@ -18,16 +18,51 @@ import { router } from 'expo-router';
 import { Modal, TouchableWithoutFeedback } from 'react-native';
 import { ILoginDetails, loginSchema } from '~/types';
 import { useAuth } from '~/lib/hooks/useAuth';
+import { useGetAllProjects } from '~/services/project';
+import { useGetAllModules } from '~/services/project';
+import { useGetForms } from '~/services/formElements';
+import { useGetStakeholders } from '~/services/stakeholders';
+import { useGetIzus } from '~/services/izus';
+import { useGetFamilies } from '~/services/families';
+import { useGetPosts } from '~/services/posts';
 
 export default function LoginScreen() {
   const { t, i18n } = useTranslation();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const { refresh: refreshProjects } = useGetAllProjects();
+  const { refresh: refreshModules } = useGetAllModules();
+  const { refresh: refreshForms } = useGetForms();
+  const { refresh: refreshStakeholders } = useGetStakeholders();
+  const { refresh: refreshIzus } = useGetIzus();
+  const { refresh: refreshFamilies } = useGetFamilies();
+  const { refresh: refreshPosts } = useGetPosts();
 
   const { login, isLoggingIn } = useAuth({
-    onLogin: (authUser) => {
+    onLogin: async (authUser) => {
       if (authUser.id !== undefined) {
-        router.push('/(home)/home');
+        setIsSyncing(true);
+        try {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          await Promise.all([
+            refreshProjects(),
+            refreshModules(),
+            refreshForms(),
+            refreshStakeholders(),
+            refreshIzus(),
+            refreshFamilies(),
+            refreshPosts(),
+          ]);
+          console.log('Force sync completed successfully');
+        } catch (error) {
+          console.error('Error during force sync:', error);
+        } finally {
+          setIsSyncing(false);
+          router.push('/(home)/home');
+        }
       } else {
         console.log('No token found');
         return;
@@ -74,11 +109,11 @@ export default function LoginScreen() {
               }) => (
                 <>
                   <View
-                    className={`flex flex-row items-center w-full border ${
+                    className={`flex flex-row h-16 items-center w-full border ${
                       error ? 'border-primary' : 'border-border'
                     } rounded-lg`}>
                     <TextInput
-                      className='w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]'
+                      className='px-4 rounded-lg'
                       placeholder={t('Login.emailOrPhonePlaceholder')}
                       onBlur={onBlur}
                       onChangeText={onChange}
@@ -110,11 +145,11 @@ export default function LoginScreen() {
                 }) => (
                   <>
                     <View
-                      className={`flex flex-row items-center w-full border ${
+                      className={`flex flex-row h-16 items-center w-full border ${
                         error ? 'border-primary' : 'border-border'
                       } rounded-lg`}>
                       <TextInput
-                        className='w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]'
+                        className='w-5/6 px-4 rounded-lg'
                         placeholder={t('Login.passwordPlaceholder')}
                         secureTextEntry={!passwordVisible}
                         onBlur={onBlur}
@@ -151,10 +186,10 @@ export default function LoginScreen() {
               className='my-6'
               variant='default'
               size='default'
-              isLoading={isLoggingIn}
+              isLoading={isLoggingIn || isSyncing}
               onPress={handleSubmit(onSubmit)}>
               <Text className='text-white font-semibold'>
-                {t('Login.login')}
+                {isSyncing ? t('Login.syncing') : t('Login.login')}
               </Text>
             </Button>
             <TouchableOpacity onPress={() => router.push('/forgot-password')}>

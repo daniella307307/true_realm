@@ -13,7 +13,7 @@ import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setAuthenticationStatus } from '~/utils/axios';
 
-type AuthOptions = {
+export type AuthOptions = {
   onLogin?: (data: User) => void;
   onLogout?: () => void;
 };
@@ -120,7 +120,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       });
     },
     onError: (error) => {
-      console.log('🚀 file: useAuth.tsx, fn: onError , line 64', error);
+      console.log('🚀 file: useAuth.tsx, fn: onError , line 123', error);
 
       // Create a detailed error string for debugging
       const errorDetails = JSON.stringify(
@@ -212,7 +212,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   };
 };
 
-async function storeTokenInAsynStorage(token: string) {
+export async function storeTokenInAsynStorage(token: string) {
   await AsyncStorage.setItem('tknToken', token);
   const storedToken = await AsyncStorage.getItem('tknToken');
   return storedToken === token;

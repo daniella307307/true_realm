@@ -13,7 +13,7 @@ const CustomInput = ({ control, name, placeholder, secureTextEntry = false, keyb
           <TextInput
             className={`w-full px-4 py-5 border rounded-lg ${
               error ? "border-primary" : "border-gray-200"
-            } dark:text-white bg-white dark:bg-[#1E1E1E]`}
+            }`}
             placeholder={placeholder}
             secureTextEntry={secureTextEntry}
             keyboardType={keyboardType}

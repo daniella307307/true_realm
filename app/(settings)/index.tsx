@@ -53,7 +53,7 @@ const SettingsScreen = () => {
         </Text>
         <View className="flex-row gap-x-2 items-center w-full">
           <Image
-            source={{ uri: user.picture }}
+            source={{ uri: user?.picture }}
             className="w-20 h-20 rounded-full"
           />
           <InfoItem

@@ -111,7 +111,7 @@ const IzuCodeSelector = ({
           <TextInput
             className={`w-full px-4 py-4 border rounded-lg ${
               error ? "border-primary" : "border-[#E4E4E7]"
-            } bg-white dark:bg-[#1E1E1E] dark:text-white mb-2`}
+            } bg-white mb-2`}
             value={value}
             onChangeText={onChange}
             placeholder="Select an IZU code"
@@ -127,7 +127,7 @@ const IzuCodeSelector = ({
                 className="mr-2"
             />
             <TextInput
-              className=" w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white dark:bg-[#1E1E1E] dark:text-white mb-2"
+              className=" w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white mb-2"
               placeholder="Search IZU codes..."
               value={searchQuery}
               onChangeText={setSearchQuery}

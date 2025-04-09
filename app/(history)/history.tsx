@@ -23,14 +23,12 @@ import HeaderNavigation from "~/components/ui/header";
 
 const HistoryProjectScreen = () => {
   const storedProjects = useGetAllProjects();
-  console.log("storedProjects", JSON.stringify(storedProjects, null, 2));
   const {
     surveySubmissions,
     isLoading: surveySubmissionsLoading,
     error: surveySubmissionsError,
     refetch: refetchSurveySubmissions,
   } = useGetAllSurveySubmissions();
-  // console.log("surveySubmissions", JSON.stringify(surveySubmissions, null, 2));
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -43,8 +41,6 @@ const HistoryProjectScreen = () => {
 
   const searchQuery = watch("searchQuery");
   const [refreshing, setRefreshing] = useState(false);
-
-  // console.log("Projects: ", storedProjects.projects);
 
   const onRefresh = async () => {
     setRefreshing(true);

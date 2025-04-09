@@ -19,6 +19,7 @@ import Skeleton from "~/components/ui/skeleton";
 import {
   fetchActiveModulesFromRemote,
   useGetAllModules,
+  useGetAllProjects,
 } from "~/services/project";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { Module } from "~/models/modules/module";
@@ -37,6 +38,11 @@ const FamiliesPage = () => {
     mode: "onChange",
   });
 
+  const {
+    projects: storedProjects,
+    isLoading: isProjectsLoading,
+    refresh,
+  } = useGetAllProjects();
   const searchQuery = watch("searchQuery");
   const { modules, isLoading } = useGetAllModules();
 

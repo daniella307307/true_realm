@@ -205,11 +205,11 @@ const PostScreen: React.FC = () => {
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center">
           <Image
-            source={{ uri: item.user.picture }}
+            source={{ uri: item?.user?.picture }}
             className="w-8 h-8 rounded-full"
           />
           <View className="ml-3">
-            <Text className="font-semibold">{item.user.name}</Text>
+            <Text className="font-semibold">{item?.user?.name}</Text>
             <Text className="text-gray-500 text-sm">
               {item?.created_at &&
                 `${format(
@@ -222,8 +222,8 @@ const PostScreen: React.FC = () => {
           </View>
         </View>
       </View>
-      <Text className="text-base mt-1">{item.comment}</Text>
-      {item.user.id === post?.user?.id && (
+      <Text className="text-base mt-1">{item?.comment}</Text>
+      {item?.user?.id === post?.user?.id && (
         <View className="flex-row items-center justify-end">
           <TouchableOpacity
             className="bg-slate-100 p-2 rounded-full"
