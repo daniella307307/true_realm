@@ -1,46 +1,47 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   View,
   TextInput,
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
-} from "react-native";
-import { useTranslation } from "react-i18next";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import Logo from "~/components/Logo";
-import { Text } from "~/components/ui/text";
-import { Eye, EyeOff } from "lucide-react-native";
-import { Button } from "~/components/ui/button";
-import { SafeAreaView } from "react-native-safe-area-context";
-import CustomInput from "~/components/ui/input";
-import { router } from "expo-router";
-import { Modal, TouchableWithoutFeedback } from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import { ILoginDetails, loginSchema } from "~/types";
-import { useAuth } from "~/lib/hooks/useAuth";
+} from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import Logo from '~/components/Logo';
+import { Text } from '~/components/ui/text';
+import { Eye, EyeOff } from 'lucide-react-native';
+import { Button } from '~/components/ui/button';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import CustomInput from '~/components/ui/input';
+import { router } from 'expo-router';
+import { Modal, TouchableWithoutFeedback } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { ILoginDetails, loginSchema } from '~/types';
+import { useAuth } from '~/lib/hooks/useAuth';
 
 export default function LoginScreen() {
   const { t, i18n } = useTranslation();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+
   const { login, isLoggingIn } = useAuth({
     onLogin: (authUser) => {
       if (authUser.id !== undefined) {
-        router.push("/(home)/home");
+        router.push('/(home)/home');
       } else {
-        console.log("No token found");
+        console.log('No token found');
         return;
       }
     },
   });
 
-  console.log("Login screen rendered");
+  console.log('Login screen rendered');
 
   const { control, handleSubmit } = useForm<ILoginDetails>({
     resolver: zodResolver(loginSchema),
-    mode: "onChange",
+    mode: 'onChange',
   });
 
   const togglePasswordVisibility = () => {
@@ -48,7 +49,7 @@ export default function LoginScreen() {
   };
 
   const onSubmit = (data: ILoginDetails) => {
-    console.log("Form Data:", data);
+    console.log('Form Data:', data);
     login(data);
   };
 
@@ -58,17 +59,17 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 justify-center items-center flex-col gap-y-12 p-8 bg-background">
+    <SafeAreaView className='flex-1 justify-center items-center flex-col gap-y-12 p-8 bg-background'>
       <Logo size={96} />
-      <KeyboardAvoidingView className="w-full" behavior="padding">
+      <KeyboardAvoidingView className='w-full' behavior='padding'>
         <ScrollView showsVerticalScrollIndicator={false}>
           <View>
-            <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-              {t("Login.emailOrPhone")}
+            <Text className='mb-2 text-lg font-medium text-[#050F2B]'>
+              {t('Login.emailOrPhone')}
             </Text>
             <Controller
               control={control}
-              name="identifier"
+              name='identifier'
               render={({
                 field: { onChange, onBlur, value },
                 fieldState: { error },
@@ -76,36 +77,35 @@ export default function LoginScreen() {
                 <>
                   <View
                     className={`flex flex-row items-center w-full border ${
-                      error ? "border-primary" : "border-border"
-                    } rounded-lg`}
-                  >
+                      error ? 'border-primary' : 'border-border'
+                    } rounded-lg`}>
                     <TextInput
-                      className="w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]"
-                      placeholder={t("Login.emailOrPhonePlaceholder")}
+                      className='w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]'
+                      placeholder={t('Login.emailOrPhonePlaceholder')}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
-                      accessibilityLabel={t("Login.emailOrPhone")}
-                      keyboardType="default"
-                      autoCapitalize="none"
+                      accessibilityLabel={t('Login.emailOrPhone')}
+                      keyboardType='default'
+                      autoCapitalize='none'
                     />
                   </View>
                   {error && (
-                    <Text className="text-red-500 mt-2">{error.message}</Text>
+                    <Text className='text-red-500 mt-2'>{error.message}</Text>
                   )}
                 </>
               )}
             />
           </View>
 
-          <View className="mt-4">
-            <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-              {t("Login.password")}
+          <View className='mt-4'>
+            <Text className='mb-2 text-lg font-medium text-[#050F2B]'>
+              {t('Login.password')}
             </Text>
             <View>
               <Controller
                 control={control}
-                name="password"
+                name='password'
                 render={({
                   field: { onChange, onBlur, value },
                   fieldState: { error },
@@ -113,36 +113,34 @@ export default function LoginScreen() {
                   <>
                     <View
                       className={`flex flex-row items-center w-full border ${
-                        error ? "border-primary" : "border-border"
-                      } rounded-lg`}
-                    >
+                        error ? 'border-primary' : 'border-border'
+                      } rounded-lg`}>
                       <TextInput
-                        className="w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]"
-                        placeholder={t("Login.passwordPlaceholder")}
+                        className='w-5/6 px-4 py-5 rounded-lg dark:text-white dark:bg-[#1E1E1E]'
+                        placeholder={t('Login.passwordPlaceholder')}
                         secureTextEntry={!passwordVisible}
                         onBlur={onBlur}
                         onChangeText={onChange}
                         value={value}
-                        accessibilityLabel={t("Login.password")}
+                        accessibilityLabel={t('Login.password')}
                       />
                       <TouchableOpacity
                         onPress={togglePasswordVisibility}
-                        className="flex items-center justify-center ml-2"
+                        className='flex items-center justify-center ml-2'
                         accessibilityLabel={
                           passwordVisible
-                            ? t("Login.Hide password")
-                            : t("Login.Show password")
-                        }
-                      >
+                            ? t('Login.Hide password')
+                            : t('Login.Show password')
+                        }>
                         {passwordVisible ? (
-                          <Eye width={24} height={24} stroke="#797979" />
+                          <Eye width={24} height={24} stroke='#797979' />
                         ) : (
-                          <EyeOff width={24} height={24} stroke="#797979" />
+                          <EyeOff width={24} height={24} stroke='#797979' />
                         )}
                       </TouchableOpacity>
                     </View>
                     {error && (
-                      <Text className="text-red-500 mt-2">{error.message}</Text>
+                      <Text className='text-red-500 mt-2'>{error.message}</Text>
                     )}
                   </>
                 )}
@@ -152,28 +150,26 @@ export default function LoginScreen() {
 
           <View>
             <Button
-              className="my-6"
-              variant="default"
-              size="default"
+              className='my-6'
+              variant='default'
+              size='default'
               isLoading={isLoggingIn}
-              onPress={handleSubmit(onSubmit)}
-            >
-              <Text className="text-white font-semibold">
-                {t("Login.login")}
+              onPress={handleSubmit(onSubmit)}>
+              <Text className='text-white font-semibold'>
+                {t('Login.login')}
               </Text>
             </Button>
-            <TouchableOpacity onPress={() => router.push("/forgot-password")}>
-              <Text className="text-accent text-center">
-                {t("Login.forgotPassword")}
+            <TouchableOpacity onPress={() => router.push('/forgot-password')}>
+              <Text className='text-accent text-center'>
+                {t('Login.forgotPassword')}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => setLanguageModalVisible(true)}
-              className="mt-4"
-            >
-              <Text className="text-accent text-center">
-                {t("Login.Select Language")}
+              className='mt-4'>
+              <Text className='text-accent text-center'>
+                {t('Login.Select Language')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -183,42 +179,38 @@ export default function LoginScreen() {
       <Modal
         transparent={true}
         visible={languageModalVisible}
-        animationType="slide"
-        onRequestClose={() => setLanguageModalVisible(false)}
-      >
+        animationType='slide'
+        onRequestClose={() => setLanguageModalVisible(false)}>
         <TouchableWithoutFeedback
-          onPress={() => setLanguageModalVisible(false)}
-        >
-          <View className="flex-1 justify-center items-center bg-black opacity-50" />
+          onPress={() => setLanguageModalVisible(false)}>
+          <View className='flex-1 justify-center items-center bg-black opacity-50' />
         </TouchableWithoutFeedback>
 
-        <View className="bg-white p-6 rounded-lg w-full max-w-md">
-          <Text className="text-lg mb-4 text-center">
-            {t("Login.Select Language")}
+        <View className='bg-white p-6 rounded-lg w-full max-w-md'>
+          <Text className='text-lg mb-4 text-center'>
+            {t('Login.Select Language')}
           </Text>
 
-          <View className="space-y-4">
-            <TouchableOpacity onPress={() => changeLanguage("en-US")}>
-              <Text className="text-center text-lg font-semibold bg-slate-50 py-3 rounded-lg">
+          <View className='space-y-4'>
+            <TouchableOpacity onPress={() => changeLanguage('en-US')}>
+              <Text className='text-center text-lg font-semibold bg-slate-50 py-3 rounded-lg'>
                 English
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              className="mt-4"
-              onPress={() => changeLanguage("rw-RW")}
-            >
-              <Text className="text-center text-lg font-semibold bg-slate-50 py-3 rounded-lg">
+              className='mt-4'
+              onPress={() => changeLanguage('rw-RW')}>
+              <Text className='text-center text-lg font-semibold bg-slate-50 py-3 rounded-lg'>
                 Kinyarwanda
               </Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity
             onPress={() => setLanguageModalVisible(false)}
-            className="mt-6"
-          >
-            <Text className="text-center text-accent font-semibold">
-              {t("Close")}
+            className='mt-6'>
+            <Text className='text-center text-accent font-semibold'>
+              {t('Close')}
             </Text>
           </TouchableOpacity>
         </View>
