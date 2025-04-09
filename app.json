@@ -1,18 +1,16 @@
 {
   "expo": {
-    "name": "sugira muryango",
-    "runtimeVersion": "1.0.0",
-    "slug": "sugira-mobile",
+    "name": "sugiramuryango",
+    "slug": "Sugira Muryango",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "sugiramuryango",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
     "backgroundColor":"#ffffff",
     "splash": {
       "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
+      "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [

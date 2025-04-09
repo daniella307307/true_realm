@@ -12,12 +12,11 @@ import "react-native-get-random-values";
 import { useEffect, useState } from "react";
 import QueryProvider from "~/providers/QueryProvider";
 import Toast from "react-native-toast-message";
-import toastConfig from "~/providers/toastConfig";
+// import toastConfig from "~/providers/toastConfig";
 import { enableScreens } from "react-native-screens";
 import { Drawer } from "expo-router/drawer";
 import CustomDrawerContent from "~/components/ui/custom-drawer";
 import { FontSizeProvider } from "~/providers/FontSizeContext";
-import { PaperProvider } from "react-native-paper";
 import { initializeNetworkListener } from "~/services/network";
 import { initializeSyncService } from "~/services/sync";
 import NetInfo from "@react-native-community/netinfo";
@@ -29,14 +28,12 @@ export default function RootLayout() {
   return (
     <FontSizeProvider>
       <QueryProvider>
-        <PaperProvider>
-          <SplashScreenProvider>
-            <RealmContext.RealmProvider>
-              <Layout />
-            </RealmContext.RealmProvider>
-          </SplashScreenProvider>
-        </PaperProvider>
-        <Toast config={toastConfig} />
+        {/* <SplashScreenProvider> */}
+        <RealmContext.RealmProvider>
+          <Layout />
+        </RealmContext.RealmProvider>
+        {/* </SplashScreenProvider> */}
+        <Toast />
       </QueryProvider>
     </FontSizeProvider>
   );

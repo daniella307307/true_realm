@@ -12,9 +12,7 @@
     "esModuleInterop": true,
     "baseUrl": ".",
     "paths": {
-      "~/*": [
-        "*"
-      ]
+      "~/*": ["*"]
     }
   },
   "exclude": ["node_modules"],
@@ -24,5 +22,5 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts"
-, "app/(families)/(modules)/_layout.tsx"  ]
+  ]
 }

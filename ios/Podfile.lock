@@ -15,20 +15,20 @@ PODS:
   - EXConstants (17.0.8):
     - ExpoModulesCore
   - EXJSONUtils (0.14.0)
-  - EXManifests (0.15.7):
+  - EXManifests (0.15.8):
     - ExpoModulesCore
-  - Expo (52.0.42):
+  - Expo (52.0.44):
     - ExpoModulesCore
-  - expo-dev-client (5.0.17):
+  - expo-dev-client (5.0.20):
     - EXManifests
     - expo-dev-launcher
     - expo-dev-menu
     - expo-dev-menu-interface
     - EXUpdatesInterface
-  - expo-dev-launcher (5.0.32):
+  - expo-dev-launcher (5.0.35):
     - DoubleConversion
     - EXManifests
-    - expo-dev-launcher/Main (= 5.0.32)
+    - expo-dev-launcher/Main (= 5.0.35)
     - expo-dev-menu
     - expo-dev-menu-interface
     - ExpoModulesCore
@@ -54,7 +54,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - expo-dev-launcher/Main (5.0.32):
+  - expo-dev-launcher/Main (5.0.35):
     - DoubleConversion
     - EXManifests
     - expo-dev-launcher/Unsafe
@@ -83,7 +83,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - expo-dev-launcher/Unsafe (5.0.32):
+  - expo-dev-launcher/Unsafe (5.0.35):
     - DoubleConversion
     - EXManifests
     - expo-dev-menu
@@ -111,10 +111,10 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - expo-dev-menu (6.0.23):
+  - expo-dev-menu (6.0.25):
     - DoubleConversion
-    - expo-dev-menu/Main (= 6.0.23)
-    - expo-dev-menu/ReactNativeCompatibles (= 6.0.23)
+    - expo-dev-menu/Main (= 6.0.25)
+    - expo-dev-menu/ReactNativeCompatibles (= 6.0.25)
     - glog
     - hermes-engine
     - RCT-Folly (= 2024.01.01.00)
@@ -135,7 +135,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - Yoga
   - expo-dev-menu-interface (1.9.3)
-  - expo-dev-menu/Main (6.0.23):
+  - expo-dev-menu/Main (6.0.25):
     - DoubleConversion
     - EXManifests
     - expo-dev-menu-interface
@@ -161,7 +161,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - expo-dev-menu/ReactNativeCompatibles (6.0.23):
+  - expo-dev-menu/ReactNativeCompatibles (6.0.25):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -182,7 +182,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - expo-dev-menu/SafeAreaView (6.0.23):
+  - expo-dev-menu/SafeAreaView (6.0.25):
     - DoubleConversion
     - ExpoModulesCore
     - glog
@@ -204,7 +204,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - expo-dev-menu/Vendored (6.0.23):
+  - expo-dev-menu/Vendored (6.0.25):
     - DoubleConversion
     - expo-dev-menu/SafeAreaView
     - glog
@@ -226,7 +226,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - ExpoAdapterGoogleSignIn (13.1.0):
+  - ExpoAdapterGoogleSignIn (13.2.0):
     - ExpoModulesCore
     - GoogleSignIn (~> 7.1)
     - React-Core
@@ -1645,7 +1645,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-slider (4.5.5):
+  - react-native-slider (4.5.6):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1658,7 +1658,7 @@ PODS:
     - React-featureflags
     - React-graphics
     - React-ImageManager
-    - react-native-slider/common (= 4.5.5)
+    - react-native-slider/common (= 4.5.6)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-rendererdebug
@@ -1667,50 +1667,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-slider/common (4.5.5):
-    - DoubleConversion
-    - glog
-    - hermes-engine
-    - RCT-Folly (= 2024.01.01.00)
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - Yoga
-  - react-native-video (6.10.0):
-    - DoubleConversion
-    - glog
-    - hermes-engine
-    - RCT-Folly (= 2024.01.01.00)
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - react-native-video/Video (= 6.10.0)
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - Yoga
-  - react-native-video/Fabric (6.10.0):
+  - react-native-slider/common (4.5.6):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1731,7 +1688,50 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-video/Video (6.10.0):
+  - react-native-video (6.12.0):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - react-native-video/Video (= 6.12.0)
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
+  - react-native-video/Fabric (6.12.0):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
+  - react-native-video/Video (6.12.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2022,7 +2022,7 @@ PODS:
     - React-utils (= 0.76.8)
   - RealmJS (12.14.1):
     - React
-  - RNCAsyncStorage (1.23.1):
+  - RNCAsyncStorage (1.24.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2043,7 +2043,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNCPicker (2.9.0):
+  - RNCPicker (2.11.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2087,7 +2087,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNGoogleSignin (13.1.0):
+  - RNGoogleSignin (13.2.0):
     - DoubleConversion
     - glog
     - GoogleSignIn (~> 7.1)
@@ -2648,13 +2648,13 @@ SPEC CHECKSUMS:
   EXAV: 57ea461614a714b8b8fcc72c6fbc298b8f1ec78b
   EXConstants: a1f35b9aabbb3c6791f8e67722579b1ffcdd3f18
   EXJSONUtils: 01fc7492b66c234e395dcffdd5f53439c5c29c93
-  EXManifests: 4e8c6aa537f44e72c2b4e2b71698234b623007da
-  Expo: 0d4aa839420656a1e2be905f04f53930f5b5d91c
-  expo-dev-client: 188f796d9bfb4ac8064988fe6bc65437b7eba6cb
-  expo-dev-launcher: 0a70c0cb444a486b281f9b72c56b8bf95db23594
-  expo-dev-menu: 623069baa284bc2324fe74e47a9a6178b2dd0e64
+  EXManifests: 77e77c283c4c53a50b9bddebed25abe93f0b48f1
+  Expo: 83a0ca93325155885341b6cfc988c9c711dd0048
+  expo-dev-client: ca3ebc270cb0d3f26e6d9c3e1da19957ef4fcac1
+  expo-dev-launcher: d5eaaef3147a2e59585d3b460561c32614e7bd10
+  expo-dev-menu: c9af61706633020d977c83ec2e509ac5e27fe073
   expo-dev-menu-interface: 00dc42302a72722fdecec3fa048de84a9133bcc4
-  ExpoAdapterGoogleSignIn: da10ae7e7c1d73a10c2facebcdfe5ebea8e073ce
+  ExpoAdapterGoogleSignIn: 2b9d8c002ae5d09042b2fc87448dfc070d0e7a08
   ExpoAsset: 0687fe05f5d051c4a34dd1f9440bd00858413cfe
   ExpoCrypto: 1eaf79360c8135af1f2ebb133394fd3513ca9a3d
   ExpoDevice: cf7419343b6e060209aaadd596defb1b6320597f
@@ -2717,8 +2717,8 @@ SPEC CHECKSUMS:
   react-native-get-random-values: 21325b2244dfa6b58878f51f9aa42821e7ba3d06
   react-native-netinfo: f0a9899081c185db1de5bb2fdc1c88c202a059ac
   react-native-safe-area-context: 458f6b948437afcb59198016b26bbd02ff9c3b47
-  react-native-slider: 124ce99f9cd2d04c79f020da6dee9f8d38a6b8c7
-  react-native-video: 7626cbdbdf7f2d36aee8be617f32783c6adb335a
+  react-native-slider: fe195f81408470a07952f75beabc215de65507d3
+  react-native-video: 5ddb79e18ffc183690df8d0fd7e4da98ef28b2da
   React-nativeconfig: a0ee536f9c1b8f2ba80fdf95aa4f2d6eb9b79510
   React-NativeModulesApple: 7681e640f3bd0d31e88911ccf5630785b3ec0a90
   React-perflogger: 6a8c97be60fde6845428f2ceef540447fef65dde
@@ -2747,11 +2747,11 @@ SPEC CHECKSUMS:
   ReactCodegen: cb798eece8fb8b4c98689302d76608cdca62b563
   ReactCommon: 90c3783fe9735fc5aeaf3064eca54aac277bb976
   RealmJS: f3f9d0a5361cc18ef5a6fe0fa1c274a821cef708
-  RNCAsyncStorage: a927b768986f83467b635cf6d7559e6edb46db7a
-  RNCPicker: b978067931744f5a7316b48b8dcf145d4d722672
+  RNCAsyncStorage: 3ad840f7b17b45ca7ebbbb0e80948564a9513315
+  RNCPicker: d23ebebb0c66864ac3edf260c20f8a4470aa2769
   RNCPushNotificationIOS: 64218f3c776c03d7408284a819b2abfda1834bc8
   RNGestureHandler: fc5ce5bf284640d3af6431c3a5c3bc121e98d045
-  RNGoogleSignin: edec18754ff4af2cfee46072609ec5a7a754291a
+  RNGoogleSignin: 84aa86accafa34b50a78bc561b0f483ff09c1a91
   RNReanimated: 9ee6347ca0aa3cf78cae715455e781728ae142e2
   RNScreens: d022507f2b6d76c73335e9e35aedcf7bb2f791b0
   RNSVG: 536cd3c866c878faf72beaba166c8b02fe2b762b

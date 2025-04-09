@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   TextInput,
@@ -14,10 +14,8 @@ import { Text } from '~/components/ui/text';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { Button } from '~/components/ui/button';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import CustomInput from '~/components/ui/input';
 import { router } from 'expo-router';
 import { Modal, TouchableWithoutFeedback } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { ILoginDetails, loginSchema } from '~/types';
 import { useAuth } from '~/lib/hooks/useAuth';
 
