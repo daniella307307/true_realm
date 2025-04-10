@@ -36,7 +36,7 @@ export const usePostManipulate = () => {
     Toast.show({
       text1: message,
       type: "success",
-      position: "bottom",
+      position: "top",
       visibilityTime: 3000,
       autoHide: true,
       topOffset: 30,

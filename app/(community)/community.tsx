@@ -101,6 +101,7 @@ const CommunityScreen: React.FC = () => {
       );
     });
 
+  console.log("Posts: ", JSON.stringify(posts, null, 2));
   const renderPost = ({ item }: { item: Post }) => {
     const currentUserId = user.id;
     const isLiked = JSON.parse(item.likes).some(
@@ -171,7 +172,9 @@ const CommunityScreen: React.FC = () => {
                   color={isLiked ? "red" : "grey"}
                   family="MaterialCommunityIcons"
                 />
-                <Text className="ml-2 text-gray-500">{item.likes.length}</Text>
+                <Text className="ml-2 text-gray-500">
+                  {JSON.parse(item.likes).length}
+                </Text>
               </TouchableOpacity>
               <View className="flex-row items-center">
                 <TabBarIcon
@@ -181,7 +184,7 @@ const CommunityScreen: React.FC = () => {
                   family="FontAwesome6"
                 />
                 <Text className="ml-2 text-gray-500">
-                  {item.comments.length}
+                  {JSON.parse(item.comments).length}
                 </Text>
               </View>
               <View className="flex-row items-center">
@@ -212,7 +215,11 @@ const CommunityScreen: React.FC = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <HeaderNavigation showLeft={true} showRight={true} title={t("CommunityPage.title")} />
+      <HeaderNavigation
+        showLeft={true}
+        showRight={true}
+        title={t("CommunityPage.title")}
+      />
       <View className="bg-slate-50 relative">
         <CustomInput
           control={control}

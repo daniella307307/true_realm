@@ -49,12 +49,13 @@ const FamiliesPage = () => {
   const riskOfHarmModule = modules.find(
     (module: IModule) => module.module_name === "Uncategorized"
   );
-  // console.log("Risk of Harm Module: ", riskOfHarmModule.id);
+  const riskOfHarmModuleId = riskOfHarmModule?.source_module_id;
   const filteredModules = modules
     .filter(
       (module: IModule) =>
         module.project_id === 3 &&
         module.module_status !== 0 &&
+        module.module_name !== "Uncategorized" &&
         (!searchQuery || module.module_name.toLowerCase().includes(searchQuery))
     )
     .sort((a, b) => a.order_list - b.order_list);
@@ -79,7 +80,7 @@ const FamiliesPage = () => {
       {riskOfHarmModule && (
         <TouchableOpacity
           onPress={() =>
-            router.push(`/(forms)/${riskOfHarmModule?.id}`)
+            router.push(`/(forms)/${riskOfHarmModuleId}`)
           }
           className="p-4 border mb-4 border-red-500 rounded-xl"
         >
@@ -139,7 +140,7 @@ const FamiliesPage = () => {
         }}
         renderItem={({ item }) => (
           <TouchableOpacity
-            onPress={() => router.push(`/(forms)/${item.id}`)}
+            onPress={() => router.push(`/(forms)/${item.source_module_id}`)}
             className="p-4 border mb-4 border-gray-200 rounded-xl"
           >
             <View className="flex-row items-center pr-4 justify-start">

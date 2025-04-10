@@ -51,15 +51,20 @@ const PostScreen: React.FC = () => {
     defaultValues: { comment: "" },
   });
 
+  const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuth({});
 
-  const { usePostComment, useDeleteComment, useLikePost, useUnlikePost } =
-    usePostManipulate();
+  const {
+    usePostComment,
+    useDeleteComment,
+    useLikePost,
+    useUnlikePost,
+    isLoading: isCommentLoading,
+  } = usePostManipulate();
 
   const { post, isLoading, refresh } = useGetPost(parseInt(postId));
-  console.log("Post", JSON.stringify(post, null, 2));
 
   const handleAddComment = async (data: { comment: string }) => {
     if (isSubmitting) return;
@@ -241,7 +246,6 @@ const PostScreen: React.FC = () => {
       return (
         <>
           {renderHeader()}
-          {renderCommentInput()}
           {renderComment({ item })}
         </>
       );
@@ -261,6 +265,9 @@ const PostScreen: React.FC = () => {
         }
         ListEmptyComponent={renderHeader}
       />
+      <View className="flex-row items-center mt-4 bg-white py-1 pr-4 ">
+        {renderCommentInput()}
+      </View>
     </SafeAreaView>
   );
 };

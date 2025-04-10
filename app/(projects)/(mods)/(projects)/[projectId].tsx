@@ -101,48 +101,62 @@ const ProjectModuleScreens = () => {
             ListEmptyComponent={() => (
               <EmptyDynamicComponent message="No related modules" />
             )}
-            ListHeaderComponent={() => (
-              <TouchableOpacity
-                onPress={() => router.push("/(forms)/form-family")}
-                className="p-4 border mb-4 border-red-500 rounded-xl"
-              >
-                <View className="flex-row items-center pr-4 justify-start">
-                  <TabBarIcon
-                    name="warning"
-                    family="MaterialIcons"
-                    size={24}
-                    color="#D92020"
-                  />
-                  <Text className="text-lg font-semibold ml-2 text-red-500">
-                    {t("ModulePage.risk_of_harm")}
+            ListHeaderComponent={() => {
+              const uncategorizedModule = storedModules.modules.find(
+                (module: IModule) => 
+                  module.module_name === "Uncategorized" && 
+                  module.project_id === Number(projectId)
+              );
+              
+              return uncategorizedModule ? (
+                <TouchableOpacity
+                  onPress={() => router.push(`/(forms)/${uncategorizedModule.source_module_id}`)}
+                  className="p-4 border mb-4 border-red-500 rounded-xl"
+                >
+                  <View className="flex-row items-center pr-4 justify-start">
+                    <TabBarIcon
+                      name="warning"
+                      family="MaterialIcons"
+                      size={24}
+                      color="#D92020"
+                    />
+                    <Text className="text-lg font-semibold ml-2 text-red-500">
+                      {t("ModulePage.risk_of_harm")}
+                    </Text>
+                  </View>
+                  <Text className="text-sm py-2 text-red-600">
+                    {t("ModulePage.risk_of_harm_description")}
                   </Text>
-                </View>
-                <Text className="text-sm py-2 text-red-600">
-                  {t("ModulePage.risk_of_harm_description")}
-                </Text>
-              </TouchableOpacity>
-            )}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => router.push(`/(forms)/${item.id}`)}
-                className="p-4 border mb-4 border-gray-200 rounded-xl"
-              >
-                <View className="flex-row items-center pr-4 justify-start">
-                  <TabBarIcon
-                    name="chat"
-                    family="MaterialIcons"
-                    size={24}
-                    color="#71717A"
-                  />
-                  <Text className="text-lg ml-2 font-semibold">
-                    {item.module_name}
+                </TouchableOpacity>
+              ) : null;
+            }}
+            renderItem={({ item }) => {
+              if (item.module_name === "Uncategorized") {
+                return null;
+              }
+              
+              return (
+                <TouchableOpacity
+                  onPress={() => router.push(`/(forms)/${item.id}`)}
+                  className="p-4 border mb-4 border-gray-200 rounded-xl"
+                >
+                  <View className="flex-row items-center pr-4 justify-start">
+                    <TabBarIcon
+                      name="chat"
+                      family="MaterialIcons"
+                      size={24}
+                      color="#71717A"
+                    />
+                    <Text className="text-lg ml-2 font-semibold">
+                      {item.module_name}
+                    </Text>
+                  </View>
+                  <Text className="py-2 text-xs/1 text-gray-600">
+                    {item.module_description}
                   </Text>
-                </View>
-                <Text className="py-2 text-xs/1 text-gray-600">
-                  {item.module_description}
-                </Text>
-              </TouchableOpacity>
-            )}
+                </TouchableOpacity>
+              );
+            }}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }

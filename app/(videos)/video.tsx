@@ -259,7 +259,7 @@ const VideoScreen = () => {
                       cx="12"
                       cy="12"
                       r="10"
-                      stroke="#A23A91"
+                      stroke="#808080"
                       strokeWidth="2"
                       fill="none"
                     />
@@ -267,7 +267,7 @@ const VideoScreen = () => {
                       cx="12"
                       cy="12"
                       r="10"
-                      stroke="#808080"
+                      stroke="#A23A91"
                       strokeWidth="2"
                       fill="none"
                       strokeDasharray="65"

@@ -24,11 +24,6 @@ export async function useGetCurrentLoggedInProfile() {
   return res.data;
 }
 
-export async function useGetIZUser() {
-  const res = await baseInstance.get<{ izus: IZUs[] }>(`/izus`);
-  return res.data;
-}
-
 export async function requestPasswordReset(identifier: string) {
   const res = await baseInstance.post<IResponse<{}>>(`/user/reset-password`, {
     identifier,

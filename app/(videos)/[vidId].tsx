@@ -11,14 +11,15 @@ import { useLocalSearchParams } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
+import * as FileSystem from "expo-file-system";
 
 const VideoIndexScreen = () => {
   const { vidId } = useLocalSearchParams();
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [player, setPlayer] = useState<ReturnType<
-    typeof useVideoPlayer
-  > | null>(null);
+  const [player, setPlayer] = useState<ReturnType<typeof useVideoPlayer> | null>(null);
+  const [videoSource, setVideoSource] = useState<string>("");
+  const [isLocal, setIsLocal] = useState(false);
   const videos = [
     {
       id: 1,
@@ -59,20 +60,34 @@ const VideoIndexScreen = () => {
 
   const video = videos.find((v) => v.id === Number(vidId));
 
-  const videoPlayer = useVideoPlayer(
-    `https://continuous.sugiramuryango.org.rw/public/videos/` + video?.path ||
-      "",
-    (playerInstance) => {
-      playerInstance.loop = true;
-    }
-  );
+  useEffect(() => {
+    const checkLocalVideo = async () => {
+      if (!video) return;
+      
+      const localPath = `${FileSystem.documentDirectory}${video.title}.mp4`;
+      const fileInfo = await FileSystem.getInfoAsync(localPath);
+      
+      if (fileInfo.exists) {
+        setVideoSource(localPath);
+        setIsLocal(true);
+      } else {
+        setVideoSource(`https://continuous.sugiramuryango.org.rw/public/videos/${video.path}`);
+        setIsLocal(false);
+      }
+    };
+
+    checkLocalVideo();
+  }, [video]);
 
   useEffect(() => {
-    if (videoPlayer) {
+    if (videoSource) {
+      const videoPlayer = useVideoPlayer(videoSource, (playerInstance) => {
+        playerInstance.loop = true;
+      });
       setPlayer(videoPlayer);
       setIsLoading(false);
     }
-  }, [videoPlayer]);
+  }, [videoSource]);
 
   const togglePlayPause = () => {
     if (isPlaying) {
@@ -128,6 +143,11 @@ const VideoIndexScreen = () => {
               {isPlaying ? "Pause" : "Play"}
             </Text>
           </TouchableOpacity>
+          {isLocal && (
+            <View className="absolute top-4 left-4 bg-green-500/80 px-4 py-2 rounded-full z-20">
+              <Text className="font-semibold text-white">Local</Text>
+            </View>
+          )}
         </View>
         <Text className="text-xl font-bold text-gray-800 mt-4">
           {video.title}

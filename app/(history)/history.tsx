@@ -190,11 +190,7 @@ const HistoryProjectScreen = () => {
         />
 
         {surveySubmissionsLoading ? (
-          <>
-            <Skeleton />
-            <Skeleton />
-            <Skeleton />
-          </>
+          [1, 2, 3].map((item) => <Skeleton key={item} />)
         ) : transformedProjects.length === 0 ? (
           <View className="flex-1 justify-center items-start mt-8">
             <EmptyDynamicComponent />

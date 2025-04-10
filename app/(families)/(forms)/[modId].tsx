@@ -21,6 +21,7 @@ import { useGetAllModules } from "~/services/project";
 import {
   fetchFormByProjectAndModuleFromRemote,
   useGetFormByProjectAndModule,
+  useGetForms,
 } from "~/services/formElements";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { Survey } from "~/models/surveys/survey";
@@ -35,41 +36,47 @@ const ProjectFormsScreen = () => {
 
   if (!modId) {
     return (
-      <View>
-        <Text>Missing module or family id</Text>
-        <Button onPress={() => router.replace("/(home)")}>Go to home</Button>
-      </View>
-    );
-  }
-
-  const storedModules = useGetAllModules();
-
-  const currentModule = storedModules.modules.find(
-    (module: IModule) => module.id === parseInt(modId)
-  );
-
-  console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
-
-  if (!currentModule) {
-    return (
-      <View>
-        <Text>Module not found</Text>
-        <Button onPress={() => router.replace("/(home)")}>
-          <Text>Go to home</Text>
+      <View className="flex-1 justify-center items-center bg-background p-4">
+        <Text>Missing module</Text>
+        <Button onPress={() => router.replace("/(home)/home")}>
+          Go to home
         </Button>
       </View>
     );
   }
 
-  const project_id = currentModule?.project_id;
-  const { storedForms, isLoading } = useGetFormByProjectAndModule(
+  const storedModules = useGetAllModules();
+  const storedForms = useGetForms();
+
+  const currentModule = storedModules.modules.find(
+    (module: IModule) => module.source_module_id === parseInt(modId)
+  );
+  const project_id =
+    currentModule?.module_name === "Uncategorized"
+      ? 17
+      : currentModule?.project_id;
+
+  // console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
+
+  if (!currentModule) {
+    return (
+      <View className="flex-1 justify-center items-center bg-background p-4">
+        <Text>Module not found</Text>
+        <Button onPress={() => router.replace("/(families)/")}>
+          Go to home
+        </Button>
+      </View>
+    );
+  }
+
+  const { filteredForms, isLoading } = useGetFormByProjectAndModule(
     project_id,
-    parseInt(modId)
+    currentModule?.source_module_id,
+    currentModule?.id
   );
   console.log("Module ID: ", modId);
   console.log("Project ID: ", currentModule?.project_id);
 
-  
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -90,13 +97,12 @@ const ProjectFormsScreen = () => {
 
   const searchQuery = watch("searchQuery");
 
-  const filteredForms = storedForms.filter((form: Survey) => {
+  const displayFilteredForms = filteredForms?.filter((form: Survey) => {
     if (!searchQuery) return true;
 
     return form.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  // This will be the header component for our FlatList
   const ListHeaderComponent = useCallback(
     () => (
       <CustomInput
@@ -110,7 +116,6 @@ const ProjectFormsScreen = () => {
     [control, t]
   );
 
-  // This will render the loading skeletons or the form items
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -122,7 +127,7 @@ const ProjectFormsScreen = () => {
       );
     }
 
-    return null; // FlatList will handle rendering the actual items
+    return null;
   };
 
   return (
@@ -134,7 +139,7 @@ const ProjectFormsScreen = () => {
       />
 
       <FlatList
-        data={filteredForms as IExistingForm[]}
+        data={displayFilteredForms as IExistingForm[]}
         keyExtractor={(item: IExistingForm, index) => `${item.id}-${index}`}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={ListHeaderComponent}

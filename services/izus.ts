@@ -76,3 +76,11 @@ export function useGetIzus() {
     refresh: syncIzus
   };
 }
+
+export function useGetIzuById(id: number) {
+  const realm = useRealm();
+  const izus = useQuery(Izu);
+  
+  const izu = izus.find((item) => item.id === id);
+  return { data: izu, isLoading: false };
+}

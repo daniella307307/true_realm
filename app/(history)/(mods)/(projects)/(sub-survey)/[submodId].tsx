@@ -35,29 +35,15 @@ import { IFamilies } from "~/types";
 import { ListRenderItemInfo } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 
-// Define an interface for the plain submission object
-interface PlainSubmission {
-  _id: any; // Realm ObjectId might not serialize perfectly, use any for simplicity here or a string conversion
-  table_name?: string | null;
-  sync_status: boolean;
-  survey_id: number;
-  source_module_id: number;
-  submittedAt: Date;
-  family?: string | null; // This holds the hh_id
-  last_sync_date?: Date | null;
-  // Add other fields from SurveySubmission if needed
-}
-
-// Define an interface for the plain, processed submission object for the list
 interface ProcessedSubmission {
-  _id: string; // Always string after conversion
+  _id: string;
   table_name?: string | null;
   sync_status: boolean;
   survey_id: number;
   source_module_id: number;
-  submittedAt?: Date | null; // Make optional if source can be null/undefined
-  family?: string | null; // This holds the hh_id string
-  lastSyncAttempt?: Date | null; // Correct field name
+  submittedAt?: Date | null;
+  family?: string | null;
+  lastSyncAttempt?: Date | null;
 }
 
 const SubmissionListByModuleScreen = () => {
@@ -74,7 +60,9 @@ const SubmissionListByModuleScreen = () => {
     return (
       <View>
         <Text>Missing module or family id</Text>
-        <Button onPress={() => router.replace("/(home)")}>Go to home</Button>
+        <Button onPress={() => router.replace("/(home)")}>
+          <Text>Go to Home</Text>
+        </Button>
       </View>
     );
   }
@@ -88,7 +76,9 @@ const SubmissionListByModuleScreen = () => {
     return (
       <View>
         <Text>Module not found</Text>
-        <Button onPress={() => router.replace("/(home)")}>Go to home</Button>
+        <Button onPress={() => router.replace("/(home)")}>
+          <Text>Go to Home</Text>
+        </Button>
       </View>
     );
   }
@@ -128,20 +118,23 @@ const SubmissionListByModuleScreen = () => {
         source_module_id: sub.source_module_id,
         submittedAt: sub.submittedAt,
         family: sub.family,
-        lastSyncAttempt: sub.lastSyncAttempt, // Use correct field name
+        lastSyncAttempt: sub.lastSyncAttempt,
       })
     );
 
     const filtered = processed.filter((submission: ProcessedSubmission) => {
-      // Filter by module ID
       if (submission.source_module_id !== parseInt(submodId)) return false;
 
-      // Filter by search query
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
-        // Add null checks for potentially null fields being searched
-        return submission.family?.toLowerCase().includes(searchLower);
-        // search by family name not table name
+        const foundFamily = families?.find(
+          (fam: IFamilies) => fam.hh_id === submission.family
+        );
+        return (
+          foundFamily?.hh_head_fullname?.toLowerCase().includes(searchLower) ||
+          foundFamily?.village_name?.toLowerCase().includes(searchLower) ||
+          submission.family?.toLowerCase().includes(searchLower)
+        );
       }
 
       // Filter by sync status
@@ -155,7 +148,6 @@ const SubmissionListByModuleScreen = () => {
       }
     });
 
-    // 3. Sort the filtered plain objects
     return filtered.sort(
       (a: ProcessedSubmission, b: ProcessedSubmission) =>
         (b.submittedAt ? new Date(b.submittedAt).getTime() : 0) -
@@ -182,7 +174,6 @@ const SubmissionListByModuleScreen = () => {
 
   const insets = useSafeAreaInsets();
 
-  // This will be the header component for our FlatList
   const ListHeaderComponent = useCallback(
     () => (
       <>
@@ -225,7 +216,6 @@ const SubmissionListByModuleScreen = () => {
           flexGrow: 1,
         }}
         renderItem={({ item }: ListRenderItemInfo<ProcessedSubmission>) => {
-          // Find the family based on the hh_id stored in item.family
           const foundFamily = families?.find(
             (fam: IFamilies) => fam.hh_id === item.family
           );

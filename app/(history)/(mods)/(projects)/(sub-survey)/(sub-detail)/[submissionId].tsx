@@ -9,6 +9,7 @@ import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
 import React, { useMemo } from "react";
 import { useGetFormById } from "~/services/formElements";
+import { useGetFamilies } from "~/services/families";
 
 const SubmissionDetailScreen = () => {
   const { submissionId } = useLocalSearchParams<{
@@ -19,17 +20,18 @@ const SubmissionDetailScreen = () => {
   const { surveySubmissions, isLoading: isLoadingSubmissions } =
     useGetAllSurveySubmissions();
 
-  // Find the specific submission
   const submission = surveySubmissions.find(
     (sub) => sub._id.toString() === submissionId
   );
 
-  // Fetch the corresponding survey definition
+  const { data: families, isLoading: familiesLoading } = useGetFamilies();
+
+  const foundFamily = families?.find((fam) => fam.hh_id === submission?.family);
+
   const { form, isLoading: isLoadingSurvey } = useGetFormById(
     submission?.survey_id ?? 0
   );
 
-  // Create a map from field key to label
   const fieldLabelMap = useMemo(() => {
     if (!form?.json2) return {};
     try {
@@ -102,8 +104,19 @@ const SubmissionDetailScreen = () => {
       <ScrollView className="flex-1 p-4 bg-background">
         <View className="mb-6">
           <Text className="text-lg font-semibold mb-4">
-            {submission?.table_name}
+            {foundFamily?.hh_head_fullname}
           </Text>
+
+          {foundFamily?.village_name && (
+            <View className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
+              <Text className="font-medium text-gray-700 mb-2">
+                Village: {foundFamily?.village_name}
+              </Text>
+              <Text className="text-gray-600">
+                Family: {foundFamily?.hh_id}
+              </Text>
+            </View>
+          )}
 
           <View className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
             <Text className="font-medium text-gray-700 mb-2">

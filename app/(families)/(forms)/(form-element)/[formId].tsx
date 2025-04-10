@@ -62,8 +62,10 @@ const FormElementIndexScreen = () => {
     userId: user.id ?? 0,
   };
 
+  console.log("Form structure:", formStructure)
   const { t } = useTranslation();
 
+  console.log("Form: ", JSON.stringify(form, null, 2));
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation

@@ -650,6 +650,11 @@ export interface IFamilies {
     cohort: string;
 }
 
+export interface ICohort {
+    id: number;
+    cohort: string;
+}
+
 export interface I2BaseFormat<T> {
     current_page: string;
     data: {
