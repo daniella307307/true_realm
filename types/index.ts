@@ -573,7 +573,6 @@ export interface IModule {
     kin_title?: string;
     kin_descriptions?: string;
     order_list: number;
-    project?: string;
     created_at?: Date;
     updated_at?: Date;
 }
@@ -648,6 +647,7 @@ export interface IFamilies {
     hh_head_fullname: string;
     village_name: string;
     cohort: string;
+    location?: string;
 }
 
 export interface ICohort {

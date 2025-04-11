@@ -15,6 +15,7 @@ export class SurveySubmission extends Realm.Object {
   post_data!: string;
   sync_status!: boolean;
   syncStatus!: string;
+  formStatus!: string;
   lastSyncAttempt!: Date;
   province!: number | null;
   district!: number | null;
@@ -37,6 +38,7 @@ export class SurveySubmission extends Realm.Object {
       sync_status: 'bool',
       syncStatus: 'string',
       lastSyncAttempt: 'date',
+      formStatus: 'string',
       // New properties
       table_name: 'string',
       project_module_id: 'int',

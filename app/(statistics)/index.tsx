@@ -27,8 +27,8 @@ const StatisticsScreen = () => {
   const [selectedIzu, setSelectedIzu] = useState<IIzu | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: storedIzus, isLoading } = useGetIzus();
-  const filteredIzuMembers = storedIzus.filter((member) => {
+  const { izus: storedIzus, isLoading } = useGetIzus();
+  const filteredIzuMembers = storedIzus.filter((member: IIzu) => {
     if (!searchQuery) return true;
     return member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
            member.user_code.toLowerCase().includes(searchQuery.toLowerCase());

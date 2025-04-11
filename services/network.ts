@@ -46,7 +46,7 @@ export const isOnline = () => {
 export const useNetworkStatus = () => {
   const { isConnected, lastOnlineTimestamp } = useNetworkStore();
   
-  console.log('isConnected: ', isConnected);
+  // console.log('isConnected: ', isConnected);
   useEffect(() => {
     if (isConnected) {
       console.log('Device is now online - triggering data refresh');

@@ -18,14 +18,9 @@ import { TabBarIcon } from "~/components/ui/tabbar-icon";
 const StatisticsDetailScreen = () => {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams();
-  const { data: izu, isLoading } = useGetIzuById(Number(id));
+  const { izu, isLoading } = useGetIzuById(Number(id));
   const { data: cohorts, isLoading: cohortsLoading } = useGetCohorts();
 
-  // Group cohorts by type
-  //   export interface ICohort {
-  //     id: number;
-  //     cohort: string;
-  // }
   const groupedCohorts =
     cohorts?.reduce<Record<string, ICohort[]>>(
       (acc: Record<string, ICohort[]>, cohortt) => {
@@ -69,7 +64,7 @@ const StatisticsDetailScreen = () => {
       <View className="flex-1 p-4 bg-white">
         {/* All Cohorts Card */}
         <Pressable
-          onPress={() => router.push(`/statistics/${id}/all`)}
+          onPress={() => router.push(`/statistics/${id}/${izu?.id}`)}
           className="p-4 border border-primary rounded-xl mb-4"
         >
           <Text className="text-lg font-semibold text-primary">

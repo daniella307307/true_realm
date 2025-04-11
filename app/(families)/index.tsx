@@ -16,13 +16,8 @@ import { IModule } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import Skeleton from "~/components/ui/skeleton";
-import {
-  fetchActiveModulesFromRemote,
-  useGetAllModules,
-  useGetAllProjects,
-} from "~/services/project";
+import { useGetAllModules, useGetAllProjects } from "~/services/project";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
-import { Module } from "~/models/modules/module";
 import HeaderNavigation from "~/components/ui/header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -41,30 +36,42 @@ const FamiliesPage = () => {
   const {
     projects: storedProjects,
     isLoading: isProjectsLoading,
-    refresh,
+    refresh: refreshProjects,
   } = useGetAllProjects();
-  const searchQuery = watch("searchQuery");
-  const { modules, isLoading } = useGetAllModules();
 
-  const riskOfHarmModule = modules.find(
-    (module: IModule) => module.module_name === "Uncategorized"
+  const {
+    modules,
+    isLoading: isModulesLoading,
+    refresh: refreshModules,
+  } = useGetAllModules();
+
+  const searchQuery = watch("searchQuery");
+
+  // Find the risk of harm module
+  const riskOfHarmModule = modules?.find(
+    (module: IModule | null) => module?.id === 177 && module?.project_id === 17
   );
+
   const riskOfHarmModuleId = riskOfHarmModule?.source_module_id;
+
+  // Filter and sort modules
   const filteredModules = modules
-    .filter(
-      (module: IModule) =>
-        module.project_id === 3 &&
-        module.module_status !== 0 &&
-        module.module_name !== "Uncategorized" &&
-        (!searchQuery || module.module_name.toLowerCase().includes(searchQuery))
+    ?.filter(
+      (module: IModule | null) =>
+        module?.project_id === 3 &&
+        module?.module_status !== 0 &&
+        module?.module_name !== "Uncategorized" &&
+        (!searchQuery ||
+          module?.module_name.toLowerCase().includes(searchQuery))
     )
-    .sort((a, b) => a.order_list - b.order_list);
+    .filter((module: IModule | null): module is IModule => module !== null)
+    .sort((a: IModule, b: IModule) => (a?.order_list || 0) - (b?.order_list || 0));
 
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchActiveModulesFromRemote();
+    await Promise.all([refreshProjects(), refreshModules()]);
     setRefreshing(false);
   };
 
@@ -79,9 +86,7 @@ const FamiliesPage = () => {
       />
       {riskOfHarmModule && (
         <TouchableOpacity
-          onPress={() =>
-            router.push(`/(forms)/${riskOfHarmModuleId}`)
-          }
+          onPress={() => router.push(`/(forms)/${riskOfHarmModuleId}`)}
           className="p-4 border mb-4 border-red-500 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">
@@ -104,7 +109,7 @@ const FamiliesPage = () => {
   );
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isModulesLoading || isProjectsLoading) {
       return (
         <View className="mt-6">
           {[1, 2, 3].map((item) => (
@@ -124,14 +129,18 @@ const FamiliesPage = () => {
         showRight={true}
         title={t("ModulePage.title")}
       />
-      <FlatList<Module>
-        data={filteredModules}
-        keyExtractor={(item: Module, index) => `${item.id}-${index}`}
+      <FlatList<IModule>
+        data={filteredModules || []}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={ListHeaderComponent}
         ListHeaderComponentStyle={{ paddingTop: 16 }}
         ListEmptyComponent={() =>
-          isLoading ? renderContent() : <EmptyDynamicComponent />
+          isModulesLoading || isProjectsLoading ? (
+            renderContent()
+          ) : (
+            <EmptyDynamicComponent />
+          )
         }
         contentContainerStyle={{
           paddingHorizontal: 16,

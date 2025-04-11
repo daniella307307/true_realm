@@ -30,39 +30,11 @@ export default function LoginScreen() {
   const { t, i18n } = useTranslation();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  const { refresh: refreshProjects } = useGetAllProjects();
-  const { refresh: refreshModules } = useGetAllModules();
-  const { refresh: refreshStakeholders } = useGetStakeholders();
-  const { refresh: refreshIzus } = useGetIzus();
-  const { refresh: refreshFamilies } = useGetFamilies();
-  const { refresh: refreshPosts } = useGetPosts();
-  const { refresh: refreshForms } = useGetForms();
 
   const { login, isLoggingIn } = useAuth({
     onLogin: async (authUser) => {
       if (authUser.id !== undefined) {
-        setIsSyncing(true);
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          await Promise.all([
-            refreshProjects(),
-            refreshModules(),
-            refreshStakeholders(),
-            refreshIzus(),
-            refreshFamilies(),
-            refreshPosts(),
-            refreshForms(),
-          ]);
-          console.log("Force sync completed successfully");
-        } catch (error) {
-          console.error("Error during force sync:", error);
-        } finally {
-          setIsSyncing(false);
-          router.push("/(home)/home");
-        }
+        router.push("/(home)/home");
       } else {
         console.log("No token found");
         return;
@@ -189,11 +161,11 @@ export default function LoginScreen() {
               className="my-6"
               variant="default"
               size="default"
-              isLoading={isLoggingIn || isSyncing}
+              isLoading={isLoggingIn}
               onPress={handleSubmit(onSubmit)}
             >
               <Text className="text-white font-semibold">
-                {isSyncing ? t("Login.syncing") : t("Login.login")}
+                {t("Login.login")}
               </Text>
             </Button>
             <TouchableOpacity onPress={() => router.push("/forgot-password")}>

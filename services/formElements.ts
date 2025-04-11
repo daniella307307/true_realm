@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Survey } from "~/models/surveys/survey";
-import { I4BaseFormat, IExistingForm } from "~/types";
-import { baseInstance } from "~/utils/axios";
-import { useNetworkStatus } from "./network";
+
+import { I4BaseFormat, IExistingForm, IFormElement } from "~/types";
 import { RealmContext } from "~/providers/RealContextProvider";
+import { Survey } from "~/models/surveys/survey";
+import { baseInstance } from "~/utils/axios";
+
+import { useDataSync } from "./dataSync";
+import { useNetworkStatus } from "./network";
+
 const { useRealm, useQuery } = RealmContext;
 
 export async function fetchFormsFromRemote() {
@@ -23,100 +27,39 @@ export async function fetchFormByProjectAndModuleFromRemote(
   return res.data;
 }
 
-export function useGetForms() {
+export function useGetForms(forceSync: boolean = false) {
   const realm = useRealm();
   const storedForms = useQuery(Survey);
-  const { isConnected } = useNetworkStatus();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-  const syncForms = useCallback(async () => {
-    if (!isConnected) {
-      console.log("Offline mode: Using local forms data");
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const apiForms = await fetchFormsFromRemote();
-      if (!realm || realm.isClosed) {
-        console.warn("Skipping Realm write: Realm is closed");
-        setError(new Error("Realm is closed"));
-        return;
-      }
-
-      let successCount = 0;
-      let errorCount = 0;
-
-      realm.write(() => {
-        apiForms.data.forEach((form) => {
-          try {
-            if (
-              !form.id ||
-              !form.name ||
-              !form.survey_status ||
-              !form.is_primary ||
-              !form.order_list ||
-              !form.project_module_id
-            ) {
-              console.warn(
-                `Skipping form ${form.id}: Missing required fields`,
-                form
-              );
-              errorCount++;
-              return;
-            }
-
-            const formWithId = {
-              ...form,
-              _id: new Realm.BSON.ObjectId(),
-            };
-
-            const result = realm.create(
-              Survey,
-              formWithId,
-              Realm.UpdateMode.Modified
-            );
-            console.log(`Created/Updated form with ID: ${form.id}`);
-            successCount++;
-          } catch (error) {
-            console.error(`Error creating/updating form ${form.id}:`, error);
-            errorCount++;
-          }
+  const { syncStatus, refresh } = useDataSync([
+    {
+      key: "forms",
+      fetchFn: fetchFormsFromRemote,
+      model: Survey,
+      transformData: (data: I4BaseFormat<IExistingForm[]>) => {
+        // Clear existing forms before syncing new ones
+        realm.write(() => {
+          realm.delete(storedForms);
         });
-      });
 
-      // Log sync results
-      console.log(
-        `Sync completed. Success: ${successCount}, Errors: ${errorCount}`
-      );
+        // Transform and return new data with proper _id
+        return data.data.map((form) => ({
+          ...form,
+          _id: new Realm.BSON.ObjectId(),
+        }));
+      },
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  ]);
 
-      // Log all stored forms after sync
-      const allStoredForms = realm.objects(Survey);
-      console.log(
-        "Stored form IDs:",
-        allStoredForms.map((f) => f.id)
-      );
-
-      setLastSyncTime(new Date());
-    } catch (error) {
-      console.error("Error fetching forms:", error);
-      setError(error instanceof Error ? error : new Error(String(error)));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isConnected, realm]);
-
-  useEffect(() => {
-    if (isConnected) {
-      syncForms();
-    }
-  }, [isConnected, syncForms]);
-
-  return { storedForms, isLoading, error, lastSyncTime, refresh: syncForms };
+  console.log("storedForms length", storedForms.length);
+  return {
+    forms: storedForms,
+    isLoading: syncStatus.forms?.isLoading || false,
+    error: syncStatus.forms?.error || null,
+    lastSyncTime: syncStatus.forms?.lastSyncTime || null,
+    refresh: () => refresh("forms", forceSync),
+  };
 }
 
 export function useGetFormByProjectAndModule(
@@ -125,97 +68,48 @@ export function useGetFormByProjectAndModule(
   project_module_id: number
 ) {
   const allStoredForms = useQuery(Survey);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [filteredForms, setFilteredForms] = useState<Survey[]>([]);
+  const filteredForms = allStoredForms.filter(
+    (form) =>
+      form.project_id === project_id &&
+      form.source_module_id === module_id &&
+      form.project_module_id === project_module_id
+  );
 
-  useEffect(() => {
-    const loadForms = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const filtered = allStoredForms.filter(
-          (form) =>
-            form.project_id === project_id &&
-            form.source_module_id === module_id &&
-            form.project_module_id === project_module_id
-        );
-        // console.log("All Stored Forms: ", JSON.stringify(allStoredForms, null, 2));
-        console.log(
-          "Filtered Forms: ",
-          JSON.stringify(
-            // Filtered forms please ommit the json2 field on each form
-            filtered.map((form) => ({
-              ...form,
-              json2: undefined,
-            })),
-            null,
-            2
-          )
-        );
-        setFilteredForms(filtered);
-        setLastSyncTime(new Date());
-      } catch (err) {
-        console.error("Error filtering forms:", err);
-        setError(err instanceof Error ? err : new Error(String(err)));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadForms();
-  }, [allStoredForms, project_id, module_id, project_module_id]);
+  const { syncStatus, refresh } = useDataSync([
+    {
+      key: `forms-${project_id}-${module_id}-${project_module_id}`,
+      fetchFn: () =>
+        fetchFormByProjectAndModuleFromRemote(project_id, module_id),
+      model: Survey,
+      transformData: (data: I4BaseFormat<IExistingForm[]>) =>
+        data.data.map((form) => ({
+          ...form,
+          _id: new Realm.BSON.ObjectId(),
+        })),
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  ]);
 
   return {
     filteredForms,
-    isLoading,
-    error,
-    lastSyncTime,
+    isLoading:
+      syncStatus[`forms-${project_id}-${module_id}-${project_module_id}`]
+        ?.isLoading || false,
+    error:
+      syncStatus[`forms-${project_id}-${module_id}-${project_module_id}`]
+        ?.error || null,
+    lastSyncTime:
+      syncStatus[`forms-${project_id}-${module_id}-${project_module_id}`]
+        ?.lastSyncTime || null,
+    refresh: () =>
+      refresh(`forms-${project_id}-${module_id}-${project_module_id}`),
   };
 }
 
-export function useGetFormById(id: number) {
-  const realm = useRealm();
-  const [form, setForm] = useState<Survey | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const allStoredForms = useQuery(Survey);
-  useEffect(() => {
-    const loadForm = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        if (!realm || realm.isClosed) {
-          throw new Error("Realm is closed");
-        }
-
-        // Filter by the id and find that form id is not primary key
-        const localForm = allStoredForms.filter((form) => form.id === id);
-
-        if (!localForm) {
-          throw new Error("Form not found");
-        }
-
-        // Filter returns an array, so we need to get the first matching form
-        const matchingForm = localForm[0];
-        if (!matchingForm) {
-          throw new Error("Form not found");
-        }
-
-        setForm(matchingForm);
-      } catch (err) {
-        console.error("Error loading form:", err);
-        setError(err instanceof Error ? err : new Error(String(err)));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadForm();
-  }, [id, realm]);
-
-  return { form, isLoading, error };
+export function useGetFormById(formId: number) {
+  const { forms, isLoading, error, lastSyncTime, refresh } = useGetForms();
+  const form = useMemo(() => {
+    return forms.find((form) => form.id === formId);
+  }, [forms, formId]);
+  return { form, isLoading, error, lastSyncTime, refresh };
 }

@@ -47,7 +47,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, initialValue }) => 
   const [selectedIzu, setSelectedIzu] = useState<IIzu | null>(initialValue || null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: izus, isLoading } = useGetIzus();
+  const { izus: izus, isLoading } = useGetIzus();
 
   const filteredIzus = izus?.filter(
     (izu) =>

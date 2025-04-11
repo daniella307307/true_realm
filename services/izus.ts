@@ -1,86 +1,63 @@
-import { useCallback, useEffect, useState } from "react";
-import { Realm } from "@realm/react";
-import { baseInstance } from "~/utils/axios";
-import { Izu, IIzu } from "~/models/izus/izu";
-import { useNetworkStore } from "~/services/network";
+import { useMemo } from "react";
+
+import { IIzu } from "~/models/izus/izu";
+import { Izu } from "~/models/izus/izu";
 import { RealmContext } from "~/providers/RealContextProvider";
+import { baseInstance } from "~/utils/axios";
+
+import { useDataSync } from "./dataSync";
+
 const { useRealm, useQuery } = RealmContext;
 
-interface I2BaseFormat<T> {
-  izus: T[];
+interface IIzuResponse {
+  izus: IIzu[];
 }
 
 export async function fetchIzusFromRemote() {
-  const res = await baseInstance.get<I2BaseFormat<IIzu>>("/izus");
+  const res = await baseInstance.get<IIzuResponse>("/izus");
   return res.data.izus;
 }
 
-export function useGetIzus() {
-  const realm = useRealm();
+export function useGetIzus(forceSync: boolean = false) {
   const storedIzus = useQuery(Izu);
-  const isConnected = useNetworkStore((state) => state.isConnected);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
-  const syncIzus = useCallback(async () => {
-    if (!isConnected) {
-      console.log("Offline mode: Using local IZUs data");
-      return;
-    }
+  const { syncStatus, refresh } = useDataSync([
+    {
+      key: "izus",
+      fetchFn: fetchIzusFromRemote,
+      model: Izu,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      forceSync,
+    },
+  ]);
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      console.log("Fetching IZUs from remote");
-      const apiIzus = await fetchIzusFromRemote();
-      
-      if (!realm || realm.isClosed) {
-        console.warn("Skipping Realm write: Realm is closed");
-        setError(new Error("Realm is closed"));
-        return;
-      }
-
-
-      realm.write(() => {
-        apiIzus.forEach((izu) => {
-          try {
-            realm.create("Izu", izu, Realm.UpdateMode.Modified);
-          } catch (error) {
-            console.error("Error creating/updating IZU:", error);
-          }
-        });
-      });
-
-      setLastSyncTime(new Date());
-    } catch (error) {
-      console.error("Error fetching IZUs:", error);
-      setError(error instanceof Error ? error : new Error(String(error)));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isConnected, realm]);
-
-  useEffect(() => {
-    if (isConnected) {
-      syncIzus();
-    }
-  }, [isConnected, syncIzus]);
+  console.log("storedIzus length", storedIzus.length);
 
   return {
-    data: storedIzus,
-    isLoading,
-    error,
-    lastSyncTime,
-    refresh: syncIzus
+    izus: storedIzus,
+    isLoading: syncStatus.izus?.isLoading || false,
+    error: syncStatus.izus?.error || null,
+    lastSyncTime: syncStatus.izus?.lastSyncTime || null,
+    refresh: () => refresh("izus", forceSync),
   };
 }
 
-export function useGetIzuById(id: number) {
-  const realm = useRealm();
-  const izus = useQuery(Izu);
-  
-  const izu = izus.find((item) => item.id === id);
-  return { data: izu, isLoading: false };
+/**
+ * Hook for getting a specific Izu by ID
+ * @param id The ID of the Izu to retrieve
+ */
+export function useGetIzuById(id: number, forceSync: boolean = false) {
+  const { izus, isLoading, error, lastSyncTime, refresh } = useGetIzus(forceSync);
+
+  const izu = useMemo(() => {
+    return izus.find((izu) => izu.id === id);
+  }, [izus, id]);
+
+  return {
+    izu,
+    isLoading,
+    error,
+    lastSyncTime,
+    refresh,
+  };
 }

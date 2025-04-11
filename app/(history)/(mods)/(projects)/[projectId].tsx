@@ -1,23 +1,29 @@
-import { View, FlatList, RefreshControl, TouchableOpacity, SafeAreaView } from "react-native";
 import React, { useState, useMemo } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import CustomInput from "~/components/ui/input";
-import { useTranslation } from "react-i18next";
+
+import {
+  View,
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+  SafeAreaView,
+} from "react-native";
+
 import { router, useLocalSearchParams } from "expo-router";
+
+import CustomInput from "~/components/ui/input";
+import EmptyDynamicComponent from "~/components/EmptyDynamic";
+import HeaderNavigation from "~/components/ui/header";
+import Skeleton from "~/components/ui/skeleton";
+import { Button } from "~/components/ui/button";
 import { IModule } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
-import Skeleton from "~/components/ui/skeleton";
-import {
-  fetchActiveModulesFromRemote,
-  useGetAllModules,
-} from "~/services/project";
-import { Button } from "~/components/ui/button";
-import EmptyDynamicComponent from "~/components/EmptyDynamic";
+import { useForm } from "react-hook-form";
+import { useGetAllModules } from "~/services/project";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
-import HeaderNavigation from "~/components/ui/header";
+import { useTranslation } from "react-i18next";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 const ProjectModuleScreens = () => {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -26,16 +32,17 @@ const ProjectModuleScreens = () => {
     return (
       <View>
         <Text>Missing project Id</Text>
-        <Button onPress={() => router.replace("/(home)")}>Go to home</Button>
+        <Button onPress={() => router.replace("/(home)")}>
+          <Text>Go to home</Text>
+        </Button>
       </View>
     );
   }
 
-  const storedModules = useGetAllModules();
+  const { modules, isLoading: modulesLoading, refresh } = useGetAllModules();
   const { surveySubmissions, isLoading: surveySubmissionsLoading } =
     useGetAllSurveySubmissions();
-  const isLoading =
-    storedModules.modules.length === 0 || surveySubmissionsLoading;
+  const isLoading = modulesLoading || surveySubmissionsLoading;
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -51,7 +58,7 @@ const ProjectModuleScreens = () => {
 
   // Get modules that have submissions
   const filteredModules = useMemo(() => {
-    if (!storedModules.modules || !surveySubmissions) return [];
+    if (!modules || !surveySubmissions) return [];
 
     // Get module IDs that have submissions for this project
     const moduleIdsWithSubmissions = new Set(
@@ -60,9 +67,10 @@ const ProjectModuleScreens = () => {
         .map((submission) => submission.source_module_id)
     );
 
-    return storedModules.modules
+    return modules
       .filter(
-        (module: IModule) =>
+        (module: IModule | null): module is IModule =>
+          module !== null &&
           module.project_id === Number(projectId) &&
           module.module_status !== 0 &&
           moduleIdsWithSubmissions.has(module.id) &&
@@ -75,11 +83,13 @@ const ProjectModuleScreens = () => {
               .includes(searchQuery.toLowerCase()))
       )
       .sort((a, b) => a.order_list - b.order_list);
-  }, [storedModules.modules, surveySubmissions, projectId, searchQuery]);
+  }, [modules, surveySubmissions, projectId, searchQuery]);
+
+  console.log("filteredModules", JSON.stringify(filteredModules, null, 2));
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchActiveModulesFromRemote();
+    await refresh();
     setRefreshing(false);
   };
 
@@ -194,6 +204,8 @@ const ProjectModuleScreens = () => {
                 (submission) => submission.source_module_id === item.id
               );
 
+              // console.log("moduleSubmissions", moduleSubmissions);
+
               // Sort submissions by date (most recent first)
               const sortedSubmissions = [...moduleSubmissions].sort(
                 (a, b) =>
@@ -231,7 +243,8 @@ const ProjectModuleScreens = () => {
                       {moduleSubmissions.length}
                     </Text>
                     <Text className="text-sm text-gray-500">
-                      Last Submission: {lastSubmission
+                      Last Submission:{" "}
+                      {lastSubmission
                         ? new Date(lastSubmission).toLocaleDateString("en-GB", {
                             day: "2-digit",
                             month: "2-digit",

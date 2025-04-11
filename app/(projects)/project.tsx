@@ -15,19 +15,12 @@ import { router } from "expo-router";
 import { IProject } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
-import {
-  fetchActiveProjectsFromRemote,
-  useGetAllProjects,
-} from "~/services/project";
+import { useGetAllProjects } from "~/services/project";
 import Skeleton from "~/components/ui/skeleton";
 import HeaderNavigation from "~/components/ui/header";
 
 const ProjectScreen = () => {
-  const {
-    projects: storedProjects,
-    isLoading,
-    refresh,
-  } = useGetAllProjects();
+  const { projects: storedProjects, isLoading, refresh } = useGetAllProjects();
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -42,7 +35,7 @@ const ProjectScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchActiveProjectsFromRemote();
+    refresh();
     setRefreshing(false);
   };
 

@@ -34,12 +34,11 @@ const FormElementIndexScreen = () => {
     );
   }
 
-  const form = useGetFormById(parseInt(formId));
-  const isLoading = form === undefined;
-  const parsedForm = form?.form?.json2
-    ? typeof form.form.json2 === "string"
-      ? JSON.parse(form.form.json2)
-      : form.form.json2
+  const { form, isLoading } = useGetFormById(parseInt(formId));
+  const parsedForm = form?.json2
+    ? typeof form.json2 === "string"
+      ? JSON.parse(form.json2)
+      : form.json2
     : null;
 
   if (isLoading) {
@@ -53,19 +52,18 @@ const FormElementIndexScreen = () => {
   }
 
   const formStructure: IFormSubmissionDetail = {
-    id: form?.form?.id ?? 0,
-    table_name: form?.form?.table_name,
-    project_module_id: form?.form?.project_module_id ?? 0,
-    source_module_id: form?.form?.module_id ?? 0,
+    id: form?.id ?? 0,
+    table_name: form?.table_name,
+    project_module_id: form?.project_module_id ?? 0,
+    source_module_id: form?.source_module_id ?? 0,
     project_id: parseInt(project_id) || 0,
-    post_data: form?.form?.post_data,
+    post_data: form?.post_data,
     userId: user.id ?? 0,
   };
 
-  console.log("Form structure:", formStructure)
+  console.log("Form structure:", formStructure);
   const { t } = useTranslation();
 
-  console.log("Form: ", JSON.stringify(form, null, 2));
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation
@@ -75,16 +73,16 @@ const FormElementIndexScreen = () => {
       />
       <View className="flex-1">
         <View className="px-4 pt-4">
-          <Text className="text-lg font-semibold mb-4">
-            {form?.form?.name}
-          </Text>
+          <Text className="text-lg font-semibold mb-4">{form?.name}</Text>
         </View>
         <View className="flex-1">
-          <FormFlowManager
-            form={form}
-            formSubmissionMandatoryFields={formStructure}
-            fields={parsedForm?.components || []}
-          />
+          {form?.json2 && (
+            <FormFlowManager
+              form={form}
+              formSubmissionMandatoryFields={formStructure}
+              fields={parsedForm?.components || []}
+            />
+          )}
         </View>
       </View>
     </SafeAreaView>

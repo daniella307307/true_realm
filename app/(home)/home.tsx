@@ -1,3 +1,5 @@
+import React, { useEffect, useState } from "react";
+
 import {
   View,
   SafeAreaView,
@@ -6,25 +8,57 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
-import React from "react";
-import { useAuth } from "~/lib/hooks/useAuth";
-import { useTranslation } from "react-i18next";
-import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import { Href, router } from "expo-router";
-import { Text } from "~/components/ui/text";
-import i18n from "~/utils/i18n";
-import { isOnline } from "~/services/network";
+
+import { router } from "expo-router";
+
 import HeaderNavigation from "~/components/ui/header";
+import i18n from "~/utils/i18n";
+import { TabBarIcon } from "~/components/ui/tabbar-icon";
+import { Text } from "~/components/ui/text";
+import { useAuth } from "~/lib/hooks/useAuth";
+import { useGetAllProjects } from "~/services/project";
+import { useGetFamilies } from "~/services/families";
+import { useGetForms } from "~/services/formElements";
+import { useGetIzus } from "~/services/izus";
+import { useGetPosts } from "~/services/posts";
+import { useGetStakeholders } from "~/services/stakeholders";
+import { useTranslation } from "react-i18next";
 
 const HomeScreen = () => {
-
-  console.log("Is ONLINE: ", isOnline());
+  const [isLoading, setIsLoading] = useState(false);
   const { user, logout } = useAuth({
     onLogout: () => {
       router.push("/(user-management)/login");
     },
   });
   const { t } = useTranslation();
+
+  // Use offline-first versions of the services
+  const { refresh: refreshIzus } = useGetIzus(true);
+  const { refresh: refreshFamilies } = useGetFamilies(true);
+  const { refresh: refreshPosts } = useGetPosts(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (user?.id) {
+        setIsLoading(true);
+        try {
+          await Promise.all([
+            refreshIzus(),
+            refreshFamilies(),
+            refreshPosts(),
+          ]);
+          console.log("Initial data sync completed successfully");
+        } catch (error) {
+          console.error("Error during initial data sync:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadData();
+  }, [user?.id]);
 
   // Get the screen width dynamically
   const { width } = useWindowDimensions();
@@ -135,7 +169,12 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <HeaderNavigation showLeft={false} showRight={true} showLogo={true} logoSize={32} />
+      <HeaderNavigation
+        showLeft={false}
+        showRight={true}
+        showLogo={true}
+        logoSize={32}
+      />
       <ScrollView>
         <View className="p-6">
           <Text className="text-2xl font-bold">
@@ -145,7 +184,16 @@ const HomeScreen = () => {
             {t("HomePage.description")}
           </Text>
         </View>
-        
+
+        {/* Show loading indicator if data is being loaded */}
+        {isLoading && (
+          <View className="p-4">
+            <Text className="text-center text-gray-500">
+              {t("Loading data...")}
+            </Text>
+          </View>
+        )}
+
         {/* Conditionally render list or grid view based on screen width */}
         {isSmallScreen ? renderListView() : renderGridView()}
       </ScrollView>

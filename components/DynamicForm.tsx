@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+
 import {
   View,
   TextInput,
@@ -9,22 +10,25 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+
+import { router } from "expo-router";
+
+import i18n from "~/utils/i18n";
 import { Controller, useForm } from "react-hook-form";
-import Dropdown from "./ui/select";
-import { Button } from "./ui/button";
-import { Text } from "./ui/text";
-import { useTranslation } from "react-i18next";
 import { FormField, IFormSubmissionDetail } from "~/types";
-import DateTimePickerComponent from "./ui/date-time-picker";
-import { useAuth } from "~/lib/hooks/useAuth";
 import { Pencil } from "lucide-react-native";
+import { RealmContext } from "~/providers/RealContextProvider";
 import { SurveySubmission } from "~/models/surveys/survey-submission";
 import { baseInstance } from "~/utils/axios";
-import i18n from "~/utils/i18n";
-import { FlowState } from "./FormFlowManager";
 import { saveSurveySubmission } from "~/services/survey-submission";
-import { router } from "expo-router";
-import { RealmContext } from "~/providers/RealContextProvider";
+import { useAuth } from "~/lib/hooks/useAuth";
+import { useTranslation } from "react-i18next";
+
+import DateTimePickerComponent from "./ui/date-time-picker";
+import Dropdown from "./ui/select";
+import { Button } from "./ui/button";
+import { FlowState } from "./FormFlowManager";
+import { Text } from "./ui/text";
 
 const { useRealm, useQuery } = RealmContext;
 
@@ -460,7 +464,7 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
           language={language}
         />
       );
-   
+
     default:
       return null;
   }
@@ -792,9 +796,42 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   timeSpent,
   onEditFlowState,
 }) => {
+  
+  // console.log("FlowState values: ", flowState.selectedValues);
+
+
+  if (!Array.isArray(fields)) {
+    console.error("Fields prop is not an array:", fields);
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text className="text-red-500">Error: Invalid form fields</Text>
+      </View>
+    );
+  }
+
+  const visibleFields = fields
+    .filter((field) => {
+      if (!field) {
+        console.warn("Found undefined field");
+        return false;
+      }
+      if (!field.key) {
+        console.warn("Field missing key:", field);
+        return false;
+      }
+      return true;
+    })
+    .filter((field) => {
+      if (field.visibleIf) return true;
+      if (field.key === "izucode" || field.key === "izu_id") return false;
+      if (["district", "sector", "cell", "village"].includes(field.key))
+        return false;
+      return field.key !== "submit";
+    });
+
   const { control, handleSubmit, getValues, trigger, formState, setValue } =
     useForm({
-      mode: "onChange", // This enables real-time validation as fields change
+      mode: "onChange",
     });
   const { t, i18n: i18nInstance } = useTranslation();
   const [currentPage, setCurrentPage] = useState(0);
@@ -807,28 +844,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null);
   const realm = useRealm(); // Move useRealm to component level
-
-  const visibleFields = fields.filter((field) => {
-    if (field.visibleIf) {
-      return true;
-    }
-
-    // Hide izucode fields since we handle them in flow state
-    if (field.key === "izucode" || field.key === "izu_id") {
-      return false;
-    }
-
-    if (
-      field.key === "district" ||
-      field.key === "sector" ||
-      field.key === "cell" ||
-      field.key === "village"
-    ) {
-      return false;
-    }
-
-    return field.key !== "submit"; // Filter out fields with key='submit'
-  });
 
   const fieldIndexMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -853,23 +868,29 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
       try {
         const projectId = formSubmissionMandatoryFields.project_id || 0;
-        const sourceModuleId = formSubmissionMandatoryFields.source_module_id || 0;
+        const sourceModuleId =
+          formSubmissionMandatoryFields.source_module_id || 0;
         const surveyId = formSubmissionMandatoryFields.id || 0;
         const familyId = flowState?.selectedValues?.families?.hh_id || null;
 
         // Check for existing submission before proceeding
-        const existingSubmission = realm.objects<SurveySubmission>('SurveySubmission').filtered(
-          'project_id == $0 AND source_module_id == $1 AND survey_id == $2 AND family == $3',
-          projectId,
-          sourceModuleId,
-          surveyId,
-          familyId
-        );
+        const existingSubmission = realm
+          .objects<SurveySubmission>("SurveySubmission")
+          .filtered(
+            "project_id == $0 AND source_module_id == $1 AND survey_id == $2 AND family == $3",
+            projectId,
+            sourceModuleId,
+            surveyId,
+            familyId
+          );
 
         if (existingSubmission.length > 0) {
           Alert.alert(
             t("SubmissionExists.title", "Submission Already Exists"),
-            t("SubmissionExists.message", "A submission for this form and family already exists."),
+            t(
+              "SubmissionExists.message",
+              "A submission for this form and family already exists."
+            ),
             [{ text: t("Common.ok", "OK") }]
           );
           setSubmitting(false); // Reset submitting state
@@ -986,7 +1007,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     if (!wholeComponent) {
       const currentField = visibleFields[currentPage];
       isValid = await trigger(currentField.key);
-      console.log("isValid", isValid);
+      // console.log("isValid", isValid);
     } else {
       isValid = await trigger();
     }
@@ -1059,7 +1080,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 <View
                   className="bg-primary h-2.5 rounded-full"
                   style={{
-                    width: `${((currentPage + 1) / visibleFields.length) * 100}%`,
+                    width: `${
+                      ((currentPage + 1) / visibleFields.length) * 100
+                    }%`,
                   }}
                 />
               </View>

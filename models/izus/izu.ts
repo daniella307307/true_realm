@@ -12,6 +12,7 @@ export class Izu extends Realm.Object {
   name!: string;
   user_code!: string;
   villages_id!: number;
+  score!: number;
 
   static schema = {
     name: "Izu",
@@ -21,6 +22,7 @@ export class Izu extends Realm.Object {
       name: "string",
       user_code: "string",
       villages_id: "int",
+      score: "int"
     },
   };
 } 

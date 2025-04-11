@@ -65,7 +65,7 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
 }) => {
   const [selectedFamily, setSelectedFamily] = useState<IFamilies | null>(initialValue || null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: families, isLoading } = useGetFamilies();
+  const { families, isLoading } = useGetFamilies();
 
   const handleSelect = (family: IFamilies) => {
     setSelectedFamily(family);

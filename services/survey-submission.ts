@@ -81,6 +81,7 @@ export const saveSurveySubmission = async (
               ...submission,
               sync_status: true,
               syncStatus: "synced",
+              formStatus: "followup",
               lastSyncAttempt: new Date(),
             };
             console.log(
@@ -105,6 +106,7 @@ export const saveSurveySubmission = async (
         ...submission,
         sync_status: false,
         syncStatus: "pending",
+        formStatus: "followup",
         lastSyncAttempt: new Date(),
       };
       offlineResult = realm.create(SurveySubmission, submissionWithSyncStatus);
@@ -135,6 +137,7 @@ const syncWithRemote = async (submission: any) => {
         localSubmission.sync_status = true;
         localSubmission.syncStatus = "synced";
         localSubmission.lastSyncAttempt = new Date();
+        localSubmission.formStatus = "followup";
       }
     });
   } catch (error) {
@@ -150,6 +153,7 @@ const syncWithRemote = async (submission: any) => {
         localSubmission.sync_status = false;
         localSubmission.syncStatus = "failed";
         localSubmission.lastSyncAttempt = new Date();
+        localSubmission.formStatus = "followup";
       }
     });
   }

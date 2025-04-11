@@ -16,10 +16,7 @@ import { IModule } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import Skeleton from "~/components/ui/skeleton";
-import {
-  fetchActiveModulesFromRemote,
-  useGetAllModules,
-} from "~/services/project";
+import { useGetModulesByProjectId } from "~/services/project";
 import { Button } from "~/components/ui/button";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
@@ -36,8 +33,7 @@ const ProjectModuleScreens = () => {
     );
   }
 
-  const storedModules = useGetAllModules();
-  const isLoading = storedModules.modules.length === 0;
+  const { modules, isLoading, refresh } = useGetModulesByProjectId(Number(projectId));
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -49,26 +45,25 @@ const ProjectModuleScreens = () => {
   });
 
   const searchQuery = watch("searchQuery");
-  const filteredModules = storedModules.modules
-    .filter(
-      (module: IModule) =>
-        module.project_id === Number(projectId) &&
-        module.module_status !== 0 &&
-        (!searchQuery ||
-          module.module_name
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          module.module_description
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()))
-    )
-    .sort((a, b) => a.order_list - b.order_list);
   const [refreshing, setRefreshing] = useState(false);
+
+  const filteredModules = modules
+    .filter((module: IModule | null) => 
+      module !== null && 
+      module.module_status !== 0 &&
+      (!searchQuery ||
+        module.module_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        module.module_description.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .sort((a: IModule | null, b: IModule | null) => (a?.order_list || 0) - (b?.order_list || 0));
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchActiveModulesFromRemote();
-    setRefreshing(false);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -94,16 +89,17 @@ const ProjectModuleScreens = () => {
             <Skeleton />
           </>
         ) : (
-          <FlatList
-            data={filteredModules.sort((a, b) => a.order_list - b.order_list)}
-            keyExtractor={(item: IModule, index) => `${item.id}-${index}`}
+          <FlatList<IModule | null>
+            data={filteredModules}
+            keyExtractor={(item) => `${item?.id}`}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={() => (
               <EmptyDynamicComponent message="No related modules" />
             )}
             ListHeaderComponent={() => {
-              const uncategorizedModule = storedModules.modules.find(
-                (module: IModule) => 
+              const uncategorizedModule = modules.find(
+                (module: IModule | null) => 
+                  module !== null && 
                   module.module_name === "Uncategorized" && 
                   module.project_id === Number(projectId)
               );
@@ -131,6 +127,9 @@ const ProjectModuleScreens = () => {
               ) : null;
             }}
             renderItem={({ item }) => {
+              if (!item) {
+                return null;
+              }
               if (item.module_name === "Uncategorized") {
                 return null;
               }

@@ -6,84 +6,34 @@ import { baseInstance } from "~/utils/axios";
 import stakeHoldersData from "~/mocks/stakeholders.json";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { useNetworkStatus } from "./network";
+import { useDataSync } from "./dataSync";
 const { useRealm, useQuery } = RealmContext;
 
 export async function fetchStakeholdersFromRemote() {
-    const res = await baseInstance
-        .get<IStakeholder[]>('/get-stakeholders');
+  const res = await baseInstance.get<IStakeholder[]>("/get-stakeholders");
 
-    return res.data;
+  return res.data;
 }
 
-export function useGetStakeholders() {
-    const realm = useRealm();
-    const storedStakeholders = useQuery(Stakeholder);
-    const { isConnected } = useNetworkStatus();
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-    const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+// Hook for getting all stakeholders with offline support
+export function useGetStakeholders(forceSync: boolean = false) {
+  const storedStakeholders = useQuery(Stakeholder);
 
-    const syncStakeholders = useCallback(async () => {
-        if (!isConnected) {
-            console.log("Offline mode: Using local stakeholders data");
-            return;
-        }
+  const { syncStatus, refresh } = useDataSync([
+    {
+      key: "stakeholders",
+      fetchFn: fetchStakeholdersFromRemote,
+      model: Stakeholder,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  ]);
 
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            console.log("Fetching stakeholders from remote");
-            const apiStakeholders = await fetchStakeholdersFromRemote();
-            // console.log("apiStakeholders", apiStakeholders);
-
-            if (!realm || realm.isClosed) {
-                console.warn("Skipping Realm write: Realm is closed");
-                setError(new Error("Realm is closed"));
-                return;
-            }
-
-            realm.write(() => {
-                apiStakeholders.forEach((stakeholder: IStakeholder) => {
-                    try {
-                        realm.create("Stakeholder", stakeholder, Realm.UpdateMode.Modified);
-                    } catch (error) {
-                        console.error("Error creating/updating stakeholder:", error);
-                    }
-                });
-            });
-
-            setLastSyncTime(new Date());
-        } catch (error) {
-            console.error("Error fetching stakeholders:", error);
-            setError(error instanceof Error ? error : new Error(String(error)));
-        } finally {
-            setIsLoading(false);
-        }
-    }, [isConnected, realm]);
-
-    useEffect(() => {
-        if (storedStakeholders.length === 0) {
-            realm.write(() => {
-                stakeHoldersData.forEach((stakeHolder: IStakeholder) => {
-                    realm.create("Stakeholder", stakeHolder, Realm.UpdateMode.Modified);
-                });
-            });
-        }
-    }, [storedStakeholders, realm]);
-
-    // Initial load and when network state changes
-    useEffect(() => {
-        if (isConnected) {
-            syncStakeholders();
-        }
-    }, [isConnected, syncStakeholders]);
-  
-    return {
-        stakeholders: storedStakeholders,
-        isLoading,
-        error,
-        lastSyncTime,
-        refresh: syncStakeholders
-    };
-} 
+  console.log("storedStakeholders length", storedStakeholders.length);
+  return {
+    stakeholders: storedStakeholders,
+    isLoading: syncStatus.stakeholders?.isLoading || false,
+    error: syncStatus.stakeholders?.error || null,
+    lastSyncTime: syncStatus.stakeholders?.lastSyncTime || null,
+    refresh: () => refresh("stakeholders", forceSync),
+  };
+}

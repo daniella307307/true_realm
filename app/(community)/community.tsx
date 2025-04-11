@@ -17,16 +17,14 @@ import { useRouter } from "expo-router";
 import CustomInput from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { FontAwesome5, Ionicons } from "@expo/vector-icons";
-import { ILikes, IPost } from "~/types";
+import { ILikes } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { format, formatDistanceToNow } from "date-fns";
 import { t } from "i18next";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useForm } from "react-hook-form";
-import { useGetPosts } from "~/services/posts";
-import { usePostManipulate } from "~/lib/hooks/usePost";
-import { useQuery } from "@tanstack/react-query";
+import { useGetPosts, likePost, unlikePost, deletePost, reportPost } from "~/services/posts";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Post } from "~/models/posts/post";
@@ -50,38 +48,50 @@ const CommunityScreen: React.FC = () => {
   const searchQuery = watch("searchQuery");
   const { posts, isLoading, refresh } = useGetPosts();
 
-  const { useLikePost, useUnlikePost, useDeletePost, useReportPost } =
-    usePostManipulate();
-
-  const handleLikePress = (post: Post) => {
+  const handleLikePress = async (post: Post) => {
     const currentUserId = user.id;
     const isLiked = JSON.parse(post.likes).some(
       (like: ILikes) => like.user_id === currentUserId
     );
 
     if (isLiked) {
-      useUnlikePost({ id: post.id });
+      await unlikePost({ id: post.id });
     } else {
-      useLikePost({ id: post.id });
+      await likePost({ id: post.id });
     }
+    refresh();
   };
 
-  const handleDeletePost = (postId: number) => {
-    useDeletePost({ id: postId });
+  const handleDeletePost = async (postId: number) => {
+    try {
+      await deletePost({ id: postId });
+      refresh();
+    } catch (error) {
+      console.error("Error deleting post:", error);
+    }
   };
 
   const handleReportPress = () => {
     setModalVisible(true);
   };
 
-  const handleSendReport = () => {
-    useReportPost({ id: 1, report: reportText });
-    setModalVisible(false);
+  const handleSendReport = async () => {
+    try {
+      await reportPost({ id: 1, report: reportText });
+      setModalVisible(false);
+      refresh();
+    } catch (error) {
+      console.error("Error reporting post:", error);
+    }
   };
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    refresh().finally(() => setRefreshing(false));
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   if (isLoading) {
@@ -101,7 +111,7 @@ const CommunityScreen: React.FC = () => {
       );
     });
 
-  console.log("Posts: ", JSON.stringify(posts, null, 2));
+  // console.log("Posts: ", JSON.stringify(posts, null, 2));
   const renderPost = ({ item }: { item: Post }) => {
     const currentUserId = user.id;
     const isLiked = JSON.parse(item.likes).some(

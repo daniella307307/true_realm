@@ -1,23 +1,28 @@
 import { useEffect } from "react";
-import { Realm } from "@realm/react";
+
 import { Cohort } from "~/models/cohorts/cohort";
-import { useGetFamilies } from "./families";
+import { Realm } from "@realm/react";
 import { RealmContext } from "~/providers/RealContextProvider";
+
+import { useGetFamilies } from "./families";
+
 const { useRealm, useQuery } = RealmContext;
 
 export function useGetCohorts() {
   const realm = useRealm();
   const storedCohorts = useQuery(Cohort);
-  const { data: families } = useGetFamilies();
+  const { families } = useGetFamilies();
 
   useEffect(() => {
     if (!families) return;
 
-    const uniqueCohorts = Array.from(new Set(families.map(family => family.cohort)))
-      .filter(cohort => cohort)
+    const uniqueCohorts = Array.from(
+      new Set(families.map((family) => family.cohort))
+    )
+      .filter((cohort) => cohort)
       .map((cohort, index) => ({
         id: index + 1,
-        cohort: cohort as string
+        cohort: cohort as string,
       }));
 
     realm.write(() => {
@@ -25,7 +30,7 @@ export function useGetCohorts() {
       realm.delete(existingCohorts);
 
       // Add new cohorts
-      uniqueCohorts.forEach(cohort => {
+      uniqueCohorts.forEach((cohort) => {
         try {
           realm.create("Cohort", cohort, Realm.UpdateMode.Modified);
         } catch (error) {
@@ -39,4 +44,4 @@ export function useGetCohorts() {
     data: storedCohorts,
     isLoading: storedCohorts.length === 0,
   };
-} 
+}

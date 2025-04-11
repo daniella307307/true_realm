@@ -91,6 +91,8 @@ const HistoryProjectScreen = () => {
       (submission) => submission.project_id === item.id
     );
 
+    console.log("Project Submissions: ", JSON.stringify(projectSubmissions, null, 2));
+
     return (
       <TouchableOpacity
         onPress={() => router.push(`/(mods)/(projects)/${item.id}`)}

@@ -1,5 +1,5 @@
-import { FlatList, Pressable, SafeAreaView, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { SafeAreaView, View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { Text } from "~/components/ui/text";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
@@ -7,19 +7,18 @@ import { useGetIzuById } from "~/services/izus";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import Skeleton from "~/components/ui/skeleton";
 import { Card } from "~/components/ui/card";
-import { SurveySubmission } from "~/models/surveys/survey-submission";
 
 interface IRiskOfHarm {
-  id: number;
-  status: "follow-up" | "pending" | "resolved";
+  id: string;
+  status: "followup" | "pending" | "resolved";
   description: string;
-  familyId: number;
+  familyId: string | null;
 }
 
 const CohortStatisticsScreen = () => {
   const { t } = useTranslation();
   const { id, cohortId } = useLocalSearchParams();
-  const { data: izu, isLoading: izuLoading } = useGetIzuById(Number(id));
+  const { izu, isLoading: izuLoading } = useGetIzuById(Number(id));
   const { surveySubmissions, isLoading: surveySubmissionsLoading } = useGetAllSurveySubmissions();
 
   const isLoading = izuLoading || surveySubmissionsLoading;
@@ -31,6 +30,8 @@ const CohortStatisticsScreen = () => {
     const izuSurveys = surveySubmissions.filter((s) => s.izucode === izu.user_code);
     const uniqueFamilies = new Set(izuSurveys.map((s) => s.family));
     const totalFamilies = uniqueFamilies.size;
+
+    console.log("izuSurveys", JSON.stringify(izuSurveys, null, 2));
     
     // Count completed visits (all forms in a module submitted)
     const completedVisits = izuSurveys.reduce((acc, survey) => {
@@ -48,12 +49,15 @@ const CohortStatisticsScreen = () => {
 
   const visits = calculateVisits();
 
-  // Mock risk of harms data - replace with actual data
-  const riskOfHarms: IRiskOfHarm[] = [
-    { id: 1, status: "follow-up", description: "Child malnutrition", familyId: 1 },
-    { id: 2, status: "pending", description: "Domestic violence", familyId: 2 },
-    { id: 3, status: "resolved", description: "School dropout", familyId: 3 },
-  ];
+  // Calculate risk of harms based on survey_id 6 and formStatus
+  const riskOfHarms = surveySubmissions
+    .filter(s => s.survey_id === 6 && s.izucode === izu?.user_code)
+    .map(s => ({
+      id: s._id.toString(),
+      status: s.formStatus as "followup" | "pending" | "resolved",
+      description: s.answers?.description || "No description provided",
+      familyId: s.family
+    }));
 
   const groupedRisks = riskOfHarms.reduce((acc, risk) => {
     if (!acc[risk.status]) {
@@ -93,12 +97,12 @@ const CohortStatisticsScreen = () => {
         </Text>
 
         {/* Family Card */}
-        <Card className="p-4 mb-4">
+        <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
           <Text className="text-lg font-semibold mb-2">
             {t("StatisticsPage.families", "Families")}
           </Text>
           <Text className="text-2xl font-bold text-primary">
-            {visits.total / 16} {/* Total families = total visits / 16 modules */}
+            {visits.total / 16}
           </Text>
           <Text className="text-gray-500">
             {t("StatisticsPage.total_families", "Total Families")}
@@ -106,7 +110,7 @@ const CohortStatisticsScreen = () => {
         </Card>
 
         {/* Visits Card */}
-        <Card className="p-4 mb-4">
+        <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
           <Text className="text-lg font-semibold mb-2">
             {t("StatisticsPage.visits", "Visits")}
           </Text>
@@ -120,7 +124,7 @@ const CohortStatisticsScreen = () => {
               </Text>
             </View>
             <View>
-              <Text className="text-2xl font-bold text-gray-500">
+              <Text className="text-2xl font-bold text-black">
                 {visits.total}
               </Text>
               <Text className="text-gray-500">
@@ -135,53 +139,17 @@ const CohortStatisticsScreen = () => {
           {t("StatisticsPage.risk_of_harms", "Risk of Harms")}
         </Text>
 
-        {/* <View className="mb-4">
-          <Text className="text-md font-semibold mb-2 text-yellow-600">
-            {t("StatisticsPage.follow_up", "Follow-up")} ({groupedRisks["follow-up"]?.length || 0})
-          </Text>
-          <FlatList
-            data={groupedRisks["follow-up"]}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <Card className="p-3 mb-2">
-                <Text>{item.description}</Text>
-                <Text className="text-gray-500">Family ID: {item.familyId}</Text>
-              </Card>
-            )}
-          />
-        </View>
-
-        <View className="mb-4">
-          <Text className="text-md font-semibold mb-2 text-red-600">
-            {t("StatisticsPage.pending", "Pending")} ({groupedRisks["pending"]?.length || 0})
-          </Text>
-          <FlatList
-            data={groupedRisks["pending"]}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <Card className="p-3 mb-2">
-                <Text>{item.description}</Text>
-                <Text className="text-gray-500">Family ID: {item.familyId}</Text>
-              </Card>
-            )}
-          />
-        </View>
-
-        <View className="mb-4">
-          <Text className="text-md font-semibold mb-2 text-green-600">
-            {t("StatisticsPage.resolved", "Resolved")} ({groupedRisks["resolved"]?.length || 0})
-          </Text>
-          <FlatList
-            data={groupedRisks["resolved"]}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <Card className="p-3 mb-2">
-                <Text>{item.description}</Text>
-                <Text className="text-gray-500">Family ID: {item.familyId}</Text>
-              </Card>
-            )}
-          />
-        </View> */}
+        {/* Now categorize the risk of harms by status, show the number of risk of harms submitted under each status */}
+        {Object.entries(groupedRisks).map(([status, risks]) => (
+          <Card key={status} className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
+            <Text className="text-lg font-semibold mb-2">
+              {status}
+            </Text>
+            <Text className="text-2xl font-bold text-primary">
+              {risks.length}
+            </Text>
+          </Card>
+        ))}
       </View>
     </SafeAreaView>
   );

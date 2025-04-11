@@ -11,7 +11,7 @@ import { useMemo, useState } from "react";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useGetAllProjects } from "~/services/project";
 import { useGetAllModules } from "~/services/project";
-import { fetchFormByProjectAndModuleFromRemote } from "~/services/formElements";
+import { useGetForms } from "~/services/formElements";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { baseInstance } from "~/utils/axios";
@@ -47,10 +47,11 @@ const SyncPage = () => {
     Stakeholders: "Not Synced",
   });
 
-  const { projects, refresh: refreshProjects } = useGetAllProjects();
+  const { refresh: refreshProjects } = useGetAllProjects(true);
   const { modules, refresh: refreshModules } = useGetAllModules();
   const { surveySubmissions } = useGetAllSurveySubmissions();
-  const { stakeholders, refresh: refreshStakeholders } = useGetStakeholders();
+  const { refresh: refreshStakeholders } = useGetStakeholders(true);
+  const { refresh: refreshForms } = useGetForms(true);
 
   const pendingSubmissions = surveySubmissions.filter(
     (submission) => !submission.sync_status
@@ -59,16 +60,19 @@ const SyncPage = () => {
   const syncFormsAndSurveys = async () => {
     if (isSyncing) return;
 
+    // Reset all states for a fresh sync
     setIsSyncing(true);
     setSyncType("Forms");
     setSyncProgress(0);
+    setLastSyncDate(null);
+    setCurrentSyncItem("");
     let successCount = 0;
     const totalItems = 4;
     let hasErrors = false;
 
     // Reset sync statuses
     setSyncStatuses({
-      Projects: "Syncing",
+      Projects: "Not Synced",
       Modules: "Not Synced",
       Forms: "Not Synced",
       Stakeholders: "Not Synced",
@@ -77,108 +81,67 @@ const SyncPage = () => {
     try {
       // Sync Projects
       setCurrentSyncItem("Projects");
+      setSyncStatuses((prev) => ({ ...prev, Projects: "Syncing" }));
       try {
+        console.log("Starting Projects sync...");
         await refreshProjects();
         setSyncStatuses((prev) => ({ ...prev, Projects: "Success" }));
         successCount++;
+        setSyncProgress((successCount / totalItems) * 100);
+        console.log("Projects sync completed successfully");
       } catch (error) {
         console.error("Error syncing projects:", error);
         setSyncStatuses((prev) => ({ ...prev, Projects: "Failed" }));
         hasErrors = true;
       }
-      setSyncProgress((successCount / totalItems) * 100);
 
       // Sync Modules
       setCurrentSyncItem("Modules");
       setSyncStatuses((prev) => ({ ...prev, Modules: "Syncing" }));
       try {
+        console.log("Starting Modules sync...");
         await refreshModules();
         setSyncStatuses((prev) => ({ ...prev, Modules: "Success" }));
         successCount++;
+        setSyncProgress((successCount / totalItems) * 100);
+        console.log("Modules sync completed successfully");
       } catch (error) {
         console.error("Error syncing modules:", error);
         setSyncStatuses((prev) => ({ ...prev, Modules: "Failed" }));
         hasErrors = true;
       }
-      setSyncProgress((successCount / totalItems) * 100);
 
       // Sync Forms
       setCurrentSyncItem("Forms");
       setSyncStatuses((prev) => ({ ...prev, Forms: "Syncing" }));
-
       try {
-        // Get all unique project_module_ids from the modules
-        const projectModuleIds = [
-          ...new Set(modules.map((module) => module.id)),
-        ];
-
-        // Sync forms for each project module
-        for (const projectModuleId of projectModuleIds) {
-          try {
-            // Find a module with this id to get the project_id
-            const module = modules.find((m) => m.id === projectModuleId);
-            console.log("module", module);
-            if (module) {
-              // Call the remote fetch function directly instead of using the hook
-              const formData = await fetchFormByProjectAndModuleFromRemote(
-                module.project_id,
-                module.id
-              );
-
-              // Update Realm directly
-              if (realm && !realm.isClosed) {
-                realm.write(() => {
-                  formData.data.forEach((form) => {
-                    try {
-                      realm.create(
-                        "Survey",
-                        {
-                          ...form,
-                          json2:
-                            typeof form.json2 !== "string"
-                              ? JSON.stringify(form.json2)
-                              : form.json2,
-                        },
-                        Realm.UpdateMode.Modified
-                      );
-                    } catch (error) {
-                      console.error("Error creating/updating form:", error);
-                    }
-                  });
-                });
-              }
-            }
-          } catch (error) {
-            console.error(
-              `Error syncing forms for project module ${projectModuleId}:`,
-              error
-            );
-            // Continue with other modules even if one fails
-          }
-        }
-
+        console.log("Starting Forms sync...");
+        await refreshForms();
         setSyncStatuses((prev) => ({ ...prev, Forms: "Success" }));
         successCount++;
+        setSyncProgress((successCount / totalItems) * 100);
+        console.log("Forms sync completed successfully");
       } catch (error) {
         console.error("Error syncing forms:", error);
         setSyncStatuses((prev) => ({ ...prev, Forms: "Failed" }));
         hasErrors = true;
       }
-      setSyncProgress((successCount / totalItems) * 100);
 
       // Sync Stakeholders
       setCurrentSyncItem("Stakeholders");
       setSyncStatuses((prev) => ({ ...prev, Stakeholders: "Syncing" }));
       try {
+        console.log("Starting Stakeholders sync...");
         await refreshStakeholders();
         setSyncStatuses((prev) => ({ ...prev, Stakeholders: "Success" }));
         successCount++;
+        setSyncProgress((successCount / totalItems) * 100);
+        console.log("Stakeholders sync completed successfully");
       } catch (error) {
         console.error("Error syncing stakeholders:", error);
         setSyncStatuses((prev) => ({ ...prev, Stakeholders: "Failed" }));
         hasErrors = true;
       }
-      setSyncProgress((successCount / totalItems) * 100);
 
       setLastSyncDate(new Date());
 
@@ -378,7 +341,7 @@ const SyncPage = () => {
             </Text>
           </View>
         )}
-        {/* {item.items && (
+        {item.items && (
           <View className="mt-2">
             {item.items.map((subItem) => (
               <View key={subItem.name} className="flex-row justify-between items-center mt-1">
@@ -397,7 +360,7 @@ const SyncPage = () => {
               </View>
             ))}
           </View>
-        )} */}
+        )}
         {item.lastSyncDate && (
           <Text className="text-xs text-gray-500 mt-2">
             Last synced: {item.lastSyncDate.toLocaleString()}

@@ -10,17 +10,14 @@ import {
   SafeAreaView,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { IPost } from "~/types";
-import { usePostManipulate } from "~/lib/hooks/usePost";
 import { format, formatDistanceToNow } from "date-fns";
 import { Text } from "~/components/ui/text";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { z } from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useGetPost } from "~/services/posts";
+import { useGetPostById, postComment, deleteComment, likePost, unlikePost } from "~/services/posts";
 import { useAuth } from "~/lib/hooks/useAuth";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
@@ -51,56 +48,43 @@ const PostScreen: React.FC = () => {
     defaultValues: { comment: "" },
   });
 
-  const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuth({});
 
-  const {
-    usePostComment,
-    useDeleteComment,
-    useLikePost,
-    useUnlikePost,
-    isLoading: isCommentLoading,
-  } = usePostManipulate();
-
-  const { post, isLoading, refresh } = useGetPost(parseInt(postId));
+  const { post, isLoading, refresh } = useGetPostById(parseInt(postId));
 
   const handleAddComment = async (data: { comment: string }) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-    usePostComment(
-      { id: parseInt(postId), comment: data.comment },
-      {
-        onSuccess: () => {
-          refresh();
-          setIsSubmitting(false);
-        },
-      }
-    );
-    control._reset({ comment: "" });
+    try {
+      await postComment({ id: parseInt(postId), comment: data.comment });
+      refresh();
+      control._reset({ comment: "" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeleteComment = async (commentId: number) => {
-    useDeleteComment(
-      { commentId },
-      {
-        onSuccess: () => {
-          refresh();
-        },
-      }
-    );
+    try {
+      await deleteComment({ commentId });
+      refresh();
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+    }
   };
 
   const currentUserId = user.id;
-  const isLiked = post?.likes.some((like) => like.user_id === currentUserId);
+  const isLiked = post?.likes ? JSON.parse(post.likes).some((like: any) => like.user_id === currentUserId) : false;
 
-  const handleLikePress = () => {
+  const handleLikePress = async () => {
     if (isLiked) {
-      useUnlikePost({ id: post?.id || 0 });
+      await unlikePost({ id: post?.id || 0 });
     } else {
-      useLikePost({ id: post?.id || 0 });
+      await likePost({ id: post?.id || 0 });
     }
+    refresh();
   };
 
   const onRefresh = async () => {
@@ -109,25 +93,17 @@ const PostScreen: React.FC = () => {
     setRefreshing(false);
   };
 
-  // if (isLoading) {
-  //   return (
-  //     <View className="flex-1 justify-center items-center">
-  //       <ActivityIndicator size="large" color="#0000ff" />
-  //     </View>
-  //   );
-  // }
-
   const { t } = useTranslation();
 
   const renderHeader = () => (
     <View className="bg-white p-4 rounded-lg">
       <View className="flex-row items-center mb-2">
         <Image
-          source={{ uri: post?.user?.picture }}
+          source={{ uri: post?.user ? JSON.parse(post.user).picture : '' }}
           className="w-10 h-10 rounded-full"
         />
         <View className="ml-3">
-          <Text className="font-semibold">{post?.user?.name}</Text>
+          <Text className="font-semibold">{post?.user ? JSON.parse(post.user).name : ''}</Text>
           <Text className="text-gray-500 text-sm">
             {post?.created_at &&
               `${format(
@@ -153,7 +129,7 @@ const PostScreen: React.FC = () => {
             color={isLiked ? "red" : "grey"}
             family="MaterialCommunityIcons"
           />
-          <Text className="ml-2 text-gray-500">{post?.likes.length}</Text>
+          <Text className="ml-2 text-gray-500">{post?.likes ? JSON.parse(post.likes).length : 0}</Text>
         </TouchableOpacity>
         <View className="flex-row items-center">
           <TabBarIcon
@@ -162,7 +138,7 @@ const PostScreen: React.FC = () => {
             color="grey"
             family="FontAwesome6"
           />
-          <Text className="ml-2 text-gray-500">{post?.comments.length}</Text>
+          <Text className="ml-2 text-gray-500">{post?.comments ? JSON.parse(post.comments).length : 0}</Text>
         </View>
         <View className="flex-row items-center">
           <TabBarIcon
@@ -228,7 +204,7 @@ const PostScreen: React.FC = () => {
         </View>
       </View>
       <Text className="text-base mt-1">{item?.comment}</Text>
-      {item?.user?.id === post?.user?.id && (
+      {item?.user?.id === (post?.user ? JSON.parse(post.user).id : null) && (
         <View className="flex-row items-center justify-end">
           <TouchableOpacity
             className="bg-slate-100 p-2 rounded-full"
@@ -257,7 +233,7 @@ const PostScreen: React.FC = () => {
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation showLeft={true} showRight={true} showLogo={true} />
       <FlatList
-        data={[...(post?.comments || [])].reverse()}
+        data={post?.comments ? JSON.parse(post.comments).reverse() : []}
         renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
         refreshControl={

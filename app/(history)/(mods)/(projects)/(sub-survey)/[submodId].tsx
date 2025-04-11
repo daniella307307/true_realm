@@ -70,7 +70,7 @@ const SubmissionListByModuleScreen = () => {
   const storedModules = useGetAllModules();
 
   const currentModule = storedModules.modules.find(
-    (module: IModule) => module.id === parseInt(submodId)
+    (module: IModule | null) => module?.id === parseInt(submodId)
   );
   if (!currentModule) {
     return (
@@ -94,7 +94,7 @@ const SubmissionListByModuleScreen = () => {
   });
 
   const [refreshing, setRefreshing] = useState(false);
-  const { data: families, isLoading: familiesLoading } = useGetFamilies();
+  const { families, isLoading: familiesLoading } = useGetFamilies();
 
   const onRefresh = async () => {
     setRefreshing(true);

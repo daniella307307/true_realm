@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { AntDesign } from "@expo/vector-icons";
-import {
+import Dropdown, {
   Select,
   SelectContent,
   SelectItem,
@@ -58,27 +58,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ onClose }) => {
         </AlertDialogHeader>
         <AlertDialogDescription>
           <Text className="font-semibold text-black">Select Issue Type</Text>
-          <Select
-            value={selectedReason}
-            onValueChange={(value) => setSelectedReason(value)}
-            className="w-full relative h-14 rounded-lg"
-          >
-            <SelectTrigger className="w-full h-full outline-none border-none bg-white">
-              <SelectValue
-                className="text-[#18181B] text-md"
-                placeholder="Select issue type"
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {reportReasons?.map((option, index) => (
-                <SelectItem
-                  key={index}
-                  label={option.label}
-                  value={option.value}
-                />
-              ))}
-            </SelectContent>
-          </Select>
+          <Dropdown
+            data={reportReasons}
+            onChange={(value) => setSelectedReason(value)}
+            placeholder="Select issue type"
+          />
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogAction onPress={handleReport}>

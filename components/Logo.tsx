@@ -1,5 +1,7 @@
-import { View, Image } from "react-native";
 import React from "react";
+
+import { View, Image } from "react-native";
+
 import { Text } from "./ui/text";
 
 const Logo = ({
@@ -13,7 +15,9 @@ const Logo = ({
 }) => {
   return (
     <View
-      className={`flex ${horizontal ? "flex-row items-center" : "flex-col items-center"} ${className}`}
+      className={`flex ${
+        horizontal ? "flex-row items-center" : "flex-col items-center"
+      } ${className}`}
     >
       <Image
         source={require("../assets/images/logo.png")}
