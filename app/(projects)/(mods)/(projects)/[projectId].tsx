@@ -23,7 +23,7 @@ import HeaderNavigation from "~/components/ui/header";
 
 const ProjectModuleScreens = () => {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
-  console.log("Project ID: ", projectId);
+  console.log("Selected Project ID: ", projectId);
   if (!projectId) {
     return (
       <View>
@@ -33,7 +33,9 @@ const ProjectModuleScreens = () => {
     );
   }
 
-  const { modules, isLoading, refresh } = useGetModulesByProjectId(Number(projectId));
+  const { modules, isLoading, refresh } = useGetModulesByProjectId(
+    Number(projectId)
+  );
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -48,14 +50,22 @@ const ProjectModuleScreens = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const filteredModules = modules
-    .filter((module: IModule | null) => 
-      module !== null && 
-      module.module_status !== 0 &&
-      (!searchQuery ||
-        module.module_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        module.module_description.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter(
+      (module: IModule | null) =>
+        module !== null &&
+        module.module_status !== 0 &&
+        (!searchQuery ||
+          module.module_name
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          module.module_description
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()))
     )
-    .sort((a: IModule | null, b: IModule | null) => (a?.order_list || 0) - (b?.order_list || 0));
+    .sort(
+      (a: IModule | null, b: IModule | null) =>
+        (a?.order_list || 0) - (b?.order_list || 0)
+    );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -98,15 +108,19 @@ const ProjectModuleScreens = () => {
             )}
             ListHeaderComponent={() => {
               const uncategorizedModule = modules.find(
-                (module: IModule | null) => 
-                  module !== null && 
-                  module.module_name === "Uncategorized" && 
+                (module: IModule | null) =>
+                  module !== null &&
+                  module.module_name === "Uncategorized" &&
                   module.project_id === Number(projectId)
               );
-              
+
               return uncategorizedModule ? (
                 <TouchableOpacity
-                  onPress={() => router.push(`/(forms)/${uncategorizedModule.source_module_id}`)}
+                  onPress={() =>
+                    router.push(
+                      `/(forms)/${uncategorizedModule.source_module_id}`
+                    )
+                  }
                   className="p-4 border mb-4 border-red-500 rounded-xl"
                 >
                   <View className="flex-row items-center pr-4 justify-start">
@@ -133,10 +147,12 @@ const ProjectModuleScreens = () => {
               if (item.module_name === "Uncategorized") {
                 return null;
               }
-              
+
+              console.log("Router.push: ", `/(families)/(forms)/${item.id}`);
+
               return (
                 <TouchableOpacity
-                  onPress={() => router.push(`/(forms)/${item.id}`)}
+                  onPress={() => router.push(`/(families)/(forms)/${item.source_module_id}`)}
                   className="p-4 border mb-4 border-gray-200 rounded-xl"
                 >
                   <View className="flex-row items-center pr-4 justify-start">

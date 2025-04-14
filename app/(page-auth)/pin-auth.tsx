@@ -28,6 +28,7 @@ const VerificationCode: React.FC = () => {
     setValue: setCode,
   });
   const { user } = useAuth({});
+  console.log("User telephone: ", user?.telephone);
 
   const handleCodeSubmit = async () => {
     setLoading(true);

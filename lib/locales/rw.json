@@ -170,5 +170,17 @@
     "title": "Shyiramo Pin",
     "description": "Shyiramo imibare ine (4), yanyuma ya telephone",
     "verify": "Emeza"
+  },
+  "CohortStatisticsPage": {
+    "title": "Ibyo wabonye",
+    "cohort_statistics": "Ibyo wabonye",
+    "cohort_id": "ID y'itsinda",
+    "family_id": "ID y'imiryango",
+    "family_name": "Izina ryawe",
+    "total_families": "Imiryango yose",
+    "visits": "Ibyo wabonye",
+    "families": "Imiryango",
+    "risk_of_harms": "Iki cyiciro cyateza ibyago",
+    "total_visits": "Ibyo wabonye byose"
   }
 }

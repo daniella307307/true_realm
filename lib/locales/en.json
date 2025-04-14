@@ -178,6 +178,18 @@
       "title": "Enter Pin",
       "description": "Enter the last 4 digits, of your phone number",
       "verify": "Verify"
+    },
+    "CohortStatisticsPage": {
+      "title": "Cohort Statistics",
+      "cohort_statistics": "Cohort Statistics",
+      "cohort_id": "Cohort ID",
+      "family_id": "Family ID",
+      "family_name": "Family Name",
+      "total_families": "Total Families",
+      "visits": "Visits",
+      "families": "Families",
+      "risk_of_harms": "Risk of Harms",
+      "total_visits": "Total Visits"
     }
 }
   

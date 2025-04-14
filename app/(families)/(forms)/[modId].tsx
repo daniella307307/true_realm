@@ -48,36 +48,45 @@ const ProjectFormsScreen = () => {
     );
   }
 
-  const { modules, isLoading: isModulesLoading, error: modulesError } = useGetAllModules();
+  const {
+    modules,
+    isLoading: isModulesLoading,
+    error: modulesError,
+  } = useGetAllModules();
   const moduleId = parseInt(modId);
 
-  console.log("ModULE ID: ", moduleId);
+  
+  console.log("Module ID: ", moduleId);
+  // console.log("Modules: ", JSON.stringify(modules, null, 2));
 
   // Find the current module with proper null checks
   const currentModule = useMemo(() => {
     if (!modules) return null;
-    
-    return modules.find((module: IModule | null) => {
-      if (!module) return false;
-      
-      if (moduleId === 22) {
-        // For source_module_id 22, specifically find the Risk of Harm module
-        return (
-          module.source_module_id === 22 &&
-          module.id === 177 &&
-          module.project_id === 17
-        );
-      }
-      return module.source_module_id === moduleId;
-    }) || null;
+
+    return (
+      modules.find((module: IModule | null) => {
+        if (!module) return false;
+
+        if (moduleId === 22) {
+          // For source_module_id 22, specifically find the Risk of Harm module
+          return (
+            module.source_module_id === 22 &&
+            module.id === 177 &&
+            module.project_id === 17
+          );
+        }
+        return module.source_module_id === moduleId;
+      }) || null
+    );
   }, [modules, moduleId]);
 
   if (!currentModule) {
+    // console.log("Current Module: ", currentModule);
     return (
       <View className="flex-1 justify-center items-center bg-background p-4">
-        <Text>Module not found</Text>
-        <Button onPress={() => router.replace("/(families)/")}>
-          Go to home
+        <Text className="text-red-500 font-semibold">Module not found</Text>
+        <Button className="mt-10" onPress={() => router.replace("/(families)/")}>
+          <Text>Go to home</Text>
         </Button>
       </View>
     );
@@ -85,7 +94,11 @@ const ProjectFormsScreen = () => {
 
   console.log("Current Module: ", currentModule);
 
-  const { filteredForms, isLoading: isFormsLoading, error: formsError } = useGetFormByProjectAndModule(
+  const {
+    filteredForms,
+    isLoading: isFormsLoading,
+    error: formsError,
+  } = useGetFormByProjectAndModule(
     currentModule.project_id,
     currentModule.source_module_id,
     currentModule.id
@@ -119,7 +132,7 @@ const ProjectFormsScreen = () => {
 
   const displayFilteredForms = useMemo(() => {
     if (!filteredForms) return [];
-    
+
     return filteredForms.filter((form: Survey) => {
       if (!searchQuery) return true;
       return form.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -154,7 +167,9 @@ const ProjectFormsScreen = () => {
       return (
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-red-500">
-            {modulesError?.message || formsError?.message || "An error occurred"}
+            {modulesError?.message ||
+              formsError?.message ||
+              "An error occurred"}
           </Text>
         </View>
       );
