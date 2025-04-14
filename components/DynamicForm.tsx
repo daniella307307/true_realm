@@ -933,7 +933,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           timeSpentFormatted: formatTime(timeSpent),
         };
 
-        dataWithTime.post_data = "/sendVisitData";
+        dataWithTime.post_data;
         console.log("dataWithTime", dataWithTime);
         console.log("API URL:", dataWithTime.post_data);
 

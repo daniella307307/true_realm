@@ -32,34 +32,6 @@ const HomeScreen = () => {
     },
   });
   const { t } = useTranslation();
-
-  // Use offline-first versions of the services
-  const { refresh: refreshIzus } = useGetIzus(true);
-  const { refresh: refreshFamilies } = useGetFamilies(true);
-  const { refresh: refreshPosts } = useGetPosts(true);
-
-  useEffect(() => {
-    const loadData = async () => {
-      if (user?.id) {
-        setIsLoading(true);
-        try {
-          await Promise.all([
-            refreshIzus(),
-            refreshFamilies(),
-            refreshPosts(),
-          ]);
-          console.log("Initial data sync completed successfully");
-        } catch (error) {
-          console.error("Error during initial data sync:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    loadData();
-  }, [user?.id]);
-
   // Get the screen width dynamically
   const { width } = useWindowDimensions();
 

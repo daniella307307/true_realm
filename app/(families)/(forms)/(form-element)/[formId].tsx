@@ -58,7 +58,7 @@ const FormElementIndexScreen = () => {
     source_module_id: form?.source_module_id ?? 0,
     project_id: parseInt(project_id) || 0,
     post_data: form?.post_data,
-    userId: user.id ?? 0,
+    userId: user?.id ?? 0,
   };
 
   console.log("Form structure:", formStructure);

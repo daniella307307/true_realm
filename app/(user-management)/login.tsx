@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   TextInput,
@@ -30,19 +30,56 @@ export default function LoginScreen() {
   const { t, i18n } = useTranslation();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Initialize all refresh functions
+  const { refresh } = useGetAllProjects(true);
+  const { refresh: refreshForms } = useGetForms(true);
+  const { refresh: refreshStakeholders } = useGetStakeholders(true);
+  const { refresh: refreshIzus } = useGetIzus(true);
+  const { refresh: refreshFamilies } = useGetFamilies(true);
+  const { refresh: refreshPosts } = useGetPosts(true);
+
+  const syncData = async () => {
+    if (isSyncing) return;
+    
+    try {
+      setIsSyncing(true);
+      console.log("Syncing data...");
+      await Promise.all([
+        refresh(),
+        refreshForms(),
+        refreshStakeholders(), 
+        refreshIzus(),
+        refreshFamilies(),
+        refreshPosts()
+      ]);
+      console.log("Data synced successfully");
+      return true;
+    } catch (error) {
+      console.error('Error syncing data:', error);
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const { login, isLoggingIn } = useAuth({
     onLogin: async (authUser) => {
-      if (authUser.id !== undefined) {
-        router.push("/(home)/home");
-      } else {
+      if (authUser.id === undefined) {
         console.log("No token found");
         return;
       }
+
+      // Start syncing data after successful authentication
+      const syncSuccess = await syncData();
+      
+      // Only navigate to home if sync was successful
+      if (syncSuccess) {
+        router.push("/(home)/home");
+      }
     },
   });
-
-  console.log("Login screen rendered");
 
   const { control, handleSubmit } = useForm<ILoginDetails>({
     resolver: zodResolver(loginSchema),
