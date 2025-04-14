@@ -51,6 +51,8 @@ const ProjectFormsScreen = () => {
   const { modules, isLoading: isModulesLoading, error: modulesError } = useGetAllModules();
   const moduleId = parseInt(modId);
 
+  console.log("ModULE ID: ", moduleId);
+
   // Find the current module with proper null checks
   const currentModule = useMemo(() => {
     if (!modules) return null;
@@ -80,6 +82,8 @@ const ProjectFormsScreen = () => {
       </View>
     );
   }
+
+  console.log("Current Module: ", currentModule);
 
   const { filteredForms, isLoading: isFormsLoading, error: formsError } = useGetFormByProjectAndModule(
     currentModule.project_id,

@@ -34,13 +34,9 @@ export const createSurveySubmission = (
   return {
     _id: new Realm.BSON.ObjectId(),
     submittedAt: new Date(),
-    timeSpentFormatted: formData.timeSpentFormatted,
+    Time_spent_filling_the_form: formData.timeSpentFormatted,
     answers,
     userId: formData.userId,
-    metadata: {
-      language: formData.language || "en-US",
-    },
-
     table_name: formData.table_name,
     project_module_id: formData.project_module_id,
     source_module_id: formData.source_module_id,
@@ -70,12 +66,22 @@ export const saveSurveySubmission = async (
     // If online, first try to submit to API
     if (isConnected) {
       try {
-        const response = await baseInstance.post(formData.post_data, {
+        // Decode answers object into individual fields
+        const decodedSubmission = {
           ...submission,
-        });
+          ...submission.answers,
+        };
 
+        // @ts-ignore
+        delete decodedSubmission.answers;
+
+        console.log("decodedSubmission: ", JSON.stringify(decodedSubmission, null, 2));
+        
+        const response = await baseInstance.post(formData.post_data, decodedSubmission);
+
+        console.log("response: ", JSON.stringify(response.data, null, 2));
         // If API submission is successful and has result object
-        if (response.data || response.data.result) {
+        if (response.data.message === "Saved Successfully" && response.data.result && response.data.success === true) {
           realm.write(() => {
             const submissionWithSyncStatus = {
               ...submission,

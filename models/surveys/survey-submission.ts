@@ -3,10 +3,9 @@ import { Realm } from "@realm/react";
 export class SurveySubmission extends Realm.Object {
   _id!: Realm.BSON.ObjectId;
   submittedAt!: Date;
-  timeSpentFormatted!: string;
+  Time_spent_filling_the_form!: string;
   answers!: { [key: string]: string | number | boolean | null };
   userId?: number;
-  metadata?: { [key: string]: string | number | null };
   table_name!: string;
   project_module_id!: number;
   source_module_id!: number;
@@ -31,10 +30,9 @@ export class SurveySubmission extends Realm.Object {
     properties: {
       _id: 'objectId',
       submittedAt: 'date',
-      timeSpentFormatted: 'string',
+      Time_spent_filling_the_form: 'string',
       answers: 'mixed{}', // Allows flexible answer types
       userId: 'int',
-      metadata: 'mixed{}', // Allows mixed metadata types
       sync_status: 'bool',
       syncStatus: 'string',
       lastSyncAttempt: 'date',

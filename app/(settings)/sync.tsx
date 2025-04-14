@@ -186,13 +186,16 @@ const SyncPage = () => {
       for (const submission of pendingSubmissions) {
         try {
           // Make the actual API call to sync the submission
-          const response = await baseInstance.post(submission.post_data, {
+          const decodedSubmission = {
             ...submission,
-            answers: submission.answers,
+            ...submission.answers,
             _id: submission._id.toString(),
             submittedAt: submission.submittedAt.toISOString(),
             lastSyncAttempt: new Date().toISOString(),
-          });
+          };
+          // @ts-ignore
+          delete decodedSubmission.answers;
+          const response = await baseInstance.post(submission.post_data, decodedSubmission);
 
           if (response.data && response.data.result) {
             // Update the local record after successful sync
