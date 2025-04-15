@@ -18,6 +18,8 @@ import { baseInstance } from "~/utils/axios";
 import { useGetStakeholders } from "~/services/stakeholders";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
+import { useGetFamilies } from "~/services/families";
+import { useGetIzus } from "~/services/izus";
 const { useRealm, useQuery } = RealmContext;
 
 interface SyncItem {
@@ -45,6 +47,8 @@ const SyncPage = () => {
     Modules: "Not Synced",
     Forms: "Not Synced",
     Stakeholders: "Not Synced",
+    Families: "Not Synced",
+    Izus: "Not Synced",
   });
 
   const { refresh: refreshProjects } = useGetAllProjects(true);
@@ -52,7 +56,8 @@ const SyncPage = () => {
   const { surveySubmissions } = useGetAllSurveySubmissions();
   const { refresh: refreshStakeholders } = useGetStakeholders(true);
   const { refresh: refreshForms } = useGetForms(true);
-
+  const { refresh: refreshFamilies } = useGetFamilies(true);
+  const { refresh: refreshIzus } = useGetIzus(true);
   const pendingSubmissions = surveySubmissions.filter(
     (submission) => !submission.sync_status
   );
@@ -76,6 +81,8 @@ const SyncPage = () => {
       Modules: "Not Synced",
       Forms: "Not Synced",
       Stakeholders: "Not Synced",
+      Families: "Not Synced",
+      Izus: "Not Synced",
     });
 
     try {
@@ -143,6 +150,41 @@ const SyncPage = () => {
         hasErrors = true;
       }
 
+      setCurrentSyncItem("Families");
+      setSyncStatuses((prev) => ({ ...prev, Families: "Syncing" }));
+      try {
+        console.log("Starting Families sync...");
+        await refreshFamilies();
+        setSyncStatuses((prev) => ({ ...prev, Families: "Success" }));
+        successCount++;
+        setSyncProgress((successCount / totalItems) * 100);
+        console.log("Families sync completed successfully");
+      } catch (error) {
+        console.error("Error syncing families:", error);
+        setSyncStatuses((prev) => ({ ...prev, Families: "Failed" }));
+        hasErrors = true;
+      }
+
+      // Sync Izus
+      setCurrentSyncItem("Izus");
+      setSyncStatuses((prev) => ({ ...prev, Izus: "Syncing" }));
+      try {
+        console.log("Starting Izus sync...");
+        await refreshIzus();
+        setSyncStatuses((prev) => ({ ...prev, Izus: "Success" }));
+        successCount++;
+        setSyncProgress((successCount / totalItems) * 100);
+        console.log("Izus sync completed successfully");
+      } catch (error) {
+        console.error("Error syncing izus:", error);
+        setSyncStatuses((prev) => ({ ...prev, Izus: "Failed" }));
+        hasErrors = true;
+      } finally {
+        setIsSyncing(false);
+        setSyncType(null);
+        setCurrentSyncItem("");
+      }
+
       setLastSyncDate(new Date());
 
       // Show appropriate alert based on whether there were errors
@@ -157,10 +199,6 @@ const SyncPage = () => {
     } catch (error) {
       console.error("Error during sync:", error);
       Alert.alert("Error", "Failed to sync forms and surveys");
-    } finally {
-      setIsSyncing(false);
-      setCurrentSyncItem("");
-      setSyncType(null);
     }
   };
 
@@ -195,9 +233,13 @@ const SyncPage = () => {
           };
           // @ts-ignore
           delete decodedSubmission.answers;
-          const response = await baseInstance.post(submission.post_data, decodedSubmission);
+          const response = await baseInstance.post(
+            submission.post_data,
+            decodedSubmission
+          );
+          console.log(`Synced submission res: ${submission._id}`, response.data);
 
-          if (response.data && response.data.result) {
+          if (response.data || response.data.result) {
             // Update the local record after successful sync
             realm.write(() => {
               submission.sync_status = true;
@@ -209,14 +251,27 @@ const SyncPage = () => {
             console.log("response", response.status);
             throw new Error("Invalid response from server");
           }
-        } catch (error) {
-          console.error("Error syncing submission:", error);
-          realm.write(() => {
-            submission.sync_status = false;
-            submission.syncStatus = "failed";
-            submission.lastSyncAttempt = new Date();
-          });
-          failedCount++;
+        } catch (error: any) {
+          if (error.response?.status === 400) {
+            realm.write(() => {
+              submission.sync_status = true;
+              submission.syncStatus = "synced";
+              submission.lastSyncAttempt = new Date();
+            });
+            console.log("Error status", error.response?.status);
+            console.log(`Sync status changed to saved ${submission._id}`);
+            console.log("Failed submission: ", JSON.stringify(submission, null, 2));
+            syncedCount++;
+          } else {
+            console.log(`Error syncing submission: ${submission._id}`, error);
+            console.error("Error syncing submission:", error);
+            realm.write(() => {
+              submission.sync_status = false;
+              submission.syncStatus = "failed";
+              submission.lastSyncAttempt = new Date();
+            });
+            failedCount++;
+          }
         }
 
         setSyncProgress(((syncedCount + failedCount) / pendingCount) * 100);
@@ -231,7 +286,7 @@ const SyncPage = () => {
         );
       } else {
         Alert.alert(
-          "Success",
+          "Success", 
           `Successfully synced ${syncedCount} submissions`
         );
       }
@@ -241,6 +296,7 @@ const SyncPage = () => {
     } finally {
       setIsSyncing(false);
       setSyncType(null);
+      setLastSyncDate(new Date()); // Move setLastSyncDate here to ensure it's set even on error
     }
   };
 
@@ -347,17 +403,22 @@ const SyncPage = () => {
         {item.items && (
           <View className="mt-2">
             {item.items.map((subItem) => (
-              <View key={subItem.name} className="flex-row justify-between items-center mt-1">
+              <View
+                key={subItem.name}
+                className="flex-row justify-between items-center mt-1"
+              >
                 <Text className="text-sm">{subItem.name}</Text>
-                <Text className={
-                  subItem.status === "Success"
-                    ? "text-green-500"
-                    : subItem.status === "Failed"
-                    ? "text-red-500"
-                    : subItem.status === "Syncing"
-                    ? "text-blue-500"
-                    : "text-gray-500"
-                }>
+                <Text
+                  className={
+                    subItem.status === "Success"
+                      ? "text-green-500"
+                      : subItem.status === "Failed"
+                      ? "text-red-500"
+                      : subItem.status === "Syncing"
+                      ? "text-blue-500"
+                      : "text-gray-500"
+                  }
+                >
                   {subItem.status}
                 </Text>
               </View>

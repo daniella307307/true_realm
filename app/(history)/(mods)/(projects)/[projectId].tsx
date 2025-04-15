@@ -24,6 +24,8 @@ import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useGetFormByProjectAndModule } from "~/services/formElements";
+import { Survey } from "~/models/surveys/survey";
 
 const ProjectModuleScreens = () => {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -39,8 +41,8 @@ const ProjectModuleScreens = () => {
     );
   }
 
-  const { modules, isLoading: modulesLoading, refresh } = useGetAllModules();
-  const { surveySubmissions, isLoading: surveySubmissionsLoading } =
+  const { modules, isLoading: modulesLoading, refresh: refreshModules } = useGetAllModules();
+  const { surveySubmissions, isLoading: surveySubmissionsLoading, refresh: refreshSubmissions } =
     useGetAllSurveySubmissions();
   const isLoading = modulesLoading || surveySubmissionsLoading;
   const { t } = useTranslation();
@@ -55,6 +57,25 @@ const ProjectModuleScreens = () => {
 
   const searchQuery = watch("searchQuery");
   const [refreshing, setRefreshing] = useState(false);
+
+  console.log("Survey Submissionsss: ", JSON.stringify(surveySubmissions, null, 2));
+  // Find the uncategorized module
+  const uncategorizedModule = modules?.find(
+    (module: IModule | null) =>
+      module !== null &&
+      module.module_name.toLowerCase().includes("uncategorize") &&
+      module.project_id === Number(projectId)
+  );
+
+  // Get forms for the uncategorized module if it exists
+  const {
+    filteredForms: uncategorizedForms,
+    isLoading: isUncategorizedFormsLoading,
+  } = useGetFormByProjectAndModule(
+    uncategorizedModule?.project_id || 0,
+    uncategorizedModule?.source_module_id || 0,
+    uncategorizedModule?.id || 0
+  );
 
   // Get modules that have submissions
   const filteredModules = useMemo(() => {
@@ -73,6 +94,7 @@ const ProjectModuleScreens = () => {
           module !== null &&
           module.project_id === Number(projectId) &&
           module.module_status !== 0 &&
+          module.module_name.toLowerCase() !== "uncategorize" &&
           moduleIdsWithSubmissions.has(module.id) &&
           (!searchQuery ||
             module.module_name
@@ -89,7 +111,7 @@ const ProjectModuleScreens = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refreshModules(), refreshSubmissions()]);
     setRefreshing(false);
   };
 
@@ -104,6 +126,125 @@ const ProjectModuleScreens = () => {
         submission.source_module_id === 24
     );
   }, [surveySubmissions, projectId]);
+
+  console.log(
+    "Survey Submissions: all submissions ",
+    JSON.stringify(surveySubmissions, null, 2)
+  );
+
+  const renderItem = ({ item }: { item: IModule | Survey }) => {
+    console.log("Item: ", JSON.stringify(item, null, 2));
+    if ("module_name" in item) {
+      // This is a module
+      const moduleSubmissions = surveySubmissions.filter(
+        (submission) => submission.source_module_id === item.source_module_id
+      );
+
+      const sortedSubmissions = [...moduleSubmissions].sort(
+        (a, b) =>
+          new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      );
+
+      const lastSubmission =
+        sortedSubmissions.length > 0 ? sortedSubmissions[0].submittedAt : null;
+
+      return (
+        <TouchableOpacity
+          onPress={() => router.push(`/(history)/(sub-survey)/${item.id}`)}
+          className="p-4 border mb-4 border-gray-200 rounded-xl"
+        >
+          <View className="flex-row items-center pr-4 justify-start">
+            <TabBarIcon
+              name="chat"
+              family="MaterialIcons"
+              size={24}
+              color="#71717A"
+            />
+            <Text className="text-lg ml-2 font-semibold">
+              {item.module_name}
+            </Text>
+          </View>
+          <Text className="py-2 text-xs/1 text-gray-600">
+            {item.module_description}
+          </Text>
+          <View className="flex flex-col justify-between items-start mt-2">
+            <Text className="text-sm text-gray-500">
+              {t("History.submissions", "Submissions")}:{" "}
+              {moduleSubmissions.length}
+            </Text>
+            <Text className="text-sm text-gray-500">
+              Last Submisasion:{" "}
+              {lastSubmission
+                ? new Date(lastSubmission).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  })
+                : t("History.noSubmissions", "No submissions")}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    } else {
+      console.log("FORM")
+      // This is a form (including uncategorized forms)
+      const formSubmissions = surveySubmissions.filter(
+        (submission) => 
+          submission.project_module_id === item.project_module_id ||
+          (uncategorizedModule && submission.source_module_id === uncategorizedModule.id)
+      );
+
+      const sortedSubmissions = [...formSubmissions].sort(
+        (a, b) =>
+          new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      );
+
+      const lastSubmission =
+        sortedSubmissions.length > 0 ? sortedSubmissions[0].submittedAt : null;
+
+      return (
+        <TouchableOpacity
+          onPress={() => router.push(`/(history)/(sub-survey)/${item.project_module_id}`)}
+          className="p-4 border mb-4 border-gray-200 rounded-xl"
+        >
+          <View className="flex-row items-center pr-4 justify-start">
+            <TabBarIcon
+              name="description"
+              family="MaterialIcons"
+              size={24}
+              color="#71717A"
+            />
+            <Text className="text-lg ml-2 font-semibold">{item.name}</Text>
+          </View>
+          {/* <Text className="py-2 text-xs/1 text-gray-600">
+            {uncategorizedModule ? "Form" : "FORM"}
+          </Text> */}
+          <View className="flex flex-col justify-between items-start mt-2">
+            <Text className="text-sm text-gray-500">
+              {t("History.submissions", "Submissions")}:{" "}
+              {formSubmissions.length}
+            </Text>
+            <Text className="text-sm text-gray-500">
+              Last Submission:{" "}
+              {lastSubmission
+                ? new Date(lastSubmission).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  })
+                : t("History.noSubmissions", "No submissions")}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -121,16 +262,18 @@ const ProjectModuleScreens = () => {
           accessibilityLabel={t("HistoryModulePage.search_history_module")}
         />
 
-        {isLoading ? (
+        {isLoading || isUncategorizedFormsLoading ? (
           <>
             <Skeleton />
             <Skeleton />
             <Skeleton />
           </>
         ) : (
-          <FlatList
-            data={filteredModules}
-            keyExtractor={(item: IModule, index) => `${item.id}-${index}`}
+          <FlatList<IModule | Survey>
+            data={
+              uncategorizedModule ? uncategorizedForms || [] : filteredModules
+            }
+            keyExtractor={(item, index) => `${item?.id}-${index}`}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={() => (
               <EmptyDynamicComponent message="No modules with submissions found" />
@@ -199,68 +342,15 @@ const ProjectModuleScreens = () => {
                 </TouchableOpacity>
               ) : null
             }
-            renderItem={({ item }) => {
-              const moduleSubmissions = surveySubmissions.filter(
-                (submission) => submission.source_module_id === item.id
-              );
-
-              // console.log("moduleSubmissions", moduleSubmissions);
-
-              // Sort submissions by date (most recent first)
-              const sortedSubmissions = [...moduleSubmissions].sort(
-                (a, b) =>
-                  new Date(b.submittedAt).getTime() -
-                  new Date(a.submittedAt).getTime()
-              );
-
-              const lastSubmission =
-                sortedSubmissions.length > 0
-                  ? sortedSubmissions[0].submittedAt
-                  : null;
-
-              return (
-                <TouchableOpacity
-                  onPress={() => router.push(`/(sub-survey)/${item.id}`)}
-                  className="p-4 border mb-4 border-gray-200 rounded-xl"
-                >
-                  <View className="flex-row items-center pr-4 justify-start">
-                    <TabBarIcon
-                      name="chat"
-                      family="MaterialIcons"
-                      size={24}
-                      color="#71717A"
-                    />
-                    <Text className="text-lg ml-2 font-semibold">
-                      {item.module_name}
-                    </Text>
-                  </View>
-                  <Text className="py-2 text-xs/1 text-gray-600">
-                    {item.module_description}
-                  </Text>
-                  <View className="flex flex-col justify-between items-start mt-2">
-                    <Text className="text-sm text-gray-500">
-                      {t("History.submissions", "Submissions")}:{" "}
-                      {moduleSubmissions.length}
-                    </Text>
-                    <Text className="text-sm text-gray-500">
-                      Last Submission:{" "}
-                      {lastSubmission
-                        ? new Date(lastSubmission).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: false,
-                          })
-                        : t("History.noSubmissions", "No submissions")}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            }}
+            renderItem={renderItem}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={onRefresh}
+                tintColor="#000000"
+                title="Pull to refresh"
+                titleColor="#000000"
+              />
             }
           />
         )}

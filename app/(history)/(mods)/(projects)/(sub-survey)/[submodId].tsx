@@ -2,7 +2,6 @@ import {
   View,
   FlatList,
   TouchableOpacity,
-  ScrollView,
   SafeAreaView,
 } from "react-native";
 import React, { useState, useCallback, useMemo } from "react";
@@ -12,22 +11,12 @@ import { z } from "zod";
 import CustomInput from "~/components/ui/input";
 import { useTranslation } from "react-i18next";
 import { router, useLocalSearchParams } from "expo-router";
-import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import { IExistingForm, IModule } from "~/types";
 import { Text } from "~/components/ui/text";
-import Skeleton from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
-import { useGetAllModules } from "~/services/project";
-import {
-  fetchFormByProjectAndModuleFromRemote,
-  useGetFormByProjectAndModule,
-} from "~/services/formElements";
+import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { RefreshControl } from "react-native";
-import { Survey } from "~/models/surveys/survey";
-import { useGetAllSurveySubmissions } from "~/services/survey-submission";
-import { SurveySubmission } from "~/models/surveys/survey-submission";
-import { CheckCheckIcon, CrossIcon } from "lucide-react-native";
+import { CheckCheckIcon } from "lucide-react-native";
 import HeaderNavigation from "~/components/ui/header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGetFamilies } from "~/services/families";
@@ -44,6 +33,7 @@ interface ProcessedSubmission {
   submittedAt?: Date | null;
   family?: string | null;
   lastSyncAttempt?: Date | null;
+  project_module_id: number;
 }
 
 const SubmissionListByModuleScreen = () => {
@@ -51,31 +41,13 @@ const SubmissionListByModuleScreen = () => {
     submodId: string;
   }>();
 
-  const [activeTab, setActiveTab] = useState<"all" | "synced" | "pending">(
-    "all"
-  );
+  const [activeTab, setActiveTab] = useState<"all" | "synced" | "pending">("all");
   const { surveySubmissions } = useGetAllSurveySubmissions();
 
   if (!submodId) {
     return (
       <View>
-        <Text>Missing module or family id</Text>
-        <Button onPress={() => router.replace("/(home)")}>
-          <Text>Go to Home</Text>
-        </Button>
-      </View>
-    );
-  }
-
-  const storedModules = useGetAllModules();
-
-  const currentModule = storedModules.modules.find(
-    (module: IModule | null) => module?.id === parseInt(submodId)
-  );
-  if (!currentModule) {
-    return (
-      <View>
-        <Text>Module not found</Text>
+        <Text>Missing module id</Text>
         <Button onPress={() => router.replace("/(home)")}>
           <Text>Go to Home</Text>
         </Button>
@@ -98,10 +70,7 @@ const SubmissionListByModuleScreen = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchFormByProjectAndModuleFromRemote(
-      currentModule?.project_id,
-      parseInt(submodId)
-    );
+    // Add your refresh logic here if needed
     setRefreshing(false);
   };
 
@@ -110,7 +79,6 @@ const SubmissionListByModuleScreen = () => {
   const filteredAndSortedSubmissions = useMemo(() => {
     const processed: ProcessedSubmission[] = Array.from(surveySubmissions).map(
       (sub: any) => ({
-        // Cast sub to any
         _id: sub._id.toString(),
         table_name: sub.table_name,
         sync_status: sub.sync_status,
@@ -119,11 +87,12 @@ const SubmissionListByModuleScreen = () => {
         submittedAt: sub.submittedAt,
         family: sub.family,
         lastSyncAttempt: sub.lastSyncAttempt,
+        project_module_id: sub.project_module_id,
       })
     );
 
     const filtered = processed.filter((submission: ProcessedSubmission) => {
-      if (submission.source_module_id !== parseInt(submodId)) return false;
+      if (submission?.project_module_id !== parseInt(submodId)) return false;
 
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
@@ -137,7 +106,6 @@ const SubmissionListByModuleScreen = () => {
         );
       }
 
-      // Filter by sync status
       switch (activeTab) {
         case "synced":
           return submission.sync_status;
@@ -236,11 +204,7 @@ const SubmissionListByModuleScreen = () => {
                 >
                   {item.sync_status ? (
                     <View className="flex-row items-center">
-                      <CheckCheckIcon
-                        size={24}
-                        color="green"
-                        className="mr-1"
-                      />
+                      <CheckCheckIcon size={24} color="green" className="mr-1" />
                     </View>
                   ) : (
                     <View>

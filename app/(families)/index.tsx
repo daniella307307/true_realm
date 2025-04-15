@@ -20,6 +20,8 @@ import { useGetAllModules, useGetAllProjects } from "~/services/project";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useGetFormByProjectAndModule } from "~/services/formElements";
+import { Survey } from "~/models/surveys/survey";
 
 const FamiliesPage = () => {
   const { t } = useTranslation();
@@ -60,12 +62,21 @@ const FamiliesPage = () => {
       (module: IModule | null) =>
         module?.project_id === 3 &&
         module?.module_status !== 0 &&
-        module?.module_name !== "Uncategorized" &&
         (!searchQuery ||
           module?.module_name.toLowerCase().includes(searchQuery))
     )
     .filter((module: IModule | null): module is IModule => module !== null)
     .sort((a: IModule, b: IModule) => (a?.order_list || 0) - (b?.order_list || 0));
+
+  // Check if we have an uncategorized module
+  const uncategorizedModule = filteredModules?.find(module => module.module_name.toLowerCase().includes('uncategorize'));
+
+  // Get forms for the uncategorized module if it exists
+  const { filteredForms: uncategorizedForms, isLoading: isUncategorizedFormsLoading } = useGetFormByProjectAndModule(
+    uncategorizedModule?.project_id || 0,
+    uncategorizedModule?.source_module_id || 0,
+    uncategorizedModule?.id || 0
+  );
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -84,7 +95,7 @@ const FamiliesPage = () => {
         keyboardType="default"
         accessibilityLabel={t("ModulePage.search_module")}
       />
-      {riskOfHarmModule && (
+      {riskOfHarmModule && !uncategorizedModule && (
         <TouchableOpacity
           onPress={() => router.push(`/(forms)/${riskOfHarmModuleId}`)}
           className="p-4 border mb-4 border-red-500 rounded-xl"
@@ -109,7 +120,7 @@ const FamiliesPage = () => {
   );
 
   const renderContent = () => {
-    if (isModulesLoading || isProjectsLoading) {
+    if (isModulesLoading || isProjectsLoading || isUncategorizedFormsLoading) {
       return (
         <View className="mt-6">
           {[1, 2, 3].map((item) => (
@@ -122,6 +133,56 @@ const FamiliesPage = () => {
     return null;
   };
 
+  const renderItem = ({ item }: { item: IModule | Survey }) => {
+    if ('module_name' in item) {
+      // This is a module
+      return (
+        <TouchableOpacity
+          onPress={() => router.push(`/(forms)/${item.source_module_id}`)}
+          className="p-4 border mb-4 border-gray-200 rounded-xl"
+        >
+          <View className="flex-row items-center pr-4 justify-start">
+            <TabBarIcon
+              name="chat"
+              family="MaterialIcons"
+              size={24}
+              color="#71717A"
+            />
+            <Text className="text-lg ml-2 font-semibold">
+              {item.module_name}
+            </Text>
+          </View>
+          <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
+            {item.module_description}
+          </Text>
+        </TouchableOpacity>
+      );
+    } else {
+      // This is a form
+      return (
+        <TouchableOpacity
+          onPress={() => router.push(`/(form-element)/${item.id}?project_id=${uncategorizedModule?.project_id}`)}
+          className="p-4 border mb-4 border-gray-200 rounded-xl"
+        >
+          <View className="flex-row items-center pr-4 justify-start">
+            <TabBarIcon
+              name="description"
+              family="MaterialIcons"
+              size={24}
+              color="#71717A"
+            />
+            <Text className="text-lg ml-2 font-semibold">
+              {item.name}
+            </Text>
+          </View>
+          <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
+            FORM
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation
@@ -129,14 +190,14 @@ const FamiliesPage = () => {
         showRight={true}
         title={t("ModulePage.title")}
       />
-      <FlatList<IModule>
-        data={filteredModules || []}
+      <FlatList
+        data={uncategorizedModule ? uncategorizedForms || [] : filteredModules || []}
         keyExtractor={(item, index) => `${item.id}-${index}`}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={ListHeaderComponent}
         ListHeaderComponentStyle={{ paddingTop: 16 }}
         ListEmptyComponent={() =>
-          isModulesLoading || isProjectsLoading ? (
+          isModulesLoading || isProjectsLoading || isUncategorizedFormsLoading ? (
             renderContent()
           ) : (
             <EmptyDynamicComponent />
@@ -147,27 +208,7 @@ const FamiliesPage = () => {
           paddingBottom: insets.bottom + 24,
           flexGrow: 1,
         }}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => router.push(`/(forms)/${item.source_module_id}`)}
-            className="p-4 border mb-4 border-gray-200 rounded-xl"
-          >
-            <View className="flex-row items-center pr-4 justify-start">
-              <TabBarIcon
-                name="chat"
-                family="MaterialIcons"
-                size={24}
-                color="#71717A"
-              />
-              <Text className="text-lg ml-2 font-semibold">
-                {item.module_name}
-              </Text>
-            </View>
-            <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
-              {item.module_description}
-            </Text>
-          </TouchableOpacity>
-        )}
+        renderItem={renderItem}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }

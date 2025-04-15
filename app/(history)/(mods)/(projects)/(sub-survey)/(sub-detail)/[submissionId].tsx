@@ -20,11 +20,14 @@ const SubmissionDetailScreen = () => {
   const { surveySubmissions, isLoading: isLoadingSubmissions } =
     useGetAllSurveySubmissions();
 
+    console.log("Submission _id: ", submissionId);
+  console.log("Survey Submissions in submissionsID file: ", JSON.stringify(surveySubmissions, null, 2));
+
   const submission = surveySubmissions.find(
     (sub) => sub._id.toString() === submissionId
   );
 
-  const { data: families, isLoading: familiesLoading } = useGetFamilies();
+  const { families, isLoading: familiesLoading } = useGetFamilies();
 
   const foundFamily = families?.find((fam) => fam.hh_id === submission?.family);
 
@@ -85,7 +88,7 @@ const SubmissionDetailScreen = () => {
     return (
       <View className="flex-1 justify-center items-center p-4 bg-background">
         <Text className="text-lg text-destructive mb-4">
-          Submission not found.
+          Submission not found .....
         </Text>
         <Button onPress={() => router.back()}>
           <Text>Go Back</Text>
@@ -130,7 +133,7 @@ const SubmissionDetailScreen = () => {
                   : "-"}
               </Text>
               <Text className="text-gray-600">
-                Time Spent: {submission?.timeSpentFormatted ?? "-"}
+                Time Spent: {submission?.Time_spent_filling_the_form ?? "-"}
               </Text>
               <Text className="text-gray-600">
                 Status: {submission?.sync_status ? "Synced" : "Pending"}

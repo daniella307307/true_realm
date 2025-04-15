@@ -575,6 +575,7 @@ export interface IModule {
     order_list: number;
     created_at?: Date;
     updated_at?: Date;
+    project_module_id?: number;
 }
 
 export interface FormField {
