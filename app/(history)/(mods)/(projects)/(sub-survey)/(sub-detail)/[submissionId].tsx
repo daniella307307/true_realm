@@ -7,21 +7,20 @@ import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { format } from "date-fns";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useGetFormById } from "~/services/formElements";
 import { useGetFamilies } from "~/services/families";
 
 const SubmissionDetailScreen = () => {
-  const { submissionId } = useLocalSearchParams<{
+  const { submissionId, project_id, source_module_id } = useLocalSearchParams<{
     submissionId: string;
+    project_id: string;
+    source_module_id: string;
   }>();
   const { t } = useTranslation();
 
   const { surveySubmissions, isLoading: isLoadingSubmissions } =
     useGetAllSurveySubmissions();
-
-    console.log("Submission _id: ", submissionId);
-  console.log("Survey Submissions in submissionsID file: ", JSON.stringify(surveySubmissions, null, 2));
 
   const submission = surveySubmissions.find(
     (sub) => sub._id.toString() === submissionId
@@ -32,7 +31,10 @@ const SubmissionDetailScreen = () => {
   const foundFamily = families?.find((fam) => fam.hh_id === submission?.family);
 
   const { form, isLoading: isLoadingSurvey } = useGetFormById(
-    submission?.survey_id ?? 0
+    submission?.survey_id ?? 0,
+    submission?.project_module_id ?? 0,
+    submission?.source_module_id ?? 0,
+    submission?.project_id ?? 0
   );
 
   const fieldLabelMap = useMemo(() => {

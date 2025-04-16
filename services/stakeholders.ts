@@ -28,7 +28,6 @@ export function useGetStakeholders(forceSync: boolean = false) {
     },
   ]);
 
-  console.log("storedStakeholders length", storedStakeholders.length);
   return {
     stakeholders: storedStakeholders,
     isLoading: syncStatus.stakeholders?.isLoading || false,

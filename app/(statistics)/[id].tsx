@@ -62,8 +62,11 @@ const StatisticsDetailScreen = () => {
         title={t("StatisticsPage.statistics")}
       />
       <View className="flex-1 p-4 bg-white">
+      <Text className="text-lg font-semibold pb-6 text-primary">
+            {t("StatisticsPage.all_cohorts", "All Cohorts")}
+          </Text>
         {/* All Cohorts Card */}
-        <Pressable
+        {/* <Pressable
           onPress={() => router.push(`/statistics/${id}/${izu?.id}`)}
           className="p-4 border border-primary rounded-xl mb-4"
         >
@@ -73,7 +76,7 @@ const StatisticsDetailScreen = () => {
           <Text className="text-gray-500 mt-1">
             {t("StatisticsPage.view_all_cohorts", "View all cohorts")}
           </Text>
-        </Pressable>
+        </Pressable> */}
 
         {/* Grouped Cohorts */}
         {cohortTypes.map((type) => (

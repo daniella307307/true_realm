@@ -55,6 +55,8 @@ const SubmissionListByModuleScreen = () => {
     );
   }
 
+  console.log("Survey Submissions in submissionsID file: ", JSON.stringify(surveySubmissions, null, 2));
+  console.log("SubmodId: ", submodId);
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -190,7 +192,7 @@ const SubmissionListByModuleScreen = () => {
 
           return (
             <TouchableOpacity
-              onPress={() => router.push(`/(sub-detail)/${item._id}`)}
+              onPress={() => router.push(`/(sub-detail)/${item._id}?project_module_id=${item.project_module_id}&source_module_id=${item.source_module_id}`)}
               className="p-4 border mb-4 border-gray-200 rounded-xl bg-white"
             >
               <View className="flex-row items-center justify-between mb-2">
@@ -228,12 +230,12 @@ const SubmissionListByModuleScreen = () => {
                     )}
                   </>
                 )}
-                <Text className="text-sm text-gray-600">
+                {/* <Text className="text-sm text-gray-600">
                   {t("History.surveyId", "Survey ID")}: {item.survey_id}
                 </Text>
                 <Text className="text-sm text-gray-600">
                   {t("History.moduleId", "Module ID")}: {item.source_module_id}
-                </Text>
+                </Text> */}
                 <Text className="text-sm text-gray-600">
                   {t("History.createdAt", "Created At")}:{" "}
                   {item.submittedAt

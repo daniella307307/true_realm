@@ -97,7 +97,7 @@ const FamiliesPage = () => {
       />
       {riskOfHarmModule && !uncategorizedModule && (
         <TouchableOpacity
-          onPress={() => router.push(`/(forms)/${riskOfHarmModuleId}`)}
+          onPress={() => router.push(`/(forms)/${riskOfHarmModuleId}?project_id=${riskOfHarmModule?.project_id}&source_module_id=${riskOfHarmModule?.source_module_id}&project_module_id=${riskOfHarmModule?.id}`)}
           className="p-4 border mb-4 border-red-500 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">
@@ -111,9 +111,9 @@ const FamiliesPage = () => {
               {t("ModulePage.risk_of_harm")}
             </Text>
           </View>
-          <Text className="text-sm py-2 text-red-600">
+          {/* <Text className="text-sm py-2 text-red-600">
             {t("ModulePage.risk_of_harm_description")}
-          </Text>
+          </Text> */}
         </TouchableOpacity>
       )}
     </View>
@@ -138,7 +138,7 @@ const FamiliesPage = () => {
       // This is a module
       return (
         <TouchableOpacity
-          onPress={() => router.push(`/(forms)/${item.source_module_id}`)}
+          onPress={() => router.push(`/(forms)/${item.id}?project_id=${item.project_id}&source_module_id=${item.source_module_id}&project_module_id=${item.id}`)}
           className="p-4 border mb-4 border-gray-200 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">
@@ -152,16 +152,16 @@ const FamiliesPage = () => {
               {item.module_name}
             </Text>
           </View>
-          <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
+          {/* <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
             {item.module_description}
-          </Text>
+          </Text> */}
         </TouchableOpacity>
       );
     } else {
       // This is a form
       return (
         <TouchableOpacity
-          onPress={() => router.push(`/(form-element)/${item.id}?project_id=${uncategorizedModule?.project_id}`)}
+          onPress={() => router.push(`/(form-element)/${item.id}?project_id=${uncategorizedModule?.project_id}&source_module_id=${uncategorizedModule?.source_module_id}&project_module_id=${uncategorizedModule?.id}`)}
           className="p-4 border mb-4 border-gray-200 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">

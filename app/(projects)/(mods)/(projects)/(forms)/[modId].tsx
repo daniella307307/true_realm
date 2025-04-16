@@ -115,6 +115,16 @@ const ProjectFormsScreen = () => {
     });
   }, [filteredForms, searchQuery]);
 
+  // 247
+  console.log("Filtered Forms: ", JSON.stringify(
+    filteredForms.map((form) => ({
+      ...form,
+      json: undefined
+    })),
+    null,
+    2
+  ));
+  console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
   const ListHeaderComponent = useCallback(
     () => (
       <CustomInput
@@ -182,7 +192,7 @@ const ProjectFormsScreen = () => {
           <TouchableOpacity
             onPress={() =>
               router.push(
-                `/(projects)/(mods)/(projects)/(form-element)/${item.id}?project_id=${currentModule.project_id}`
+                `/(projects)/(mods)/(projects)/(form-element)/${item.id}?project_module_id=${currentModule.id}&source_module_id=${currentModule.source_module_id}&project_id=${currentModule.project_id}`
               )
             }
             className="p-4 border mb-4 border-gray-200 rounded-xl"

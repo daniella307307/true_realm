@@ -6,7 +6,6 @@ import { Text } from "~/components/ui/text";
 import Skeleton from "~/components/ui/skeleton";
 import { useGetFormById } from "~/services/formElements";
 import FormFlowManager from "~/components/FormFlowManager";
-import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { IFormSubmissionDetail } from "~/types";
 import HeaderNavigation from "~/components/ui/header";
@@ -14,16 +13,25 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ProjectFormElementScreen = () => {
-  const { formId, project_id } = useLocalSearchParams<{
-    formId: string;
-    project_id: string;
-  }>();
+  const { formId, project_module_id, source_module_id, project_id } =
+    useLocalSearchParams<{
+      formId: string;
+      project_module_id: string;
+      source_module_id: string;
+      project_id: string;
+    }>();
   const insets = useSafeAreaInsets();
   const formIdNumber = parseInt(formId);
-  const projectIdNumber = parseInt(project_id);
+  console.log("Form ID: ", formIdNumber);
+  const projectIdNumber = parseInt(project_module_id);
+  console.log("Project Module ID: ", projectIdNumber);
+  const sourceModuleId = parseInt(source_module_id);
+  console.log("Source Module ID: ", sourceModuleId);
+  const projectId = parseInt(project_id);
+  console.log("Project ID: ", projectId);
   const { user } = useAuth({});
 
-  if (!formId || !project_id) {
+  if (!formId || !project_module_id) {
     return (
       <View>
         <Text>Missing form or project ID</Text>
@@ -32,7 +40,12 @@ const ProjectFormElementScreen = () => {
     );
   }
 
-  const { form, isLoading } = useGetFormById(parseInt(formId));
+  const { form, isLoading } = useGetFormById(
+    parseInt(formId),
+    parseInt(project_module_id),
+    parseInt(source_module_id),
+    parseInt(project_id)
+  );
   const parsedForm = form?.json2
     ? typeof form.json2 === "string"
       ? JSON.parse(form.json2)
@@ -59,6 +72,7 @@ const ProjectFormElementScreen = () => {
     userId: user?.id ?? 0,
   };
 
+  console.log("Form Structure: ", JSON.stringify(formStructure, null, 2));
   const { t } = useTranslation();
 
   return (
@@ -86,4 +100,4 @@ const ProjectFormElementScreen = () => {
   );
 };
 
-export default ProjectFormElementScreen; 
+export default ProjectFormElementScreen;

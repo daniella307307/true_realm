@@ -28,8 +28,9 @@ import { useGetStakeholders } from "~/services/stakeholders";
 import { useTranslation } from "react-i18next";
 
 const HomeScreen = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const { user, logout } = useAuth({
     onLogout: () => {
       router.push("/(user-management)/login");
@@ -105,25 +106,36 @@ const HomeScreen = () => {
     },
   ];
 
+  const refreshAllData = React.useCallback(async () => {
+    try {
+      setIsLoading(true);
+      await Promise.all([
+        refreshProjects(),
+        refreshFamilies(),
+        refreshForms(),
+        refreshIzus(),
+        refreshPosts(),
+        refreshStakeholders()
+      ]);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+      setIsInitialLoad(false);
+    }
+  }, [refreshProjects, refreshFamilies, refreshForms, refreshIzus, refreshPosts, refreshStakeholders]);
+
+  useEffect(() => {
+    if (isInitialLoad) {
+      refreshAllData();
+    }
+  }, [isInitialLoad, refreshAllData]);
+
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    
-    Promise.all([
-      refreshProjects(),
-      refreshFamilies(),
-      refreshForms(),
-      refreshIzus(),
-      refreshPosts(),
-      refreshStakeholders()
-    ])
-      .then(() => {
-        setRefreshing(false);
-      })
-      .catch((error) => {
-        console.error('Error refreshing data:', error);
-        setRefreshing(false);
-      });
-  }, [refreshProjects, refreshFamilies, refreshForms, refreshIzus, refreshPosts, refreshStakeholders]);
+    refreshAllData();
+  }, [refreshAllData]);
 
   // Render list view for small screens
   const renderListView = () => (
@@ -131,7 +143,7 @@ const HomeScreen = () => {
       {activeLinks.map((link, index) => (
         <TouchableOpacity
           onPress={() => {
-            if (!refreshing) {
+            if (!isLoading && !refreshing) {
               router.push({
                 pathname: "/(page-auth)/pin-auth",
                 params: { next: link.route },
@@ -140,7 +152,7 @@ const HomeScreen = () => {
           }}
           key={index}
           className={`flex flex-row items-center bg-[#A23A910D] border border-[#0000001A] mb-3 py-4 px-4 rounded-xl ${
-            refreshing ? "opacity-50" : ""
+            (isLoading || refreshing) ? "opacity-50" : ""
           }`}
         >
           <View className="mr-4">{link.icon}</View>
@@ -158,7 +170,7 @@ const HomeScreen = () => {
       {activeLinks.map((link, index) => (
         <TouchableOpacity
           onPress={() => {
-            if (!refreshing) {
+            if (!isLoading && !refreshing) {
               router.push({
                 pathname: "/(page-auth)/pin-auth",
                 params: { next: link.route },
@@ -168,7 +180,7 @@ const HomeScreen = () => {
           key={index}
           style={{ width: itemWidth }}
           className={`flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl ${
-            refreshing ? "opacity-50" : ""
+            (isLoading || refreshing) ? "opacity-50" : ""
           }`}
         >
           <>{link.icon}</>
@@ -203,7 +215,7 @@ const HomeScreen = () => {
         </View>
 
         {/* Show loading indicator if data is being loaded */}
-        {isLoading && (
+        {(isLoading || refreshing) && (
           <View className="p-4">
             <Text className="text-center text-gray-500">
               {t("Loading data...")}
@@ -215,8 +227,8 @@ const HomeScreen = () => {
         {isSmallScreen ? renderListView() : renderGridView()}
       </ScrollView>
 
-      {/* Blur overlay when refreshing */}
-      {refreshing && (
+      {/* Blur overlay when refreshing or loading */}
+      {(isLoading || refreshing) && (
         <BlurView
           intensity={50}
           tint="light"

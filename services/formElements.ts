@@ -52,7 +52,6 @@ export function useGetForms(forceSync: boolean = false) {
     },
   ]);
 
-  console.log("storedForms length", storedForms.length);
   return {
     forms: storedForms,
     isLoading: syncStatus.forms?.isLoading || false,
@@ -106,10 +105,10 @@ export function useGetFormByProjectAndModule(
   };
 }
 
-export function useGetFormById(formId: number) {
+export function useGetFormById(formId: number, project_module_id: number, source_module_id: number, project_id: number) {
   const { forms, isLoading, error, lastSyncTime, refresh } = useGetForms();
   const form = useMemo(() => {
-    return forms.find((form) => form.id === formId);
-  }, [forms, formId]);
+    return forms.find((form) => form.id === formId && form.project_module_id === project_module_id && form.source_module_id === source_module_id && form.project_id === project_id);
+  }, [forms, formId, project_module_id, source_module_id, project_id]);
   return { form, isLoading, error, lastSyncTime, refresh };
 }

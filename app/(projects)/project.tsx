@@ -92,7 +92,7 @@ const ProjectScreen = () => {
             {item.name}
           </Text>
         </View>
-        <Text className="text-sm py-2 text-gray-600">{item.description}</Text>
+        {/* <Text className="text-sm py-2 text-gray-600">{item.description}</Text> */}
       </TouchableOpacity>
     );
   };

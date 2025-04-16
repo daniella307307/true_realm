@@ -75,13 +75,10 @@ export const saveSurveySubmission = async (
 
         // @ts-ignore
         delete decodedSubmission.answers;
-
-        console.log("decodedSubmission: ", JSON.stringify(decodedSubmission, null, 2));
         
         const response = await baseInstance.post(formData.post_data, decodedSubmission);
-
         console.log("response: ", JSON.stringify(response.data, null, 2));
-        // If API submission is successful and has result object
+        
         if (response.data.result) {
           console.log("API submission successful and has result object");
           realm.write(() => {

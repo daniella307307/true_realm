@@ -143,7 +143,7 @@ const CohortStatisticsScreen = () => {
         {Object.entries(groupedRisks).map(([status, risks]) => (
           <Card key={status} className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
             <Text className="text-lg font-semibold mb-2">
-              {status}
+              {status === "followup" ? t("StatisticsPage.followup", "Submitted") : status === "pending" ? t("StatisticsPage.pending", "Pending") : t("StatisticsPage.resolved", "Resolved")}
             </Text>
             <Text className="text-2xl font-bold text-primary">
               {risks.length}

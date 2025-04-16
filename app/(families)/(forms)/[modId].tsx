@@ -31,15 +31,21 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 const ProjectFormsScreen = () => {
-  const { modId, project_id } = useLocalSearchParams<{
-    modId: string;
-    project_id: string;
-  }>();
+  const { modId, project_id, source_module_id, project_module_id } =
+    useLocalSearchParams<{
+      modId: string;
+      project_id: string;
+      source_module_id: string;
+      project_module_id: string;
+    }>();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
-  console.log("Source Module ID: ", modId);
+  console.log("ID: ", modId);
   console.log("Project ID: ", project_id);
+  console.log("Source Module ID: ", source_module_id);
+  console.log("Project Module ID: ", project_module_id);
+
   if (!modId) {
     return (
       <View className="flex-1 justify-center items-center bg-background p-4">
@@ -58,6 +64,8 @@ const ProjectFormsScreen = () => {
   } = useGetAllModules();
   const moduleId = parseInt(modId);
   const projectId = parseInt(project_id);
+  const sourceModuleId = parseInt(source_module_id);
+  const projectModuleId = parseInt(project_module_id);
 
   const currentModule = useMemo(() => {
     if (!modules) return null;
@@ -73,10 +81,14 @@ const ProjectFormsScreen = () => {
             module.project_id === 17
           );
         }
-        return module.source_module_id === moduleId && module.project_id === projectId;
+        return (
+          module.source_module_id === sourceModuleId &&
+          module.project_id === projectId &&
+          module.id === projectModuleId
+        );
       }) || null
     );
-  }, [modules, moduleId]);
+  }, [modules, moduleId, sourceModuleId, projectId, projectModuleId]);
 
   console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
 
@@ -208,7 +220,7 @@ const ProjectFormsScreen = () => {
           <TouchableOpacity
             onPress={() =>
               router.push(
-                `/(form-element)/${item.id}?project_id=${currentModule.project_id}`
+                `/(form-element)/${item.id}?project_id=${currentModule.project_id}&source_module_id=${currentModule.source_module_id}&project_module_id=${currentModule.id}`
               )
             }
             className="p-4 border mb-4 border-gray-200 rounded-xl"

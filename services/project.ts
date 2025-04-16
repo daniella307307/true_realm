@@ -38,8 +38,6 @@ export function useGetAllProjects(forceSync: boolean = false) {
     },
   ]);
 
-  console.log("storedProjects length", storedProjects.length);
-
   return {
     projects: storedProjects,
     isLoading: syncStatus.projects?.isLoading || false,
@@ -96,8 +94,6 @@ export function useGetAllModules() {
         .filter(Boolean); // Remove any null values from failed parses
     });
   }, [projects]);
-
-  console.log("modules length", modules.length);
 
   return {
     modules,

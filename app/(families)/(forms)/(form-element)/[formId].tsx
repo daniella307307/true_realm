@@ -14,15 +14,22 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const FormElementIndexScreen = () => {
-  const { formId, project_id } = useLocalSearchParams<{
-    formId: string;
-    project_id: string;
-  }>();
+  const { formId, project_id, source_module_id, project_module_id } =
+    useLocalSearchParams<{
+      formId: string;
+      project_id: string;
+      source_module_id: string;
+      project_module_id: string;
+    }>();
   const insets = useSafeAreaInsets();
   const formIdNumber = parseInt(formId);
   const projectIdNumber = parseInt(project_id);
+  const sourceModuleId = parseInt(source_module_id);
+  const projectModuleId = parseInt(project_module_id);
   console.log("Form ID: ", formIdNumber);
   console.log("Project ID: ", projectIdNumber);
+  console.log("Source Module ID: ", sourceModuleId);
+  console.log("Project Module ID: ", projectModuleId);
   const { user } = useAuth({});
 
   if (!formId || !project_id) {
@@ -34,7 +41,12 @@ const FormElementIndexScreen = () => {
     );
   }
 
-  const { form, isLoading } = useGetFormById(parseInt(formId));
+  const { form, isLoading } = useGetFormById(
+    parseInt(formId),
+    projectModuleId,
+    sourceModuleId,
+    projectIdNumber
+  );
   const parsedForm = form?.json2
     ? typeof form.json2 === "string"
       ? JSON.parse(form.json2)

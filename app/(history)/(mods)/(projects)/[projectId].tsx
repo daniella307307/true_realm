@@ -73,11 +73,6 @@ const ProjectModuleScreens = () => {
       module.project_id === Number(projectId)
   );
 
-  console.log(
-    "Uncategorized Module: ",
-    JSON.stringify(uncategorizedModule, null, 2)
-  );
-
   // Get forms for the uncategorized module if it exists
   const {
     filteredForms: uncategorizedForms,
@@ -104,11 +99,6 @@ const ProjectModuleScreens = () => {
         .map((submission) => submission.source_module_id)
     );
 
-    console.log(
-      "Module IDs with Submissions: ",
-      JSON.stringify(moduleIdsWithSubmissions, null, 2)
-    );
-
     return modules
       .filter(
         (module: IModule | null): module is IModule =>
@@ -126,8 +116,6 @@ const ProjectModuleScreens = () => {
       )
       .sort((a, b) => a.order_list - b.order_list);
   }, [modules, surveySubmissions, projectId, searchQuery]);
-
-  console.log("filteredModules", JSON.stringify(filteredModules, null, 2));
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -178,16 +166,13 @@ const ProjectModuleScreens = () => {
               {item.module_name}
             </Text>
           </View>
-          <Text className="py-2 text-xs/1 text-gray-600">
-            {item.module_description}
-          </Text>
           <View className="flex flex-col justify-between items-start mt-2">
             <Text className="text-sm text-gray-500">
               {t("History.submissions", "Submissions")}:{" "}
               {moduleSubmissions.length}
             </Text>
             <Text className="text-sm text-gray-500">
-              Last Submisasion:{" "}
+              Last Submission:{" "}
               {lastSubmission
                 ? new Date(lastSubmission).toLocaleDateString("en-GB", {
                     day: "2-digit",

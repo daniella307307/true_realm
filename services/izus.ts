@@ -31,8 +31,6 @@ export function useGetIzus(forceSync: boolean = false) {
     },
   ]);
 
-  console.log("storedIzus length", storedIzus.length);
-
   return {
     izus: storedIzus,
     isLoading: syncStatus.izus?.isLoading || false,

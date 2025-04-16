@@ -27,7 +27,6 @@ export function useGetFamilies(forceSync: boolean = false) {
       staleTime: 5 * 60 * 1000, // 5 minutes
       forceSync,
       transformData: (data: { families: IFamilies[] }) => {
-        console.log("data", data?.families.length);
         return data.families.map((fam) => ({
           ...fam,
           created_at: new Date().toISOString(),
@@ -38,7 +37,6 @@ export function useGetFamilies(forceSync: boolean = false) {
     },
   ]);
 
-  console.log("storedFamilies", storedFamilies.length);
   return {
     families: storedFamilies,
     isLoading: syncStatus.families?.isLoading || false,

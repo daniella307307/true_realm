@@ -115,16 +115,16 @@ const ProjectModuleScreens = () => {
               {item.module_name}
             </Text>
           </View>
-          <Text className="py-2 text-xs/1 text-gray-600">
+          {/* <Text className="py-2 text-xs/1 text-gray-600">
             {item.module_description}
-          </Text>
+          </Text> */}
         </TouchableOpacity>
       );
     } else {
       // This is a form
       return (
         <TouchableOpacity
-          onPress={() => router.push(`/(projects)/(mods)/(projects)/(form-element)/${item.id}?project_id=${uncategorizedModule?.project_id}`)}
+          onPress={() => router.push(`/(projects)/(mods)/(projects)/(form-element)/${item.id}?project_id=${uncategorizedModule?.project_id}&source_module_id=${uncategorizedModule?.source_module_id}&project_module_id=${uncategorizedModule?.id}`)}
           className="p-4 border mb-4 border-gray-200 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">
@@ -138,9 +138,9 @@ const ProjectModuleScreens = () => {
               {item.name}
             </Text>
           </View>
-          <Text className="py-2 text-xs/1 text-gray-600">
+          {/* <Text className="py-2 text-xs/1 text-gray-600">
             FORM
-          </Text>
+          </Text> */}
         </TouchableOpacity>
       );
     }

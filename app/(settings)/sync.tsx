@@ -20,6 +20,12 @@ import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
 import { useGetFamilies } from "~/services/families";
 import { useGetIzus } from "~/services/izus";
+import { Survey } from "~/models/surveys/survey";
+import { Module } from "~/models/modules/module";
+import { Stakeholder } from "~/models/stakeholders/stakeholder";
+import { Families } from "~/models/family/families";
+import { Izu } from "~/models/izus/izu";
+import { IModule, IProject } from "~/types";
 const { useRealm, useQuery } = RealmContext;
 
 interface SyncItem {
@@ -52,7 +58,6 @@ const SyncPage = () => {
   });
 
   const { refresh: refreshProjects } = useGetAllProjects(true);
-  const { modules, refresh: refreshModules } = useGetAllModules();
   const { surveySubmissions } = useGetAllSurveySubmissions();
   const { refresh: refreshStakeholders } = useGetStakeholders(true);
   const { refresh: refreshForms } = useGetForms(true);
@@ -72,7 +77,7 @@ const SyncPage = () => {
     setLastSyncDate(null);
     setCurrentSyncItem("");
     let successCount = 0;
-    const totalItems = 4;
+    const totalItems = 5; // Updated to reflect combined projects/modules
     let hasErrors = false;
 
     // Reset sync statuses
@@ -86,35 +91,51 @@ const SyncPage = () => {
     });
 
     try {
-      // Sync Projects
+      // Sync Projects and Modules together
       setCurrentSyncItem("Projects");
-      setSyncStatuses((prev) => ({ ...prev, Projects: "Syncing" }));
+      setSyncStatuses((prev) => ({
+        ...prev,
+        Projects: "Syncing",
+        Modules: "Syncing",
+      }));
       try {
-        console.log("Starting Projects sync...");
+        console.log("Starting Projects and Modules sync...");
         await refreshProjects();
-        setSyncStatuses((prev) => ({ ...prev, Projects: "Success" }));
-        successCount++;
-        setSyncProgress((successCount / totalItems) * 100);
-        console.log("Projects sync completed successfully");
-      } catch (error) {
-        console.error("Error syncing projects:", error);
-        setSyncStatuses((prev) => ({ ...prev, Projects: "Failed" }));
-        hasErrors = true;
-      }
 
-      // Sync Modules
-      setCurrentSyncItem("Modules");
-      setSyncStatuses((prev) => ({ ...prev, Modules: "Syncing" }));
-      try {
-        console.log("Starting Modules sync...");
-        await refreshModules();
-        setSyncStatuses((prev) => ({ ...prev, Modules: "Success" }));
-        successCount++;
+        // Verify projects were stored
+        const storedProjects = realm.objects("Project");
+        if (!storedProjects || storedProjects.length === 0) {
+          throw new Error("Failed to store projects");
+        }
+        console.log("Projects stored", storedProjects.length);
+        // Verify modules were stored
+        const modules = storedProjects.flatMap((project: IProject | any) => {
+          return project?.project_modules.map((moduleString: string) => {
+            try {
+              return JSON.parse(moduleString) as IModule;
+            } catch (parseError) {
+              console.error("Error parsing module:", parseError);
+              return null;
+            }
+          });
+        });
+        console.log("Modules stored", modules.length);
+
+        setSyncStatuses((prev) => ({
+          ...prev,
+          Projects: "Success",
+          Modules: "Success",
+        }));
+        successCount += 2; // Count both projects and modules as successful
         setSyncProgress((successCount / totalItems) * 100);
-        console.log("Modules sync completed successfully");
+        console.log("Projects and Modules sync completed successfully");
       } catch (error) {
-        console.error("Error syncing modules:", error);
-        setSyncStatuses((prev) => ({ ...prev, Modules: "Failed" }));
+        console.error("Error syncing projects and modules:", error);
+        setSyncStatuses((prev) => ({
+          ...prev,
+          Projects: "Failed",
+          Modules: "Failed",
+        }));
         hasErrors = true;
       }
 
@@ -124,6 +145,12 @@ const SyncPage = () => {
       try {
         console.log("Starting Forms sync...");
         await refreshForms();
+        // Verify forms were stored by checking the realm
+        const storedForms = realm.objects(Survey);
+        if (!storedForms || storedForms.length === 0) {
+          throw new Error("Failed to store forms");
+        }
+        console.log("Forms stored", storedForms.length);
         setSyncStatuses((prev) => ({ ...prev, Forms: "Success" }));
         successCount++;
         setSyncProgress((successCount / totalItems) * 100);
@@ -140,9 +167,15 @@ const SyncPage = () => {
       try {
         console.log("Starting Stakeholders sync...");
         await refreshStakeholders();
+        // Verify stakeholders were stored by checking the realm
+        const storedStakeholders = realm.objects(Stakeholder);
+        if (!storedStakeholders || storedStakeholders.length === 0) {
+          throw new Error("Failed to store stakeholders");
+        }
         setSyncStatuses((prev) => ({ ...prev, Stakeholders: "Success" }));
         successCount++;
         setSyncProgress((successCount / totalItems) * 100);
+        console.log("Stakeholders stored", storedStakeholders.length);
         console.log("Stakeholders sync completed successfully");
       } catch (error) {
         console.error("Error syncing stakeholders:", error);
@@ -150,14 +183,21 @@ const SyncPage = () => {
         hasErrors = true;
       }
 
+      // Sync Families
       setCurrentSyncItem("Families");
       setSyncStatuses((prev) => ({ ...prev, Families: "Syncing" }));
       try {
         console.log("Starting Families sync...");
         await refreshFamilies();
+        // Verify families were stored by checking the realm
+        const storedFamilies = realm.objects(Families);
+        if (!storedFamilies || storedFamilies.length === 0) {
+          throw new Error("Failed to store families");
+        }
         setSyncStatuses((prev) => ({ ...prev, Families: "Success" }));
         successCount++;
         setSyncProgress((successCount / totalItems) * 100);
+        console.log("Families stored", storedFamilies.length);
         console.log("Families sync completed successfully");
       } catch (error) {
         console.error("Error syncing families:", error);
@@ -171,34 +211,39 @@ const SyncPage = () => {
       try {
         console.log("Starting Izus sync...");
         await refreshIzus();
+        // Verify izus were stored by checking the realm
+        const storedIzus = realm.objects(Izu);
+        if (!storedIzus || storedIzus.length === 0) {
+          throw new Error("Failed to store izus");
+        }
         setSyncStatuses((prev) => ({ ...prev, Izus: "Success" }));
         successCount++;
         setSyncProgress((successCount / totalItems) * 100);
+        console.log("Izus stored", storedIzus.length);
         console.log("Izus sync completed successfully");
       } catch (error) {
         console.error("Error syncing izus:", error);
         setSyncStatuses((prev) => ({ ...prev, Izus: "Failed" }));
         hasErrors = true;
-      } finally {
-        setIsSyncing(false);
-        setSyncType(null);
-        setCurrentSyncItem("");
       }
 
-      setLastSyncDate(new Date());
-
-      // Show appropriate alert based on whether there were errors
-      if (hasErrors) {
+      // Only update last sync date and show alerts if we have valid confirmation
+      if (successCount === totalItems) {
+        setLastSyncDate(new Date());
+        Alert.alert("Success", "All components synced successfully");
+      } else if (hasErrors) {
         Alert.alert(
           "Partial Success",
           "Some components failed to sync. Check the status for details."
         );
-      } else {
-        Alert.alert("Success", "All components synced successfully");
       }
     } catch (error) {
       console.error("Error during sync:", error);
       Alert.alert("Error", "Failed to sync forms and surveys");
+    } finally {
+      setIsSyncing(false);
+      setSyncType(null);
+      setCurrentSyncItem("");
     }
   };
 
@@ -237,7 +282,10 @@ const SyncPage = () => {
             submission.post_data,
             decodedSubmission
           );
-          console.log(`Synced submission res: ${submission._id}`, response.data);
+          console.log(
+            `Synced submission res: ${submission._id}`,
+            response.data
+          );
 
           if (response.data || response.data.result) {
             // Update the local record after successful sync
@@ -260,7 +308,10 @@ const SyncPage = () => {
             });
             console.log("Error status", error.response?.status);
             console.log(`Sync status changed to saved ${submission._id}`);
-            console.log("Failed submission: ", JSON.stringify(submission, null, 2));
+            console.log(
+              "Failed submission: ",
+              JSON.stringify(submission, null, 2)
+            );
             syncedCount++;
           } else {
             console.log(`Error syncing submission: ${submission._id}`, error);
@@ -286,7 +337,7 @@ const SyncPage = () => {
         );
       } else {
         Alert.alert(
-          "Success", 
+          "Success",
           `Successfully synced ${syncedCount} submissions`
         );
       }
@@ -342,7 +393,7 @@ const SyncPage = () => {
       },
       {
         key: "data",
-        name: "Sync Data",
+        name: `Sync Data (${pendingSubmissions.length} pending)`,
         status:
           pendingSubmissions.length === 0
             ? "No Pending Submissions"
@@ -362,6 +413,7 @@ const SyncPage = () => {
       lastSyncDate,
       syncType,
       syncStatuses,
+      pendingSubmissions.length,
     ]
   );
 
