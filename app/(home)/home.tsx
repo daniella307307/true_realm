@@ -7,7 +7,10 @@ import {
   useWindowDimensions,
   ScrollView,
   TouchableOpacity,
+  RefreshControl,
+  StyleSheet,
 } from "react-native";
+import { BlurView } from "expo-blur";
 
 import { router } from "expo-router";
 
@@ -26,12 +29,22 @@ import { useTranslation } from "react-i18next";
 
 const HomeScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { user, logout } = useAuth({
     onLogout: () => {
       router.push("/(user-management)/login");
     },
   });
   const { t } = useTranslation();
+  
+  // Data fetching hooks
+  const { refresh: refreshProjects } = useGetAllProjects(true);
+  const { refresh: refreshFamilies } = useGetFamilies(true);
+  const { refresh: refreshForms } = useGetForms(true);
+  const { refresh: refreshIzus } = useGetIzus(true);
+  const { refresh: refreshPosts } = useGetPosts(true);
+  const { refresh: refreshStakeholders } = useGetStakeholders(true);
+
   // Get the screen width dynamically
   const { width } = useWindowDimensions();
 
@@ -92,19 +105,43 @@ const HomeScreen = () => {
     },
   ];
 
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    
+    Promise.all([
+      refreshProjects(),
+      refreshFamilies(),
+      refreshForms(),
+      refreshIzus(),
+      refreshPosts(),
+      refreshStakeholders()
+    ])
+      .then(() => {
+        setRefreshing(false);
+      })
+      .catch((error) => {
+        console.error('Error refreshing data:', error);
+        setRefreshing(false);
+      });
+  }, [refreshProjects, refreshFamilies, refreshForms, refreshIzus, refreshPosts, refreshStakeholders]);
+
   // Render list view for small screens
   const renderListView = () => (
     <View className="px-4">
       {activeLinks.map((link, index) => (
         <TouchableOpacity
           onPress={() => {
-            router.push({
-              pathname: "/(page-auth)/pin-auth",
-              params: { next: link.route },
-            });
+            if (!refreshing) {
+              router.push({
+                pathname: "/(page-auth)/pin-auth",
+                params: { next: link.route },
+              });
+            }
           }}
           key={index}
-          className="flex flex-row items-center bg-[#A23A910D] border border-[#0000001A] mb-3 py-4 px-4 rounded-xl"
+          className={`flex flex-row items-center bg-[#A23A910D] border border-[#0000001A] mb-3 py-4 px-4 rounded-xl ${
+            refreshing ? "opacity-50" : ""
+          }`}
         >
           <View className="mr-4">{link.icon}</View>
           <Text className="text-sm font-semibold text-gray-600 flex-1">
@@ -121,14 +158,18 @@ const HomeScreen = () => {
       {activeLinks.map((link, index) => (
         <TouchableOpacity
           onPress={() => {
-            router.push({
-              pathname: "/(page-auth)/pin-auth",
-              params: { next: link.route },
-            });
+            if (!refreshing) {
+              router.push({
+                pathname: "/(page-auth)/pin-auth",
+                params: { next: link.route },
+              });
+            }
           }}
           key={index}
           style={{ width: itemWidth }}
-          className="flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl"
+          className={`flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl ${
+            refreshing ? "opacity-50" : ""
+          }`}
         >
           <>{link.icon}</>
           <Text className="text-sm font-semibold text-gray-600 px-1 pt-4">
@@ -147,7 +188,11 @@ const HomeScreen = () => {
         showLogo={true}
         logoSize={32}
       />
-      <ScrollView>
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <View className="p-6">
           <Text className="text-2xl font-bold">
             {t("HomePage.title") + user?.name}
@@ -169,6 +214,15 @@ const HomeScreen = () => {
         {/* Conditionally render list or grid view based on screen width */}
         {isSmallScreen ? renderListView() : renderGridView()}
       </ScrollView>
+
+      {/* Blur overlay when refreshing */}
+      {refreshing && (
+        <BlurView
+          intensity={50}
+          tint="light"
+          style={StyleSheet.absoluteFill}
+        />
+      )}
     </SafeAreaView>
   );
 };

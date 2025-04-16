@@ -41,9 +41,16 @@ const ProjectModuleScreens = () => {
     );
   }
 
-  const { modules, isLoading: modulesLoading, refresh: refreshModules } = useGetAllModules();
-  const { surveySubmissions, isLoading: surveySubmissionsLoading, refresh: refreshSubmissions } =
-    useGetAllSurveySubmissions();
+  const {
+    modules,
+    isLoading: modulesLoading,
+    refresh: refreshModules,
+  } = useGetAllModules();
+  const {
+    surveySubmissions,
+    isLoading: surveySubmissionsLoading,
+    refresh: refreshSubmissions,
+  } = useGetAllSurveySubmissions();
   const isLoading = modulesLoading || surveySubmissionsLoading;
   const { t } = useTranslation();
   const { control, watch } = useForm({
@@ -58,13 +65,17 @@ const ProjectModuleScreens = () => {
   const searchQuery = watch("searchQuery");
   const [refreshing, setRefreshing] = useState(false);
 
-  console.log("Survey Submissionsss: ", JSON.stringify(surveySubmissions, null, 2));
   // Find the uncategorized module
   const uncategorizedModule = modules?.find(
     (module: IModule | null) =>
       module !== null &&
       module.module_name.toLowerCase().includes("uncategorize") &&
       module.project_id === Number(projectId)
+  );
+
+  console.log(
+    "Uncategorized Module: ",
+    JSON.stringify(uncategorizedModule, null, 2)
   );
 
   // Get forms for the uncategorized module if it exists
@@ -81,11 +92,21 @@ const ProjectModuleScreens = () => {
   const filteredModules = useMemo(() => {
     if (!modules || !surveySubmissions) return [];
 
+    console.log(
+      "Survey Submissions: ",
+      JSON.stringify(surveySubmissions, null, 2)
+    );
+
     // Get module IDs that have submissions for this project
     const moduleIdsWithSubmissions = new Set(
       surveySubmissions
         .filter((submission) => submission.project_id === Number(projectId))
         .map((submission) => submission.source_module_id)
+    );
+
+    console.log(
+      "Module IDs with Submissions: ",
+      JSON.stringify(moduleIdsWithSubmissions, null, 2)
     );
 
     return modules
@@ -94,8 +115,7 @@ const ProjectModuleScreens = () => {
           module !== null &&
           module.project_id === Number(projectId) &&
           module.module_status !== 0 &&
-          module.module_name.toLowerCase() !== "uncategorize" &&
-          moduleIdsWithSubmissions.has(module.id) &&
+          moduleIdsWithSubmissions.has(module.source_module_id) &&
           (!searchQuery ||
             module.module_name
               .toLowerCase()
@@ -127,13 +147,7 @@ const ProjectModuleScreens = () => {
     );
   }, [surveySubmissions, projectId]);
 
-  console.log(
-    "Survey Submissions: all submissions ",
-    JSON.stringify(surveySubmissions, null, 2)
-  );
-
   const renderItem = ({ item }: { item: IModule | Survey }) => {
-    console.log("Item: ", JSON.stringify(item, null, 2));
     if ("module_name" in item) {
       // This is a module
       const moduleSubmissions = surveySubmissions.filter(
@@ -189,12 +203,12 @@ const ProjectModuleScreens = () => {
         </TouchableOpacity>
       );
     } else {
-      console.log("FORM")
       // This is a form (including uncategorized forms)
       const formSubmissions = surveySubmissions.filter(
-        (submission) => 
+        (submission) =>
           submission.project_module_id === item.project_module_id ||
-          (uncategorizedModule && submission.source_module_id === uncategorizedModule.id)
+          (uncategorizedModule &&
+            submission.source_module_id === uncategorizedModule.id)
       );
 
       const sortedSubmissions = [...formSubmissions].sort(
@@ -207,7 +221,9 @@ const ProjectModuleScreens = () => {
 
       return (
         <TouchableOpacity
-          onPress={() => router.push(`/(history)/(sub-survey)/${item.project_module_id}`)}
+          onPress={() =>
+            router.push(`/(history)/(sub-survey)/${item.project_module_id}`)
+          }
           className="p-4 border mb-4 border-gray-200 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">
@@ -344,8 +360,8 @@ const ProjectModuleScreens = () => {
             }
             renderItem={renderItem}
             refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
+              <RefreshControl
+                refreshing={refreshing}
                 onRefresh={onRefresh}
                 tintColor="#000000"
                 title="Pull to refresh"

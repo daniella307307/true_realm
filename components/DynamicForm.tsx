@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-
 import {
   View,
-  TextInput,
-  Switch,
   ScrollView,
   TouchableOpacity,
   Alert,
@@ -14,25 +11,31 @@ import {
 import { router } from "expo-router";
 
 import i18n from "~/utils/i18n";
-import { Controller, useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { FormField, IFormSubmissionDetail } from "~/types";
 import { Pencil } from "lucide-react-native";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { SurveySubmission } from "~/models/surveys/survey-submission";
-import { baseInstance } from "~/utils/axios";
 import { saveSurveySubmission } from "~/services/survey-submission";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 
 import DateTimePickerComponent from "./ui/date-time-picker";
-import Dropdown from "./ui/select";
 import { Button } from "./ui/button";
 import { FlowState } from "./FormFlowManager";
 import { Text } from "./ui/text";
-
+import {
+  TextFieldComponent,
+  TextAreaComponent,
+  RadioBoxComponent,
+  SelectBoxComponent,
+  SwitchComponent,
+  CheckBoxComponent,
+} from "./DynamicComponents";
+import { AnswerPreview } from "./AnswerPreview";
 const { useRealm, useQuery } = RealmContext;
 
-interface DynamicFieldProps {
+export interface DynamicFieldProps {
   field: FormField;
   control: any;
   language?: string;
@@ -48,330 +51,28 @@ export const getLocalizedTitle = (
   return title[language as keyof typeof title] || title.default;
 };
 
-const TextFieldComponent: React.FC<DynamicFieldProps> = ({
-  field,
-  control,
-  language = "en-US",
-}) => (
-  <Controller
-    control={control}
-    name={field.key}
-    rules={{
-      required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
-        : false,
-      ...(field.type === "phoneNumber" && {
-        pattern: {
-          value: /^\d{10}$/,
-          message: "Phone number must be exactly 10 digits",
-        },
-      }),
-    }}
-    render={({ field: { onChange, value }, fieldState: { error } }) => (
-      <View className="mb-4">
-        <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {getLocalizedTitle(field.title, language)}
-          {field.validate?.required && <Text className="text-primary"> *</Text>}
-        </Text>
-        <TextInput
-          className={`w-full px-4 py-4 border rounded-lg ${
-            error ? "border-primary" : "border-[#E4E4E7]"
-          }`}
-          value={value}
-          keyboardType={
-            field.type === "phoneNumber" || field.type === "number"
-              ? "numeric"
-              : "default"
-          }
-          maxLength={
-            field.type === "phoneNumber"
-              ? 10
-              : field.type === "number"
-              ? 125
-              : undefined
-          }
-          onChangeText={(text) => {
-            if (field.type === "phoneNumber") {
-              // Only allow digits for phone numbers
-              const numbersOnly = text.replace(/[^0-9]/g, "");
-              onChange(numbersOnly);
-            } else {
-              onChange(text);
-            }
-          }}
-        />
-        {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
-          </Text>
-        )}
-      </View>
-    )}
-  />
-);
-
-const TextAreaComponent: React.FC<DynamicFieldProps> = ({
-  field,
-  control,
-  language = "en-US",
-}) => (
-  <Controller
-    control={control}
-    name={field.key}
-    rules={{
-      required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
-        : false,
-    }}
-    render={({ field: { onChange, value }, fieldState: { error } }) => (
-      <View className="mb-4">
-        <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {getLocalizedTitle(field.title, language)}
-          {field.validate?.required && <Text className="text-primary"> *</Text>}
-        </Text>
-        <TextInput
-          className={`w-full px-4 h-44 border rounded-lg ${
-            error ? "border-primary" : "border-[#E4E4E7]"
-          }`}
-          value={value}
-          onChangeText={onChange}
-          multiline
-          numberOfLines={4}
-        />
-        {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
-          </Text>
-        )}
-      </View>
-    )}
-  />
-);
-
-const RadioBoxComponent: React.FC<DynamicFieldProps> = ({
-  field,
-  control,
-  language = "en-US",
-}) => (
-  <Controller
-    control={control}
-    name={field.key}
-    rules={{
-      required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
-        : false,
-    }}
-    render={({ field: { onChange, value }, fieldState: { error } }) => (
-      <View className="mb-4">
-        <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {getLocalizedTitle(field.title, language)}
-          {field.validate?.required && <Text className="text-primary"> *</Text>}
-        </Text>
-        <View className="flex flex-col flex-wrap mt-4">
-          {field.values
-            ? field.values.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  className="flex flex-row items-center mr-4 mb-4"
-                  onPress={() => onChange(option.value)}
-                >
-                  <View
-                    className={`w-5 h-5 rounded-full border-2 border-primary justify-center items-center
-                  ${value === option.value ? "bg-primary" : "bg-white"}`}
-                  >
-                    {value === option.value && (
-                      <View className="w-3 h-3 rounded-full bg-primary" />
-                    )}
-                  </View>
-                  <Text className="ml-2 text-md">
-                    {option.title
-                      ? getLocalizedTitle(option.title, language)
-                      : option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))
-            : null}
-        </View>
-        {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
-          </Text>
-        )}
-      </View>
-    )}
-  />
-);
-
-const SelectBoxComponent: React.FC<DynamicFieldProps> = ({
-  field,
-  control,
-  language = "en-US",
-}) => (
-  <Controller
-    control={control}
-    name={field.key}
-    rules={{
-      required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
-        : false,
-    }}
-    render={({ field: { onChange, value }, fieldState: { error } }) => (
-      <View className="mb-4 relative">
-        <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {getLocalizedTitle(field.title, language)}
-          {field.validate?.required && <Text className="text-primary"> *</Text>}
-        </Text>
-        <Dropdown
-          data={
-            field?.data?.values?.map((option) => ({
-              value: option.value,
-              label: option.label,
-            })) || []
-          }
-          onChange={(item) => onChange(item.value)}
-          placeholder="Select an option"
-        />
-        {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
-          </Text>
-        )}
-      </View>
-    )}
-  />
-);
-
-const SwitchComponent: React.FC<DynamicFieldProps> = ({
-  field,
-  control,
-  language = "en-US",
-}) => (
-  <Controller
-    control={control}
-    name={field.key}
-    rules={{
-      required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
-        : false,
-    }}
-    render={({ field: { onChange, value }, fieldState: { error } }) => (
-      <View className="mb-4">
-        <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {getLocalizedTitle(field.title, language)}
-          {field.validate?.required && <Text className="text-primary"> *</Text>}
-        </Text>
-        <Switch value={value} onValueChange={onChange} />
-        {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
-          </Text>
-        )}
-      </View>
-    )}
-  />
-);
-
-const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
-  field,
-  control,
-  language = "en-US",
-}) => (
-  <Controller
-    control={control}
-    name={field.key}
-    rules={{
-      required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
-        : false,
-    }}
-    render={({ field: { onChange, value }, fieldState: { error } }) => (
-      <View className="mb-4">
-        <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {getLocalizedTitle(field.title, language)}
-          {field.validate?.required && <Text className="text-primary"> *</Text>}
-        </Text>
-        <View className="flex flex-col flex-wrap mt-4">
-          {field.values ? (
-            field.values.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                className="flex flex-row items-center mr-4 mb-4"
-                onPress={() => onChange(option.value)}
-              >
-                <View
-                  className={`w-5 h-5 rounded-full border-2 border-primary justify-center items-center
-            ${value === option.value ? "bg-primary" : "bg-white"}`}
-                >
-                  {value === option.value && (
-                    <View className="w-3 h-3 rounded-full bg-primary" />
-                  )}
-                </View>
-                <Text className="ml-2 text-md">
-                  {option.title
-                    ? getLocalizedTitle(option.title, language)
-                    : option.label}
-                </Text>
-              </TouchableOpacity>
-            ))
-          ) : (
-            <>
-              <TouchableOpacity
-                className="flex flex-row items-center mr-4 mb-4"
-                onPress={() => onChange("yes")}
-              >
-                <View
-                  className={`w-5 h-5 rounded-full border-2 border-primary justify-center items-center
-            ${value === "yes" ? "bg-primary" : "bg-white"}`}
-                >
-                  {value === "yes" && (
-                    <View className="w-3 h-3 rounded-full bg-primary" />
-                  )}
-                </View>
-                <Text className="ml-2 text-md">Yes</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="flex flex-row items-center mr-4 mb-4"
-                onPress={() => onChange("no")}
-              >
-                <View
-                  className={`w-5 h-5 rounded-full border-2 border-primary justify-center items-center
-            ${value === "no" ? "bg-primary" : "bg-white"}`}
-                >
-                  {value === "no" && (
-                    <View className="w-3 h-3 rounded-full bg-primary" />
-                  )}
-                </View>
-                <Text className="ml-2 text-md">No</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-        {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
-          </Text>
-        )}
-      </View>
-    )}
-  />
-);
-
 const DynamicField: React.FC<DynamicFieldProps> = ({
   field,
   control,
   language,
 }) => {
   const { user } = useAuth({});
+  const [isVisible, setIsVisible] = useState(true);
 
-  // Check if field should be visible based on conditional logic
-  const shouldShowField = () => {
-    if (!field.conditional) return true;
-    // Add your conditional logic here based on the field.conditional properties
-    return field.conditional.show;
-  };
+  const dependentFieldValue = useWatch({
+    control,
+    name: field.conditional?.when || "",
+    defaultValue: "",
+  });
 
-  if (!shouldShowField()) return null;
+  useEffect(() => {
+    if (field.conditional) {
+      const shouldShow = field.conditional?.eq === dependentFieldValue;
+      setIsVisible(shouldShow);
+    }
+  }, [field.conditional, dependentFieldValue]);
+
+  if (!isVisible) return null;
 
   if (
     field.key === "district" ||
@@ -470,313 +171,11 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
   }
 };
 
-const formatTime = (timeInSeconds: number): string => {
+export const formatTime = (timeInSeconds: number): string => {
   const minutes = Math.floor(timeInSeconds / 60);
   const seconds = timeInSeconds % 60;
   return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
 };
-
-interface AnswerPreviewProps {
-  fields: FormField[];
-  formData: Record<string, any>;
-  language?: string;
-  onBack: () => void;
-  onSubmit: () => void;
-  timeSpent: number;
-  onEditField?: (fieldKey: string) => void;
-  flowState: FlowState;
-}
-
-const AnswerPreview: React.FC<AnswerPreviewProps> = ({
-  fields,
-  formData,
-  language = "en-US",
-  onBack,
-  onSubmit,
-  timeSpent,
-  onEditField,
-  flowState,
-}) => {
-  const { t } = useTranslation();
-  const [isSubmitting, setIsSubmitting] = useState(false); // Add loading state
-
-  const getDisplayValue = (field: any, value: any) => {
-    // Your existing getDisplayValue function
-    if (value === undefined || value === null) return "-";
-
-    // Handle flow state values
-    if (field.key === "izucode" || field.key === "izu_id") {
-      return flowState?.selectedValues?.izus?.user_code || "-";
-    }
-    if (field.key === "cohort") {
-      return flowState?.selectedValues?.cohorts?.cohort || "-";
-    }
-    if (field.key === "family") {
-      return flowState?.selectedValues?.families?.hh_id || "-";
-    }
-    if (field.key === "province") {
-      return (
-        flowState?.selectedValues?.locations?.province?.province_name || "-"
-      );
-    }
-    if (field.key === "district") {
-      return (
-        flowState?.selectedValues?.locations?.district?.district_name || "-"
-      );
-    }
-    if (field.key === "sector") {
-      return flowState?.selectedValues?.locations?.sector?.sector_name || "-";
-    }
-    if (field.key === "cell") {
-      return flowState?.selectedValues?.locations?.cell?.cell_name || "-";
-    }
-    if (field.key === "village") {
-      return flowState?.selectedValues?.locations?.village?.village_name || "-";
-    }
-
-    switch (field.type) {
-      case "switch":
-        return value ? "Yes" : "No";
-
-      case "radio":
-      case "select":
-        if (field.values) {
-          const option = field.values.find((opt: any) => opt.value === value);
-          if (option) {
-            return typeof option.label === "object"
-              ? getLocalizedTitle(option.label, language)
-              : String(option.label || value);
-          }
-        }
-        if (field.data?.values) {
-          const option = field.data.values.find(
-            (opt: any) => opt.value === value
-          );
-          if (option) {
-            return typeof option.label === "object"
-              ? getLocalizedTitle(option.label, language)
-              : String(option.label || value);
-          }
-        }
-        return String(value);
-
-      case "datetime":
-      case "date":
-      case "time":
-        if (value) {
-          const date = new Date(value);
-          if (field.type === "date" || field.dateType === "date") {
-            return date.toLocaleDateString(language);
-          } else if (field.type === "time" || field.dateType === "time") {
-            return date.toLocaleTimeString(language, {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-          } else {
-            return date.toLocaleString(language);
-          }
-        }
-        return "-";
-
-      case "checkbox":
-        if (field.values) {
-          const selectedValues = field.values
-            .filter((option: any) => value.includes(option.value))
-            .map((option: any) =>
-              typeof option.label === "object"
-                ? getLocalizedTitle(option.label, language)
-                : option.label
-            );
-          return selectedValues.join(", ");
-        }
-        return String(value);
-      default:
-        return String(value);
-    }
-  };
-
-  // Handle submission with loading state
-  const handleSubmit = () => {
-    if (isSubmitting) return; // Prevent multiple submissions
-    setIsSubmitting(true);
-    onSubmit();
-  };
-
-  return (
-    <ScrollView className="bg-background mt-4">
-      <Text className="text-center text-xl font-bold mb-6 text-[#050F2B]">
-        {t("FormElementPage.previewTitle", "Review Your Answers")}
-      </Text>
-
-      <View className="mb-6 px-4 py-4 bg-white rounded-lg border border-[#E4E4E7]">
-        <Text className="font-medium text-[#050F2B] mb-2">
-          {t("FormElementPage.timeSpent", "Time Spent")}
-        </Text>
-        <Text className="text-[#52525B]">{formatTime(timeSpent)}</Text>
-      </View>
-
-      {/* Flow State Values */}
-      {flowState?.selectedValues && (
-        <View className="mb-6 px-4 py-4 bg-white rounded-lg border border-[#E4E4E7]">
-          <Text className="font-medium text-[#050F2B] mb-4">
-            {t("FormElementPage.flowStateValues", "Core Values")}
-          </Text>
-
-          {/* IZU */}
-          {flowState.selectedValues.izus?.user_code && (
-            <View className="mb-4">
-              <View className="flex flex-row justify-between items-center mb-2">
-                <Text className="font-medium text-[#050F2B]">
-                  {t("FormElementPage.izu", "IZU")}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => onEditField && onEditField("izucode")}
-                  className="p-2"
-                >
-                  <Pencil size={18} color="#6366F1" />
-                </TouchableOpacity>
-              </View>
-              <Text className="text-[#52525B]">
-                {flowState.selectedValues.izus.user_code}
-              </Text>
-            </View>
-          )}
-
-          {/* Cohort */}
-          {flowState.selectedValues.cohorts?.cohort && (
-            <View className="mb-4">
-              <View className="flex flex-row justify-between items-center mb-2">
-                <Text className="font-medium text-[#050F2B]">
-                  {t("FormElementPage.cohort", "Cohort")}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => onEditField && onEditField("cohorts")}
-                  className="p-2"
-                >
-                  <Pencil size={18} color="#6366F1" />
-                </TouchableOpacity>
-              </View>
-              <Text className="text-[#52525B]">
-                {flowState.selectedValues.cohorts.cohort}
-              </Text>
-            </View>
-          )}
-
-          {/* Family */}
-          {flowState.selectedValues.families?.hh_id && (
-            <View className="mb-4">
-              <View className="flex flex-row justify-between items-center mb-2">
-                <Text className="font-medium text-[#050F2B]">
-                  {t("FormElementPage.family", "Family")}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => onEditField && onEditField("family")}
-                  className="p-2"
-                >
-                  <Pencil size={18} color="#6366F1" />
-                </TouchableOpacity>
-              </View>
-              <Text className="text-[#52525B]">
-                {flowState.selectedValues.families.hh_id}
-              </Text>
-            </View>
-          )}
-
-          {/* Location */}
-          {flowState.selectedValues.locations?.province && (
-            <View className="mb-4">
-              <View className="flex flex-row justify-between items-center mb-2">
-                <Text className="font-medium text-[#050F2B]">
-                  {t("FormElementPage.location", "Location")}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => onEditField && onEditField("province")}
-                  className="p-2"
-                >
-                  <Pencil size={18} color="#6366F1" />
-                </TouchableOpacity>
-              </View>
-              <Text className="text-[#52525B]">
-                {[
-                  flowState.selectedValues.locations.province?.province_name,
-                  flowState.selectedValues.locations.district?.district_name,
-                  flowState.selectedValues.locations.sector?.sector_name,
-                  flowState.selectedValues.locations.cell?.cell_name,
-                  flowState.selectedValues.locations.village?.village_name,
-                ]
-                  .filter(Boolean)
-                  .join(" > ")}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Form Fields */}
-      {fields.map((field) => (
-        <View
-          key={field.key}
-          className="mb-6 px-4 py-4 bg-white rounded-lg border border-[#E4E4E7]"
-        >
-          <View className="flex flex-row justify-between items-center mb-2">
-            <Text className="font-medium text-[#050F2B] w-10/12">
-              {getLocalizedTitle(field.title, language)}
-              {field.validate?.required && (
-                <Text className="text-primary"> *</Text>
-              )}
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => onEditField && onEditField(field.key)}
-              className="p-2"
-              accessibilityLabel={`Edit ${getLocalizedTitle(
-                field.title,
-                language
-              )}`}
-            >
-              <Pencil size={18} color="#6366F1" />
-            </TouchableOpacity>
-          </View>
-
-          <Text className="text-[#52525B]">
-            {getDisplayValue(field, formData[field.key])}
-          </Text>
-        </View>
-      ))}
-
-      <View className="flex flex-row justify-between mt-6 mb-10">
-        <Button
-          onPress={onBack}
-          className="bg-gray-500"
-          disabled={isSubmitting}
-        >
-          <Text className="text-white font-semibold">
-            {t("FormElementPage.back", "Back")}
-          </Text>
-        </Button>
-        <Button
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          className={isSubmitting ? "bg-primary opacity-70" : "bg-primary"}
-        >
-          {isSubmitting ? (
-            <View className="flex flex-row items-center">
-              {/* You could add a loading spinner here if available */}
-              <Text className="text-white font-semibold">
-                {t("FormElementPage.submitting", "Submitting...")}
-              </Text>
-            </View>
-          ) : (
-            <Text className="text-white font-semibold">
-              {t("FormElementPage.finalSubmit", "Submit")}
-            </Text>
-          )}
-        </Button>
-      </View>
-    </ScrollView>
-  );
-};
-
 interface DynamicFormProps {
   fields: FormField[];
   wholeComponent?: boolean;
@@ -796,10 +195,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   timeSpent,
   onEditFlowState,
 }) => {
-  
-  // console.log("FlowState values: ", flowState.selectedValues);
-
-
   if (!Array.isArray(fields)) {
     console.error("Fields prop is not an array:", fields);
     return (
@@ -808,26 +203,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       </View>
     );
   }
-
-  const visibleFields = fields
-    .filter((field) => {
-      if (!field) {
-        console.warn("Found undefined field");
-        return false;
-      }
-      if (!field.key) {
-        console.warn("Field missing key:", field);
-        return false;
-      }
-      return true;
-    })
-    .filter((field) => {
-      if (field.visibleIf) return true;
-      if (field.key === "izucode" || field.key === "izu_id") return false;
-      if (["district", "sector", "cell", "village"].includes(field.key))
-        return false;
-      return field.key !== "submit";
-    });
 
   const { control, handleSubmit, getValues, trigger, formState, setValue } =
     useForm({
@@ -843,12 +218,58 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   );
   const [submitting, setSubmitting] = useState(false);
   const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null);
-  const realm = useRealm(); // Move useRealm to component level
+  const [visibleFields, setVisibleFields] = useState<FormField[]>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const realm = useRealm();
+
+  const formValues = useWatch({
+    control,
+  });
+
+  useEffect(() => {
+    const filteredFields = fields
+      .filter((field) => {
+        if (!field || typeof field !== "object") {
+          console.warn("Invalid field:", field);
+          return false;
+        }
+        if (!field.key || typeof field.key !== "string") {
+          console.warn("Field missing valid key:", field);
+          return false;
+        }
+        return true;
+      })
+      .filter((field) => {
+        // Skip flow state fields
+        if (field.key === "izucode" || field.key === "izu_id") return false;
+        if (["district", "sector", "cell", "village"].includes(field.key))
+          return false;
+        if (field.key === "submit") return false;
+
+        // Check conditional visibility
+        if (field.conditional) {
+          const dependentValue = formValues[field.conditional.when];
+          return field.conditional.eq === dependentValue;
+        }
+
+        return true;
+      });
+
+    setVisibleFields(filteredFields);
+    
+    // Only reset current page on initial load
+    if (isInitialLoad) {
+      setCurrentPage(0);
+      setIsInitialLoad(false);
+    }
+  }, [fields, formValues, isInitialLoad]);
 
   const fieldIndexMap = useMemo(() => {
     const map: Record<string, number> = {};
     visibleFields.forEach((field, index) => {
-      map[field.key] = index;
+      if (field && field.key) {
+        map[field.key] = index;
+      }
     });
     return map;
   }, [visibleFields]);
@@ -971,7 +392,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const validateAndProceed = async () => {
+    if (visibleFields.length === 0) return;
+    
     const currentField = visibleFields[currentPage];
+    if (!currentField) return;
+
     const isValid = await trigger(currentField.key);
     if (isValid) {
       setValidationError(false);
@@ -985,14 +410,51 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const handleNext = () => {
+    if (visibleFields.length === 0) return;
     if (currentPage < visibleFields.length - 1) {
       validateAndProceed();
     }
   };
 
   const handlePrevious = () => {
+    if (visibleFields.length === 0) return;
     if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
+      const previousPage = currentPage - 1;
+      const previousField = visibleFields[previousPage];
+      
+      // If the previous field controls conditional visibility, reset visible fields
+      if (previousField && previousField.key) {
+        const isConditionalControl = fields.some(field => 
+          field.conditional?.when === previousField.key
+        );
+        
+        if (isConditionalControl) {
+          // Force a re-evaluation of visible fields
+          const currentValues = getValues();
+          const filteredFields = fields
+            .filter((field) => {
+              if (!field || typeof field !== "object") return false;
+              if (!field.key || typeof field.key !== "string") return false;
+              return true;
+            })
+            .filter((field) => {
+              if (field.key === "izucode" || field.key === "izu_id") return false;
+              if (["district", "sector", "cell", "village"].includes(field.key)) return false;
+              if (field.key === "submit") return false;
+
+              if (field.conditional) {
+                const dependentValue = currentValues[field.conditional.when];
+                return field.conditional.eq === dependentValue;
+              }
+
+              return true;
+            });
+
+          setVisibleFields(filteredFields);
+        }
+      }
+      
+      setCurrentPage(previousPage);
       setValidationError(false);
     }
   };
@@ -1002,18 +464,18 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const handlePreview = async () => {
-    let isValid = false;
+    if (visibleFields.length === 0) return;
 
+    let isValid = false;
     if (!wholeComponent) {
       const currentField = visibleFields[currentPage];
+      if (!currentField) return;
       isValid = await trigger(currentField.key);
-      // console.log("isValid", isValid);
     } else {
       isValid = await trigger();
     }
 
     if (isValid) {
-      // Get the current form values
       const values = getValues();
       setFormData(values);
       setShowPreview(true);
@@ -1065,13 +527,21 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     >
       <ScrollView className="bg-background">
         <View className="mt-4 p-4">
+          {visibleFields.length === 0 && (
+            <View className="mb-4 p-3 bg-yellow-100 rounded-lg">
+              <Text className="text-yellow-800 text-center">
+                {t("FormElementPage.noFields", "No fields to display")}
+              </Text>
+            </View>
+          )}
+
           <View className="mb-4 p-3 bg-white rounded-lg flex flex-row justify-end items-center">
             <Text className="text-primary font-semibold">
               {formatTime(timeSpent)}
             </Text>
           </View>
 
-          {!wholeComponent && (
+          {!wholeComponent && visibleFields.length > 0 && (
             <>
               <Text className="text-center mb-2 text-md font-medium text-[#050F2B]">
                 Page {currentPage + 1} of {visibleFields.length}
@@ -1109,13 +579,19 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 language={currentLanguage}
               />
             ))
-          ) : (
+          ) : visibleFields[currentPage] ? (
             <DynamicField
               key={visibleFields[currentPage].key}
               field={visibleFields[currentPage]}
               control={control}
               language={currentLanguage}
             />
+          ) : (
+            <View className="flex-1 justify-center items-center">
+              <Text className="text-gray-500">
+                {t("FormElementPage.noFields", "No fields to display")}
+              </Text>
+            </View>
           )}
 
           {!wholeComponent && (

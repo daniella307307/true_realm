@@ -25,7 +25,7 @@ import { Survey } from "~/models/surveys/survey";
 
 const ProjectModuleScreens = () => {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
-  console.log("Selected Project ID: ", projectId);
+  console.log("Project ID: ", projectId);
   if (!projectId) {
     return (
       <View>
@@ -38,6 +38,7 @@ const ProjectModuleScreens = () => {
   const { modules, isLoading, refresh } = useGetModulesByProjectId(
     Number(projectId)
   );
+  console.log("Modules: ", JSON.stringify(modules, null, 2));
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -100,7 +101,7 @@ const ProjectModuleScreens = () => {
       // This is a module
       return (
         <TouchableOpacity
-          onPress={() => router.push(`/(families)/(forms)/${item.source_module_id}`)}
+          onPress={() => router.push(`/(projects)/(mods)/(projects)/(forms)/${item.source_module_id}?project_id=${projectId}`)}
           className="p-4 border mb-4 border-gray-200 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">
@@ -123,7 +124,7 @@ const ProjectModuleScreens = () => {
       // This is a form
       return (
         <TouchableOpacity
-          onPress={() => router.push(`/(families)/(form-element)/${item.id}?project_id=${uncategorizedModule?.project_id}`)}
+          onPress={() => router.push(`/(projects)/(mods)/(projects)/(form-element)/${item.id}?project_id=${uncategorizedModule?.project_id}`)}
           className="p-4 border mb-4 border-gray-200 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">

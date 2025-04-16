@@ -27,7 +27,7 @@ const HistoryProjectScreen = () => {
     surveySubmissions,
     isLoading: surveySubmissionsLoading,
     error: surveySubmissionsError,
-    refetch: refetchSurveySubmissions,
+    refresh: refetchSurveySubmissions,
   } = useGetAllSurveySubmissions();
   const { t } = useTranslation();
   const { control, watch } = useForm({
@@ -90,8 +90,6 @@ const HistoryProjectScreen = () => {
     const projectSubmissions = surveySubmissions.filter(
       (submission) => submission.project_id === item.id
     );
-
-    console.log("Project Submissions: ", JSON.stringify(projectSubmissions, null, 2));
 
     return (
       <TouchableOpacity

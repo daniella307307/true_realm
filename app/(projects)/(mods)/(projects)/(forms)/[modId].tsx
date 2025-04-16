@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useMemo } from "react";
-
 import {
   View,
   FlatList,
@@ -7,9 +6,7 @@ import {
   SafeAreaView,
   RefreshControl,
 } from "react-native";
-
 import { router, useLocalSearchParams } from "expo-router";
-
 import CustomInput from "~/components/ui/input";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
@@ -19,7 +16,7 @@ import {
   useGetFormByProjectAndModule,
 } from "~/services/formElements";
 import { Button } from "~/components/ui/button";
-import { IExistingForm, IModule } from "~/types";
+import { IModule } from "~/types";
 import { Survey } from "~/models/surveys/survey";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
@@ -38,15 +35,11 @@ const ProjectFormsScreen = () => {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
-  console.log("Source Module ID: ", modId);
-  console.log("Project ID: ", project_id);
   if (!modId) {
     return (
       <View className="flex-1 justify-center items-center bg-background p-4">
         <Text>Missing module</Text>
-        <Button onPress={() => router.replace("/(home)/home")}>
-          Go to home
-        </Button>
+        <Button onPress={() => router.back()}>Go back</Button>
       </View>
     );
   }
@@ -61,34 +54,18 @@ const ProjectFormsScreen = () => {
 
   const currentModule = useMemo(() => {
     if (!modules) return null;
-
-    return (
-      modules.find((module: IModule | null) => {
-        if (!module) return false;
-
-        if (moduleId === 22) {
-          return (
-            module.source_module_id === 22 &&
-            module.id === 177 &&
-            module.project_id === 17
-          );
-        }
-        return module.source_module_id === moduleId && module.project_id === projectId;
-      }) || null
-    );
-  }, [modules, moduleId]);
-
-  console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
+    return modules.find((module: IModule | null) => {
+      if (!module) return false;
+      return module.source_module_id === moduleId && module.project_id === projectId;
+    }) || null;
+  }, [modules, moduleId, projectId]);
 
   if (!currentModule) {
     return (
       <View className="flex-1 justify-center items-center bg-background p-4">
         <Text className="text-red-500 font-semibold">Module not found</Text>
-        <Button
-          className="mt-10"
-          onPress={() => router.replace("/(families)/")}
-        >
-          <Text>Go to home</Text>
+        <Button className="mt-10" onPress={() => router.back()}>
+          <Text>Go back</Text>
         </Button>
       </View>
     );
@@ -132,7 +109,6 @@ const ProjectFormsScreen = () => {
 
   const displayFilteredForms = useMemo(() => {
     if (!filteredForms) return [];
-
     return filteredForms.filter((form: Survey) => {
       if (!searchQuery) return true;
       return form.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -167,9 +143,7 @@ const ProjectFormsScreen = () => {
       return (
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-red-500">
-            {modulesError?.message ||
-              formsError?.message ||
-              "An error occurred"}
+            {modulesError?.message || formsError?.message || "An error occurred"}
           </Text>
         </View>
       );
@@ -208,7 +182,7 @@ const ProjectFormsScreen = () => {
           <TouchableOpacity
             onPress={() =>
               router.push(
-                `/(form-element)/${item.id}?project_id=${currentModule.project_id}`
+                `/(projects)/(mods)/(projects)/(form-element)/${item.id}?project_id=${currentModule.project_id}`
               )
             }
             className="p-4 border mb-4 border-gray-200 rounded-xl"
@@ -232,4 +206,4 @@ const ProjectFormsScreen = () => {
   );
 };
 
-export default ProjectFormsScreen;
+export default ProjectFormsScreen; 
