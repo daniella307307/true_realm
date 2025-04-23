@@ -89,8 +89,8 @@ android {
     namespace 'com.sugiramuryango.mobile'
     defaultConfig {
         applicationId 'com.sugiramuryango.mobile'
-        minSdkVersion 21  // This supports Android 5.0 and above
-        targetSdkVersion 33
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
     }

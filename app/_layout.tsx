@@ -12,15 +12,16 @@ import "react-native-get-random-values";
 import { useEffect, useState } from "react";
 import QueryProvider from "~/providers/QueryProvider";
 import Toast from "react-native-toast-message";
-// import toastConfig from "~/providers/toastConfig";
 import { enableScreens } from "react-native-screens";
-import { Drawer } from "expo-router/drawer";
-import CustomDrawerContent from "~/components/ui/custom-drawer";
 import { FontSizeProvider } from "~/providers/FontSizeContext";
 import { initializeNetworkListener } from "~/services/network";
 import { initializeSyncService } from "~/services/sync";
 import NetInfo from "@react-native-community/netinfo";
 import { RealmContext } from "~/providers/RealContextProvider";
+import { DrawerProvider } from "~/providers/DrawerProvider";
+import CustomDrawer from "~/components/ui/custom-drawer";
+import { useDrawer } from "~/providers/DrawerProvider";
+import { RouteProtectionProvider } from "~/providers/RouteProtectionProvider";
 
 enableScreens();
 export default function RootLayout() {
@@ -28,11 +29,13 @@ export default function RootLayout() {
   return (
     <FontSizeProvider>
       <QueryProvider>
-        {/* <SplashScreenProvider> */}
-        <RealmContext.RealmProvider>
-          <Layout />
-        </RealmContext.RealmProvider>
-        {/* </SplashScreenProvider> */}
+        <DrawerProvider>
+          <RouteProtectionProvider>
+            <RealmContext.RealmProvider>
+              <Layout />
+            </RealmContext.RealmProvider>
+          </RouteProtectionProvider>
+        </DrawerProvider>
         <Toast />
       </QueryProvider>
     </FontSizeProvider>
@@ -42,6 +45,7 @@ export default function RootLayout() {
 function Layout() {
   const { isLoggedIn, authChecked } = useAuth({});
   const [isInitialized, setIsInitialized] = useState(false);
+  const { isDrawerOpen, closeDrawer } = useDrawer();
 
   useEffect(() => {
     // Wait for auth check to complete before proceeding
@@ -100,19 +104,8 @@ function Layout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
-      <Drawer
-        screenOptions={{
-          drawerPosition: "right",
-          headerShown: false,
-          drawerStyle: {
-            width: "70%",
-          },
-          drawerType: "front",
-        }}
-        drawerContent={() => <CustomDrawerContent />}
-      >
-        <Slot />
-      </Drawer>
+      <Slot />
+      <CustomDrawer isOpen={isDrawerOpen} onClose={closeDrawer} />
       <PortalHost />
     </GestureHandlerRootView>
   );

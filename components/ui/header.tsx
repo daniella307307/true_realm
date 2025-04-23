@@ -6,6 +6,8 @@ import { NAV_THEME } from "~/lib/constants";
 import { useColorScheme } from "~/lib/useColorScheme";
 import { DrawerActions } from "@react-navigation/native";
 import Logo from "~/components/Logo";
+import { useDrawer } from "~/providers/DrawerProvider";
+import { useProtectedNavigation } from "~/utils/navigation";
 
 type FeatherIconName = keyof typeof Feather.glyphMap;
 
@@ -36,49 +38,19 @@ const HeaderNavigation = ({
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const themeColor = NAV_THEME[colorScheme]?.primary ?? "#A23A91";
-
-  // More robust handling of back function
-  const handleBackPress = useCallback(() => {
-    try {
-      console.log("Back button pressed");
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-      } else {
-        // If we can't go back, try the router
-        try {
-          backFunction();
-        } catch (error) {
-          console.error("Error in back function:", error);
-          // Last resort: try to navigate to a safe screen
-          router.replace("/");
-        }
-      }
-    } catch (error) {
-      console.error("Error in back button handler:", error);
-      // Fallback to home screen
-      router.replace("/");
-    }
-  }, [navigation, backFunction, router]);
-
-  // More robust handling of right button press
-  const handleRightPress = useCallback(() => {
-    try {
-      if (rightIcon === "menu") {
-        navigation.dispatch(DrawerActions.openDrawer());
-      } else {
-        rightFunction();
-      }
-    } catch (error) {
-      console.error("Error in right button handler:", error);
-    }
-  }, [navigation, rightFunction, rightIcon]);
-
+  const { toggleDrawer } = useDrawer();
+  const { goBack } = useProtectedNavigation()
+  
   return (
-    <View className={` ${Platform.OS === "ios" ? "mt-0" : "mt-10"} flex-row items-center px-6 justify-between ${className}`}>
+    <View
+      className={` ${
+        Platform.OS === "ios" ? "mt-0" : "mt-10"
+      } flex-row items-center px-6 justify-between ${className}`}
+    >
       <View style={{ width: size * 2 }}>
         {showLeft && (
           <TouchableOpacity
-            onPress={handleBackPress}
+            onPress={goBack}
             activeOpacity={0.7}
             hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             style={{
@@ -90,11 +62,7 @@ const HeaderNavigation = ({
               alignItems: "center",
             }}
           >
-            <Feather
-              name="chevron-left"
-              size={size}
-              color={themeColor}
-            />
+            <Feather name="chevron-left" size={size} color={themeColor} />
           </TouchableOpacity>
         )}
       </View>
@@ -103,10 +71,7 @@ const HeaderNavigation = ({
         {showLogo ? (
           <Logo horizontal size={logoSize} />
         ) : title ? (
-          <Text 
-            className="text-lg font-semibold"
-            style={{ color: themeColor }}
-          >
+          <Text className="text-lg font-semibold" style={{ color: themeColor }}>
             {title}
           </Text>
         ) : null}
@@ -115,7 +80,7 @@ const HeaderNavigation = ({
       <View style={{ width: size * 2 }}>
         {showRight && (
           <TouchableOpacity
-            onPress={handleRightPress}
+            onPress={toggleDrawer}
             activeOpacity={0.7}
             hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             style={{
@@ -127,11 +92,7 @@ const HeaderNavigation = ({
               alignItems: "center",
             }}
           >
-            <Feather
-              name={rightIcon}
-              size={size}
-              color={themeColor}
-            />
+            <Feather name={rightIcon} size={size} color={themeColor} />
           </TouchableOpacity>
         )}
       </View>

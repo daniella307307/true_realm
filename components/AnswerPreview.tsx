@@ -91,21 +91,29 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
         }
         return String(value);
 
+      case "day":
+        if (value) {
+          const day = value.day?.padStart(2, "0") || "00";
+          const month = value.month?.padStart(2, "0") || "00";
+          const year = value.year || "0000";
+          return `${day}/${month}/${year}`;
+        }
+        return "-";
+
+      case "time":
+        if (value) {
+          return value;
+        }
+        return "-";
+
       case "datetime":
       case "date":
-      case "time":
         if (value) {
           const date = new Date(value);
           if (field.type === "date" || field.dateType === "date") {
             return date.toLocaleDateString(language);
-          } else if (field.type === "time" || field.dateType === "time") {
-            return date.toLocaleTimeString(language, {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-          } else {
-            return date.toLocaleString(language);
           }
+          return date.toLocaleString(language);
         }
         return "-";
 

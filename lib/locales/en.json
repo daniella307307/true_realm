@@ -141,6 +141,7 @@
     "SettingsPage": {
       "title": "Settings",
       "sync": "Sync",
+      "home": "Home",
       "account": "Account",
       "language": "Language",
       "account_details": "Account Details",

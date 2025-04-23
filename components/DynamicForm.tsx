@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   ScrollView,
-  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -13,7 +12,6 @@ import { router } from "expo-router";
 import i18n from "~/utils/i18n";
 import { useForm, useWatch } from "react-hook-form";
 import { FormField, IFormSubmissionDetail } from "~/types";
-import { Pencil } from "lucide-react-native";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { SurveySubmission } from "~/models/surveys/survey-submission";
 import { saveSurveySubmission } from "~/services/survey-submission";
@@ -31,9 +29,11 @@ import {
   SelectBoxComponent,
   SwitchComponent,
   CheckBoxComponent,
+  DayInputComponent,
+  TimeInputComponent,
 } from "./DynamicComponents";
 import { AnswerPreview } from "./AnswerPreview";
-const { useRealm, useQuery } = RealmContext;
+const { useRealm } = RealmContext;
 
 export interface DynamicFieldProps {
   field: FormField;
@@ -155,9 +155,24 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
           language={language}
         />
       );
+    case "day":
+      return (
+        <DayInputComponent
+          field={field}
+          control={control}
+          language={language}
+        />
+      );
+    case "time":
+      return (
+        <TimeInputComponent
+          field={field}
+          control={control}
+          language={language}
+        />
+      );
     case "datetime":
     case "date":
-    case "time":
       return (
         <DateTimePickerComponent
           field={field}
@@ -249,12 +264,39 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         // Check conditional visibility
         if (field.conditional) {
           const dependentValue = formValues[field.conditional.when];
-          return field.conditional.eq === dependentValue;
+          let isVisible = false;
+          
+          // Handle array values (for checkboxes)
+          if (Array.isArray(dependentValue)) {
+            isVisible = dependentValue.includes(field.conditional.eq);
+          } else if (typeof dependentValue === 'string' && dependentValue.includes(',')) {
+            // Handle comma-separated string values
+            const values = dependentValue.split(',').map(v => v.trim());
+            isVisible = values.includes(field.conditional.eq);
+          } else {
+            // Handle single value
+            isVisible = field.conditional.eq === dependentValue;
+          }
+          
+          // Enhanced logging for checkbox dependencies
+          console.log("Field Visibility Check:", {
+            fieldKey: field.key,
+            fieldLabel: getLocalizedTitle(field.title, language),
+            dependentField: field.conditional.when,
+            dependentValue,
+            condition: field.conditional.eq,
+            isVisible,
+            currentValues: formValues[field.conditional.when],
+            allFormValues: formValues
+          });
+          
+          return isVisible;
         }
 
         return true;
       });
 
+    console.log("Filtered Fields:", filteredFields.map(f => f.key));
     setVisibleFields(filteredFields);
     
     // Only reset current page on initial load
@@ -273,6 +315,61 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     });
     return map;
   }, [visibleFields]);
+
+  // Group fields by their dependencies
+  const groupedFields = useMemo(() => {
+    const groups: FormField[][] = [];
+    let currentGroup: FormField[] = [];
+    let currentDependency: string | null = null;
+
+    visibleFields.forEach((field) => {
+      if (field.conditional) {
+        const dependency = field.conditional.when;
+        if (currentDependency === null) {
+          currentDependency = dependency;
+          currentGroup.push(field);
+        } else if (currentDependency === dependency) {
+          currentGroup.push(field);
+        } else {
+          if (currentGroup.length > 0) {
+            groups.push([...currentGroup]);
+          }
+          currentGroup = [field];
+          currentDependency = dependency;
+        }
+      } else {
+        if (currentGroup.length > 0) {
+          groups.push([...currentGroup]);
+          currentGroup = [];
+          currentDependency = null;
+        }
+        currentGroup.push(field);
+        if (currentGroup.length >= 3) {
+          groups.push([...currentGroup]);
+          currentGroup = [];
+        }
+      }
+    });
+
+    if (currentGroup.length > 0) {
+      groups.push(currentGroup);
+    }
+
+    return groups;
+  }, [visibleFields]);
+
+  // Calculate total pages based on groups
+  const totalPages = groupedFields.length;
+  const currentPageFields = groupedFields[currentPage] || [];
+
+  // Add logging for rendering
+  useEffect(() => {
+    console.log("Current Page Fields:", currentPageFields.map(f => ({
+      key: f.key,
+      title: getLocalizedTitle(f.title, language),
+      conditional: f.conditional
+    })));
+  }, [currentPageFields, language]);
 
   useEffect(() => {
     if (!language) {
@@ -319,7 +416,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         }
 
         console.log("Final submission:", data);
-
+        
         const dataWithTime = {
           ...data,
           table_name: formSubmissionMandatoryFields.table_name,
@@ -352,6 +449,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             : 0,
           language: currentLanguage,
           timeSpentFormatted: formatTime(timeSpent),
+          // Ensure dateOfTheMeeting is a string in YYYY-MM-DD format
+          dateOfTheMeeting: typeof data.dateOfTheMeeting === 'object' 
+            ? `${data.dateOfTheMeeting.year}-${data.dateOfTheMeeting.month}-${data.dateOfTheMeeting.day}`
+            : data.dateOfTheMeeting,
         };
 
         dataWithTime.post_data;
@@ -394,13 +495,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const validateAndProceed = async () => {
     if (visibleFields.length === 0) return;
     
-    const currentField = visibleFields[currentPage];
-    if (!currentField) return;
-
-    const isValid = await trigger(currentField.key);
+    // Validate all fields on the current page
+    const currentPageFieldKeys = currentPageFields.map(field => field.key);
+    const isValid = await trigger(currentPageFieldKeys);
+    
     if (isValid) {
       setValidationError(false);
-      if (currentPage < visibleFields.length - 1) {
+      if (currentPage < totalPages - 1) {
         setCurrentPage(currentPage + 1);
       }
     } else {
@@ -411,7 +512,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   const handleNext = () => {
     if (visibleFields.length === 0) return;
-    if (currentPage < visibleFields.length - 1) {
+    if (currentPage < totalPages - 1) {
       validateAndProceed();
     }
   };
@@ -420,38 +521,39 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     if (visibleFields.length === 0) return;
     if (currentPage > 0) {
       const previousPage = currentPage - 1;
-      const previousField = visibleFields[previousPage];
+      const previousFields = visibleFields.slice(
+        previousPage * 3,
+        (previousPage + 1) * 3
+      );
       
-      // If the previous field controls conditional visibility, reset visible fields
-      if (previousField && previousField.key) {
-        const isConditionalControl = fields.some(field => 
-          field.conditional?.when === previousField.key
-        );
-        
-        if (isConditionalControl) {
-          // Force a re-evaluation of visible fields
-          const currentValues = getValues();
-          const filteredFields = fields
-            .filter((field) => {
-              if (!field || typeof field !== "object") return false;
-              if (!field.key || typeof field.key !== "string") return false;
-              return true;
-            })
-            .filter((field) => {
-              if (field.key === "izucode" || field.key === "izu_id") return false;
-              if (["district", "sector", "cell", "village"].includes(field.key)) return false;
-              if (field.key === "submit") return false;
+      // If the previous fields control conditional visibility, reset visible fields
+      const hasConditionalControl = previousFields.some(field => 
+        fields.some(f => f.conditional?.when === field.key)
+      );
+      
+      if (hasConditionalControl) {
+        // Force a re-evaluation of visible fields
+        const currentValues = getValues();
+        const filteredFields = fields
+          .filter((field) => {
+            if (!field || typeof field !== "object") return false;
+            if (!field.key || typeof field.key !== "string") return false;
+            return true;
+          })
+          .filter((field) => {
+            if (field.key === "izucode" || field.key === "izu_id") return false;
+            if (["district", "sector", "cell", "village"].includes(field.key)) return false;
+            if (field.key === "submit") return false;
 
-              if (field.conditional) {
-                const dependentValue = currentValues[field.conditional.when];
-                return field.conditional.eq === dependentValue;
-              }
+            if (field.conditional) {
+              const dependentValue = currentValues[field.conditional.when];
+              return field.conditional.eq === dependentValue;
+            }
 
-              return true;
-            });
+            return true;
+          });
 
-          setVisibleFields(filteredFields);
-        }
+        setVisibleFields(filteredFields);
       }
       
       setCurrentPage(previousPage);
@@ -544,15 +646,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           {!wholeComponent && visibleFields.length > 0 && (
             <>
               <Text className="text-center mb-2 text-md font-medium text-[#050F2B]">
-                Page {currentPage + 1} of {visibleFields.length}
+                Page {currentPage + 1} of {totalPages}
               </Text>
               <View className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
                 <View
                   className="bg-primary h-2.5 rounded-full"
                   style={{
-                    width: `${
-                      ((currentPage + 1) / visibleFields.length) * 100
-                    }%`,
+                    width: `${((currentPage + 1) / totalPages) * 100}%`,
                   }}
                 />
               </View>
@@ -579,19 +679,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 language={currentLanguage}
               />
             ))
-          ) : visibleFields[currentPage] ? (
-            <DynamicField
-              key={visibleFields[currentPage].key}
-              field={visibleFields[currentPage]}
-              control={control}
-              language={currentLanguage}
-            />
           ) : (
-            <View className="flex-1 justify-center items-center">
-              <Text className="text-gray-500">
-                {t("FormElementPage.noFields", "No fields to display")}
-              </Text>
-            </View>
+            currentPageFields.map((field) => (
+              <DynamicField
+                key={field.key}
+                field={field}
+                control={control}
+                language={currentLanguage}
+              />
+            ))
           )}
 
           {!wholeComponent && (
@@ -605,7 +701,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                   {t("FormElementPage.previous")}
                 </Text>
               </Button>
-              {currentPage < visibleFields.length - 1 ? (
+              {currentPage < totalPages - 1 ? (
                 <Button onPress={handleNext}>
                   <Text className="text-white font-semibold">
                     {t("FormElementPage.next")}

@@ -1,72 +1,173 @@
+// components/ui/custom-drawer/CustomDrawer.tsx
+import React, { useRef, useEffect, useState } from "react";
 import {
   View,
+  Animated,
   TouchableOpacity,
+  Dimensions,
+  BackHandler,
+  StyleSheet,
   Modal,
   TouchableWithoutFeedback,
+  Pressable,
 } from "react-native";
-import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Text } from "./text";
 import { router } from "expo-router";
 import { useAuth } from "~/lib/hooks/useAuth";
-import { Picker } from "@react-native-picker/picker";
 import Slider from "@react-native-community/slider";
 import { useFontSize } from "~/providers/FontSizeContext";
+import { Text } from "./text";
 
-const CustomDrawerContent = () => {
+const DRAWER_WIDTH = Dimensions.get("window").width * 0.7;
+
+interface CustomDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const CustomDrawer: React.FC<CustomDrawerProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const { t, i18n } = useTranslation();
   const { logout } = useAuth({});
   const { fontSize, setFontSize } = useFontSize();
+  const translateX = useRef(new Animated.Value(DRAWER_WIDTH)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   // State for modals
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [fontSizeModalVisible, setFontSizeModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 0.5,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: DRAWER_WIDTH,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const backAction = () => {
+      if (isOpen) {
+        onClose();
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [isOpen, onClose]);
 
   const changeLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
     setLanguageModalVisible(false);
   };
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
-    <View className="flex-1 pt-16">
-      {/* Account Settings */}
-      <TouchableOpacity
-        className="p-4 border-b border-gray-200"
-        onPress={() => router.push("/(settings)/")}
-      >
-        <Text className="text-lg">{t("SettingsPage.account")}</Text>
-      </TouchableOpacity>
+    <View style={StyleSheet.absoluteFill}>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: "black",
+              opacity: backdropOpacity,
+            },
+          ]}
+        />
+      </TouchableWithoutFeedback>
 
-      {/* Change Language */}
-      <TouchableOpacity
-        className="p-4 border-b border-gray-200"
-        onPress={() => setLanguageModalVisible(true)}
-      >
-        <Text className="text-lg">{t("SettingsPage.change_language")}</Text>
-      </TouchableOpacity>
+      <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
+        <View className="flex-1 pt-16">
+          <TouchableOpacity
+            className="p-4 border-b border-gray-200"
+            onPress={() => {
+              router.push("/(home)/");
+              onClose();
+            }}
+          >
+            <Text className="text-lg">{t("SettingsPage.home")}</Text>
+          </TouchableOpacity>
+          {/* Account Settings */}
+          <TouchableOpacity
+            className="p-4 border-b border-gray-200"
+            onPress={() => {
+              router.push("/(settings)/");
+              onClose();
+            }}
+          >
+            <Text className="text-lg">{t("SettingsPage.account")}</Text>
+          </TouchableOpacity>
 
-      {/* Change Font Size */}
-      <TouchableOpacity
-        className="p-4 border-b border-gray-200"
-        onPress={() => setFontSizeModalVisible(true)}
-      >
-        <Text className="text-lg">{t("SettingsPage.change_font_size")}</Text>
-      </TouchableOpacity>
+          {/* Change Language */}
+          <TouchableOpacity
+            className="p-4 border-b border-gray-200"
+            onPress={() => setLanguageModalVisible(true)}
+          >
+            <Text className="text-lg">{t("SettingsPage.change_language")}</Text>
+          </TouchableOpacity>
 
-      <TouchableOpacity
-        className="p-4 border-b border-gray-200"
-        onPress={() => router.push("/(settings)/sync")}
-      >
-        <Text className="text-lg">{t("SettingsPage.sync")}</Text>
-      </TouchableOpacity>
+          {/* Change Font Size */}
+          <TouchableOpacity
+            className="p-4 border-b border-gray-200"
+            onPress={() => setFontSizeModalVisible(true)}
+          >
+            <Text className="text-lg">
+              {t("SettingsPage.change_font_size")}
+            </Text>
+          </TouchableOpacity>
 
-      {/* Logout */}
-      <TouchableOpacity
-        className="p-4 border-b border-gray-200"
-        onPress={() => logout()}
-      >
-        <Text className="text-lg text-red-500">{t("Logout")}</Text>
-      </TouchableOpacity>
+          <TouchableOpacity
+            className="p-4 border-b border-gray-200"
+            onPress={() => {
+              router.push("/(settings)/sync");
+              onClose();
+            }}
+          >
+            <Text className="text-lg">{t("SettingsPage.sync")}</Text>
+          </TouchableOpacity>
+
+          {/* Logout */}
+          <TouchableOpacity
+            className="p-4 border-b border-gray-200"
+            onPress={() => logout()}
+          >
+            <Text className="text-lg text-red-500">{t("Logout")}</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
 
       {/* Language Modal */}
       <Modal transparent visible={languageModalVisible} animationType="slide">
@@ -83,10 +184,15 @@ const CustomDrawerContent = () => {
 
           <View className="space-y-4">
             <TouchableOpacity onPress={() => changeLanguage("en-US")}>
-              <Text className="text-center text-lg font-semibold bg-slate-50 py-3 rounded-lg">English</Text>
+              <Text className="text-center text-lg font-semibold bg-slate-50 py-3 rounded-lg">
+                English
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity className="mt-4" onPress={() => changeLanguage("rw-RW")}>
+            <TouchableOpacity
+              className="mt-4"
+              onPress={() => changeLanguage("rw-RW")}
+            >
               <Text className="text-center text-lg font-semibold bg-slate-50 py-3 rounded-lg">
                 Kinyarwanda
               </Text>
@@ -105,7 +211,7 @@ const CustomDrawerContent = () => {
       </Modal>
 
       {/* Font Size Modal */}
-      <Modal transparent visible={fontSizeModalVisible} animationType="slide">
+      <Modal transparent visible={fontSizeModalVisible}>
         <TouchableWithoutFeedback
           onPress={() => setFontSizeModalVisible(false)}
         >
@@ -142,4 +248,19 @@ const CustomDrawerContent = () => {
   );
 };
 
-export default CustomDrawerContent;
+const styles = StyleSheet.create({
+  drawer: {
+    position: "absolute",
+    right: 0,
+    width: DRAWER_WIDTH,
+    height: "100%",
+    backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+});
+
+export default CustomDrawer;
