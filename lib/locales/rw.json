@@ -43,6 +43,9 @@
   },
   "HomePage": {
     "title": "Muraho, ",
+    "wait": "Tumva",
+    "data_refreshing": "Amakuru ari mu nzira",
+    "ok": "OK",
     "description": "Igiki cyawe tuzakurikiraho",
     "families": "Imiryango",
     "history": "Amateka",

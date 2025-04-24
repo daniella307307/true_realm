@@ -44,6 +44,9 @@
     },
     "HomePage": {
       "title": "Hello, ",
+      "wait": "Please wait",
+      "data_refreshing": "Data is refreshing",
+      "ok": "OK",
       "description": "How can we help you today",
       "families": "Families",
       "history": "History",
