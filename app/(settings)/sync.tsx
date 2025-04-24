@@ -7,10 +7,9 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from "react-native";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useGetAllProjects } from "~/services/project";
-import { useGetAllModules } from "~/services/project";
 import { useGetForms } from "~/services/formElements";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { RealmContext } from "~/providers/RealContextProvider";
@@ -48,6 +47,7 @@ const SyncPage = () => {
   const [currentSyncItem, setCurrentSyncItem] = useState<string>("");
   const [lastSyncDate, setLastSyncDate] = useState<Date | null>(null);
   const [syncType, setSyncType] = useState<string | null>(null);
+  const [networkErrorCount, setNetworkErrorCount] = useState<number>(0);
   const [syncStatuses, setSyncStatuses] = useState<Record<string, string>>({
     Projects: "Not Synced",
     Modules: "Not Synced",
@@ -58,14 +58,29 @@ const SyncPage = () => {
   });
 
   const { refresh: refreshProjects } = useGetAllProjects(true);
-  const { surveySubmissions } = useGetAllSurveySubmissions();
+  const { surveySubmissions, refresh: refreshSubmissions } = useGetAllSurveySubmissions();
   const { refresh: refreshStakeholders } = useGetStakeholders(true);
   const { refresh: refreshForms } = useGetForms(true);
   const { refresh: refreshFamilies } = useGetFamilies(true);
   const { refresh: refreshIzus } = useGetIzus(true);
+  
+  // Modified filter to be more precise about what constitutes a pending submission
   const pendingSubmissions = surveySubmissions.filter(
-    (submission) => !submission.sync_status
+    (submission) => !submission.sync_status && submission.syncStatus !== "synced"
   );
+
+  // Keep track of network error submissions separately
+  const networkErrorSubmissions = surveySubmissions.filter(
+    (submission) => submission.syncStatus === "network_error"
+  );
+
+  // Effect to update counts when submissions change
+  useEffect(() => {
+    const networkErrors = surveySubmissions.filter(
+      (submission) => submission.syncStatus === "network_error"
+    ).length;
+    setNetworkErrorCount(networkErrors);
+  }, [surveySubmissions]);
 
   const syncFormsAndSurveys = async () => {
     if (isSyncing) return;
@@ -255,7 +270,13 @@ const SyncPage = () => {
     setSyncProgress(0);
 
     try {
-      const pendingCount = pendingSubmissions.length;
+      // Refresh submissions to ensure we have the latest data
+      await refreshSubmissions();
+      
+      // Combine regular pending and network error submissions
+      const allPendingSubmissions = [...pendingSubmissions, ...networkErrorSubmissions];
+      const pendingCount = allPendingSubmissions.length;
+      
       if (pendingCount === 0) {
         Alert.alert("Info", "No pending submissions to sync");
         setIsSyncing(false);
@@ -265,10 +286,15 @@ const SyncPage = () => {
 
       let syncedCount = 0;
       let failedCount = 0;
+      let networkErrorCount = 0;
 
-      for (const submission of pendingSubmissions) {
+      for (const submission of allPendingSubmissions) {
         try {
-          // Make the actual API call to sync the submission
+          console.log(`Attempting to sync submission: ${submission._id}`, {
+            currentStatus: submission.syncStatus,
+            sync_status: submission.sync_status
+          });
+          
           const decodedSubmission = {
             ...submission,
             ...submission.answers,
@@ -276,16 +302,16 @@ const SyncPage = () => {
             submittedAt: submission.submittedAt.toISOString(),
             lastSyncAttempt: new Date().toISOString(),
           };
+
           // @ts-ignore
           delete decodedSubmission.answers;
+
           const response = await baseInstance.post(
             submission.post_data,
             decodedSubmission
           );
-          console.log(
-            `Synced submission res: ${submission._id}`,
-            response.data
-          );
+          
+          console.log(`Synced submission response: ${submission._id}`, response.data);
 
           if (response.data || response.data.result) {
             // Update the local record after successful sync
@@ -294,28 +320,45 @@ const SyncPage = () => {
               submission.syncStatus = "synced";
               submission.lastSyncAttempt = new Date();
             });
+            console.log(`Successfully synced submission: ${submission._id}`, {
+              newStatus: "synced",
+              sync_status: true
+            });
             syncedCount++;
           } else {
-            console.log("response", response.status);
-            throw new Error("Invalid response from server");
+            console.error("Invalid response from server for submission:", submission._id);
+            realm.write(() => {
+              submission.sync_status = false;
+              submission.syncStatus = "failed";
+              submission.lastSyncAttempt = new Date();
+            });
+            failedCount++;
           }
         } catch (error: any) {
+          console.log(`Error syncing submission ${submission._id}:`, error.message);
+          
+          // If the server indicates the submission is already synced (400 status)
           if (error.response?.status === 400) {
+            console.log(`Submission ${submission._id} already exists on server (400 status)`);
             realm.write(() => {
               submission.sync_status = true;
               submission.syncStatus = "synced";
               submission.lastSyncAttempt = new Date();
             });
-            console.log("Error status", error.response?.status);
-            console.log(`Sync status changed to saved ${submission._id}`);
-            console.log(
-              "Failed submission: ",
-              JSON.stringify(submission, null, 2)
-            );
+            console.log(`Marked submission ${submission._id} as synced due to 400 status`, {
+              newStatus: "synced",
+              sync_status: true
+            });
             syncedCount++;
+          } else if (error.message === "Network Error") {
+            console.log(`Network error for submission ${submission._id}, marking for retry`);
+            realm.write(() => {
+              submission.syncStatus = "network_error";
+              submission.lastSyncAttempt = new Date();
+              // Keep sync_status as false so it will be retried
+            });
+            networkErrorCount++;
           } else {
-            console.log(`Error syncing submission: ${submission._id}`, error);
-            console.error("Error syncing submission:", error);
             realm.write(() => {
               submission.sync_status = false;
               submission.syncStatus = "failed";
@@ -325,12 +368,23 @@ const SyncPage = () => {
           }
         }
 
-        setSyncProgress(((syncedCount + failedCount) / pendingCount) * 100);
+        setSyncProgress(((syncedCount + failedCount + networkErrorCount) / pendingCount) * 100);
       }
 
       setLastSyncDate(new Date());
 
-      if (failedCount > 0) {
+      // Display appropriate message based on results
+      if (networkErrorCount > 0 && (failedCount > 0 || syncedCount > 0)) {
+        Alert.alert(
+          "Partial Sync",
+          `Synced: ${syncedCount}, Failed: ${failedCount}, Network Errors: ${networkErrorCount}\n\nNetwork error submissions will be retried on next sync.`
+        );
+      } else if (networkErrorCount > 0) {
+        Alert.alert(
+          "Network Issues",
+          `All ${networkErrorCount} submissions encountered network errors. Please check your connection and try again.`
+        );
+      } else if (failedCount > 0) {
         Alert.alert(
           "Partial Success",
           `Synced ${syncedCount} submissions, ${failedCount} failed`
@@ -341,14 +395,27 @@ const SyncPage = () => {
           `Successfully synced ${syncedCount} submissions`
         );
       }
+      
+      // Refresh submissions to update UI
+      refreshSubmissions();
+      
     } catch (error) {
       console.error("Error during data sync:", error);
       Alert.alert("Error", "Failed to sync data");
     } finally {
       setIsSyncing(false);
       setSyncType(null);
-      setLastSyncDate(new Date()); // Move setLastSyncDate here to ensure it's set even on error
     }
+  };
+
+  // Manual retry for network error submissions
+  const retryNetworkErrors = async () => {
+    if (networkErrorSubmissions.length === 0) {
+      Alert.alert("Info", "No network error submissions to retry");
+      return;
+    }
+    
+    syncData(); // Reuse existing sync logic which now handles network errors
   };
 
   const services = useMemo(
@@ -389,6 +456,16 @@ const SyncPage = () => {
             status: syncStatuses.Stakeholders,
             lastSyncDate: lastSyncDate,
           },
+          {
+            name: "Families",
+            status: syncStatuses.Families,
+            lastSyncDate: lastSyncDate,
+          },
+          {
+            name: "Izus",
+            status: syncStatuses.Izus,
+            lastSyncDate: lastSyncDate,
+          },
         ],
       },
       {
@@ -405,6 +482,14 @@ const SyncPage = () => {
         progress: syncType === "Data" ? syncProgress : undefined,
         lastSyncDate: lastSyncDate,
       },
+      ...(networkErrorCount > 0 
+        ? [{
+            key: "network",
+            name: `Retry Network Errors (${networkErrorCount})`,
+            status: "Network Errors",
+            lastSyncDate: null,
+          }]
+        : []),
     ],
     [
       isSyncing,
@@ -414,6 +499,7 @@ const SyncPage = () => {
       syncType,
       syncStatuses,
       pendingSubmissions.length,
+      networkErrorCount,
     ]
   );
 
@@ -434,6 +520,8 @@ const SyncPage = () => {
               ? "text-red-500"
               : item.status === "Syncing"
               ? "text-blue-500"
+              : item.status === "Network Errors"
+              ? "text-orange-500"
               : "text-gray-500"
           }
         >
@@ -485,11 +573,17 @@ const SyncPage = () => {
       </View>
       <TouchableOpacity
         className={`flex items-center justify-center h-12 w-12 flex-col rounded-full ml-4 ${
-          isSyncing && syncType === item.key ? "bg-gray-700" : "bg-primary"
+          isSyncing && syncType === item.key 
+            ? "bg-gray-700" 
+            : item.key === "network" 
+              ? "bg-orange-500"
+              : "bg-primary"
         }`}
         onPress={() => {
           if (item.key === "Forms") {
             syncFormsAndSurveys();
+          } else if (item.key === "network") {
+            retryNetworkErrors();
           } else {
             syncData();
           }
@@ -497,7 +591,13 @@ const SyncPage = () => {
         disabled={isSyncing}
       >
         <TabBarIcon
-          name={isSyncing && syncType === item.key ? "hourglass-empty" : "sync"}
+          name={
+            isSyncing && syncType === item.key 
+              ? "hourglass-empty" 
+              : item.key === "network" 
+                ? "refresh"
+                : "sync"
+          }
           family="MaterialIcons"
           size={24}
           color="#FFFFFF"

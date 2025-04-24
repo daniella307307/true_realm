@@ -8,6 +8,7 @@ import {
   RefreshControl,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import HeaderNavigation from "~/components/ui/header";
@@ -146,11 +147,9 @@ const HomeScreen = () => {
   // Handle navigation with PIN protection when needed
   const handleNavigation = (route: string) => {
     if (isLoading || refreshing) {
-      Alert.alert(
-        t("HomePage.wait"),
-        t("HomePage.data_refreshing"),
-        [{ text: t("HomePage.ok"), style: "default" }]
-      );
+      Alert.alert(t("HomePage.wait"), t("HomePage.data_refreshing"), [
+        { text: t("HomePage.ok"), style: "default" },
+      ]);
       return;
     }
     navigateTo(route);
@@ -199,42 +198,52 @@ const HomeScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <HeaderNavigation
-        showLeft={false}
-        showRight={true}
-        showLogo={true}
-        logoSize={32}
-      />
-      <ScrollView
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <View className="p-6">
-          <Text className="text-2xl font-bold">
-            {t("HomePage.title") + user?.name}
-          </Text>
-          <Text className="text-lg text-[#71717A]">
-            {t("HomePage.description")}
-          </Text>
-        </View>
+      {isLoading || refreshing ? (
+        <ActivityIndicator size="large" color="#A23A91" />
+      ) : (
+        <>
+          <HeaderNavigation
+            showLeft={false}
+            showRight={true}
+            showLogo={true}
+            logoSize={32}
+          />
+          <ScrollView
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          >
+            <View className="p-6">
+              <Text className="text-2xl font-bold">
+                {t("HomePage.title") + user?.name}
+              </Text>
+              <Text className="text-lg text-[#71717A]">
+                {t("HomePage.description")}
+              </Text>
+            </View>
 
-        {/* Show loading indicator if data is being loaded */}
-        {(isLoading || refreshing) && (
-          <View className="p-4">
-            <Text className="text-center text-gray-500">
-              {t("Loading data...")}
-            </Text>
-          </View>
-        )}
+            {/* Show loading indicator if data is being loaded */}
+            {(isLoading || refreshing) && (
+              <View className="p-4">
+                <Text className="text-center text-gray-500">
+                  {t("Loading data...")}
+                </Text>
+              </View>
+            )}
 
-        {/* Conditionally render list or grid view based on screen width */}
-        {isSmallScreen ? renderListView() : renderGridView()}
-      </ScrollView>
+            {/* Conditionally render list or grid view based on screen width */}
+            {isSmallScreen ? renderListView() : renderGridView()}
+          </ScrollView>
 
-      {/* Blur overlay when refreshing or loading */}
-      {(isLoading || refreshing) && (
-        <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
+          {/* Blur overlay when refreshing or loading */}
+          {(isLoading || refreshing) && (
+            <BlurView
+              intensity={50}
+              tint="light"
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+        </>
       )}
     </SafeAreaView>
   );
