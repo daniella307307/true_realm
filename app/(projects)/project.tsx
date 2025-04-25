@@ -21,6 +21,7 @@ import HeaderNavigation from "~/components/ui/header";
 
 const ProjectScreen = () => {
   const { projects: storedProjects, isLoading, refresh } = useGetAllProjects();
+  // console.log("storedProjects", JSON.stringify(storedProjects, null, 2));
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -43,7 +44,7 @@ const ProjectScreen = () => {
     if (!storedProjects) return [];
 
     const activeProjects = storedProjects.filter(
-      (project) => project.status === 1
+      (project) => project.status != 0
     );
 
     if (!searchQuery) {

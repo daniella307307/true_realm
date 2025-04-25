@@ -111,7 +111,7 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   }
 
   // Define the mandatory order of steps
-  const mandatorySteps: FlowStepKey[] = ["izus", "families"];
+  const mandatorySteps: FlowStepKey[] = ["izus"];
 
   // Add optional steps based on loads
   const optionalSteps: FlowStepKey[] = [];
@@ -146,22 +146,62 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   const handleNext = () => {
     const currentStepKey = flowSteps[currentStep] as FlowStepKey;
 
+    // Check for existing submissions after IZU selection if the form doesn't load families
+    if (currentStepKey === "izus" && !loads.families) {
+      const izuCode = flowState.selectedValues.izus?.user_code || null;
+      const surveyId = formSubmissionMandatoryFields.id || 0;
+      const projectId = formSubmissionMandatoryFields.project_id || 0;
+      const sourceModuleId = formSubmissionMandatoryFields.source_module_id || 0;
+
+      console.log("Survey Submissions", JSON.stringify(realm.objects(SurveySubmission).filtered("izucode == $0", izuCode), null, 2));
+      console.log("izuCode", izuCode);
+      console.log("surveyId", surveyId);
+      console.log("projectId", projectId);
+      console.log("sourceModuleId", sourceModuleId);
+
+      if (izuCode && surveyId && projectId && sourceModuleId) {
+        const existingSubmission = realm
+          .objects<SurveySubmission>(SurveySubmission)
+          .filtered(
+            "project_id == $0 AND source_module_id == $1 AND survey_id == $2 AND izucode == $3",
+            projectId,
+            sourceModuleId,
+            surveyId, 
+            izuCode
+          );
+
+        if (existingSubmission.length > 0) {
+          Alert.alert(
+            t("SubmissionExists.title", "Submission Already Exists"),
+            t(
+              "SubmissionExists.message",
+              "A submission for this form and IZU already exists."
+            ),
+            [{ text: t("Common.ok", "OK") }]
+          );
+          return;
+        }
+      }
+    }
+
     if (currentStepKey === "families") {
       const familyId = flowState.selectedValues.families?.hh_id || null;
       const surveyId = formSubmissionMandatoryFields.id || 0;
       const projectId = formSubmissionMandatoryFields.project_id || 0;
       const sourceModuleId =
         formSubmissionMandatoryFields.source_module_id || 0;
+      const izuCode = flowState.selectedValues.izus?.user_code || null;
 
       if (familyId && surveyId && projectId && sourceModuleId) {
         const existingSubmission = realm
-          .objects<SurveySubmission>("SurveySubmission")
+          .objects<SurveySubmission>(SurveySubmission)
           .filtered(
-            "project_id == $0 AND source_module_id == $1 AND survey_id == $2 AND family == $3",
+            "project_id == $0 AND source_module_id == $1 AND survey_id == $2 AND family == $3 AND izucode == $4",
             projectId,
             sourceModuleId,
             surveyId,
-            familyId
+            familyId,
+            izuCode
           );
 
         if (existingSubmission.length > 0) {

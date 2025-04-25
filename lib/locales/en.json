@@ -180,7 +180,7 @@
     },
     "PinPage": {
       "title": "Enter Pin",
-      "description": "Enter the last 4 digits, of your phone number",
+      "description": "Please enter your last 4 digits",
       "verify": "Verify"
     },
     "CohortStatisticsPage": {

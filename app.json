@@ -8,10 +8,9 @@
     "icon": "./assets/images/icon.png",
     "scheme": "sugiramuryango",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#ffffff",
     "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "cover",
+      "image": "./assets/images/logo.png",
+      "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
@@ -25,14 +24,24 @@
       },
       "supportsTablet": true,
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.sugiramuryango.mobile"
+      "bundleIdentifier": "com.sugiramuryango.mobile",
+      "splash": {
+        "image": "./assets/images/logo.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.sugiramuryango.mobile"
+      "package": "com.sugiramuryango.mobile",
+      "splash": {
+        "image": "./assets/images/logo.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -55,12 +64,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "c0469619-a729-40c9-b9fe-989c3631c79f"
+        "projectId": "ce099e16-b0a2-4b2d-b5a2-964d143df968"
       }
     },
-    "updates": {
-      "url": "https://u.expo.dev/c0469619-a729-40c9-b9fe-989c3631c79f"
-    },
-    "owner": "manzicedrick"
+    "owner": "manzi_cedrick"
   }
 }

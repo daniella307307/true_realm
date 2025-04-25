@@ -1,115 +1,68 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
-import * as Crypto from 'expo-crypto';
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import * as SplashScreen from "expo-splash-screen";
+import * as NavigationBar from 'expo-navigation-bar';
+import { Platform, StatusBar } from "react-native";
+import CustomSplashScreen from "../components/CustomSplashScreen";
 
-class ChangeListenerMap<K, V> extends Map<K, V> {
-    constructor(private readonly onChange: (e: { self: ChangeListenerMap<K, V>, key: K, oldValue: V | undefined, newValue: V }) => void) {
-        super()
-    }
-
-    public set(key: K, value: V): this {
-        const oldValue = this.get(key);
-        super.set(key, value);
-        if(oldValue !== value) {
-            this.onChange({ self: this, key, oldValue, newValue: value })
-        }
-        return this;
-    }
-}
+// Keep the splash screen visible while the app initializes
+SplashScreen.preventAutoHideAsync();
 
 type SplashScreenContextValue = {
-    splashScreenVisible: boolean,
-    componentLoaded: Map<string, boolean>
+    onAppReady: () => void;
 }
 
-const SplashScreenContext = createContext<SplashScreenContextValue | undefined>(undefined)
-
-SplashScreen.preventAutoHideAsync();
+const SplashScreenContext = createContext<SplashScreenContextValue | undefined>(undefined);
 
 export const SplashScreenProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
+    const [appIsReady, setAppIsReady] = useState(false);
+    const [nativeSplashHidden, setNativeSplashHidden] = useState(false);
 
-    const [splashScreenVisible, setSplashScreenVisible] = useState(true)
-
-    const contextValue: SplashScreenContextValue = {
-        splashScreenVisible,
-        componentLoaded: new ChangeListenerMap(({ self }) => {
-            for(const entry of self.entries()) {
-                if(!entry[1]) {
-                    // one component not loaded yet, not hiding splash screen
-                    return
-                }
+    // Handle app ready state transitions
+    const onAppReady = async () => {
+        try {
+            if (Platform.OS === 'android') {
+                // Ensure status bar and navigation bar are properly configured
+                StatusBar.setBackgroundColor('transparent');
+                StatusBar.setTranslucent(true);
+                NavigationBar.setBackgroundColorAsync('#ffffff');
             }
-            SplashScreen.hideAsync()
-            setSplashScreenVisible(false)
-        })
+            
+            // Hide the native splash screen
+            await SplashScreen.hideAsync();
+            setNativeSplashHidden(true);
+        } catch (e) {
+            console.warn("Error hiding splash screen:", e);
+            setNativeSplashHidden(true); // Still proceed even if there's an error
+        }
+    };
+
+    // Handle custom splash screen finish
+    const onCustomSplashFinish = () => {
+        setAppIsReady(true);
+    };
+
+    // If the native splash is hidden but we're not fully ready,
+    // show our custom splash screen as a bridge
+    if (nativeSplashHidden && !appIsReady) {
+        return <CustomSplashScreen onFinish={onCustomSplashFinish} />;
     }
 
     return (
-        <SplashScreenContext.Provider value={contextValue}>
-            {children}
+        <SplashScreenContext.Provider value={{ onAppReady }}>
+            {appIsReady ? children : null}
         </SplashScreenContext.Provider>
-    )
-}
+    );
+};
 
 /**
- * Show the Splash Screen until component is ready to be displayed.
- * 
- * This only has an effect when component is mounted before Splash Screen is hidden,
- * so it should only be used in components that show up on launch.
- * 
- * @param isLoading The loading state of the component
- * 
- * ## Usage
- * ```
- * // Example 1:
- * const isLoading = loadSomething()
- * useSplashScreenLoading(isLoading)    // splash screen visible until isLoading is false
- * ```
- * ```
- * 
- * // Example 2: multiple loading states
- * const isLoading1 = loadSomething()
- * useSplashScreenLoading(isLoading1)   // splash screen visible until isLoading1 and isLoading2 are false
- * 
- * // this could be in different component and still have the same effect
- * const isLoading2 = loadSomethingElse()
- * useSplashScreenLoading(isLoading2)
- * ```
+ * Hook to signal when your component is ready to hide the splash screen
  */
-export function useSplashScreenLoading(isLoading: boolean) {
-    const id = useMemo(() => Crypto.randomUUID(), []);
-
+export function useAppReady() {
     const context = useContext(SplashScreenContext);
-    if(!context) {
-        throw new Error("useSplashScreenLoading must be used within a SplashScreenProvider");
+    if (!context) {
+        throw new Error("useAppReady must be used within a SplashScreenProvider");
     }
-
-    useEffect(() => {
-        // update the loading state of component
-        context.componentLoaded.set(id, !isLoading)
-
-        // cleanup when unmounting component
-        return () => {
-            context.componentLoaded.delete(id);
-        };
-    }, [isLoading])
-}
-
-/**
- * Get the visiblity of the Splash Screen.
- * @returns the visibility of the Splash Screen
- * 
- * ## Usage
- * ```
- * const splashScreenIsVisible = useSplashScreenVisible()
- * ```
- */
-export function useSplashScreenVisible() {
-    const context = useContext(SplashScreenContext);
-    if(!context) {
-        throw new Error("useSplashScreenVisible must be used within a SplashScreenProvider");
-    }
-    return context.splashScreenVisible
+    return context.onAppReady;
 }

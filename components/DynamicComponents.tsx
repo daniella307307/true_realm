@@ -2,11 +2,12 @@ import { View, TextInput, Switch, TouchableOpacity } from "react-native";
 
 import { Controller, useForm, useWatch, useFormContext } from "react-hook-form";
 import Dropdown from "./ui/select";
-import { DynamicFieldProps, getLocalizedTitle } from "./DynamicForm";
 import { Text } from "./ui/text";
 import { useMemo, useEffect } from "react";
 import { getDaysInMonth } from "date-fns";
 import { cn } from "~/lib/utils";
+import { getLocalizedTitle } from "~/utils/form-utils";
+import { DynamicFieldProps } from "~/types/form-types";
 
 const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   field,
@@ -97,6 +98,7 @@ const TextAreaComponent: React.FC<DynamicFieldProps> = ({
           onChangeText={onChange}
           multiline
           numberOfLines={4}
+          textAlignVertical="top"
         />
         {error && (
           <Text className="text-red-500 mt-2">
@@ -247,18 +249,21 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
       }}
       render={({ field: { onChange, value }, fieldState: { error } }) => {
         const selectedValues = value ? value.split(",").filter(Boolean) : [];
-        
+
         // Enhanced logging for debugging
         console.log(`Checkbox values for ${field.key}:`, {
           values: selectedValues,
           fieldLabel: getLocalizedTitle(field.title, language),
-          dependentFields: field.conditional ? {
-            when: field.conditional.when,
-            eq: field.conditional.eq,
-            shouldShow: field.conditional.eq === "!" 
-              ? !selectedValues.includes(field.conditional.when)
-              : selectedValues.includes(field.conditional.when)
-          } : null
+          dependentFields: field.conditional
+            ? {
+                when: field.conditional.when,
+                eq: field.conditional.eq,
+                shouldShow:
+                  field.conditional.eq === "!"
+                    ? !selectedValues.includes(field.conditional.when)
+                    : selectedValues.includes(field.conditional.when),
+              }
+            : null,
         });
 
         const handleToggle = (optionValue: string) => {
@@ -269,31 +274,35 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
             newValues = [...selectedValues, optionValue];
           }
           const newValueString = newValues.join(",");
-          
+
           // Log the change with more context
           console.log(`Updated checkbox values for ${field.key}:`, {
             previousValues: selectedValues,
             newValues,
             toggledValue: optionValue,
             fieldLabel: getLocalizedTitle(field.title, language),
-            dependentFields: field.conditional ? {
-              when: field.conditional.when,
-              eq: field.conditional.eq,
-              shouldShow: field.conditional.eq === "!" 
-                ? !newValues.includes(field.conditional.when)
-                : newValues.includes(field.conditional.when)
-            } : null
+            dependentFields: field.conditional
+              ? {
+                  when: field.conditional.when,
+                  eq: field.conditional.eq,
+                  shouldShow:
+                    field.conditional.eq === "!"
+                      ? !newValues.includes(field.conditional.when)
+                      : newValues.includes(field.conditional.when),
+                }
+              : null,
           });
-          
+
           onChange(newValueString);
         };
-
 
         return (
           <View className="mb-4">
             <Text className="mb-2 text-md font-medium text-[#050F2B]">
               {getLocalizedTitle(field.title, language)}
-              {field.validate?.required && <Text className="text-primary"> *</Text>}
+              {field.validate?.required && (
+                <Text className="text-primary"> *</Text>
+              )}
             </Text>
             <View className="flex flex-col flex-wrap mt-4">
               {field.values ? (
@@ -305,7 +314,11 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
                   >
                     <View
                       className={`w-5 h-5 border-2 border-[#A23A91] justify-center items-center
-                      ${selectedValues.includes(option.value) ? "bg-[#A23A91]" : "bg-white"}`}
+                      ${
+                        selectedValues.includes(option.value)
+                          ? "bg-[#A23A91]"
+                          : "bg-white"
+                      }`}
                     >
                       {selectedValues.includes(option.value) && (
                         <Text className="text-white text-xs">✓</Text>
@@ -326,7 +339,11 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
                   >
                     <View
                       className={`w-5 h-5 border-2 border-[#A23A91] justify-center items-center
-                      ${selectedValues.includes("yes") ? "bg-[#A23A91]" : "bg-white"}`}
+                      ${
+                        selectedValues.includes("yes")
+                          ? "bg-[#A23A91]"
+                          : "bg-white"
+                      }`}
                     >
                       {selectedValues.includes("yes") && (
                         <Text className="text-white text-xs">✓</Text>
@@ -341,7 +358,11 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
                   >
                     <View
                       className={`w-5 h-5 border-2 border-[#A23A91] justify-center items-center
-                      ${selectedValues.includes("no") ? "bg-[#A23A91]" : "bg-white"}`}
+                      ${
+                        selectedValues.includes("no")
+                          ? "bg-[#A23A91]"
+                          : "bg-white"
+                      }`}
                     >
                       {selectedValues.includes("no") && (
                         <Text className="text-white text-xs">✓</Text>

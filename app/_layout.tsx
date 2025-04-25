@@ -6,7 +6,6 @@ import { PortalHost } from "@rn-primitives/portal";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { Appearance } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SplashScreenProvider } from "~/providers/SplashScreenProvider";
 import "~/utils/i18n";
 import "react-native-get-random-values";
 import { useEffect, useState } from "react";
@@ -22,6 +21,7 @@ import { DrawerProvider } from "~/providers/DrawerProvider";
 import CustomDrawer from "~/components/ui/custom-drawer";
 import { useDrawer } from "~/providers/DrawerProvider";
 import { RouteProtectionProvider } from "~/providers/RouteProtectionProvider";
+import { SplashScreenProvider, useAppReady } from "~/providers/SplashScreenProvider";
 
 enableScreens();
 export default function RootLayout() {
@@ -32,7 +32,9 @@ export default function RootLayout() {
         <DrawerProvider>
           <RouteProtectionProvider>
             <RealmContext.RealmProvider>
-              <Layout />
+              <SplashScreenProvider>
+                <Layout />
+              </SplashScreenProvider>
             </RealmContext.RealmProvider>
           </RouteProtectionProvider>
         </DrawerProvider>
@@ -46,6 +48,7 @@ function Layout() {
   const { isLoggedIn, authChecked } = useAuth({});
   const [isInitialized, setIsInitialized] = useState(false);
   const { isDrawerOpen, closeDrawer } = useDrawer();
+  const onAppReady = useAppReady();
 
   useEffect(() => {
     // Wait for auth check to complete before proceeding
@@ -88,13 +91,14 @@ function Layout() {
         console.error("Error checking login status:", error);
         router.push("/(user-management)/login");
       } finally {
-        SplashScreen.hideAsync();
+        // Use the onAppReady function from SplashScreenProvider instead
+        onAppReady();
         setIsInitialized(true);
       }
     };
 
     initializeServices();
-  }, [isLoggedIn, authChecked]);
+  }, [isLoggedIn, authChecked, onAppReady]);
 
   // Show splash screen until auth is checked and initialization is complete
   if (!authChecked || !isInitialized) {

@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from "react-native";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useGetAllProjects } from "~/services/project";
 import { useGetForms } from "~/services/formElements";
@@ -25,6 +25,7 @@ import { Stakeholder } from "~/models/stakeholders/stakeholder";
 import { Families } from "~/models/family/families";
 import { Izu } from "~/models/izus/izu";
 import { IModule, IProject } from "~/types";
+import { SurveySubmission } from "~/models/surveys/survey-submission";
 const { useRealm, useQuery } = RealmContext;
 
 interface SyncItem {
@@ -48,6 +49,8 @@ const SyncPage = () => {
   const [lastSyncDate, setLastSyncDate] = useState<Date | null>(null);
   const [syncType, setSyncType] = useState<string | null>(null);
   const [networkErrorCount, setNetworkErrorCount] = useState<number>(0);
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [forceRefresh, setForceRefresh] = useState<number>(0); // Used to force remounting
   const [syncStatuses, setSyncStatuses] = useState<Record<string, string>>({
     Projects: "Not Synced",
     Modules: "Not Synced",
@@ -58,29 +61,44 @@ const SyncPage = () => {
   });
 
   const { refresh: refreshProjects } = useGetAllProjects(true);
-  const { surveySubmissions, refresh: refreshSubmissions } = useGetAllSurveySubmissions();
+  const { surveySubmissions, refresh: refreshSubmissions } =
+    useGetAllSurveySubmissions();
   const { refresh: refreshStakeholders } = useGetStakeholders(true);
   const { refresh: refreshForms } = useGetForms(true);
   const { refresh: refreshFamilies } = useGetFamilies(true);
   const { refresh: refreshIzus } = useGetIzus(true);
-  
-  // Modified filter to be more precise about what constitutes a pending submission
-  const pendingSubmissions = surveySubmissions.filter(
-    (submission) => !submission.sync_status && submission.syncStatus !== "synced"
-  );
 
-  // Keep track of network error submissions separately
-  const networkErrorSubmissions = surveySubmissions.filter(
-    (submission) => submission.syncStatus === "network_error"
-  );
-
-  // Effect to update counts when submissions change
-  useEffect(() => {
-    const networkErrors = surveySubmissions.filter(
-      (submission) => submission.syncStatus === "network_error"
+  // More reliable way to count pending and network error submissions
+  const updateSubmissionCounts = useCallback(() => {
+    // Direct realm query for maximum accuracy
+    const allSubmissions = realm.objects(SurveySubmission);
+    
+    // Count pending submissions (not synced and status is pending or undefined)
+    const pendingCount = allSubmissions.filtered(
+      '(sync_status == false) && (syncStatus == "pending" || syncStatus == null || syncStatus == "")'
     ).length;
-    setNetworkErrorCount(networkErrors);
-  }, [surveySubmissions]);
+    
+    // Count network error submissions
+    const networkErrorCount = allSubmissions.filtered(
+      'syncStatus == "network_error"'
+    ).length;
+    
+    console.log(`Direct Realm count - Pending: ${pendingCount}, Network Errors: ${networkErrorCount}`);
+    
+    setPendingCount(pendingCount);
+    setNetworkErrorCount(networkErrorCount);
+  }, [realm]);
+
+  // Update counts whenever submissions change
+  useEffect(() => {
+    updateSubmissionCounts();
+  }, [surveySubmissions, updateSubmissionCounts, forceRefresh]);
+
+  // Get direct submissions from Realm - more reliable than using the hook data
+  const getDirectSubmissions = useCallback((filter: string) => {
+    console.log("getDirectSubmissions", realm.objects("SurveySubmission").filtered(filter));
+    return realm.objects("SurveySubmission").filtered(filter);
+  }, [realm]);
 
   const syncFormsAndSurveys = async () => {
     if (isSyncing) return;
@@ -209,6 +227,7 @@ const SyncPage = () => {
         if (!storedFamilies || storedFamilies.length === 0) {
           throw new Error("Failed to store families");
         }
+        console.log("Families stored", storedFamilies.length);
         setSyncStatuses((prev) => ({ ...prev, Families: "Success" }));
         successCount++;
         setSyncProgress((successCount / totalItems) * 100);
@@ -270,13 +289,27 @@ const SyncPage = () => {
     setSyncProgress(0);
 
     try {
-      // Refresh submissions to ensure we have the latest data
-      await refreshSubmissions();
+      // Get direct pending and network error submissions from realm
+      const pendingSubmissions = getDirectSubmissions(
+        '(sync_status == false) && (syncStatus == "pending" || syncStatus == null || syncStatus == "")'
+      );
+      const networkErrorSubmissions = getDirectSubmissions(
+        'syncStatus == "network_error"'
+      );
+
+      // Convert to arrays for processing
+      const pendingArray = Array.from(pendingSubmissions);
+      const networkErrorArray = Array.from(networkErrorSubmissions);
       
       // Combine regular pending and network error submissions
-      const allPendingSubmissions = [...pendingSubmissions, ...networkErrorSubmissions];
-      const pendingCount = allPendingSubmissions.length;
+      const allPendingSubmissions = [
+        ...pendingArray,
+        ...networkErrorArray,
+      ];
       
+      const pendingCount = allPendingSubmissions.length;
+      console.log(`Starting sync with ${pendingCount} total submissions to process`);
+
       if (pendingCount === 0) {
         Alert.alert("Info", "No pending submissions to sync");
         setIsSyncing(false);
@@ -292,14 +325,14 @@ const SyncPage = () => {
         try {
           console.log(`Attempting to sync submission: ${submission._id}`, {
             currentStatus: submission.syncStatus,
-            sync_status: submission.sync_status
+            sync_status: submission.sync_status,
           });
-          
+
           const decodedSubmission = {
-            ...submission,
-            ...submission.answers,
-            _id: submission._id.toString(),
-            submittedAt: submission.submittedAt.toISOString(),
+            ...submission as Record<string, unknown>,
+            ...(submission.answers as Record<string, unknown>),
+            _id: (submission._id as { toString(): string }).toString(),
+            submittedAt: (submission.submittedAt as Date).toISOString(),
             lastSyncAttempt: new Date().toISOString(),
           };
 
@@ -307,11 +340,14 @@ const SyncPage = () => {
           delete decodedSubmission.answers;
 
           const response = await baseInstance.post(
-            submission.post_data,
+            submission.post_data as string,
             decodedSubmission
           );
-          
-          console.log(`Synced submission response: ${submission._id}`, response.data);
+
+          console.log(
+            `Synced submission response: ${submission._id}`,
+            JSON.stringify(response.data, null, 2)
+          );
 
           if (response.data || response.data.result) {
             // Update the local record after successful sync
@@ -322,11 +358,14 @@ const SyncPage = () => {
             });
             console.log(`Successfully synced submission: ${submission._id}`, {
               newStatus: "synced",
-              sync_status: true
+              sync_status: true,
             });
             syncedCount++;
           } else {
-            console.error("Invalid response from server for submission:", submission._id);
+            console.error(
+              "Invalid response from server for submission:",
+              submission._id
+            );
             realm.write(() => {
               submission.sync_status = false;
               submission.syncStatus = "failed";
@@ -335,30 +374,42 @@ const SyncPage = () => {
             failedCount++;
           }
         } catch (error: any) {
-          console.log(`Error syncing submission ${submission._id}:`, error.message);
-          
+          console.log(
+            `Error syncing submission ${submission._id}:`,
+            error.message
+          );
+
           // If the server indicates the submission is already synced (400 status)
           if (error.response?.status === 400) {
-            console.log(`Submission ${submission._id} already exists on server (400 status)`);
+            console.log(
+              `Submission ${submission._id} already exists on server (400 status)`
+            );
             realm.write(() => {
               submission.sync_status = true;
               submission.syncStatus = "synced";
               submission.lastSyncAttempt = new Date();
             });
-            console.log(`Marked submission ${submission._id} as synced due to 400 status`, {
-              newStatus: "synced",
-              sync_status: true
-            });
+            console.log(
+              `Marked submission ${submission._id} as synced due to 400 status`,
+              {
+                newStatus: "synced",
+                sync_status: true,
+              }
+            );
             syncedCount++;
           } else if (error.message === "Network Error") {
-            console.log(`Network error for submission ${submission._id}, marking for retry`);
+            console.log(
+              `Network error for submission ${submission._id}, marking for retry`
+            );
             realm.write(() => {
               submission.syncStatus = "network_error";
+              submission.sync_status = false;
               submission.lastSyncAttempt = new Date();
               // Keep sync_status as false so it will be retried
             });
             networkErrorCount++;
           } else {
+            console.log("Other error type:", error);
             realm.write(() => {
               submission.sync_status = false;
               submission.syncStatus = "failed";
@@ -368,10 +419,40 @@ const SyncPage = () => {
           }
         }
 
-        setSyncProgress(((syncedCount + failedCount + networkErrorCount) / pendingCount) * 100);
+        setSyncProgress(
+          ((syncedCount + failedCount + networkErrorCount) / pendingCount) * 100
+        );
       }
 
       setLastSyncDate(new Date());
+      
+      // Force refresh submissions state
+      await refreshSubmissions();
+      
+      // Force UI update by triggering the forceRefresh counter
+      setForceRefresh(prev => prev + 1);
+      
+      // Update counts directly from realm after all operations
+      updateSubmissionCounts();
+      
+      // Log counts from Realm to verify they're actually changing
+      const updatedPendingSubmissions = getDirectSubmissions(
+        '(sync_status == false) && (syncStatus == "pending" || syncStatus == null || syncStatus == "")'
+      );
+      const updatedNetworkErrorSubmissions = getDirectSubmissions(
+        'syncStatus == "network_error"'
+      );
+      
+      console.log("AFTER SYNC - DIRECT DATABASE COUNTS:");
+      console.log(`Pending: ${updatedPendingSubmissions.length}`);
+      console.log(`Network errors: ${updatedNetworkErrorSubmissions.length}`);
+      console.log("All submissions status check:");
+      
+      // Log details of all submissions to debug status issues
+      const allSubs = Array.from(realm.objects("SurveySubmission"));
+      allSubs.forEach(sub => {
+        console.log(`ID: ${sub._id}, sync_status: ${sub.sync_status}, syncStatus: ${sub.syncStatus}`);
+      });
 
       // Display appropriate message based on results
       if (networkErrorCount > 0 && (failedCount > 0 || syncedCount > 0)) {
@@ -395,10 +476,6 @@ const SyncPage = () => {
           `Successfully synced ${syncedCount} submissions`
         );
       }
-      
-      // Refresh submissions to update UI
-      refreshSubmissions();
-      
     } catch (error) {
       console.error("Error during data sync:", error);
       Alert.alert("Error", "Failed to sync data");
@@ -410,11 +487,14 @@ const SyncPage = () => {
 
   // Manual retry for network error submissions
   const retryNetworkErrors = async () => {
+    const networkErrorSubmissions = getDirectSubmissions(
+      'syncStatus == "network_error"'
+    );
+    
     if (networkErrorSubmissions.length === 0) {
       Alert.alert("Info", "No network error submissions to retry");
       return;
     }
-    
     syncData(); // Reuse existing sync logic which now handles network errors
   };
 
@@ -470,9 +550,9 @@ const SyncPage = () => {
       },
       {
         key: "data",
-        name: `Sync Data (${pendingSubmissions.length} pending)`,
+        name: `Sync Data (${pendingCount} pending)`,
         status:
-          pendingSubmissions.length === 0
+          pendingCount === 0
             ? "No Pending Submissions"
             : isSyncing && syncType === "Data"
             ? "Syncing"
@@ -482,13 +562,15 @@ const SyncPage = () => {
         progress: syncType === "Data" ? syncProgress : undefined,
         lastSyncDate: lastSyncDate,
       },
-      ...(networkErrorCount > 0 
-        ? [{
-            key: "network",
-            name: `Retry Network Errors (${networkErrorCount})`,
-            status: "Network Errors",
-            lastSyncDate: null,
-          }]
+      ...(networkErrorCount > 0
+        ? [
+            {
+              key: "network",
+              name: `Retry Network Errors (${networkErrorCount})`,
+              status: "Network Errors",
+              lastSyncDate: null,
+            },
+          ]
         : []),
     ],
     [
@@ -498,8 +580,9 @@ const SyncPage = () => {
       lastSyncDate,
       syncType,
       syncStatuses,
-      pendingSubmissions.length,
+      pendingCount,
       networkErrorCount,
+      forceRefresh, // Add forceRefresh as a dependency to ensure updates
     ]
   );
 
@@ -573,11 +656,11 @@ const SyncPage = () => {
       </View>
       <TouchableOpacity
         className={`flex items-center justify-center h-12 w-12 flex-col rounded-full ml-4 ${
-          isSyncing && syncType === item.key 
-            ? "bg-gray-700" 
-            : item.key === "network" 
-              ? "bg-orange-500"
-              : "bg-primary"
+          isSyncing && syncType === item.key
+            ? "bg-gray-700"
+            : item.key === "network"
+            ? "bg-orange-500"
+            : "bg-primary"
         }`}
         onPress={() => {
           if (item.key === "Forms") {
@@ -592,11 +675,11 @@ const SyncPage = () => {
       >
         <TabBarIcon
           name={
-            isSyncing && syncType === item.key 
-              ? "hourglass-empty" 
-              : item.key === "network" 
-                ? "refresh"
-                : "sync"
+            isSyncing && syncType === item.key
+              ? "hourglass-empty"
+              : item.key === "network"
+              ? "refresh"
+              : "sync"
           }
           family="MaterialIcons"
           size={24}
@@ -618,6 +701,7 @@ const SyncPage = () => {
         data={services as SyncItem[]}
         renderItem={renderItem}
         keyExtractor={(item) => item.key}
+        extraData={forceRefresh} // Ensure the FlatList updates when forceRefresh changes
       />
     </SafeAreaView>
   );

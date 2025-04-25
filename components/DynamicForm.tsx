@@ -17,6 +17,7 @@ import { SurveySubmission } from "~/models/surveys/survey-submission";
 import { saveSurveySubmission } from "~/services/survey-submission";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useTranslation } from "react-i18next";
+import { formatTime, getLocalizedTitle } from "~/utils/form-utils";
 
 import DateTimePickerComponent from "./ui/date-time-picker";
 import { Button } from "./ui/button";
@@ -35,22 +36,15 @@ import {
 import { AnswerPreview } from "./AnswerPreview";
 const { useRealm } = RealmContext;
 
-export interface DynamicFieldProps {
+// Define the props interface
+interface DynamicFieldProps {
   field: FormField;
   control: any;
   language?: string;
   type?: string;
 }
 
-export const getLocalizedTitle = (
-  title: { en: string; kn: string; default: string },
-  locale = i18n.language
-): string => {
-  // Convert locale to the language code used in your title object
-  const language = locale.startsWith("rw") ? "kn" : "en";
-  return title[language as keyof typeof title] || title.default;
-};
-
+// Use the interface directly rather than exporting it
 const DynamicField: React.FC<DynamicFieldProps> = ({
   field,
   control,
@@ -186,11 +180,6 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
   }
 };
 
-export const formatTime = (timeInSeconds: number): string => {
-  const minutes = Math.floor(timeInSeconds / 60);
-  const seconds = timeInSeconds % 60;
-  return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-};
 interface DynamicFormProps {
   fields: FormField[];
   wholeComponent?: boolean;
@@ -296,7 +285,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         return true;
       });
 
-    console.log("Filtered Fields:", filteredFields.map(f => f.key));
+    // console.log("Filtered Fields:", filteredFields.map(f => f.key));
     setVisibleFields(filteredFields);
     
     // Only reset current page on initial load

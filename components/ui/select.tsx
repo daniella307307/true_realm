@@ -75,7 +75,10 @@ export default function Dropdown({
 
       {expanded && (
         <Modal visible={expanded} transparent>
-          <TouchableOpacity onPress={() => setExpanded(false)}>
+          <TouchableOpacity 
+            onPress={() => setExpanded(false)}
+            style={{ flex: 1 }}
+          >
             <View className="flex-1 justify-center items-center px-5">
               <View
                 className="absolute bg-white w-full rounded-lg shadow-lg" 
@@ -91,7 +94,6 @@ export default function Dropdown({
               >
                 <FlatList
                   keyExtractor={(item) => 
-                    // make a unique structure for the item
                     `${item.value}-${item.label}`
                   }
                   data={data}
@@ -123,6 +125,9 @@ export default function Dropdown({
                     <View className="h-1" />
                   )}
                   className="py-2"
+                  nestedScrollEnabled={true}
+                  scrollEnabled={true}
+                  showsVerticalScrollIndicator={true}
                 />
               </View>
             </View>

@@ -2,7 +2,7 @@ import { FormField } from "~/types";
 import { FlowState } from "./FormFlowManager";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
-import { formatTime, getLocalizedTitle } from "./DynamicForm";
+import { formatTime, getLocalizedTitle } from "~/utils/form-utils";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { Pencil } from "lucide-react-native";
 import { Button } from "./ui/button";
@@ -142,7 +142,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
   };
 
   return (
-    <ScrollView className="bg-background mt-4">
+    <ScrollView className="bg-background mt-4 px-4">
       <Text className="text-center text-xl font-bold mb-6 text-[#050F2B]">
         {t("FormElementPage.previewTitle", "Review Your Answers")}
       </Text>

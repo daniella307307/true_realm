@@ -114,7 +114,7 @@ export const CustomDrawer: React.FC<CustomDrawerProps> = ({
           <TouchableOpacity
             className="p-4 border-b border-gray-200"
             onPress={() => {
-              router.push("/(home)/");
+              router.push("/(home)/home");
               onClose();
             }}
           >
