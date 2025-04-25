@@ -3,9 +3,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { View, Text, Alert } from "react-native";
 
 import { ICell } from "~/models/locations/cell";
-import { ICohort } from "~/models/cohorts/cohort";
 import { IDistrict } from "~/models/locations/district";
-import { IFamilies, IFormSubmissionDetail } from "~/types";
+import { ICohort, IFamilies, IFormSubmissionDetail } from "~/types";
 import { IIzu } from "~/models/izus/izu";
 import { IProvince } from "~/models/locations/province";
 import { ISector } from "~/models/locations/sector";
@@ -21,40 +20,11 @@ import FormNavigation from "./ui/form-navigation";
 import IzuSelector from "./ui/izu-selector";
 import LocationSelector from "./ui/location-selector";
 import StakeholderSelector from "./ui/stakeholder-selector";
+import { FlowState, FlowStepKey, FormFlowManagerProps } from "~/types/form-types";
 
 const { useRealm } = RealmContext;
 
-interface FormFlowManagerProps {
-  form: any;
-  fields: any[];
-  formSubmissionMandatoryFields: IFormSubmissionDetail;
-}
 
-type FlowStepKey =
-  | "cohorts"
-  | "izus"
-  | "families"
-  | "locations"
-  | "stakeholders"
-  | "onPhone";
-
-export interface FlowState {
-  [key: string]: any;
-  currentStep: number;
-  selectedValues: {
-    izus?: IIzu | null;
-    cohorts?: ICohort | null;
-    families?: IFamilies | null;
-    locations?: {
-      province?: IProvince | null;
-      district?: IDistrict | null;
-      sector?: ISector | null;
-      cell?: ICell | null;
-      village?: IVillage | null;
-    };
-    stakeholders?: any[] | null;
-  };
-}
 
 const formatTime = (timeInSeconds: number): string => {
   const minutes = Math.floor(timeInSeconds / 60);
@@ -106,83 +76,28 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   }, []);
 
   const loads = form.loads ? JSON.parse(form.loads) : {};
-  if (formSubmissionMandatoryFields.project_id === 3) {
-    loads.families = true;
+  // console.log("New loads", loads);
+  // Define the flow steps in the correct order: izu-family-location-cohorts-stakeholders
+  // Start with izus as mandatory
+  const flowSteps: FlowStepKey[] = ["izus"];
+  
+  // Add family if project_id is 3 or if it's in loads
+  const hasFamilies = formSubmissionMandatoryFields.project_id === 3 || loads.families;
+  if (hasFamilies) {
+    flowSteps.push("families");
   }
-
-  // Define the mandatory order of steps
-  const mandatorySteps: FlowStepKey[] = ["izus"];
-
-  // Add optional steps based on loads
-  const optionalSteps: FlowStepKey[] = [];
-  if (loads.cohorts) optionalSteps.push("cohorts");
-  if (loads.stakeholders) optionalSteps.push("stakeholders");
-
-  // Combine mandatory and optional steps
-  const flowSteps = [...mandatorySteps, ...optionalSteps];
-
-  // Function to check if we need to show location selector
-  const needsLocationSelector = () => {
-    const selectedFamily = flowState.selectedValues.families;
-    if (!selectedFamily) return false;
-    // Check if family has complete location data
-    const familyLocation = selectedFamily.location
-      ? JSON.parse(selectedFamily.location)
-      : null;
-    return !(
-      familyLocation?.province?.id &&
-      familyLocation?.district?.id &&
-      familyLocation?.sector?.id &&
-      familyLocation?.cell?.id &&
-      familyLocation?.village?.id
-    );
-  };
-
-  // If location is needed and family doesn't have it, add location step
-  if (loads.locations && needsLocationSelector()) {
+  
+  // Add location only if families are not in the flow but locations are in loads
+  if (loads.locations && !hasFamilies) {
     flowSteps.push("locations");
   }
-
+  
+  // Add remaining steps in the specified order
+  if (loads.cohorts) flowSteps.push("cohorts");
+  if (loads.stakeholders) flowSteps.push("stakeholders");
+  // console.log(flowSteps);
   const handleNext = () => {
     const currentStepKey = flowSteps[currentStep] as FlowStepKey;
-
-    // Check for existing submissions after IZU selection if the form doesn't load families
-    if (currentStepKey === "izus" && !loads.families) {
-      const izuCode = flowState.selectedValues.izus?.user_code || null;
-      const surveyId = formSubmissionMandatoryFields.id || 0;
-      const projectId = formSubmissionMandatoryFields.project_id || 0;
-      const sourceModuleId = formSubmissionMandatoryFields.source_module_id || 0;
-
-      console.log("Survey Submissions", JSON.stringify(realm.objects(SurveySubmission).filtered("izucode == $0", izuCode), null, 2));
-      console.log("izuCode", izuCode);
-      console.log("surveyId", surveyId);
-      console.log("projectId", projectId);
-      console.log("sourceModuleId", sourceModuleId);
-
-      if (izuCode && surveyId && projectId && sourceModuleId) {
-        const existingSubmission = realm
-          .objects<SurveySubmission>(SurveySubmission)
-          .filtered(
-            "project_id == $0 AND source_module_id == $1 AND survey_id == $2 AND izucode == $3",
-            projectId,
-            sourceModuleId,
-            surveyId, 
-            izuCode
-          );
-
-        if (existingSubmission.length > 0) {
-          Alert.alert(
-            t("SubmissionExists.title", "Submission Already Exists"),
-            t(
-              "SubmissionExists.message",
-              "A submission for this form and IZU already exists."
-            ),
-            [{ text: t("Common.ok", "OK") }]
-          );
-          return;
-        }
-      }
-    }
 
     if (currentStepKey === "families") {
       const familyId = flowState.selectedValues.families?.hh_id || null;
@@ -217,6 +132,7 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
         }
       }
 
+      // Extract location from family and set it to flowState
       const selectedFamily = flowState.selectedValues.families;
       if (selectedFamily?.location) {
         const familyLocation = JSON.parse(selectedFamily.location);
@@ -379,6 +295,16 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
             initialValue={currentValue as any[]}
           />
         );
+      case "onPhone":
+        // Automatically skip this step as it's likely handled elsewhere
+        setTimeout(() => handleNext(), 0);
+        return (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-primary font-semibold">
+              {t("OnPhone.label", "On Phone")}
+            </Text>
+          </View>
+        );
       default:
         return null;
     }
@@ -408,6 +334,9 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
         );
       case "stakeholders":
         return Array.isArray(value) && value.length > 0;
+      case "onPhone":
+        // For onPhone, consider it always complete if it exists in the flow
+        return true;
       default:
         return false;
     }

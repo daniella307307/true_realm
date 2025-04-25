@@ -55,13 +55,17 @@ export function useDataSync(configs: SyncConfig[]) {
 
       realm.write(() => {
         if (Array.isArray(transformedData)) {
-          transformedData.forEach((item) => {
-            try {
-              realm.create(model, item, Realm.UpdateMode.Modified);
-            } catch (error) {
-              console.error(`Error syncing ${key}:`, error);
-            }
-          });
+          if (transformedData.length === 0) {
+            console.log(`Received empty array for ${key}, this is valid`);
+          } else {
+            transformedData.forEach((item) => {
+              try {
+                realm.create(model, item, Realm.UpdateMode.Modified);
+              } catch (error) {
+                console.error(`Error creating ${key} item:`, error);
+              }
+            });
+          }
         } else {
           realm.create(model, transformedData, Realm.UpdateMode.Modified);
         }
@@ -76,7 +80,7 @@ export function useDataSync(configs: SyncConfig[]) {
         },
       }));
     } catch (error) {
-      console.error(`Error syncing ${key}:`, error);
+      console.log(`Error syncing ${key}:`, error);
       setSyncStatus((prev) => ({
         ...prev,
         [key]: {

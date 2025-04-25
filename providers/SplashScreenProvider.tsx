@@ -29,6 +29,7 @@ export const SplashScreenProvider: React.FC<{ children: ReactNode }> = ({
                 NavigationBar.setBackgroundColorAsync('#ffffff');
             }
             
+            console.log("Hiding splash screen");
             // Hide the native splash screen
             await SplashScreen.hideAsync();
             setNativeSplashHidden(true);

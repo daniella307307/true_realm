@@ -99,6 +99,8 @@ const ProjectModuleScreens = () => {
         .map((submission) => submission.source_module_id)
     );
 
+    // console.log("Module IDs with submissions: ", moduleIdsWithSubmissions);
+
     return modules
       .filter(
         (module: IModule | null): module is IModule =>

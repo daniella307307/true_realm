@@ -1,5 +1,5 @@
 import { FormField } from "~/types";
-import { FlowState } from "./FormFlowManager";
+import { FlowState } from "~/types/form-types";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { formatTime, getLocalizedTitle } from "~/utils/form-utils";
@@ -16,6 +16,7 @@ interface AnswerPreviewProps {
   timeSpent: number;
   onEditField?: (fieldKey: string) => void;
   flowState: FlowState;
+  resetSubmitting?: (callback: () => void) => void;
 }
 
 export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
@@ -27,13 +28,15 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
   timeSpent,
   onEditField,
   flowState,
+  resetSubmitting,
 }) => {
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false); // Add loading state
 
+  // console.log("Answer Preview Log:");
   const getDisplayValue = (field: any, value: any) => {
     // Your existing getDisplayValue function
-    if (value === undefined || value === null) return "-";
+    if (value === undefined || value === null || value === "") return "-";
 
     // Handle flow state values
     if (field.key === "izucode" || field.key === "izu_id") {
@@ -138,6 +141,12 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
   const handleSubmit = () => {
     if (isSubmitting) return; // Prevent multiple submissions
     setIsSubmitting(true);
+    
+    // Register callback to reset submission state
+    if (resetSubmitting) {
+      resetSubmitting(() => setIsSubmitting(false));
+    }
+    
     onSubmit();
   };
 
@@ -295,21 +304,13 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
         </Button>
         <Button
           onPress={handleSubmit}
+          isLoading={isSubmitting}
           disabled={isSubmitting}
-          className={isSubmitting ? "bg-primary opacity-70" : "bg-primary"}
+          className="bg-primary"
         >
-          {isSubmitting ? (
-            <View className="flex flex-row items-center">
-              {/* You could add a loading spinner here if available */}
-              <Text className="text-white font-semibold">
-                {t("FormElementPage.submitting", "Submitting...")}
-              </Text>
-            </View>
-          ) : (
-            <Text className="text-white font-semibold">
-              {t("FormElementPage.finalSubmit", "Submit")}
-            </Text>
-          )}
+          <Text className="text-white font-semibold">
+            {t("FormElementPage.finalSubmit", "Submit")}
+          </Text>
         </Button>
       </View>
     </ScrollView>

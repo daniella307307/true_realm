@@ -8,6 +8,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "sugiramuryango",
     "userInterfaceStyle": "automatic",
+    "backgroundColor": "#ffffff",
     "splash": {
       "image": "./assets/images/logo.png",
       "resizeMode": "contain",

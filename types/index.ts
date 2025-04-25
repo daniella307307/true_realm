@@ -659,11 +659,12 @@ export interface IFamilies {
   hh_head_fullname: string;
   village_name: string;
   cohort: string;
+  meta?:string;
   location?: string;
 }
 
 export interface ICohort {
-  id: number;
+  _id: Realm.BSON.ObjectId;
   cohort: string;
 }
 

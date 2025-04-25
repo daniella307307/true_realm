@@ -21,9 +21,12 @@ import { DrawerProvider } from "~/providers/DrawerProvider";
 import CustomDrawer from "~/components/ui/custom-drawer";
 import { useDrawer } from "~/providers/DrawerProvider";
 import { RouteProtectionProvider } from "~/providers/RouteProtectionProvider";
-import { SplashScreenProvider, useAppReady } from "~/providers/SplashScreenProvider";
+import { AppDataProvider } from "~/providers/AppProvider";
 
+// Prevent the splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
 enableScreens();
+
 export default function RootLayout() {
   Appearance.setColorScheme("light");
   return (
@@ -32,9 +35,9 @@ export default function RootLayout() {
         <DrawerProvider>
           <RouteProtectionProvider>
             <RealmContext.RealmProvider>
-              <SplashScreenProvider>
+              <AppDataProvider>
                 <Layout />
-              </SplashScreenProvider>
+              </AppDataProvider>
             </RealmContext.RealmProvider>
           </RouteProtectionProvider>
         </DrawerProvider>
@@ -45,64 +48,86 @@ export default function RootLayout() {
 }
 
 function Layout() {
-  const { isLoggedIn, authChecked } = useAuth({});
-  const [isInitialized, setIsInitialized] = useState(false);
+  const { isLoggedIn, authChecked, user } = useAuth({});
   const { isDrawerOpen, closeDrawer } = useDrawer();
-  const onAppReady = useAppReady();
+  const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    // Wait for auth check to complete before proceeding
-    const initializeServices = async () => {
+    const initializeApp = async () => {
       try {
-        // Only proceed once auth has been checked
+        // Wait for auth check to complete
         if (!authChecked) return;
 
         const loginStatus = await isLoggedIn;
-        console.log("Is Logged In:", loginStatus);
+        console.log("Auth check completed. Is logged in:", loginStatus);
 
-        // Only initialize network services if logged in
+        // Initialize network services regardless of login status
+        const networkUnsubscribe = await initializeNetworkListener();
+        
+        // Only initialize sync service if logged in
+        let syncUnsubscribe = null;
         if (loginStatus) {
-          const networkUnsubscribe = await initializeNetworkListener();
-          const syncUnsubscribe = initializeSyncService();
-
-          router.push("/(home)/home");
-
-          // Check and show internet connectivity status
-          const netInfo = await NetInfo.fetch();
-          console.log("NetInfo", netInfo);
-          Toast.show({
-            type: netInfo.isConnected ? "success" : "error",
-            text1: "Network Status",
-            text2: netInfo.isConnected
-              ? "You are connected to the internet"
-              : "You are offline",
-            position: "top",
-            visibilityTime: 3000,
-          });
-
-          return () => {
-            networkUnsubscribe();
-            syncUnsubscribe();
-          };
-        } else {
-          router.push("/(user-management)/login");
+          syncUnsubscribe = initializeSyncService();
+          console.log("Sync service initialized");
         }
+
+        // Check and show internet connectivity status
+        const netInfo = await NetInfo.fetch();
+        console.log("Network status:", netInfo.isConnected ? "Connected" : "Offline");
+        
+        // App is ready now, but keep splash screen visible until navigation completes
+        setAppReady(true);
+        
+        // Navigation will be handled after splash screen hides
+        
+        return () => {
+          networkUnsubscribe && networkUnsubscribe();
+          syncUnsubscribe && syncUnsubscribe();
+        };
       } catch (error) {
-        console.error("Error checking login status:", error);
-        router.push("/(user-management)/login");
-      } finally {
-        // Use the onAppReady function from SplashScreenProvider instead
-        onAppReady();
-        setIsInitialized(true);
+        console.error("Error initializing app:", error);
+        // Even on error, mark app as ready and navigate to login
+        setAppReady(true);
       }
     };
 
-    initializeServices();
-  }, [isLoggedIn, authChecked, onAppReady]);
+    initializeApp();
+  }, [authChecked]);
 
-  // Show splash screen until auth is checked and initialization is complete
-  if (!authChecked || !isInitialized) {
-    return null; // Or a loading component
+  // Handle navigation and splash screen hiding after app is ready
+  useEffect(() => {
+    const handleNavigation = async () => {
+      if (!appReady) return;
+
+      try {
+        const loginStatus = await isLoggedIn;
+        
+        if (loginStatus) {
+          // User is logged in, navigate to home but don't hide splash screen yet
+          // Home screen will hide the splash screen after data is loaded
+          console.log("Navigating to home screen");
+          router.replace("/(home)/home");
+        } else {
+          // User is not logged in, navigate to login and hide splash screen
+          console.log("Navigating to login screen");
+          router.replace("/(user-management)/login");
+          await SplashScreen.hideAsync();
+          console.log("App loaded - Login screen displayed");
+        }
+      } catch (error) {
+        console.error("Error during navigation:", error);
+        // On error, navigate to login and hide splash screen
+        router.replace("/(user-management)/login");
+        await SplashScreen.hideAsync();
+      }
+    };
+
+    handleNavigation();
+  }, [appReady, isLoggedIn]);
+
+  // Don't render anything until app is ready
+  if (!appReady) {
+    return null;
   }
 
   return (

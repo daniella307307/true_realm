@@ -18,7 +18,7 @@ import { IVillage } from "~/models/locations/village";
 
 import Dropdown from "./select";
 import { Text } from "./text";
-import { getLocalizedTitle } from "../DynamicForm";
+import { getLocalizedTitle } from "~/utils/form-utils";
 
 interface LocationSelectorProps {
   onSelect: (value: {
@@ -112,14 +112,22 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
 
   // Call onSelect whenever any selection changes
   useEffect(() => {
-    onSelect({
+    const currentSelection = {
       province: selectedProvince,
       district: selectedDistrict,
       sector: selectedSector,
       cell: selectedCell,
       village: selectedVillage,
-    });
-  }, [selectedProvince, selectedDistrict, selectedSector, selectedCell, selectedVillage, onSelect]);
+    };
+    
+    onSelect(currentSelection);
+  }, [
+    selectedProvince,
+    selectedDistrict,
+    selectedSector,
+    selectedCell,
+    selectedVillage
+  ]);
 
   const language = i18n.language;
 
@@ -161,9 +169,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
             const province = provinces?.find((p) => p.id === item.value);
             setSelectedProvince(province || null);
           }}
-          placeholder="Select Province"
+          placeholder={selectedProvince?.province_name || "Select Province"}
           disabled={provincesLoading}
-          // value={selectedProvince?.id}
         />
       </View>
 
@@ -191,9 +198,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
             const district = districts?.find((d) => d.id === item.value);
             setSelectedDistrict(district || null);
           }}
-          placeholder="Select District"
+          placeholder={selectedDistrict?.district_name || "Select District"}
           disabled={!selectedProvince || districtsLoading}
-          // value={selectedDistrict?.id}
         />
       </View>
 
@@ -221,9 +227,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
             const sector = sectors?.find((s) => s.id === item.value);
             setSelectedSector(sector || null);
           }}
-          placeholder="Select Sector"
+          placeholder={selectedSector?.sector_name || "Select Sector"}
           disabled={!selectedDistrict || sectorsLoading}
-          // value={selectedSector?.id}
         />
       </View>
 
@@ -251,9 +256,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
             const cell = cells?.find((c) => c.id === item.value);
             setSelectedCell(cell || null);
           }}
-          placeholder="Select Cell"
+          placeholder={selectedCell?.cell_name || "Select Cell"}
           disabled={!selectedSector || cellsLoading}
-          // value={selectedCell?.id}
         />
       </View>
 
@@ -281,9 +285,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
             const village = villages?.find((v) => v.id === item.value);
             setSelectedVillage(village || null);
           }}
-          placeholder="Select Village"
+          placeholder={selectedVillage?.village_name || "Select Village"}
           disabled={!selectedCell || villagesLoading}
-          // value={selectedVillage?.id}
         />
       </View>
     </ScrollView>

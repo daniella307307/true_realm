@@ -11,40 +11,26 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import { SplashScreen } from "expo-router";
 import HeaderNavigation from "~/components/ui/header";
-import i18n from "~/utils/i18n";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { useAuth } from "~/lib/hooks/useAuth";
-import { useGetAllProjects } from "~/services/project";
-import { useGetFamilies } from "~/services/families";
-import { useGetForms } from "~/services/formElements";
-import { useGetIzus } from "~/services/izus";
-import { useGetPosts } from "~/services/posts";
-import { useGetStakeholders } from "~/services/stakeholders";
 import { useTranslation } from "react-i18next";
 import { useProtectedNavigation } from "~/utils/navigation";
 import { router } from "expo-router";
+import { useAppData } from "~/providers/AppProvider";
 
 const HomeScreen = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const { user, logout } = useAuth({
+  const [splashHidden, setSplashHidden] = useState(false);
+  const { user } = useAuth({
     onLogout: () => {
       router.push("/(user-management)/login");
     },
   });
   const { t } = useTranslation();
   const { navigateTo } = useProtectedNavigation();
-
-  // Data fetching hooks
-  const { refresh: refreshProjects } = useGetAllProjects(true);
-  const { refresh: refreshFamilies } = useGetFamilies(true);
-  const { refresh: refreshForms } = useGetForms(true);
-  const { refresh: refreshIzus } = useGetIzus(true);
-  const { refresh: refreshPosts } = useGetPosts(true);
-  const { refresh: refreshStakeholders } = useGetStakeholders(true);
+  const { isDataLoaded, isRefreshing, refreshAllData } = useAppData();
 
   // Get the screen width dynamically
   const { width } = useWindowDimensions();
@@ -105,48 +91,31 @@ const HomeScreen = () => {
     },
   ];
 
-  const refreshAllData = React.useCallback(async () => {
-    try {
-      setIsLoading(true);
-      await Promise.all([
-        refreshProjects(),
-        refreshFamilies(),
-        refreshForms(),
-        refreshIzus(),
-        refreshPosts(),
-        refreshStakeholders(),
-      ]);
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-      setIsInitialLoad(false);
-      console.log("Data refreshed");
-    }
-  }, [
-    refreshProjects,
-    refreshFamilies,
-    refreshForms,
-    refreshIzus,
-    refreshPosts,
-    refreshStakeholders,
-  ]);
-
   useEffect(() => {
-    if (isInitialLoad) {
-      refreshAllData();
-    }
-  }, [isInitialLoad, refreshAllData]);
+    // When data is loaded for the first time, hide the splash screen
+    const hideSplash = async () => {
+      if (isDataLoaded && !splashHidden) {
+        try {
+          await SplashScreen.hideAsync();
+          setSplashHidden(true);
+          console.log("App loaded - Home screen displayed with data");
+        } catch (error) {
+          console.error("Error hiding splash screen:", error);
+        }
+      }
+    };
 
+    hideSplash();
+  }, [isDataLoaded, splashHidden]);
+
+  // On demand refresh when user pulls to refresh
   const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
     refreshAllData();
   }, [refreshAllData]);
 
   // Handle navigation with PIN protection when needed
   const handleNavigation = (route: string) => {
-    if (isLoading || refreshing) {
+    if (!isDataLoaded || isRefreshing) {
       Alert.alert(t("HomePage.wait"), t("HomePage.data_refreshing"), [
         { text: t("HomePage.ok"), style: "default" },
       ]);
@@ -163,8 +132,9 @@ const HomeScreen = () => {
           onPress={() => handleNavigation(link.route)}
           key={index}
           className={`flex flex-row items-center bg-[#A23A910D] border border-[#0000001A] mb-3 py-4 px-4 rounded-xl ${
-            isLoading || refreshing ? "opacity-50" : ""
+            !isDataLoaded || isRefreshing ? "opacity-50" : ""
           }`}
+          disabled={!isDataLoaded || isRefreshing}
         >
           <View className="mr-4">{link.icon}</View>
           <Text className="text-sm font-semibold text-gray-600 flex-1">
@@ -184,8 +154,9 @@ const HomeScreen = () => {
           key={index}
           style={{ width: itemWidth }}
           className={`flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl ${
-            isLoading || refreshing ? "opacity-50" : ""
+            !isDataLoaded || isRefreshing ? "opacity-50" : ""
           }`}
+          disabled={!isDataLoaded || isRefreshing}
         >
           <>{link.icon}</>
           <Text className="text-sm font-semibold text-gray-600 px-1 pt-4">
@@ -196,54 +167,65 @@ const HomeScreen = () => {
     </View>
   );
 
+  // Show loading screen when data is being loaded initially
+  if (!isDataLoaded && !splashHidden) {
+    return (
+      <SafeAreaView className="flex-1 bg-white justify-center items-center">
+        <ActivityIndicator size="large" color="#A23A91" />
+        <Text className="mt-4 text-base text-gray-600">
+          {t("Loading data...")}
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {isLoading || refreshing ? (
-        <ActivityIndicator size="large" color="#A23A91" />
-      ) : (
-        <>
-          <HeaderNavigation
-            showLeft={false}
-            showRight={true}
-            showLogo={true}
-            logoSize={32}
-          />
-          <ScrollView
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-          >
-            <View className="p-6">
-              <Text className="text-2xl font-bold">
-                {t("HomePage.title") + user?.name}
-              </Text>
-              <Text className="text-lg text-[#71717A]">
-                {t("HomePage.description")}
-              </Text>
-            </View>
+      <HeaderNavigation
+        showLeft={false}
+        showRight={true}
+        showLogo={true}
+        logoSize={32}
+      />
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View className="p-6">
+          <Text className="text-2xl font-bold">
+            {t("HomePage.title") + user?.name}
+          </Text>
+          <Text className="text-lg text-[#71717A]">
+            {t("HomePage.description")}
+          </Text>
+        </View>
 
-            {/* Show loading indicator if data is being loaded */}
-            {(isLoading || refreshing) && (
-              <View className="p-4">
-                <Text className="text-center text-gray-500">
-                  {t("Loading data...")}
-                </Text>
-              </View>
-            )}
+        {/* Show loading indicator if data is being refreshed */}
+        {isRefreshing && (
+          <View className="p-4">
+            <Text className="text-center text-gray-500">
+              {t("Loading data...")}
+            </Text>
+          </View>
+        )}
 
-            {/* Conditionally render list or grid view based on screen width */}
-            {isSmallScreen ? renderListView() : renderGridView()}
-          </ScrollView>
+        {/* Conditionally render list or grid view based on screen width */}
+        {isDataLoaded ? (
+          isSmallScreen ? renderListView() : renderGridView()
+        ) : (
+          <View className="flex-1 justify-center items-center p-8">
+            <ActivityIndicator size="large" color="#A23A91" />
+            <Text className="text-center mt-4 text-gray-600">
+              {t("HomePage.loading_data")}
+            </Text>
+          </View>
+        )}
+      </ScrollView>
 
-          {/* Blur overlay when refreshing or loading */}
-          {(isLoading || refreshing) && (
-            <BlurView
-              intensity={50}
-              tint="light"
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-        </>
+      {/* Blur overlay when refreshing */}
+      {isRefreshing && (
+        <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
       )}
     </SafeAreaView>
   );

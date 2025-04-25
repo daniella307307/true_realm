@@ -4,7 +4,8 @@ import { Realm } from "@realm/react";
 import { isOnline } from "./network";
 import { baseInstance } from "~/utils/axios";
 import { RealmContext } from "~/providers/RealContextProvider";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { Families } from "~/models/family/families";
 const { useRealm, useQuery } = RealmContext;
 
 export const createSurveySubmission = (
@@ -75,10 +76,13 @@ export const saveSurveySubmission = async (
 
         // @ts-ignore
         delete decodedSubmission.answers;
-        
-        const response = await baseInstance.post(formData.post_data, decodedSubmission);
-        console.log("response: ", JSON.stringify(response.data, null, 2));
-        
+
+        const response = await baseInstance.post(
+          formData.post_data,
+          decodedSubmission
+        );
+        console.log("response data:", JSON.stringify(response.data, null, 2));
+
         if (response.data.result) {
           console.log("API submission successful and has result object");
           realm.write(() => {
@@ -95,8 +99,8 @@ export const saveSurveySubmission = async (
             );
             result = realm.create(SurveySubmission, submissionWithSyncStatus);
           });
-          console.log("Submission saved to realm.");
-          return result; // Return the result
+          console.log("Submission saved to realm.", response.data);
+          return result;
         }
       } catch (error: any) {
         console.log(`Sync status changed to saved ${submission._id}`);
@@ -111,14 +115,13 @@ export const saveSurveySubmission = async (
           realm.write(() => {
             result = realm.create(SurveySubmission, submissionWithSyncStatus);
           });
-          console.log("Submission saved to realm.");
-          return result; // Return the result
+          console.log("Submission saved to offline realm.", error.response);
+          console.log("Advanced error:", error.response.data);
+          return result;
         }
-
-        console.error("Error submitting to API:", error);
+        console.log("Error submitting to API:", error);
       }
     }
-
     let offlineResult;
     realm.write(() => {
       const submissionWithSyncStatus = {
@@ -131,8 +134,7 @@ export const saveSurveySubmission = async (
       offlineResult = realm.create(SurveySubmission, submissionWithSyncStatus);
     });
 
-    console.log("Survey submission saved locally!");
-    return offlineResult; // Return the result for offline submissions
+    return offlineResult;
   } catch (error) {
     console.error("Error saving survey submission:", error);
     throw error;
@@ -160,7 +162,7 @@ const syncWithRemote = async (submission: any) => {
       }
     });
   } catch (error) {
-    console.error("Error syncing with remote server:", error);
+    console.log("Error syncing with remote server:", error);
     // Update sync status to failed
     const realm = useRealm();
     realm.write(() => {
@@ -193,9 +195,22 @@ export const useGetAllSurveySubmissions = () => {
   const realm = useRealm();
   const surveySubmissions = useQuery(SurveySubmission);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Set loading to false once the query has been executed
+  // regardless of whether there are results or not
+  useEffect(() => {
+    // Small timeout to ensure data has been processed
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [surveySubmissions]);
 
   const refresh = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
+    setIsLoading(true);
   }, []);
 
   return {
@@ -208,7 +223,7 @@ export const useGetAllSurveySubmissions = () => {
         ])
       ),
     })),
-    isLoading: surveySubmissions.length === 0,
+    isLoading,
     error: null,
     refresh,
   };

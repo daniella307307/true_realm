@@ -9,19 +9,19 @@ import {
 
 import { router } from "expo-router";
 
-import i18n from "~/utils/i18n";
 import { useForm, useWatch } from "react-hook-form";
 import { FormField, IFormSubmissionDetail } from "~/types";
 import { RealmContext } from "~/providers/RealContextProvider";
-import { SurveySubmission } from "~/models/surveys/survey-submission";
 import { saveSurveySubmission } from "~/services/survey-submission";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useTranslation } from "react-i18next";
-import { formatTime, getLocalizedTitle } from "~/utils/form-utils";
+import { formatTime } from "~/utils/form-utils";
+import { Families } from "~/models/family/families";
+import { isOnline } from "~/services/network";
+import { baseInstance } from "~/utils/axios";
 
 import DateTimePickerComponent from "./ui/date-time-picker";
 import { Button } from "./ui/button";
-import { FlowState } from "./FormFlowManager";
 import { Text } from "./ui/text";
 import {
   TextFieldComponent,
@@ -34,15 +34,9 @@ import {
   TimeInputComponent,
 } from "./DynamicComponents";
 import { AnswerPreview } from "./AnswerPreview";
+import { DynamicFieldProps, DynamicFormProps } from "~/types/form-types";
+import { saveFamilyToAPI } from "~/services/families";
 const { useRealm } = RealmContext;
-
-// Define the props interface
-interface DynamicFieldProps {
-  field: FormField;
-  control: any;
-  language?: string;
-  type?: string;
-}
 
 // Use the interface directly rather than exporting it
 const DynamicField: React.FC<DynamicFieldProps> = ({
@@ -65,6 +59,12 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
       setIsVisible(shouldShow);
     }
   }, [field.conditional, dependentFieldValue]);
+
+  if (field.type === "day") {
+    return (
+      <DayInputComponent field={field} control={control} language={language} />
+    );
+  }
 
   if (!isVisible) return null;
 
@@ -180,15 +180,7 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
   }
 };
 
-interface DynamicFormProps {
-  fields: FormField[];
-  wholeComponent?: boolean;
-  language?: string;
-  flowState: FlowState;
-  formSubmissionMandatoryFields: IFormSubmissionDetail;
-  timeSpent: number;
-  onEditFlowState: (step: string) => void;
-}
+
 
 const DynamicForm: React.FC<DynamicFormProps> = ({
   fields,
@@ -221,9 +213,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     language || i18nInstance.language
   );
   const [submitting, setSubmitting] = useState(false);
-  const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null);
+  const [, setEditingFieldKey] = useState<string | null>(null);
   const [visibleFields, setVisibleFields] = useState<FormField[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [resetSubmittingCallback, setResetSubmittingCallback] = useState<(() => void) | null>(null);
   const realm = useRealm();
 
   const formValues = useWatch({
@@ -250,45 +243,44 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           return false;
         if (field.key === "submit") return false;
 
+        // Special case for dateOfFollowUp field
+        if (field.key === "dateOfFollowUp" && field.type === "day") {
+          console.log("Including dateOfFollowUp field due to special case");
+          return true;
+        }
+
         // Check conditional visibility
         if (field.conditional) {
           const dependentValue = formValues[field.conditional.when];
           let isVisible = false;
-          
-          // Handle array values (for checkboxes)
+
+          // Special case for fields with conditional.show = true but no conditional.when/eq
+          if (field.conditional.show === true && !field.conditional.when) {
+            isVisible = true;
+            console.log(
+              `Field ${field.key} is visible due to conditional.show=true`
+            );
+            return true;
+          }
           if (Array.isArray(dependentValue)) {
             isVisible = dependentValue.includes(field.conditional.eq);
-          } else if (typeof dependentValue === 'string' && dependentValue.includes(',')) {
-            // Handle comma-separated string values
-            const values = dependentValue.split(',').map(v => v.trim());
+          } else if (
+            typeof dependentValue === "string" &&
+            dependentValue.includes(",")
+          ) {
+            const values = dependentValue.split(",").map((v) => v.trim());
             isVisible = values.includes(field.conditional.eq);
           } else {
-            // Handle single value
             isVisible = field.conditional.eq === dependentValue;
           }
-          
-          // Enhanced logging for checkbox dependencies
-          console.log("Field Visibility Check:", {
-            fieldKey: field.key,
-            fieldLabel: getLocalizedTitle(field.title, language),
-            dependentField: field.conditional.when,
-            dependentValue,
-            condition: field.conditional.eq,
-            isVisible,
-            currentValues: formValues[field.conditional.when],
-            allFormValues: formValues
-          });
-          
           return isVisible;
         }
 
         return true;
       });
 
-    // console.log("Filtered Fields:", filteredFields.map(f => f.key));
     setVisibleFields(filteredFields);
-    
-    // Only reset current page on initial load
+
     if (isInitialLoad) {
       setCurrentPage(0);
       setIsInitialLoad(false);
@@ -305,14 +297,28 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     return map;
   }, [visibleFields]);
 
-  // Group fields by their dependencies
   const groupedFields = useMemo(() => {
     const groups: FormField[][] = [];
     let currentGroup: FormField[] = [];
     let currentDependency: string | null = null;
 
+    if (visibleFields.length === 0) {
+      return groups;
+    }
+
     visibleFields.forEach((field) => {
-      if (field.conditional) {
+      // Special handling for fields with conditional.show = true
+      if (
+        field.conditional &&
+        field.conditional.show === true &&
+        !field.conditional.when
+      ) {
+        // Put this field in its own group
+        groups.push([field]);
+        return; // Skip the rest of the processing for this field
+      }
+
+      if (field.conditional && field.conditional.when) {
         const dependency = field.conditional.when;
         if (currentDependency === null) {
           currentDependency = dependency;
@@ -343,7 +349,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     if (currentGroup.length > 0) {
       groups.push(currentGroup);
     }
-
     return groups;
   }, [visibleFields]);
 
@@ -351,21 +356,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const totalPages = groupedFields.length;
   const currentPageFields = groupedFields[currentPage] || [];
 
-  // Add logging for rendering
-  useEffect(() => {
-    console.log("Current Page Fields:", currentPageFields.map(f => ({
-      key: f.key,
-      title: getLocalizedTitle(f.title, language),
-      conditional: f.conditional
-    })));
-  }, [currentPageFields, language]);
-
   useEffect(() => {
     if (!language) {
       setCurrentLanguage(i18nInstance.language);
     }
   }, [i18nInstance.language, language]);
 
+  // console.log("Location Selected Values:", JSON.stringify(flowState.selectedValues.locations, null, 2));
   const onSubmit = async (data: any) => {
     if (submitting) return; // Prevent multiple submissions
 
@@ -380,34 +377,19 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         const surveyId = formSubmissionMandatoryFields.id || 0;
         const familyId = flowState?.selectedValues?.families?.hh_id || null;
 
-        // Check for existing submission before proceeding
-        const existingSubmission = realm
-          .objects<SurveySubmission>("SurveySubmission")
-          .filtered(
-            "project_id == $0 AND source_module_id == $1 AND survey_id == $2 AND family == $3",
-            projectId,
-            sourceModuleId,
-            surveyId,
-            familyId
-          );
-
-        if (existingSubmission.length > 0) {
-          Alert.alert(
-            t("SubmissionExists.title", "Submission Already Exists"),
-            t(
-              "SubmissionExists.message",
-              "A submission for this form and family already exists."
-            ),
-            [{ text: t("Common.ok", "OK") }]
-          );
-          setSubmitting(false); // Reset submitting state
-          return; // Stop the submission process
-        }
-
-        console.log("Final submission:", data);
+        // Ensure all fields are included in the submission data
+        const values = getValues();
+        const completeData: Record<string, any> = {};
         
+        // Include all visible fields in the data, even if they're empty
+        visibleFields.forEach(field => {
+          if (field && field.key) {
+            completeData[field.key] = values[field.key] !== undefined ? values[field.key] : "";
+          }
+        });
+
         const dataWithTime = {
-          ...data,
+          ...completeData,
           table_name: formSubmissionMandatoryFields.table_name,
           project_module_id:
             formSubmissionMandatoryFields.project_module_id || 0,
@@ -433,61 +415,106 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             : 0,
           family: familyId,
           izucode: flowState?.selectedValues?.izus?.user_code || null,
-          cohort: flowState?.selectedValues?.cohorts?.id
-            ? Number(flowState.selectedValues.cohorts.id)
+          cohort: flowState?.selectedValues?.cohorts?.cohort
+            ? Number(flowState.selectedValues.cohorts.cohort)
             : 0,
           language: currentLanguage,
           timeSpentFormatted: formatTime(timeSpent),
           // Ensure dateOfTheMeeting is a string in YYYY-MM-DD format
-          dateOfTheMeeting: typeof data.dateOfTheMeeting === 'object' 
-            ? `${data.dateOfTheMeeting.year}-${data.dateOfTheMeeting.month}-${data.dateOfTheMeeting.day}`
-            : data.dateOfTheMeeting,
+          dateOfTheMeeting:
+            typeof completeData.dateOfTheMeeting === "object"
+              ? `${completeData.dateOfTheMeeting.year}-${completeData.dateOfTheMeeting.month}-${completeData.dateOfTheMeeting.day}`
+              : completeData.dateOfTheMeeting,
         };
 
         dataWithTime.post_data;
-        console.log("dataWithTime", dataWithTime);
+        console.log(
+          "Final Data submitted:",
+          JSON.stringify(dataWithTime, null, 2)
+        );
         console.log("API URL:", dataWithTime.post_data);
 
-        const result = await saveSurveySubmission(realm, dataWithTime, fields);
-        console.log("Save result:", result);
-
-        // Show success alert and navigate
-        Alert.alert(
-          "Submission Successful",
-          "Your form has been submitted successfully.",
-          [
-            {
-              text: "OK",
-              onPress: () => router.push("/(history)/history"),
-            },
-          ]
-        );
+        if (dataWithTime.post_data === '/createFamily') {
+          // Create a family instead of a survey submission
+          await saveFamilyToAPI(realm, dataWithTime, dataWithTime.post_data, fields);
+          
+          // Show success alert and navigate
+          Alert.alert(
+            "Family Created Successfully",
+            "The family has been created successfully.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.push("/(history)/history"),
+              },
+            ]
+          );
+        } else {
+          // Regular survey submission
+          await saveSurveySubmission(realm, dataWithTime, fields);
+          
+          // Show success alert and navigate
+          Alert.alert(
+            "Submission Successful",
+            "Your form has been submitted successfully.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.push("/(history)/history"),
+              },
+            ]
+          );
+        }
       } catch (error) {
-        console.error("Error saving survey submission:", error);
+        console.error("Error saving data:", error);
         // Show error message to user
         Alert.alert(
           "Submission Error",
           "There was an error submitting your form. Please try again.",
           [{ text: "OK" }]
         );
+        
+        // Reset states immediately rather than waiting for finally block
+        setSubmitting(false);
+        if (resetSubmittingCallback) {
+          resetSubmittingCallback();
+          setResetSubmittingCallback(null);
+        }
       } finally {
         // This ensures submitting state is reset whether success or failure
+        // This is redundant for error case but ensures state is reset for success case
         setSubmitting(false);
+        if (resetSubmittingCallback) {
+          resetSubmittingCallback();
+          setResetSubmittingCallback(null);
+        }
       }
     } else {
       // This is just for preview, set form data and show preview
-      setFormData(data);
+      const values = getValues();
+      
+      // Create complete formData with all fields, including those with empty values
+      const completeFormData: Record<string, any> = {};
+      
+      // Ensure all visible fields have a value in the formData
+      visibleFields.forEach(field => {
+        if (field && field.key) {
+          completeFormData[field.key] = values[field.key] !== undefined ? values[field.key] : "";
+        }
+      });
+      
+      setFormData(completeFormData);
       setShowPreview(true);
     }
   };
 
   const validateAndProceed = async () => {
     if (visibleFields.length === 0) return;
-    
+
     // Validate all fields on the current page
-    const currentPageFieldKeys = currentPageFields.map(field => field.key);
+    const currentPageFieldKeys = currentPageFields.map((field) => field.key);
     const isValid = await trigger(currentPageFieldKeys);
-    
+
     if (isValid) {
       setValidationError(false);
       if (currentPage < totalPages - 1) {
@@ -514,12 +541,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         previousPage * 3,
         (previousPage + 1) * 3
       );
-      
+
       // If the previous fields control conditional visibility, reset visible fields
-      const hasConditionalControl = previousFields.some(field => 
-        fields.some(f => f.conditional?.when === field.key)
+      const hasConditionalControl = previousFields.some((field) =>
+        fields.some((f) => f.conditional?.when === field.key)
       );
-      
+
       if (hasConditionalControl) {
         // Force a re-evaluation of visible fields
         const currentValues = getValues();
@@ -531,7 +558,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           })
           .filter((field) => {
             if (field.key === "izucode" || field.key === "izu_id") return false;
-            if (["district", "sector", "cell", "village"].includes(field.key)) return false;
+            if (["district", "sector", "cell", "village"].includes(field.key))
+              return false;
             if (field.key === "submit") return false;
 
             if (field.conditional) {
@@ -544,7 +572,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
         setVisibleFields(filteredFields);
       }
-      
+
       setCurrentPage(previousPage);
       setValidationError(false);
     }
@@ -568,7 +596,18 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
     if (isValid) {
       const values = getValues();
-      setFormData(values);
+      
+      // Create complete formData with all fields, including those with empty values
+      const completeFormData: Record<string, any> = {};
+      
+      // Ensure all visible fields have a value in the formData
+      visibleFields.forEach(field => {
+        if (field && field.key) {
+          completeFormData[field.key] = values[field.key] !== undefined ? values[field.key] : "";
+        }
+      });
+      
+      setFormData(completeFormData);
       setShowPreview(true);
     } else {
       setValidationError(true);
@@ -596,6 +635,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
   };
 
+  // Function to register the reset callback from AnswerPreview
+  const handleResetSubmitting = (callback: () => void) => {
+    setResetSubmittingCallback(callback);
+  };
+
   if (showPreview) {
     return (
       <AnswerPreview
@@ -607,6 +651,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         timeSpent={timeSpent}
         onEditField={handleEditField}
         flowState={flowState}
+        resetSubmitting={handleResetSubmitting}
       />
     );
   }
@@ -659,25 +704,26 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             </View>
           )}
 
-          {wholeComponent ? (
-            visibleFields.map((field) => (
-              <DynamicField
-                key={field.key}
-                field={field}
-                control={control}
-                language={currentLanguage}
-              />
-            ))
-          ) : (
-            currentPageFields.map((field) => (
-              <DynamicField
-                key={field.key}
-                field={field}
-                control={control}
-                language={currentLanguage}
-              />
-            ))
-          )}
+          {wholeComponent
+            ? visibleFields.map((field) => (
+                <DynamicField
+                  key={field.key}
+                  field={field}
+                  control={control}
+                  language={currentLanguage}
+                />
+              ))
+            : currentPageFields.map((field) => {
+                // console.log(`Rendering field ${field.key} of type ${field.type} on page ${currentPage}`);
+                return (
+                  <DynamicField
+                    key={field.key}
+                    field={field}
+                    control={control}
+                    language={currentLanguage}
+                  />
+                );
+              })}
 
           {!wholeComponent && (
             <View className="flex flex-row justify-between mt-4">

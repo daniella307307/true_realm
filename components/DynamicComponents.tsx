@@ -251,20 +251,20 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
         const selectedValues = value ? value.split(",").filter(Boolean) : [];
 
         // Enhanced logging for debugging
-        console.log(`Checkbox values for ${field.key}:`, {
-          values: selectedValues,
-          fieldLabel: getLocalizedTitle(field.title, language),
-          dependentFields: field.conditional
-            ? {
-                when: field.conditional.when,
-                eq: field.conditional.eq,
-                shouldShow:
-                  field.conditional.eq === "!"
-                    ? !selectedValues.includes(field.conditional.when)
-                    : selectedValues.includes(field.conditional.when),
-              }
-            : null,
-        });
+        // console.log(`Checkbox values for ${field.key}:`, {
+        //   values: selectedValues,
+        //   fieldLabel: getLocalizedTitle(field.title, language),
+        //   dependentFields: field.conditional
+        //     ? {
+        //         when: field.conditional.when,
+        //         eq: field.conditional.eq,
+        //         shouldShow:
+        //           field.conditional.eq === "!"
+        //             ? !selectedValues.includes(field.conditional.when)
+        //             : selectedValues.includes(field.conditional.when),
+        //       }
+        //     : null,
+        // });
 
         const handleToggle = (optionValue: string) => {
           let newValues: string[];
@@ -274,24 +274,6 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
             newValues = [...selectedValues, optionValue];
           }
           const newValueString = newValues.join(",");
-
-          // Log the change with more context
-          console.log(`Updated checkbox values for ${field.key}:`, {
-            previousValues: selectedValues,
-            newValues,
-            toggledValue: optionValue,
-            fieldLabel: getLocalizedTitle(field.title, language),
-            dependentFields: field.conditional
-              ? {
-                  when: field.conditional.when,
-                  eq: field.conditional.eq,
-                  shouldShow:
-                    field.conditional.eq === "!"
-                      ? !newValues.includes(field.conditional.when)
-                      : newValues.includes(field.conditional.when),
-                }
-              : null,
-          });
 
           onChange(newValueString);
         };
@@ -390,180 +372,212 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
   control,
   language = "en-US",
 }) => {
-  const dayValue = useWatch({ control, name: `${field.key}.day` });
-  const monthValue = useWatch({ control, name: `${field.key}.month` });
-  const yearValue = useWatch({ control, name: `${field.key}.year` });
+  try {
+    // console.log("DayInputComponent initializing for field:", {
+    //   key: field.key,
+    //   type: field.type,
+    //   title: field.title, 
+    //   fieldsProperty: field.fields,
+    //   language
+    // });
+    
+    // Ensure field.fields exists, even if it's not provided
+    const fields = field.fields || {
+      day: { required: false },
+      month: { required: false },
+      year: { required: false }
+    };
+    
+    const dayValue = useWatch({ control, name: `${field.key}.day` });
+    const monthValue = useWatch({ control, name: `${field.key}.month` });
+    const yearValue = useWatch({ control, name: `${field.key}.year` });
 
-  // Generate year options (1999 to current year)
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 1950 }, (_, i) => ({
-    value: (currentYear - i).toString(),
-    label: (currentYear - i).toString(),
-  }));
+    // Generate year options (1999 to current year)
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: currentYear - 1950 }, (_, i) => ({
+      value: (currentYear - i).toString(),
+      label: (currentYear - i).toString(),
+    }));
 
-  // Month options
-  const months = [
-    { value: "01", label: "January" },
-    { value: "02", label: "February" },
-    { value: "03", label: "March" },
-    { value: "04", label: "April" },
-    { value: "05", label: "May" },
-    { value: "06", label: "June" },
-    { value: "07", label: "July" },
-    { value: "08", label: "August" },
-    { value: "09", label: "September" },
-    { value: "10", label: "October" },
-    { value: "11", label: "November" },
-    { value: "12", label: "December" },
-  ];
+    // Month options
+    const months = [
+      { value: "01", label: "January" },
+      { value: "02", label: "February" },
+      { value: "03", label: "March" },
+      { value: "04", label: "April" },
+      { value: "05", label: "May" },
+      { value: "06", label: "June" },
+      { value: "07", label: "July" },
+      { value: "08", label: "August" },
+      { value: "09", label: "September" },
+      { value: "10", label: "October" },
+      { value: "11", label: "November" },
+      { value: "12", label: "December" },
+    ];
 
-  // Calculate days based on selected month and year
-  const daysInMonth = useMemo(() => {
-    if (!monthValue || !yearValue) return 31;
-    return getDaysInMonth(
-      new Date(parseInt(yearValue), parseInt(monthValue) - 1)
-    );
-  }, [monthValue, yearValue]);
+    // Calculate days based on selected month and year
+    const daysInMonth = useMemo(() => {
+      if (!monthValue || !yearValue) return 31;
+      return getDaysInMonth(
+        new Date(parseInt(yearValue), parseInt(monthValue) - 1)
+      );
+    }, [monthValue, yearValue]);
 
-  const days = Array.from({ length: daysInMonth }, (_, i) => ({
-    value: (i + 1).toString().padStart(2, "0"),
-    label: (i + 1).toString(),
-  }));
+    const days = Array.from({ length: daysInMonth }, (_, i) => ({
+      value: (i + 1).toString().padStart(2, "0"),
+      label: (i + 1).toString(),
+    }));
 
-  // Format the final value as YYYY-MM-DD
-  const { setValue } = useForm();
-  useEffect(() => {
-    if (dayValue && monthValue && yearValue) {
-      const formattedDay = dayValue.padStart(2, "0");
-      const formattedMonth = monthValue.padStart(2, "0");
-      const formattedDate = `${yearValue}-${formattedMonth}-${formattedDay}`;
-      console.log("Formatted date in DayInputComponent:", formattedDate);
-      setValue(field.key, formattedDate);
-    }
-  }, [dayValue, monthValue, yearValue, field.key, setValue]);
+    // Format the final value as YYYY-MM-DD
+    const { setValue } = useForm();
+    useEffect(() => {
+      if (dayValue && monthValue && yearValue) {
+        const formattedDay = dayValue.padStart(2, "0");
+        const formattedMonth = monthValue.padStart(2, "0");
+        const formattedDate = `${yearValue}-${formattedMonth}-${formattedDay}`;
+        console.log("Formatted date in DayInputComponent:", formattedDate);
+        setValue(field.key, formattedDate);
+      }
+    }, [dayValue, monthValue, yearValue, field.key, setValue]);
 
-  // I want to print the selected values
-  return (
-    <View className="mb-4">
-      <Text className="mb-2 text-md font-medium text-[#050F2B]">
-        {getLocalizedTitle(field.title, language)}
-        {field.fields?.day?.required && (
-          <Text className="text-primary"> *</Text>
-        )}
-      </Text>
+    // console.log("DayInputComponent rendering UI for:", field.key);
+  
+    // I want to print the selected values
+    return (
+      <View className="mb-4">
+        <Text className="mb-2 text-md font-medium text-[#050F2B]">
+          {getLocalizedTitle(field.title, language)}
+          {fields.day?.required && (
+            <Text className="text-primary"> *</Text>
+          )}
+        </Text>
 
-      <View className="flex flex-row justify-between gap-2">
-        {/* Year Dropdown */}
-        <View className="flex-1">
-          <Text className="text-sm text-gray-600 mb-1">Year</Text>
-          <Controller
-            control={control}
-            name={`${field.key}.year`}
-            rules={{
-              required: field.fields?.year?.required
-                ? "Year is required"
-                : false,
-            }}
-            render={({ field: { onChange, value }, fieldState: { error } }) => (
-              <View>
-                <View
-                  className={cn(
-                    "border rounded-lg",
-                    error ? "border-primary" : "border-[#E4E4E7]"
+        <View className="flex flex-row justify-between gap-2">
+          {/* Year Dropdown */}
+          <View className="flex-1">
+            <Text className="text-sm text-gray-600 mb-1">Year</Text>
+            <Controller
+              control={control}
+              name={`${field.key}.year`}
+              rules={{
+                required: fields.year?.required
+                  ? "Year is required"
+                  : false,
+              }}
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <View>
+                  <View
+                    className={cn(
+                      "border rounded-lg",
+                      error ? "border-primary" : "border-[#E4E4E7]"
+                    )}
+                  >
+                    <Dropdown
+                      data={years}
+                      onChange={(item) => {
+                        onChange(item.value);
+                        setValue(`${field.key}.day`, "");
+                      }}
+                      placeholder="Select Year"
+                    />
+                  </View>
+                  {error && (
+                    <Text className="text-red-500 mt-1 text-xs">
+                      {error.message}
+                    </Text>
                   )}
-                >
-                  <Dropdown
-                    data={years}
-                    onChange={(item) => {
-                      onChange(item.value);
-                      setValue(`${field.key}.day`, "");
-                    }}
-                    placeholder="Select Year"
-                  />
                 </View>
-                {error && (
-                  <Text className="text-red-500 mt-1 text-xs">
-                    {error.message}
-                  </Text>
-                )}
-              </View>
-            )}
-          />
-        </View>
+              )}
+            />
+          </View>
 
-        {/* Month Dropdown */}
-        <View className="flex-1">
-          <Text className="text-sm text-gray-600 mb-1">Month</Text>
-          <Controller
-            control={control}
-            name={`${field.key}.month`}
-            rules={{
-              required: field.fields?.month?.required
-                ? "Month is required"
-                : false,
-            }}
-            render={({ field: { onChange, value }, fieldState: { error } }) => (
-              <View>
-                <View
-                  className={cn(
-                    "border rounded-lg",
-                    error ? "border-primary" : "border-[#E4E4E7]"
+          {/* Month Dropdown */}
+          <View className="flex-1">
+            <Text className="text-sm text-gray-600 mb-1">Month</Text>
+            <Controller
+              control={control}
+              name={`${field.key}.month`}
+              rules={{
+                required: fields.month?.required
+                  ? "Month is required"
+                  : false,
+              }}
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <View>
+                  <View
+                    className={cn(
+                      "border rounded-lg",
+                      error ? "border-primary" : "border-[#E4E4E7]"
+                    )}
+                  >
+                    <Dropdown
+                      data={months}
+                      onChange={(item) => {
+                        onChange(item.value);
+                        setValue(`${field.key}.day`, "");
+                      }}
+                      placeholder="Select Month"
+                    />
+                  </View>
+                  {error && (
+                    <Text className="text-red-500 mt-1 text-xs">
+                      {error.message}
+                    </Text>
                   )}
-                >
-                  <Dropdown
-                    data={months}
-                    onChange={(item) => {
-                      onChange(item.value);
-                      setValue(`${field.key}.day`, "");
-                    }}
-                    placeholder="Select Month"
-                  />
                 </View>
-                {error && (
-                  <Text className="text-red-500 mt-1 text-xs">
-                    {error.message}
-                  </Text>
-                )}
-              </View>
-            )}
-          />
-        </View>
+              )}
+            />
+          </View>
 
-        {/* Day Dropdown */}
-        <View className="flex-1">
-          <Text className="text-sm text-gray-600 mb-1">Day</Text>
-          <Controller
-            control={control}
-            name={`${field.key}.day`}
-            rules={{
-              required: field.fields?.day?.required ? "Day is required" : false,
-            }}
-            render={({ field: { onChange, value }, fieldState: { error } }) => (
-              <View>
-                <View
-                  className={cn(
-                    "border rounded-lg",
-                    error ? "border-primary" : "border-[#E4E4E7]"
+          {/* Day Dropdown */}
+          <View className="flex-1">
+            <Text className="text-sm text-gray-600 mb-1">Day</Text>
+            <Controller
+              control={control}
+              name={`${field.key}.day`}
+              rules={{
+                required: fields.day?.required ? "Day is required" : false,
+              }}
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <View>
+                  <View
+                    className={cn(
+                      "border rounded-lg",
+                      error ? "border-primary" : "border-[#E4E4E7]"
+                    )}
+                  >
+                    <Dropdown
+                      data={days}
+                      onChange={(item) => onChange(item.value)}
+                      placeholder="Select Day"
+                    />
+                  </View>
+                  {error && (
+                    <Text className="text-red-500 mt-1 text-xs">
+                      {error.message}
+                    </Text>
                   )}
-                >
-                  <Dropdown
-                    data={days}
-                    onChange={(item) => onChange(item.value)}
-                    placeholder="Select Day"
-                  />
                 </View>
-                {error && (
-                  <Text className="text-red-500 mt-1 text-xs">
-                    {error.message}
-                  </Text>
-                )}
-              </View>
-            )}
-          />
+              )}
+            />
+          </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  } catch (error) {
+    console.error("Error in DayInputComponent:", error);
+    // Provide a fallback UI in case of errors
+    return (
+      <View className="mb-4 p-4 border border-red-300 bg-red-50 rounded-lg">
+        <Text className="text-red-600 font-bold">
+          Error rendering date input for field: {field.key}
+        </Text>
+        <Text className="text-red-500 mt-2">
+          Please try refreshing the form or contact support.
+        </Text>
+      </View>
+    );
+  }
 };
 
 const TimeInputComponent: React.FC<DynamicFieldProps> = ({

@@ -8,34 +8,42 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useState, useMemo } from "react";
 import { router } from "expo-router";
 import { useGetAllProjects } from "~/services/project";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import CustomInput from "~/components/ui/input";
-import Skeleton from "~/components/ui/skeleton";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { IProject } from "~/types";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
 
+// Custom loading skeleton that doesn't rely on the problematic component
+const SimpleSkeletonItem = () => (
+  <View className="p-4 border mb-4 rounded-xl border-gray-200 bg-gray-100">
+    <View className="flex flex-row items-center">
+      <View className="w-6 h-6 bg-gray-200 rounded" />
+      <View className="h-5 ml-4 bg-gray-200 rounded w-3/4" />
+    </View>
+    <View className="flex flex-col mt-2">
+      <View className="h-4 bg-gray-200 rounded w-1/3 mt-2" />
+      <View className="h-4 bg-gray-200 rounded w-2/3 mt-2" />
+    </View>
+  </View>
+);
+
 const HistoryProjectScreen = () => {
   const storedProjects = useGetAllProjects();
   const {
     surveySubmissions,
-    isLoading: surveySubmissionsLoading,
-    error: surveySubmissionsError,
+    isLoading: isLoadingSubmissions,
     refresh: refetchSurveySubmissions,
   } = useGetAllSurveySubmissions();
   const { t } = useTranslation();
   const { control, watch } = useForm({
-    resolver: zodResolver(
-      z.object({
-        searchQuery: z.string(),
-      })
-    ),
+    defaultValues: {
+      searchQuery: "",
+    },
     mode: "onChange",
   });
 
@@ -45,11 +53,12 @@ const HistoryProjectScreen = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     await storedProjects.refresh();
+    await refetchSurveySubmissions();
     setRefreshing(false);
   };
 
   const organizedProjects = useMemo(() => {
-    if (!storedProjects || !surveySubmissions) return [];
+    if (!storedProjects?.projects || !surveySubmissions) return [];
 
     // Get unique project IDs from survey submissions
     const projectIdsWithSubmissions = new Set(
@@ -59,37 +68,37 @@ const HistoryProjectScreen = () => {
     // Filter projects that have survey submissions
     const activeProjects = storedProjects.projects.filter(
       (project) =>
-        project.status === 1 && projectIdsWithSubmissions.has(project.id)
+        project?.status === 1 && projectIdsWithSubmissions.has(project.id)
     );
 
     if (!searchQuery) {
       // Split projects into risk management and others
       const riskProjects = activeProjects.filter((project) =>
-        project.name.toLowerCase().includes("risk of harm management")
+        project.name?.toLowerCase().includes("risk of harm management")
       );
       const otherProjects = activeProjects.filter(
         (project) =>
-          !project.name.toLowerCase().includes("risk of harm management")
+          !project.name?.toLowerCase().includes("risk of harm management")
       );
 
       return [...riskProjects, ...otherProjects];
     }
 
     return activeProjects.filter((project) =>
-      project.name.toLowerCase().includes(searchQuery.toLowerCase())
+      project.name?.toLowerCase().includes(searchQuery?.toLowerCase() || "")
     );
-  }, [storedProjects, surveySubmissions, searchQuery]);
+  }, [storedProjects.projects, surveySubmissions, searchQuery]);
 
   const renderItem = ({ item, index }: { item: IProject; index: number }) => {
-    const isRiskManagement = item.name
-      .toLowerCase()
-      .includes("isk of harm management");
+    const isRiskManagement =
+      item.name?.toLowerCase()?.includes("risk of harm management") || false;
     const isFirstItem = index === 0;
 
     // Get submissions for this project
-    const projectSubmissions = surveySubmissions.filter(
-      (submission) => submission.project_id === item.id
-    );
+    const projectSubmissions =
+      surveySubmissions?.filter(
+        (submission) => submission?.project_id === item?.id
+      ) || [];
 
     return (
       <TouchableOpacity
@@ -110,7 +119,7 @@ const HistoryProjectScreen = () => {
               isRiskManagement ? "text-red-500" : ""
             }`}
           >
-            {item.name}
+            {item.name || ""}
           </Text>
         </View>
         <View className="flex flex-col justify-between items-start mt-2">
@@ -120,7 +129,8 @@ const HistoryProjectScreen = () => {
           </Text>
           <Text className="text-sm text-gray-500">
             {t("History.lastSubmission", "Last submission")}:{" "}
-            {projectSubmissions.length > 0
+            {projectSubmissions.length > 0 &&
+            projectSubmissions[projectSubmissions.length - 1]?.submittedAt
               ? new Date(
                   projectSubmissions[projectSubmissions.length - 1].submittedAt
                 ).toLocaleDateString("en-GB", {
@@ -140,7 +150,7 @@ const HistoryProjectScreen = () => {
 
   const ListHeader = () => {
     const hasRiskProject = organizedProjects.some((project) =>
-      project.name.toLowerCase().includes("risk management")
+      project.name?.toLowerCase().includes("risk management")
     );
 
     if (!hasRiskProject) return null;
@@ -154,9 +164,9 @@ const HistoryProjectScreen = () => {
     );
   };
 
-  const transformedProjects: IProject[] = organizedProjects.map((project) => ({
+  const transformedProjects = organizedProjects.map((project) => ({
     id: project.id,
-    name: project.name,
+    name: project.name || "",
     duration: project.duration || "",
     progress: project.progress || "",
     description: project.description || "",
@@ -170,7 +180,9 @@ const HistoryProjectScreen = () => {
     updated_at: project.updated_at
       ? new Date(project.updated_at).toDateString()
       : undefined,
-    project_modules: Array.from(project.project_modules),
+    project_modules: Array.isArray(project.project_modules)
+      ? Array.from(project.project_modules)
+      : [],
   }));
 
   return (
@@ -189,21 +201,20 @@ const HistoryProjectScreen = () => {
           accessibilityLabel={t("HistoryProjectPage.search_history_project")}
         />
 
-        {surveySubmissionsLoading ? (
-          [1, 2, 3].map((item) => <Skeleton key={item} />)
-        ) : transformedProjects.length === 0 ? (
-          <View className="flex-1 justify-center items-start mt-8">
-            <EmptyDynamicComponent />
-            <Text className="text-gray-500 text-center">
-              {t("History.noLocalSubmissions", "No local submissions yet!")}
-            </Text>
+        {isLoadingSubmissions ? (
+          <View>
+            <SimpleSkeletonItem />
+            <SimpleSkeletonItem />
+            <SimpleSkeletonItem />
           </View>
+        ) : transformedProjects?.length === 0 ? (
+          <EmptyDynamicComponent />
         ) : (
           <FlatList
-            data={transformedProjects}
+            data={transformedProjects || []}
             ListHeaderComponent={ListHeader}
             showsVerticalScrollIndicator={false}
-            keyExtractor={(item: IProject, index) => `${item.id}-${index}`}
+            keyExtractor={(item, index) => `${item?.id || index}-${index}`}
             renderItem={renderItem}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

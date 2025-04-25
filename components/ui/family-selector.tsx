@@ -4,8 +4,8 @@ import { Text } from "./text";
 import { useGetFamilies } from "~/services/families";
 import { IFamilies } from "~/types";
 import { Ionicons } from "@expo/vector-icons";
-import { getLocalizedTitle } from "../DynamicForm";
 import i18n from "~/utils/i18n";
+import { getLocalizedTitle } from "~/utils/form-utils";
 
 interface FamilySelectorProps {
   onSelect: (value: IFamilies) => void;
@@ -77,8 +77,7 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
     if (!families) return [];
     return families.filter(
       (family) =>
-        family.hh_head_fullname
-          .toLowerCase()
+        (family.hh_head_fullname?.toLowerCase() || "")
           .includes(searchQuery.toLowerCase()) ||
         family.hh_id.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -119,7 +118,8 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <FamilyItem
-            family={item}
+            // @ts-ignore
+            family={item as IFamilies}
             isSelected={selectedFamily?.id === item.id}
             onSelect={handleSelect}
           />

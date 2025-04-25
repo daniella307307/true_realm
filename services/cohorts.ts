@@ -1,47 +1,52 @@
-import { useEffect } from "react";
-
 import { Cohort } from "~/models/cohorts/cohort";
-import { Realm } from "@realm/react";
 import { RealmContext } from "~/providers/RealContextProvider";
 
-import { useGetFamilies } from "./families";
+import { baseInstance } from "~/utils/axios";
+import { useDataSync } from "./dataSync";
+import { ICohort } from "~/types";
 
 const { useRealm, useQuery } = RealmContext;
 
-export function useGetCohorts() {
-  const realm = useRealm();
+export async function fetchCohortsFromRemote() {
+  const res = await baseInstance.get<[{}]>("/get-cohorts");
+  return res.data;
+}
+
+export function useGetCohorts(forceSync: boolean = false) {
   const storedCohorts = useQuery(Cohort);
-  const { families } = useGetFamilies();
+  const realm = useRealm();
 
-  useEffect(() => {
-    if (!families) return;
-
-    const uniqueCohorts = Array.from(
-      new Set(families.map((family) => family.cohort))
-    )
-      .filter((cohort) => cohort)
-      .map((cohort, index) => ({
-        id: index + 1,
-        cohort: cohort as string,
-      }));
-
-    realm.write(() => {
-      const existingCohorts = realm.objects("Cohort");
-      realm.delete(existingCohorts);
-
-      // Add new cohorts
-      uniqueCohorts.forEach((cohort) => {
-        try {
-          realm.create("Cohort", cohort, Realm.UpdateMode.Modified);
-        } catch (error) {
-          console.error("Error creating cohort:", error);
-        }
-      });
-    });
-  }, [families]);
-
+  const { syncStatus, refresh } = useDataSync([
+    {
+      key: "cohorts",
+      fetchFn: fetchCohortsFromRemote,
+      model: Cohort,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      forceSync,
+      transformData: (data) => {
+        
+        // Clear existing cohorts before syncing new ones
+        realm.write(() => {
+          realm.delete(storedCohorts);
+        });
+        
+        // Transform and return new data with proper _id, filtering out empty cohorts
+        return data
+          .filter((cohort: ICohort) => cohort.cohort !== "" && cohort.cohort !== null)
+          .map((cohort: ICohort) => ({
+            cohort: cohort.cohort,
+            _id: new Realm.BSON.ObjectId(),
+          }));
+      },
+    },
+  ]);
+  
   return {
-    data: storedCohorts,
-    isLoading: storedCohorts.length === 0,
+    cohorts: storedCohorts,
+    isLoading: syncStatus.cohorts?.isLoading || false,
+    error: syncStatus.cohorts?.error || null,
+    lastSyncTime: syncStatus.cohorts?.lastSyncTime || null,
+    refresh: () => refresh("cohorts", true), // Force refresh to ensure data is synced
   };
 }
+

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Realm } from "@realm/react";
 import provincesData from "~/mocks/provinces.json";
 import districtsData from "~/mocks/districts.json";
@@ -13,119 +13,180 @@ import { Village, IVillage } from "~/models/locations/village";
 import { RealmContext } from "~/providers/RealContextProvider";
 const { useRealm, useQuery } = RealmContext;
 
-export function useGetProvinces() {
+/**
+ * Common logic for initializing location data
+ */
+const useInitLocationData = <T extends Realm.Object>(
+  realmCollection: Realm.Results<T>,
+  mockData: any[],
+  schemaName: string
+) => {
   const realm = useRealm();
-  const storedProvinces = useQuery(Province);
-
+  
   useEffect(() => {
-    if (storedProvinces.length === 0) {
+    if (realmCollection.length === 0) {
       realm.write(() => {
-        provincesData.forEach((province: IProvince) => {
-          realm.create("Province", province, Realm.UpdateMode.Modified);
+        mockData.forEach((item) => {
+          realm.create(schemaName as any, item, Realm.UpdateMode.Modified);
         });
       });
     }
-  }, [storedProvinces]);
+  }, [realm, realmCollection, mockData, schemaName]);
+  
+  return {
+    data: realmCollection,
+    isInitialized: realmCollection.length > 0
+  };
+};
+
+export function useGetProvinces() {
+  const realm = useRealm();
+  const storedProvinces = useQuery(Province);
+  
+  const { isInitialized } = useInitLocationData(
+    storedProvinces,
+    provincesData,
+    "Province"
+  );
 
   return {
     data: storedProvinces,
-    isLoading: storedProvinces.length === 0,
+    isLoading: !isInitialized
   };
 }
 
 export function useGetDistricts(provinceId?: string) {
   const realm = useRealm();
   const storedDistricts = useQuery(District);
+  
+  const { isInitialized } = useInitLocationData(
+    storedDistricts,
+    districtsData,
+    "District"
+  );
 
-  console.log("Province ID", provinceId);
-  useEffect(() => {
-    if (storedDistricts.length === 0) {
-      realm.write(() => {
-        districtsData.forEach((district: IDistrict) => {
-          realm.create("District", district, Realm.UpdateMode.Modified);
-        });
-      });
-    }
-  }, [storedDistricts]);
-
-  const filteredDistricts = provinceId
-    ? storedDistricts.filtered("province_id == $0", provinceId)
-    : storedDistricts;
+  const filteredDistricts = useMemo(() => 
+    provinceId ? storedDistricts.filtered("province_id == $0", provinceId) : storedDistricts,
+  [provinceId, storedDistricts]);
 
   return {
     data: filteredDistricts,
-    isLoading: storedDistricts.length === 0,
+    isLoading: !isInitialized
   };
 }
 
 export function useGetSectors(districtId?: string) {
   const realm = useRealm();
   const storedSectors = useQuery(Sector);
+  
+  const { isInitialized } = useInitLocationData(
+    storedSectors,
+    sectorsData,
+    "Sector"
+  );
 
-  useEffect(() => {
-    if (storedSectors.length === 0) {
-      realm.write(() => {
-        sectorsData.forEach((sector: ISector) => {
-          realm.create("Sector", sector, Realm.UpdateMode.Modified);
-        });
-      });
-    }
-  }, [storedSectors]);
-
-  const filteredSectors = districtId
-    ? storedSectors.filtered("district_id == $0", districtId)
-    : storedSectors;
+  const filteredSectors = useMemo(() => 
+    districtId ? storedSectors.filtered("district_id == $0", districtId) : storedSectors,
+  [districtId, storedSectors]);
 
   return {
     data: filteredSectors,
-    isLoading: storedSectors.length === 0,
+    isLoading: !isInitialized
   };
 }
 
 export function useGetCells(sectorId?: string) {
   const realm = useRealm();
   const storedCells = useQuery(Cell);
+  
+  const { isInitialized } = useInitLocationData(
+    storedCells,
+    cellsData,
+    "Cell"
+  );
 
-  useEffect(() => {
-    if (storedCells.length === 0) {
-      realm.write(() => {
-        cellsData.forEach((cell: ICell) => {
-          realm.create("Cell", cell, Realm.UpdateMode.Modified);
-        });
-      });
-    }
-  }, [storedCells]);
-
-  const filteredCells = sectorId
-    ? storedCells.filtered("sector_id == $0", sectorId)
-    : storedCells;
+  const filteredCells = useMemo(() => 
+    sectorId ? storedCells.filtered("sector_id == $0", sectorId) : storedCells,
+  [sectorId, storedCells]);
 
   return {
     data: filteredCells,
-    isLoading: storedCells.length === 0,
+    isLoading: !isInitialized
   };
 }
 
 export function useGetVillages(cellId?: string) {
   const realm = useRealm();
   const storedVillages = useQuery(Village);
+  
+  const { isInitialized } = useInitLocationData(
+    storedVillages,
+    villagesData,
+    "Village"
+  );
 
-  useEffect(() => {
-    if (storedVillages.length === 0) {
-      realm.write(() => {
-        villagesData.forEach((village: IVillage) => {
-          realm.create("Village", village, Realm.UpdateMode.Modified);
-        });
-      });
-    }
-  }, [storedVillages]);
-
-  const filteredVillages = cellId
-    ? storedVillages.filtered("cells_id == $0", cellId)
-    : storedVillages;
+  const filteredVillages = useMemo(() => 
+    cellId ? storedVillages.filtered("cells_id == $0", cellId) : storedVillages,
+  [cellId, storedVillages]);
 
   return {
     data: filteredVillages,
-    isLoading: storedVillages.length === 0,
+    isLoading: !isInitialized
+  };
+}
+
+/**
+ * A unified hook that provides all location data with optimized loading states
+ * and data access patterns.
+ */
+export function useLocalLocation() {
+  const { data: provinces, isLoading: isLoadingProvinces } = useGetProvinces();
+  
+  return {
+    provinces: {
+      data: provinces,
+      isLoading: isLoadingProvinces,
+      getById: (id: string) => provinces.find(p => p.id === id) || null
+    },
+    districts: {
+      getForProvince: (provinceId: string) => {
+        const { data, isLoading } = useGetDistricts(provinceId);
+        return { data, isLoading };
+      },
+      getById: (id: string) => {
+        const allDistricts = useQuery(District);
+        return allDistricts.find(d => d.id === id) || null;
+      }
+    },
+    sectors: {
+      getForDistrict: (districtId: string) => {
+        const { data, isLoading } = useGetSectors(districtId);
+        return { data, isLoading };
+      },
+      getById: (id: string) => {
+        const allSectors = useQuery(Sector);
+        return allSectors.find(s => s.id === id) || null;
+      }
+    },
+    cells: {
+      getForSector: (sectorId: string) => {
+        const { data, isLoading } = useGetCells(sectorId);
+        return { data, isLoading };
+      },
+      getById: (id: string) => {
+        const allCells = useQuery(Cell);
+        return allCells.find(c => c.id === id) || null;
+      }
+    },
+    villages: {
+      getForCell: (cellId: string) => {
+        const { data, isLoading } = useGetVillages(cellId);
+        return { data, isLoading };
+      },
+      getById: (id: string) => {
+        const allVillages = useQuery(Village);
+        return allVillages.find(v => v.id === id) || null;
+      }
+    }
   };
 } 

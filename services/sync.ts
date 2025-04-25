@@ -30,7 +30,7 @@ export const syncPendingSubmissions = async () => {
         submission.lastSyncAttempt = new Date();
       });
     } catch (error) {
-      console.error("Error syncing submission:", error);
+      console.log("Error syncing submission:", error);
       realm.write(() => {
         submission.sync_status = false;
         submission.syncStatus = "failed";

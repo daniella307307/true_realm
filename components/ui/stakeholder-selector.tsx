@@ -4,7 +4,7 @@ import { Text } from "./text";
 import { useGetStakeholders } from "~/services/stakeholders";
 import { IStakeholder } from "~/models/stakeholders/stakeholder";
 import { Ionicons } from "@expo/vector-icons";
-import { getLocalizedTitle } from "../DynamicForm";
+import { getLocalizedTitle } from "~/utils/form-utils";
 import i18n from "~/utils/i18n";
 
 interface StakeholderSelectorProps {

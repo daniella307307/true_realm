@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { View, FlatList, TouchableOpacity, TextInput } from "react-native";
 import { Text } from "./text";
-import { ICohort } from "~/models/cohorts/cohort";
 import { useGetCohorts } from "~/services/cohorts";
 import { Ionicons } from "@expo/vector-icons";
-import { getLocalizedTitle } from "../DynamicForm";
+import { getLocalizedTitle } from "~/utils/form-utils";
 import i18n from "~/utils/i18n";
+import { ICohort } from "~/types";
 
 interface CohortSelectorProps {
   onSelect: (value: ICohort) => void;
@@ -21,7 +21,7 @@ const CohortItem = ({
   isSelected: boolean;
   onSelect: (cohort: ICohort) => void;
 }) => {
-  if (!cohort || typeof cohort !== "object") return null;
+  if (!cohort || typeof cohort !== "object" || !cohort.cohort) return null;
 
   // Create a safe local copy of the cohort object
   const cohortData = { ...cohort };
@@ -44,7 +44,7 @@ const CohortItem = ({
           isSelected ? "text-primary font-medium" : "text-gray-700"
         }`}
       >
-        {cohortData.cohort || "Unknown Cohort"}
+        {cohortData.cohort}
       </Text>
     </TouchableOpacity>
   );
@@ -58,20 +58,25 @@ const CohortSelector: React.FC<CohortSelectorProps> = ({
   const [selectedCohort, setSelectedCohort] = useState<ICohort | undefined>(
     initialValue
   );
-  const { data: cohorts, isLoading } = useGetCohorts();
+  const { cohorts, isLoading } = useGetCohorts(true);
   const language = i18n.language;
 
   const handleSelect = (cohort: ICohort) => {
-    // Create a fresh copy to avoid reference issues
     const cohortCopy = { ...cohort };
     setSelectedCohort(cohortCopy);
     onSelect(cohortCopy);
   };
 
-  const filteredCohorts = cohorts?.filter((cohort) => {
+  // Filter out empty or null cohorts, then apply search filter
+  const validCohorts = cohorts?.filter(cohort => 
+    cohort && cohort.cohort && cohort.cohort.trim() !== ""
+  ) || [];
+  
+  const filteredCohorts = validCohorts.filter((cohort) => {
     if (!searchQuery) {
       return true;
     }
+
     return cohort.cohort.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
@@ -101,7 +106,7 @@ const CohortSelector: React.FC<CohortSelectorProps> = ({
         <Ionicons name="search" size={20} color="#A0A3BD" className="mr-2" />
         <TextInput
           className=" w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white mb-2"
-          placeholder="Search IZU codes..."
+          placeholder="Search cohort..."
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -109,12 +114,10 @@ const CohortSelector: React.FC<CohortSelectorProps> = ({
 
       <FlatList
         data={filteredCohorts}
-        keyExtractor={(item) => `cohort-${item?.id || Math.random()}`}
+        keyExtractor={(item) => `cohort-${item?._id || Math.random()}`}
         renderItem={({ item }) => {
-          if (!item) return null;
-
-          const isSelected = selectedCohort?.id === item.id;
-
+          if (!item || !item.cohort) return null;
+          const isSelected = selectedCohort?.cohort === item.cohort;
           return (
             <CohortItem
               cohort={item}

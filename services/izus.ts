@@ -7,7 +7,7 @@ import { baseInstance } from "~/utils/axios";
 
 import { useDataSync } from "./dataSync";
 
-const { useRealm, useQuery } = RealmContext;
+const { useQuery } = RealmContext;
 
 interface IIzuResponse {
   izus: IIzu[];

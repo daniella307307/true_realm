@@ -1,7 +1,7 @@
 import React from "react";
 import { View, TouchableOpacity } from "react-native";
 import { Text } from "./text";
-import { getLocalizedTitle } from "../DynamicForm";
+import { getLocalizedTitle } from "~/utils/form-utils";
 import i18n from "~/utils/i18n";
 
 interface FormNavigationProps {

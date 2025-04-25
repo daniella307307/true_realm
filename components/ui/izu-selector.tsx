@@ -4,8 +4,8 @@ import { Text } from "./text";
 import { IIzu } from "~/models/izus/izu";
 import { useGetIzus } from "~/services/izus";
 import { Ionicons } from "@expo/vector-icons";
-import { getLocalizedTitle } from "../DynamicForm";
 import i18n from "~/utils/i18n";
+import { getLocalizedTitle } from "~/utils/form-utils";
 
 interface IzuSelectorProps {
   onSelect: (value: IIzu) => void;
