@@ -1,14 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-
 import { View, Text, Alert } from "react-native";
+import { ICohort, IFamilies, Izus } from "~/types";
 
-import { ICell } from "~/models/locations/cell";
-import { IDistrict } from "~/models/locations/district";
-import { ICohort, IFamilies, IFormSubmissionDetail } from "~/types";
-import { IIzu } from "~/models/izus/izu";
-import { IProvince } from "~/models/locations/province";
-import { ISector } from "~/models/locations/sector";
-import { IVillage } from "~/models/locations/village";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { SurveySubmission } from "~/models/surveys/survey-submission";
 import { useTranslation } from "react-i18next";
@@ -21,16 +14,9 @@ import IzuSelector from "./ui/izu-selector";
 import LocationSelector from "./ui/location-selector";
 import StakeholderSelector from "./ui/stakeholder-selector";
 import { FlowState, FlowStepKey, FormFlowManagerProps } from "~/types/form-types";
+import { formatTime } from "~/utils/form-utils";
 
 const { useRealm } = RealmContext;
-
-
-
-const formatTime = (timeInSeconds: number): string => {
-  const minutes = Math.floor(timeInSeconds / 60);
-  const seconds = timeInSeconds % 60;
-  return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-};
 
 const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   form,
@@ -110,8 +96,7 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
       if (familyId && surveyId && projectId && sourceModuleId) {
         const existingSubmission = realm
           .objects<SurveySubmission>(SurveySubmission)
-          .filtered(
-            "project_id == $0 AND source_module_id == $1 AND survey_id == $2 AND family == $3 AND izucode == $4",
+          .filtered("form_data.project_id == $0 AND form_data.source_module_id == $1 AND form_data.survey_id == $2 AND form_data.family == $3 AND form_data.izucode == $4",
             projectId,
             sourceModuleId,
             surveyId,
@@ -135,7 +120,10 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
       // Extract location from family and set it to flowState
       const selectedFamily = flowState.selectedValues.families;
       if (selectedFamily?.location) {
-        const familyLocation = JSON.parse(selectedFamily.location);
+        const familyLocation = selectedFamily.location ? selectedFamily.location : JSON.parse(selectedFamily.location);
+        console.log("Selected family location", 
+          JSON.stringify(familyLocation, null, 2)
+        );
         const now = new Date().toISOString();
 
         setFlowState((prev) => ({
@@ -260,7 +248,7 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
                 },
               }));
             }}
-            initialValue={currentValue as IIzu}
+            initialValue={currentValue as Izus}
           />
         );
       case "locations":

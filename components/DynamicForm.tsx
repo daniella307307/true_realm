@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   ScrollView,
@@ -10,15 +10,12 @@ import {
 import { router } from "expo-router";
 
 import { useForm, useWatch } from "react-hook-form";
-import { FormField, IFormSubmissionDetail } from "~/types";
+import { FormField } from "~/types";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { saveSurveySubmission } from "~/services/survey-submission";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { formatTime } from "~/utils/form-utils";
-import { Families } from "~/models/family/families";
-import { isOnline } from "~/services/network";
-import { baseInstance } from "~/utils/axios";
 
 import DateTimePickerComponent from "./ui/date-time-picker";
 import { Button } from "./ui/button";
@@ -36,6 +33,7 @@ import {
 import { AnswerPreview } from "./AnswerPreview";
 import { DynamicFieldProps, DynamicFormProps } from "~/types/form-types";
 import { saveFamilyToAPI } from "~/services/families";
+import { saveIzuToAPI } from "~/services/izus";
 const { useRealm } = RealmContext;
 
 // Use the interface directly rather than exporting it
@@ -180,8 +178,6 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
   }
 };
 
-
-
 const DynamicForm: React.FC<DynamicFormProps> = ({
   fields,
   wholeComponent = false,
@@ -216,7 +212,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [, setEditingFieldKey] = useState<string | null>(null);
   const [visibleFields, setVisibleFields] = useState<FormField[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [resetSubmittingCallback, setResetSubmittingCallback] = useState<(() => void) | null>(null);
+  const [resetSubmittingCallback, setResetSubmittingCallback] = useState<
+    (() => void) | null
+  >(null);
   const realm = useRealm();
 
   const formValues = useWatch({
@@ -362,7 +360,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
   }, [i18nInstance.language, language]);
 
-  // console.log("Location Selected Values:", JSON.stringify(flowState.selectedValues.locations, null, 2));
   const onSubmit = async (data: any) => {
     if (submitting) return; // Prevent multiple submissions
 
@@ -380,11 +377,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         // Ensure all fields are included in the submission data
         const values = getValues();
         const completeData: Record<string, any> = {};
-        
+
         // Include all visible fields in the data, even if they're empty
-        visibleFields.forEach(field => {
+        visibleFields.forEach((field) => {
           if (field && field.key) {
-            completeData[field.key] = values[field.key] !== undefined ? values[field.key] : "";
+            completeData[field.key] =
+              values[field.key] !== undefined ? values[field.key] : "";
           }
         });
 
@@ -434,10 +432,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         );
         console.log("API URL:", dataWithTime.post_data);
 
-        if (dataWithTime.post_data === '/createFamily') {
+        if (dataWithTime.post_data === "/createFamily") {
           // Create a family instead of a survey submission
-          await saveFamilyToAPI(realm, dataWithTime, dataWithTime.post_data, fields);
-          
+          await saveFamilyToAPI(
+            realm,
+            dataWithTime,
+            dataWithTime.post_data,
+            fields
+          );
+
           // Show success alert and navigate
           Alert.alert(
             "Family Created Successfully",
@@ -449,10 +452,29 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               },
             ]
           );
+        } else if (dataWithTime.post_data === "/izucelldemography/create") {
+          // Create an izu instead of a survey submission
+          await saveIzuToAPI(
+            realm,
+            dataWithTime,
+            dataWithTime.post_data,
+            fields
+          );
+
+          Alert.alert(
+            "Izu Created Successfully",
+            "The izu has been created successfully.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.push("/(history)/history"),
+              },
+            ]
+          );
         } else {
           // Regular survey submission
           await saveSurveySubmission(realm, dataWithTime, fields);
-          
+
           // Show success alert and navigate
           Alert.alert(
             "Submission Successful",
@@ -473,13 +495,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           "There was an error submitting your form. Please try again.",
           [{ text: "OK" }]
         );
-        
-        // Reset states immediately rather than waiting for finally block
-        setSubmitting(false);
-        if (resetSubmittingCallback) {
-          resetSubmittingCallback();
-          setResetSubmittingCallback(null);
-        }
       } finally {
         // This ensures submitting state is reset whether success or failure
         // This is redundant for error case but ensures state is reset for success case
@@ -492,17 +507,18 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     } else {
       // This is just for preview, set form data and show preview
       const values = getValues();
-      
+
       // Create complete formData with all fields, including those with empty values
       const completeFormData: Record<string, any> = {};
-      
+
       // Ensure all visible fields have a value in the formData
-      visibleFields.forEach(field => {
+      visibleFields.forEach((field) => {
         if (field && field.key) {
-          completeFormData[field.key] = values[field.key] !== undefined ? values[field.key] : "";
+          completeFormData[field.key] =
+            values[field.key] !== undefined ? values[field.key] : "";
         }
       });
-      
+
       setFormData(completeFormData);
       setShowPreview(true);
     }
@@ -596,17 +612,18 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
     if (isValid) {
       const values = getValues();
-      
+
       // Create complete formData with all fields, including those with empty values
       const completeFormData: Record<string, any> = {};
-      
+
       // Ensure all visible fields have a value in the formData
-      visibleFields.forEach(field => {
+      visibleFields.forEach((field) => {
         if (field && field.key) {
-          completeFormData[field.key] = values[field.key] !== undefined ? values[field.key] : "";
+          completeFormData[field.key] =
+            values[field.key] !== undefined ? values[field.key] : "";
         }
       });
-      
+
       setFormData(completeFormData);
       setShowPreview(true);
     } else {

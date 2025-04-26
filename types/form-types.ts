@@ -51,3 +51,15 @@ export interface DynamicFormProps {
   timeSpent: number;
   onEditFlowState: (step: string) => void;
 }
+
+export interface ProcessedSubmission {
+  _id: string;
+  table_name?: string | null;
+  sync_status: boolean;
+  survey_id: number;
+  source_module_id: number;
+  submittedAt?: Date | null;
+  family?: string | null;
+  lastSyncAttempt?: Date | null;
+  project_module_id: number;
+}

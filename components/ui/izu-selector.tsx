@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { View, TextInput, FlatList, TouchableOpacity } from "react-native";
 import { Text } from "./text";
-import { IIzu } from "~/models/izus/izu";
 import { useGetIzus } from "~/services/izus";
 import { Ionicons } from "@expo/vector-icons";
 import i18n from "~/utils/i18n";
 import { getLocalizedTitle } from "~/utils/form-utils";
+import { Izus } from "~/types";
 
 interface IzuSelectorProps {
-  onSelect: (value: IIzu) => void;
-  initialValue?: IIzu;
+  onSelect: (value: Izus) => void;
+  initialValue?: Izus;
 }
 
 const IzuCodeItem = ({
@@ -17,15 +17,12 @@ const IzuCodeItem = ({
   onSelect,
   isSelected,
 }: {
-  item: {
-    user_code: string;
-    name: string;
-  };
+  item: Izus;
   onSelect: (code: string) => void;
   isSelected: boolean;
 }) => (
   <TouchableOpacity
-    onPress={() => onSelect(item.user_code)}
+    onPress={() => onSelect(item?.user_code || "")}
     className={`px-4 py-3 mb-2 rounded-lg ${
       isSelected ? "bg-primary bg-opacity-20" : "bg-white"
     } border border-[#E4E4E7]`}
@@ -43,8 +40,13 @@ const IzuCodeItem = ({
   </TouchableOpacity>
 );
 
-const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, initialValue }) => {
-  const [selectedIzu, setSelectedIzu] = useState<IIzu | null>(initialValue || null);
+const IzuSelector: React.FC<IzuSelectorProps> = ({
+  onSelect,
+  initialValue,
+}) => {
+  const [selectedIzu, setSelectedIzu] = useState<Izus | null>(
+    initialValue || null
+  );
   const [searchQuery, setSearchQuery] = useState("");
 
   const { izus: izus, isLoading } = useGetIzus();
@@ -56,7 +58,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, initialValue }) => 
   );
   const language = i18n.language;
 
-  const handleSelect = (izu: IIzu) => {
+  const handleSelect = (izu: Izus) => {
     setSelectedIzu(izu);
     onSelect(izu);
   };
@@ -101,8 +103,8 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({ onSelect, initialValue }) => 
       {/* Scrollable list of IZU codes */}
       <View className="flex-1 border rounded-lg border-[#E4E4E7] bg-gray-50">
         <FlatList
-          data={filteredIzus}
-          keyExtractor={(item: IIzu) => item.user_code}
+          data={filteredIzus as unknown as Izus[]}
+          keyExtractor={(item: Izus) => item.user_code || ""}
           renderItem={({ item }) => (
             <IzuCodeItem
               item={item}

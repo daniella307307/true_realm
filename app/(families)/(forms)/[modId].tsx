@@ -13,7 +13,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import CustomInput from "~/components/ui/input";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
-import Skeleton from "~/components/ui/skeleton";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import {
   fetchFormByProjectAndModuleFromRemote,
   useGetFormByProjectAndModule,
@@ -169,7 +169,7 @@ const ProjectFormsScreen = () => {
       return (
         <View className="mt-6">
           {[1, 2, 3].map((item) => (
-            <Skeleton key={item} />
+            <SimpleSkeletonItem key={item} />
           ))}
         </View>
       );

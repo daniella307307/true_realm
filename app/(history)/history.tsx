@@ -12,33 +12,28 @@ import { useState, useMemo } from "react";
 import { router } from "expo-router";
 import { useGetAllProjects } from "~/services/project";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
+import { useGetAllLocallyCreatedFamilies } from "~/services/families";
 import CustomInput from "~/components/ui/input";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { IProject } from "~/types";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
-
-// Custom loading skeleton that doesn't rely on the problematic component
-const SimpleSkeletonItem = () => (
-  <View className="p-4 border mb-4 rounded-xl border-gray-200 bg-gray-100">
-    <View className="flex flex-row items-center">
-      <View className="w-6 h-6 bg-gray-200 rounded" />
-      <View className="h-5 ml-4 bg-gray-200 rounded w-3/4" />
-    </View>
-    <View className="flex flex-col mt-2">
-      <View className="h-4 bg-gray-200 rounded w-1/3 mt-2" />
-      <View className="h-4 bg-gray-200 rounded w-2/3 mt-2" />
-    </View>
-  </View>
-);
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 
 const HistoryProjectScreen = () => {
   const storedProjects = useGetAllProjects();
+
   const {
     surveySubmissions,
     isLoading: isLoadingSubmissions,
     refresh: refetchSurveySubmissions,
   } = useGetAllSurveySubmissions();
+
+  const {
+    locallyCreatedFamilies,
+    isLoading: isLoadingFamilies,
+    refresh: refreshFamilies,
+  } = useGetAllLocallyCreatedFamilies();
   const { t } = useTranslation();
   const { control, watch } = useForm({
     defaultValues: {
@@ -54,21 +49,34 @@ const HistoryProjectScreen = () => {
     setRefreshing(true);
     await storedProjects.refresh();
     await refetchSurveySubmissions();
+    await refreshFamilies();
     setRefreshing(false);
   };
 
   const organizedProjects = useMemo(() => {
-    if (!storedProjects?.projects || !surveySubmissions) return [];
+    if (
+      !storedProjects?.projects ||
+      !surveySubmissions ||
+      !locallyCreatedFamilies
+    )
+      return [];
+
+    // Get unique project IDs from locally created families
+    const locallyCreatedFamilyProjectIds = new Set(
+      locallyCreatedFamilies.map((family) => family.form_data?.project_id)
+    );
 
     // Get unique project IDs from survey submissions
     const projectIdsWithSubmissions = new Set(
-      surveySubmissions.map((submission) => submission.project_id)
+      surveySubmissions.map((submission) => submission.form_data?.project_id)
     );
 
     // Filter projects that have survey submissions
     const activeProjects = storedProjects.projects.filter(
       (project) =>
-        project?.status === 1 && projectIdsWithSubmissions.has(project.id)
+        project?.status === 1 &&
+        (projectIdsWithSubmissions.has(project.id) ||
+          locallyCreatedFamilyProjectIds.has(project.id))
     );
 
     if (!searchQuery) {
@@ -97,9 +105,18 @@ const HistoryProjectScreen = () => {
     // Get submissions for this project
     const projectSubmissions =
       surveySubmissions?.filter(
-        (submission) => submission?.project_id === item?.id
+        (submission) => submission?.form_data?.project_id === item?.id
       ) || [];
 
+    const locallyCreatedFamilySubmissions =
+      locallyCreatedFamilies?.filter(
+        (family) => family.form_data?.project_id === item?.id
+      ) || [];
+
+    const totalSubmissions =
+      projectSubmissions.length + locallyCreatedFamilySubmissions.length;
+
+    console.log("The item is:", JSON.stringify(item, null, 2));
     return (
       <TouchableOpacity
         onPress={() => router.push(`/(mods)/(projects)/${item.id}`)}
@@ -124,23 +141,52 @@ const HistoryProjectScreen = () => {
         </View>
         <View className="flex flex-col justify-between items-start mt-2">
           <Text className="text-sm text-gray-500">
-            {t("History.submissions", "Submissions")}:{" "}
-            {projectSubmissions.length}
+            {t("History.submissions", "Submissions")}: {totalSubmissions}
           </Text>
           <Text className="text-sm text-gray-500">
             {t("History.lastSubmission", "Last submission")}:{" "}
-            {projectSubmissions.length > 0 &&
-            projectSubmissions[projectSubmissions.length - 1]?.submittedAt
-              ? new Date(
-                  projectSubmissions[projectSubmissions.length - 1].submittedAt
-                ).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })
+            {projectSubmissions.length > 0 ||
+            locallyCreatedFamilySubmissions.length > 0
+              ? (() => {
+                  // Find the most recent submission from either array
+                  let latestDate: Date | null = null;
+
+                  // Check project submissions
+                  if (projectSubmissions.length > 0 &&
+                    projectSubmissions[projectSubmissions.length - 1]
+                      ?.sync_data?.submitted_at
+                  ) {
+                    const submissionDate = projectSubmissions[projectSubmissions.length - 1].sync_data?.submitted_at
+                    // @ts-ignore
+                    if (submissionDate && (!latestDate || submissionDate > latestDate)) {
+                      latestDate = submissionDate;
+                    }
+                  }
+
+                  // Check family submissions
+                  if (locallyCreatedFamilySubmissions.length > 0 && 
+                    locallyCreatedFamilySubmissions[locallyCreatedFamilySubmissions.length - 1]
+                      ?.sync_data?.submitted_at
+                  ) {
+                    const submissionDate = locallyCreatedFamilySubmissions[locallyCreatedFamilySubmissions.length - 1].sync_data?.submitted_at;
+                    // @ts-ignore
+                    if (submissionDate && (!latestDate || submissionDate > latestDate)) {
+                      // @ts-ignore
+                      latestDate = submissionDate;
+                    }
+                  }
+
+                  return latestDate
+                    ? latestDate.toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })
+                    : t("History.noSubmissions", "No submissions");
+                })()
               : t("History.noSubmissions", "No submissions")}
           </Text>
         </View>
@@ -201,7 +247,7 @@ const HistoryProjectScreen = () => {
           accessibilityLabel={t("HistoryProjectPage.search_history_project")}
         />
 
-        {isLoadingSubmissions ? (
+        {isLoadingSubmissions || isLoadingFamilies ? (
           <View>
             <SimpleSkeletonItem />
             <SimpleSkeletonItem />

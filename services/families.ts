@@ -1,14 +1,12 @@
-import { useMemo } from "react";
-
 import { Families } from "~/models/family/families";
-import { FormField, I2BaseFormat, I4BaseFormat, IFamilies } from "~/types";
+import { FormField, IFamilies } from "~/types";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { baseInstance } from "~/utils/axios";
 import { Realm } from "@realm/react";
 import { useDataSync } from "./dataSync";
 import { isOnline } from "./network";
 
-const { useQuery, useRealm } = RealmContext;
+const { useQuery } = RealmContext;
 
 export async function fetchFamiliesFromRemote() {
   const res = await baseInstance.get<{
@@ -39,7 +37,7 @@ export function useGetFamilies(forceSync: boolean = false) {
           ...fam,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          location: JSON.stringify(fam.location),
+          location: fam.location || {},
           meta: fam.meta || {},
         }));
       },
@@ -55,12 +53,27 @@ export function useGetFamilies(forceSync: boolean = false) {
   };
 }
 
-// Function to get the next available ID from the Realm database
+// Function to useGetAllLocallyCreatedFamilies
+export function useGetAllLocallyCreatedFamilies() {
+  const storedFamilies = useQuery(Families);
+
+  return {
+    locallyCreatedFamilies: storedFamilies.filter(
+      (family) =>
+        family.sync_data?.sync_status === true ||
+        family.sync_data?.sync_status === false
+    ),
+    isLoading: false,
+    error: null,
+    lastSyncTime: null,
+    refresh: () => {},
+  };
+}
+
 function getNextAvailableId(realm: Realm): number {
   try {
     const families = realm.objects<Families>(Families);
     if (families.length > 0) {
-      // Find the maximum existing ID and add 1
       return Math.max(...families.map((f) => f.id)) + 1;
     }
     return 1; // Start with 1 if no records exist
@@ -70,7 +83,6 @@ function getNextAvailableId(realm: Realm): number {
   }
 }
 
-// Function to prepare metadata from form fields
 function prepareMetaData(
   familyData: Record<string, any>,
   extraFields: FormField[] = []
@@ -79,7 +91,12 @@ function prepareMetaData(
 
   return Object.fromEntries(
     extraFields
-      .filter((field) => field.key && familyData[field.key] !== undefined && field.key !== "submit")
+      .filter(
+        (field) =>
+          field.key &&
+          familyData[field.key] !== undefined &&
+          field.key !== "submit"
+      )
       .map((field) => {
         const value = familyData[field.key];
 
@@ -116,43 +133,62 @@ export const createFamilyWithMeta = (
         : getNextAvailableId(realm);
     console.log("Using ID:", id);
 
+    // Prepare location object
+    const location =
+      typeof familyData.location === "object"
+        ? familyData.location
+        : {
+            province: familyData.province,
+            district: familyData.district,
+            sector: familyData.sector,
+            cell: familyData.cell,
+            village: familyData.village,
+          };
+
+    const formData = {
+      time_spent_filling_the_form:
+        familyData.time_spent_filling_the_form || null,
+      user_id: familyData.user_id || null,
+      table_name: familyData.table_name || null,
+      project_module_id: familyData.project_module_id || null,
+      source_module_id: familyData.source_module_id || null,
+      project_id: familyData.project_id || null,
+      survey_id: familyData.survey_id || null,
+      post_data: familyData.post_data || null,
+      izucode: familyData.izucode || null,
+      cohort: familyData.cohort || null,
+      form_status: familyData.form_status || null,
+    };
+
+    const syncData = familyData.sync_data || {
+      sync_status: false,
+      sync_reason: "New record",
+      sync_attempts: 0,
+      last_sync_attempt: new Date(),
+      submitted_at: new Date(),
+    };
+
     const family = {
       id,
-      hh_id: familyData.hh_id, // No default, allow null for unsynchronized records
+      hh_id: familyData.hh_id,
       hh_head_fullname: familyData.hh_head_fullname || "Unknown",
       village_name: familyData.village_name || "Unknown",
-      cohort: String(familyData.cohort || ""),
-      created_at: familyData.created_at || new Date().toISOString(),
-      updated_at: familyData.updated_at || new Date().toISOString(),
-      location:
-        typeof familyData.location === "string"
-          ? familyData.location
-          : JSON.stringify({
-              province: familyData.province,
-              district: familyData.district,
-              sector: familyData.sector,
-              cell: familyData.cell,
-              village: familyData.village,
-            }),
+      village_id: familyData.village_id || null,
+      location,
       meta,
-      is_temporary: familyData.is_temporary || false,
+      form_data: formData,
+      sync_data: syncData,
     };
 
     console.log("Creating family with data:", JSON.stringify(family, null, 2));
 
     let result;
     realm.write(() => {
-      result = realm.create<Families>(
-        Families,
-        family,
-        Realm.UpdateMode.Modified
-      );
+      result = realm.create("Families", family, Realm.UpdateMode.Modified);
     });
-
     if (!result) {
       throw new Error("Failed to create family object");
     }
-
     return result;
   } catch (error) {
     console.error("Error creating family with meta:", error);
@@ -160,19 +196,31 @@ export const createFamilyWithMeta = (
   }
 };
 
-// Function to handle creating a temporary family for offline mode
 function createTemporaryFamily(
   realm: Realm,
   familyData: Record<string, any>,
   extraFields: FormField[] = []
 ): Families {
-  // Generate a local positive ID for temporary records
   // We'll keep the same ID format but mark it as temporary
   const localId = getNextAvailableId(realm);
 
+  // Add sync data marking this as needing to be synced
+  const syncData = {
+    sync_status: false,
+    sync_reason: "Created offline",
+    sync_attempts: 0,
+    last_sync_attempt: new Date(),
+    submitted_at: new Date(),
+  };
+
   return createFamilyWithMeta(
     realm,
-    { ...familyData, id: localId, is_temporary: true, hh_id: null },
+    {
+      ...familyData,
+      id: localId,
+      hh_id: null,
+      sync_data: syncData,
+    },
     extraFields
   );
 }
@@ -187,8 +235,18 @@ function replaceTemporaryFamily(
   const updatedFamily = {
     ...apiData,
     id: tempFamily.id, // Keep the same local ID
-    hh_id: apiData.hh_id, // Update with the hh_id from API
-    is_temporary: false, // No longer temporary
+    hh_id: apiData.hh_id, // Update hh_id from API
+    sync_data: {
+      sync_status: true,
+      sync_reason: "Synced with server",
+      sync_attempts:
+        (tempFamily.sync_data?.sync_attempts
+          ? Number(tempFamily.sync_data.sync_attempts)
+          : 0) + 1,
+      last_sync_attempt: new Date().toISOString(),
+      submitted_at:
+        tempFamily.sync_data?.submitted_at || new Date().toISOString(),
+    },
   };
 
   return createFamilyWithMeta(realm, updatedFamily, []);
@@ -206,6 +264,18 @@ export const saveFamilyToAPI = async (
       JSON.stringify(familyData, null, 2)
     );
 
+    // Prepare location data
+    const location =
+      typeof familyData.location === "object"
+        ? familyData.location
+        : {
+            province: familyData.province,
+            district: familyData.district,
+            sector: familyData.sector,
+            cell: familyData.cell,
+            village: familyData.village,
+          };
+
     // Format family data
     const sanitizedFamilyData = {
       ...familyData,
@@ -215,8 +285,29 @@ export const saveFamilyToAPI = async (
         familyData.head_of_household ||
         "Unknown",
       village_name: familyData.village_name || "Unknown",
-      cohort: String(familyData.cohort || ""),
+      village_id: familyData.village_id || null,
       meta: familyData.meta || prepareMetaData(familyData, extraFields),
+      location,
+      form_data: {
+        time_spent_filling_the_form:
+          familyData.time_spent_filling_the_form || null,
+        user_id: familyData.user_id || null,
+        table_name: familyData.table_name || null,
+        project_module_id: familyData.project_module_id || null,
+        source_module_id: familyData.source_module_id || null,
+        project_id: familyData.project_id || null,
+        survey_id: familyData.survey_id || null,
+        post_data: familyData.post_data || null,
+        izucode: familyData.izucode || null,
+        cohort: familyData.cohort || null,
+      },
+      sync_data: {
+        sync_status: false,
+        sync_reason: "New record",
+        sync_attempts: 0,
+        last_sync_attempt: new Date(),
+        submitted_at: new Date(),
+      },
     };
 
     const isConnected = isOnline();
@@ -228,6 +319,7 @@ export const saveFamilyToAPI = async (
         const apiData = {
           ...familyData,
           ...(sanitizedFamilyData.meta || {}),
+          ...(sanitizedFamilyData.form_data || {}),
         };
 
         // Remove the meta object itself from the API data
@@ -248,7 +340,13 @@ export const saveFamilyToAPI = async (
             ...sanitizedFamilyData,
             id: familyData.id || getNextAvailableId(realm), // Keep local ID if exists
             hh_id: response.data.result.hh_id, // Update hh_id from API
-            is_temporary: false,
+            sync_data: {
+              sync_status: true,
+              sync_reason: "Successfully synced",
+              sync_attempts: 1,
+              last_sync_attempt: new Date(),
+              submitted_at: new Date(),
+            },
             // Include any other fields returned from the API
             ...response.data.result,
           };
@@ -285,38 +383,69 @@ export const syncTemporaryFamilies = async (
     return;
   }
 
-  // Find all temporary families (those marked with is_temporary flag)
-  const tempFamilies = realm.objects<Families>(Families).filtered("is_temporary == true");
+  // Find all families that need syncing
+  const familiesToSync = realm
+    .objects<Families>(Families)
+    .filtered("sync_data.sync_status == false");
 
-  for (const family of tempFamilies) {
+  for (const family of familiesToSync) {
     try {
       // Extract data to send to API
+      const locationData = family.location || {};
+
       const apiData = {
         hh_id: family.hh_id, // Will be null for unsynced records
         hh_head_fullname: family.hh_head_fullname,
         village_name: family.village_name,
-        cohort: family.cohort,
-        location: family.location ? JSON.parse(family.location) : null,
-        ...family.meta, // Spread meta fields to top level
+        village_id: family.village_id,
+        province: locationData.province || 0,
+        district: locationData.district || 0,
+        sector: locationData.sector || 0,
+        cell: locationData.cell || 0,
+        village: locationData.village || 0,
+        ...family.form_data,
+        ...family.meta,
       };
 
+      console.log("Syncing family to API:", JSON.stringify(apiData, null, 2));
+      console.log("API URL:", apiUrl);
       // Submit to API
       const response = await baseInstance.post(apiUrl, apiData);
 
       if (response.data?.result?.id) {
-        // Update the temporary record with API data (especially hh_id)
+        // Update the record with API data
         replaceTemporaryFamily(realm, family, {
           ...apiData,
           id: family.id, // Keep the same local ID
           hh_id: response.data.result.hh_id, // Update hh_id from API
           ...response.data.result,
+          sync_data: {
+            sync_status: true,
+            sync_reason: "Successfully synced",
+            sync_attempts: 1,
+            last_sync_attempt: new Date(),
+            submitted_at: new Date(),
+          },
         });
         console.log(
-          `Successfully synced temporary family ${family.id} to server, updated with hh_id: ${response.data.result.hh_id}`
+          `Successfully synced family ${family.id} to server, updated with hh_id: ${response.data.result.hh_id}`
         );
       }
-    } catch (error) {
-      console.error(`Failed to sync temporary family ${family.id}:`, error);
+    } catch (error: any) {
+      // Update sync data to record the failure
+      realm.write(() => {
+        if (family.sync_data) {
+          family.sync_data.sync_status = false;
+          family.sync_data.sync_reason = `Failed: ${
+            error?.message || "Unknown error"
+          }`;
+          family.sync_data.sync_attempts =
+            Number(family.sync_data.sync_attempts || 0) + 1;
+          family.sync_data.last_sync_attempt = new Date().toISOString();
+          family.sync_data.submitted_at = new Date().toISOString();
+        }
+      });
+      console.error(`Failed to sync family ${family.id}:`, error);
       // Continue with other records - this one will be tried again next sync
     }
   }

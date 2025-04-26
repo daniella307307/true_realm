@@ -3,7 +3,7 @@ import React from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
-import Skeleton from "~/components/ui/skeleton";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { useGetFormById } from "~/services/formElements";
 import FormFlowManager from "~/components/FormFlowManager";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
@@ -55,10 +55,10 @@ const FormElementIndexScreen = () => {
 
   if (isLoading) {
     return (
-      <View className="flex-1 p-4 bg-white">
-        <Skeleton />
-        <Skeleton />
-        <Skeleton />
+      <View className="flex-1 bg-background justify-center items-center">
+        <SimpleSkeletonItem />
+        <SimpleSkeletonItem />
+        <SimpleSkeletonItem />
       </View>
     );
   }

@@ -141,13 +141,13 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
   const handleSubmit = () => {
     if (isSubmitting) return; // Prevent multiple submissions
     setIsSubmitting(true);
-    
+
+    onSubmit();
+
     // Register callback to reset submission state
     if (resetSubmitting) {
       resetSubmitting(() => setIsSubmitting(false));
     }
-    
-    onSubmit();
   };
 
   return (
@@ -306,10 +306,10 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
           onPress={handleSubmit}
           isLoading={isSubmitting}
           disabled={isSubmitting}
-          className="bg-primary"
+          className={`${isSubmitting ? "bg-gray-500" : "bg-primary"}`}
         >
           <Text className="text-white font-semibold">
-            {t("FormElementPage.finalSubmit", "Submit")}
+            {isSubmitting ? "Submitting..." : "Submit"}
           </Text>
         </Button>
       </View>

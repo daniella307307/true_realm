@@ -1,85 +1,104 @@
-import {
-  View,
-  FlatList,
-  TouchableOpacity,
-  SafeAreaView,
-} from "react-native";
+import { View, FlatList, TouchableOpacity, SafeAreaView } from "react-native";
 import React, { useState, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import CustomInput from "~/components/ui/input";
 import { useTranslation } from "react-i18next";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text } from "~/components/ui/text";
-import { Button } from "~/components/ui/button";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { RefreshControl } from "react-native";
 import { CheckCheckIcon } from "lucide-react-native";
 import HeaderNavigation from "~/components/ui/header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useGetFamilies } from "~/services/families";
+import {
+  useGetAllLocallyCreatedFamilies,
+  useGetFamilies,
+} from "~/services/families";
 import { IFamilies } from "~/types";
 import { ListRenderItemInfo } from "react-native";
 import { Entypo } from "@expo/vector-icons";
+import { ProcessedSubmission } from "~/types/form-types";
+import { NotFound } from "~/components/ui/not-found";
+import CustomInput from "~/components/ui/input";
 
-interface ProcessedSubmission {
+// Extended type for our combined data
+type CombinedItem = {
   _id: string;
-  table_name?: string | null;
+  table_name: string;
   sync_status: boolean;
-  survey_id: number;
-  source_module_id: number;
-  submittedAt?: Date | null;
-  family?: string | null;
-  lastSyncAttempt?: Date | null;
+  survey_id: string | null;
+  source_module_id: string | number | null;
+  submittedAt: string | null;
+  family: string | null;
+  lastSyncAttempt: string | null;
   project_module_id: number;
-}
+  itemType: 'submission' | 'family';
+  familyData?: {
+    hh_id: string;
+    hh_head_fullname: string;
+    village_name: string;
+    cohort: string;
+  };
+};
 
 const SubmissionListByModuleScreen = () => {
-  const { submodId } = useLocalSearchParams<{
+  const { submodId, family } = useLocalSearchParams<{
     submodId: string;
+    family?: string;
   }>();
-
-  const [activeTab, setActiveTab] = useState<"all" | "synced" | "pending">("all");
-  const { surveySubmissions } = useGetAllSurveySubmissions();
-
+  console.log("SubmodId: ", submodId);
+  console.log("Family Filter: ", family);
   if (!submodId) {
     return (
-      <View>
-        <Text>Missing module id</Text>
-        <Button onPress={() => router.replace("/(home)")}>
-          <Text>Go to Home</Text>
-        </Button>
-      </View>
+      <NotFound
+        title="Missing module id"
+        description="Please go back and select a module"
+        redirectTo={() => router.back()}
+      />
     );
   }
 
-  console.log("Survey Submissions in submissionsID file: ", JSON.stringify(surveySubmissions, null, 2));
-  console.log("SubmodId: ", submodId);
+  const [activeTab, setActiveTab] = useState<"all" | "synced" | "pending">(
+    "all"
+  );
+  const {
+    surveySubmissions,
+    isLoading: surveySubmissionsLoading,
+    refresh: refreshSurveySubmissions,
+  } = useGetAllSurveySubmissions();
+
+  const {
+    locallyCreatedFamilies,
+    isLoading: locallyCreatedFamiliesLoading,
+    refresh: refreshLocallyCreatedFamilies,
+  } = useGetAllLocallyCreatedFamilies();
+  
+  const {
+    families,
+    isLoading: familiesLoading,
+  } = useGetFamilies();
+  
   const { t } = useTranslation();
+  const [refreshing, setRefreshing] = useState(false);
   const { control, watch } = useForm({
-    resolver: zodResolver(
-      z.object({
-        searchQuery: z.string(),
-      })
-    ),
+    defaultValues: {
+      searchQuery: "",
+    },
     mode: "onChange",
   });
-
-  const [refreshing, setRefreshing] = useState(false);
-  const { families, isLoading: familiesLoading } = useGetFamilies();
+  const searchQuery = watch("searchQuery");
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Add your refresh logic here if needed
+    await refreshSurveySubmissions();
+    await refreshLocallyCreatedFamilies();
     setRefreshing(false);
   };
 
-  const searchQuery = watch("searchQuery");
-
-  const filteredAndSortedSubmissions = useMemo(() => {
-    const processed: ProcessedSubmission[] = Array.from(surveySubmissions).map(
+  // Combine and process all data in one step
+  const combinedData = useMemo(() => {
+    // Process survey submissions
+    const processedSubmissions: CombinedItem[] = Array.from(surveySubmissions).map(
       (sub: any) => ({
         _id: sub._id.toString(),
         table_name: sub.table_name,
@@ -90,40 +109,74 @@ const SubmissionListByModuleScreen = () => {
         family: sub.family,
         lastSyncAttempt: sub.lastSyncAttempt,
         project_module_id: sub.project_module_id,
+        itemType: 'submission'
       })
     );
 
-    const filtered = processed.filter((submission: ProcessedSubmission) => {
-      if (submission?.project_module_id !== parseInt(submodId)) return false;
-
-      if (searchQuery) {
-        const searchLower = searchQuery.toLowerCase();
-        const foundFamily = families?.find(
-          (fam: IFamilies) => fam.hh_id === submission.family
-        );
-        return (
-          foundFamily?.hh_head_fullname?.toLowerCase().includes(searchLower) ||
-          foundFamily?.village_name?.toLowerCase().includes(searchLower) ||
-          submission.family?.toLowerCase().includes(searchLower)
-        );
+    // Process locally created families
+    const processedFamilies: CombinedItem[] = locallyCreatedFamilies.map((fam: any) => ({
+      _id: fam?.id || fam?.hh_id,
+      table_name: 'families',
+      sync_status: !fam?.is_temporary, // inverse of is_temporary
+      survey_id: fam?.form_data?.survey_id,
+      source_module_id: fam?.form_data?.source_module_id,
+      submittedAt: fam?.form_data?.submittedAt,
+      family: fam?.hh_id,
+      lastSyncAttempt: null,
+      project_module_id: fam?.form_data?.project_module_id,
+      itemType: 'family',
+      familyData: {
+        hh_id: fam?.hh_id,
+        hh_head_fullname: fam?.hh_head_fullname,
+        village_name: fam?.village_name,
+        cohort: fam?.cohort
       }
+    }));
 
-      switch (activeTab) {
-        case "synced":
-          return submission.sync_status;
-        case "pending":
-          return !submission.sync_status;
-        default:
-          return true;
-      }
-    });
+    // Combine both datasets
+    return [...processedSubmissions, ...processedFamilies];
+  }, [surveySubmissions, locallyCreatedFamilies]);
+  
+  // Filter and sort combined data
+  const filteredAndSortedData = useMemo(() => {
+    return combinedData
+      .filter((item) => {
+        // Filter by module ID
+        if (item?.project_module_id !== parseInt(submodId)) return false;
 
-    return filtered.sort(
-      (a: ProcessedSubmission, b: ProcessedSubmission) =>
-        (b.submittedAt ? new Date(b.submittedAt).getTime() : 0) -
-        (a.submittedAt ? new Date(a.submittedAt).getTime() : 0)
-    );
-  }, [surveySubmissions, submodId, searchQuery, activeTab]);
+        // If family parameter is provided, filter by family ID
+        if (family && item.family !== family) return false;
+
+        // Search filter
+        if (searchQuery) {
+          const searchLower = searchQuery.toLowerCase();
+          const foundFamily = item.itemType === 'family'
+            ? item.familyData
+            : families?.find((fam: IFamilies) => fam.hh_id === item.family);
+            
+          return (
+            foundFamily?.hh_head_fullname?.toLowerCase().includes(searchLower) ||
+            foundFamily?.village_name?.toLowerCase().includes(searchLower) ||
+            item.family?.toLowerCase().includes(searchLower) || false
+          );
+        }
+
+        // Tab filter
+        switch (activeTab) {
+          case "synced":
+            return item.sync_status;
+          case "pending":
+            return !item.sync_status;
+          default:
+            return true;
+        }
+      })
+      .sort(
+        (a, b) =>
+          (b.submittedAt ? new Date(b.submittedAt).getTime() : 0) -
+          (a.submittedAt ? new Date(a.submittedAt).getTime() : 0)
+      );
+  }, [combinedData, submodId, family, searchQuery, activeTab, families]);
 
   const renderTab = (tab: "all" | "synced" | "pending", label: string) => (
     <TouchableOpacity
@@ -170,12 +223,18 @@ const SubmissionListByModuleScreen = () => {
       <HeaderNavigation
         showLeft={true}
         showRight={true}
-        title={t("History.submissions")}
+        title={
+          family
+            ? t("History.family_submissions", "Family Submissions: ") +
+              (families?.find((f) => f.hh_id === family)?.hh_head_fullname ||
+                family)
+            : t("History.submissions", "Submissions")
+        }
       />
 
       <FlatList
-        data={filteredAndSortedSubmissions}
-        keyExtractor={(item: ProcessedSubmission) => item._id}
+        data={filteredAndSortedData}
+        keyExtractor={(item: CombinedItem) => item._id.toString()}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={ListHeaderComponent}
         ListHeaderComponentStyle={{ paddingHorizontal: 0, paddingTop: 16 }}
@@ -185,14 +244,21 @@ const SubmissionListByModuleScreen = () => {
           paddingBottom: insets.bottom + 24,
           flexGrow: 1,
         }}
-        renderItem={({ item }: ListRenderItemInfo<ProcessedSubmission>) => {
-          const foundFamily = families?.find(
-            (fam: IFamilies) => fam.hh_id === item.family
-          );
+        renderItem={({ item }: ListRenderItemInfo<CombinedItem>) => {
+          const foundFamily = item.itemType === 'family'
+            ? item.familyData
+            : families?.find((fam: IFamilies) => fam.hh_id === item.family);
 
+          console.log("item", JSON.stringify(item, null, 2));
           return (
             <TouchableOpacity
-              onPress={() => router.push(`/(sub-detail)/${item._id}?project_module_id=${item.project_module_id}&source_module_id=${item.source_module_id}`)}
+              onPress={() =>
+                router.push(
+                  `/(sub-detail)/${item._id}?project_module_id=${item.project_module_id}&source_module_id=${item.source_module_id}${
+                    item.itemType === 'family' ? '&isFamily=true' : ''
+                  }`
+                )
+              }
               className="p-4 border mb-4 border-gray-200 rounded-xl bg-white"
             >
               <View className="flex-row items-center justify-between mb-2">
@@ -206,7 +272,11 @@ const SubmissionListByModuleScreen = () => {
                 >
                   {item.sync_status ? (
                     <View className="flex-row items-center">
-                      <CheckCheckIcon size={24} color="green" className="mr-1" />
+                      <CheckCheckIcon
+                        size={24}
+                        color="green"
+                        className="mr-1"
+                      />
                     </View>
                   ) : (
                     <View>
@@ -230,12 +300,6 @@ const SubmissionListByModuleScreen = () => {
                     )}
                   </>
                 )}
-                {/* <Text className="text-sm text-gray-600">
-                  {t("History.surveyId", "Survey ID")}: {item.survey_id}
-                </Text>
-                <Text className="text-sm text-gray-600">
-                  {t("History.moduleId", "Module ID")}: {item.source_module_id}
-                </Text> */}
                 <Text className="text-sm text-gray-600">
                   {t("History.createdAt", "Created At")}:{" "}
                   {item.submittedAt
@@ -250,6 +314,12 @@ const SubmissionListByModuleScreen = () => {
                       : "-"}
                   </Text>
                 )}
+                <Text className="text-sm text-gray-600">
+                  {t("Common.type", "Type")}:{" "}
+                  {item.itemType === 'family' 
+                    ? t("Common.family", "Family") 
+                    : t("Common.submission", "Submission")}
+                </Text>
               </View>
             </TouchableOpacity>
           );

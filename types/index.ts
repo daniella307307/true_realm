@@ -94,13 +94,6 @@ export interface IForms {
   version: [];
 }
 
-export interface IZUs {
-  id: number;
-  name: string;
-  user_code: string;
-  villages_id: number;
-}
-
 export interface IFormElement {
   id: number;
   form_id: number;
@@ -653,16 +646,6 @@ export interface IExistingForm {
   project_module_id: number;
 }
 
-export interface IFamilies {
-  id: number;
-  hh_id: string;
-  hh_head_fullname: string;
-  village_name: string;
-  cohort: string;
-  meta?:string;
-  location?: string;
-}
-
 export interface ICohort {
   _id: Realm.BSON.ObjectId;
   cohort: string;
@@ -703,3 +686,55 @@ export const protectedBasePaths = [
   "/(projects)",
   "/(community)",
 ];
+
+export interface Generic {
+  form_data?: {
+    time_spent_filling_the_form?: string | null;
+    user_id?: number | null;
+    table_name?: string | null;
+    project_module_id?: number | null;
+    source_module_id?: number | null;
+    project_id?: number | null;
+    survey_id?: number | null;
+    post_data?: string | null;
+    izucode?: string | null;
+    cohort?: string | null;
+    form_status?: string | null;
+    family?: string | null;
+  };
+  location?: {
+    province?: number | null;
+    district?: number | null;
+    sector?: number | null;
+    cell?: number | null;
+    village?: number | null;
+  };
+  sync_data?: {
+    sync_status?: boolean;
+    sync_reason?: string;
+    sync_attempts?: number;
+    last_sync_attempt?: Date;
+    submitted_at?: Date;
+  };
+}
+export interface ISurveySubmission extends Generic {
+  _id: Realm.BSON.ObjectId;
+  answers: { [key: string]: string | number | boolean | null };
+}
+
+export interface IFamilies extends Generic {
+  id: number | null;
+  hh_id: string | null;
+  hh_head_fullname: string | null;
+  village_name: string | null;
+  village_id: number | null;
+  meta: { [key: string]: string | number | boolean | null };
+}
+
+export interface Izus extends Generic {
+  id: number | null;
+  name: string;
+  user_code: string | null;
+  village_id: number | null;
+  score: number | null;
+}

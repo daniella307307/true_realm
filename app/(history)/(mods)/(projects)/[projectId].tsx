@@ -13,8 +13,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import CustomInput from "~/components/ui/input";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
-import Skeleton from "~/components/ui/skeleton";
-import { Button } from "~/components/ui/button";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { IModule } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
@@ -22,22 +21,22 @@ import { useForm } from "react-hook-form";
 import { useGetAllModules } from "~/services/project";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { useTranslation } from "react-i18next";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useGetFormByProjectAndModule } from "~/services/formElements";
 import { Survey } from "~/models/surveys/survey";
+import { NotFound } from "~/components/ui/not-found";
+import { useGetAllLocallyCreatedFamilies } from "~/services/families";
 
 const ProjectModuleScreens = () => {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   console.log("Project ID: ", projectId);
+
   if (!projectId) {
     return (
-      <View>
-        <Text>Missing project Id</Text>
-        <Button onPress={() => router.replace("/(home)")}>
-          <Text>Go to home</Text>
-        </Button>
-      </View>
+      <NotFound
+        title="Project ID not found"
+        description="Please check the project ID and try again."
+        redirectTo={() => router.back()}
+      />
     );
   }
 
@@ -46,19 +45,23 @@ const ProjectModuleScreens = () => {
     isLoading: modulesLoading,
     refresh: refreshModules,
   } = useGetAllModules();
+
   const {
     surveySubmissions,
     isLoading: surveySubmissionsLoading,
     refresh: refreshSubmissions,
   } = useGetAllSurveySubmissions();
-  const isLoading = modulesLoading || surveySubmissionsLoading;
+
+  const { locallyCreatedFamilies, isLoading: isLoadingFamilies } =
+    useGetAllLocallyCreatedFamilies();
+
+  const isLoading =
+    modulesLoading || surveySubmissionsLoading || isLoadingFamilies;
   const { t } = useTranslation();
   const { control, watch } = useForm({
-    resolver: zodResolver(
-      z.object({
-        searchQuery: z.string(),
-      })
-    ),
+    defaultValues: {
+      searchQuery: "",
+    },
     mode: "onChange",
   });
 
@@ -73,6 +76,11 @@ const ProjectModuleScreens = () => {
       module.project_id === Number(projectId)
   );
 
+  console.log(
+    "Uncategorized Module: ",
+    JSON.stringify(uncategorizedModule, null, 2)
+  );
+
   // Get forms for the uncategorized module if it exists
   const {
     filteredForms: uncategorizedForms,
@@ -85,36 +93,56 @@ const ProjectModuleScreens = () => {
 
   // Get modules that have submissions
   const filteredModules = useMemo(() => {
-    if (!modules || !surveySubmissions) return [];
+    if (!modules || !surveySubmissions || !locallyCreatedFamilies) return [];
 
     console.log(
       "Survey Submissions: ",
       JSON.stringify(surveySubmissions, null, 2)
     );
+    console.log(
+      "Locally Created Families: ",
+      JSON.stringify(locallyCreatedFamilies, null, 2)
+    );
+    console.log("Project ID for filtering:", Number(projectId));
+    // Get module IDs from locally created families
+    const locallyCreatedFamilyModuleIds = new Set(
+      locallyCreatedFamilies
+        .filter(
+          (family) =>
+            family.form_data &&
+            family.form_data.project_id === Number(projectId)
+        )
+        .map((family) => family.form_data?.source_module_id)
+    );
 
     // Get module IDs that have submissions for this project
     const moduleIdsWithSubmissions = new Set(
       surveySubmissions
-        .filter((submission) => submission.project_id === Number(projectId))
-        .map((submission) => submission.source_module_id)
+        .filter(
+          (submission) => submission.form_data?.project_id === Number(projectId)
+        )
+        .map((submission) => submission.form_data?.source_module_id)
     );
 
-    // console.log("Module IDs with submissions: ", moduleIdsWithSubmissions);
+    const activeModules = modules.filter(
+      (module: IModule | null): module is IModule =>
+        module !== null &&
+        module.project_id === Number(projectId) &&
+        module.module_status !== 0 &&
+        (locallyCreatedFamilyModuleIds.has(module.source_module_id) ||
+          moduleIdsWithSubmissions.has(module.source_module_id))
+    );
 
-    return modules
+    return activeModules
       .filter(
-        (module: IModule | null): module is IModule =>
-          module !== null &&
-          module.project_id === Number(projectId) &&
-          module.module_status !== 0 &&
-          moduleIdsWithSubmissions.has(module.source_module_id) &&
-          (!searchQuery ||
-            module.module_name
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()) ||
-            module.module_description
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()))
+        (module) =>
+          !searchQuery ||
+          module.module_name
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          module.module_description
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
       )
       .sort((a, b) => a.order_list - b.order_list);
   }, [modules, surveySubmissions, projectId, searchQuery]);
@@ -132,25 +160,48 @@ const ProjectModuleScreens = () => {
     // Check if there are any risk of harm submissions for this project
     return surveySubmissions.some(
       (submission) =>
-        submission.project_id === Number(projectId) &&
-        submission.source_module_id === 24
+        submission.form_data?.project_id === Number(projectId) &&
+        submission.form_data?.source_module_id === 24
     );
   }, [surveySubmissions, projectId]);
 
   const renderItem = ({ item }: { item: IModule | Survey }) => {
     if ("module_name" in item) {
-      // This is a module
+      // Submissions under a module
       const moduleSubmissions = surveySubmissions.filter(
-        (submission) => submission.source_module_id === item.source_module_id
+        (submission) =>
+          submission.form_data?.source_module_id === item.source_module_id
       );
 
-      const sortedSubmissions = [...moduleSubmissions].sort(
-        (a, b) =>
-          new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      // Families created under a module
+      const moduleFamilies = locallyCreatedFamilies.filter(
+        (family) =>
+          family.form_data &&
+          family.form_data.project_id === Number(projectId) &&
+          family.form_data.source_module_id === item.source_module_id
       );
 
-      const lastSubmission =
-        sortedSubmissions.length > 0 ? sortedSubmissions[0].submittedAt : null;
+      console.log("Module Families: ", JSON.stringify(moduleFamilies, null, 2));
+
+      // Now create the sorted submissions and families
+      // The submittedAt is in the sync_data object
+      const sortedSubmissions = [...moduleSubmissions, ...moduleFamilies].sort(
+        (a, b) => {
+          const dateA = a.sync_data?.submitted_at || 0;
+          const dateB = b.sync_data?.submitted_at || 0;
+          return (dateB as number) - (dateA as number);
+        }
+      );
+
+      console.log(
+        "Sorted Submissions: ",
+        JSON.stringify(sortedSubmissions, null, 2)
+      );
+
+      const lastSubmission = 
+        sortedSubmissions.length > 0 
+          ? (sortedSubmissions[0]?.sync_data?.submitted_at as number | null) || null
+          : null;
 
       return (
         <TouchableOpacity
@@ -171,11 +222,11 @@ const ProjectModuleScreens = () => {
           <View className="flex flex-col justify-between items-start mt-2">
             <Text className="text-sm text-gray-500">
               {t("History.submissions", "Submissions")}:{" "}
-              {moduleSubmissions.length}
+              {sortedSubmissions.length}
             </Text>
             <Text className="text-sm text-gray-500">
-              Last Submission:{" "}
-              {lastSubmission
+              Last Submission:
+              {lastSubmission !== null
                 ? new Date(lastSubmission).toLocaleDateString("en-GB", {
                     day: "2-digit",
                     month: "2-digit",
@@ -190,22 +241,34 @@ const ProjectModuleScreens = () => {
         </TouchableOpacity>
       );
     } else {
-      // This is a form (including uncategorized forms)
+      // Submissions under a form
       const formSubmissions = surveySubmissions.filter(
         (submission) =>
-          submission.project_module_id === item.project_module_id ||
+          submission.form_data?.project_module_id === item.project_module_id ||
           (uncategorizedModule &&
-            submission.source_module_id === uncategorizedModule.id)
+            submission.form_data?.source_module_id === uncategorizedModule.id)
       );
 
-      const sortedSubmissions = [...formSubmissions].sort(
-        (a, b) =>
-          new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      // Families created under a form
+      const formFamilies = locallyCreatedFamilies.filter(
+        (family) =>
+          family.form_data &&
+          family.form_data.project_id === Number(projectId) &&
+          family.form_data.project_module_id === item.project_module_id
+      );
+
+      const sortedSubmissions = [...formSubmissions, ...formFamilies].sort(
+        (a, b) => {
+          const dateA = new Date(a.sync_data?.submitted_at as number || 0).getTime();
+          const dateB = new Date(b.sync_data?.submitted_at as number || 0).getTime();
+          return dateB - dateA;
+        }
       );
 
       const lastSubmission =
-        sortedSubmissions.length > 0 ? sortedSubmissions[0].submittedAt : null;
-
+        sortedSubmissions.length > 0
+          ? (sortedSubmissions[0]?.sync_data?.submitted_at as number | null) || null
+          : null;
       return (
         <TouchableOpacity
           onPress={() =>
@@ -228,11 +291,11 @@ const ProjectModuleScreens = () => {
           <View className="flex flex-col justify-between items-start mt-2">
             <Text className="text-sm text-gray-500">
               {t("History.submissions", "Submissions")}:{" "}
-              {formSubmissions.length}
+              {sortedSubmissions.length}
             </Text>
             <Text className="text-sm text-gray-500">
               Last Submission:{" "}
-              {lastSubmission
+              {lastSubmission !== null
                 ? new Date(lastSubmission).toLocaleDateString("en-GB", {
                     day: "2-digit",
                     month: "2-digit",
@@ -266,11 +329,11 @@ const ProjectModuleScreens = () => {
         />
 
         {isLoading || isUncategorizedFormsLoading ? (
-          <>
-            <Skeleton />
-            <Skeleton />
-            <Skeleton />
-          </>
+          <View>
+            <SimpleSkeletonItem />
+            <SimpleSkeletonItem />
+            <SimpleSkeletonItem />
+          </View>
         ) : (
           <FlatList<IModule | Survey>
             data={
@@ -307,8 +370,8 @@ const ProjectModuleScreens = () => {
                       {
                         surveySubmissions.filter(
                           (submission) =>
-                            submission.project_id === Number(projectId) &&
-                            submission.source_module_id === 24
+                            submission.form_data?.project_id === Number(projectId) &&
+                            submission.form_data?.source_module_id === 24
                         ).length
                       }
                     </Text>
@@ -318,18 +381,18 @@ const ProjectModuleScreens = () => {
                         const riskSubmissions = surveySubmissions
                           .filter(
                             (submission) =>
-                              submission.project_id === Number(projectId) &&
-                              submission.source_module_id === 24
+                              submission.form_data?.project_id === Number(projectId) &&
+                              submission.form_data?.source_module_id === 24
                           )
                           .sort(
                             (a, b) =>
-                              new Date(b.submittedAt).getTime() -
-                              new Date(a.submittedAt).getTime()
+                              new Date(b.sync_data?.submitted_at || 0).getTime() -
+                              new Date(a.sync_data?.submitted_at || 0).getTime()
                           );
 
                         return riskSubmissions.length > 0
                           ? new Date(
-                              riskSubmissions[0].submittedAt
+                              riskSubmissions[0].sync_data?.submitted_at || 0
                             ).toLocaleDateString("en-GB", {
                               day: "2-digit",
                               month: "2-digit",

@@ -38,4 +38,4 @@ export const RealmContext = createRealmContext({
   path: realmPath,
 });
 
-console.log("Realm Path", realmPath);
+// console.log("Realm Path", realmPath);

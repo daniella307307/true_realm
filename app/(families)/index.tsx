@@ -15,7 +15,7 @@ import { router } from "expo-router";
 import { IModule } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
-import Skeleton from "~/components/ui/skeleton";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { useGetAllModules, useGetAllProjects } from "~/services/project";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
@@ -66,13 +66,20 @@ const FamiliesPage = () => {
           module?.module_name.toLowerCase().includes(searchQuery))
     )
     .filter((module: IModule | null): module is IModule => module !== null)
-    .sort((a: IModule, b: IModule) => (a?.order_list || 0) - (b?.order_list || 0));
+    .sort(
+      (a: IModule, b: IModule) => (a?.order_list || 0) - (b?.order_list || 0)
+    );
 
   // Check if we have an uncategorized module
-  const uncategorizedModule = filteredModules?.find(module => module.module_name.toLowerCase().includes('uncategorize'));
+  const uncategorizedModule = filteredModules?.find((module) =>
+    module.module_name.toLowerCase().includes("uncategorize")
+  );
 
   // Get forms for the uncategorized module if it exists
-  const { filteredForms: uncategorizedForms, isLoading: isUncategorizedFormsLoading } = useGetFormByProjectAndModule(
+  const {
+    filteredForms: uncategorizedForms,
+    isLoading: isUncategorizedFormsLoading,
+  } = useGetFormByProjectAndModule(
     uncategorizedModule?.project_id || 0,
     uncategorizedModule?.source_module_id || 0,
     uncategorizedModule?.id || 0
@@ -97,7 +104,11 @@ const FamiliesPage = () => {
       />
       {riskOfHarmModule && !uncategorizedModule && (
         <TouchableOpacity
-          onPress={() => router.push(`/(forms)/${riskOfHarmModuleId}?project_id=${riskOfHarmModule?.project_id}&source_module_id=${riskOfHarmModule?.source_module_id}&project_module_id=${riskOfHarmModule?.id}`)}
+          onPress={() =>
+            router.push(
+              `/(forms)/${riskOfHarmModuleId}?project_id=${riskOfHarmModule?.project_id}&source_module_id=${riskOfHarmModule?.source_module_id}&project_module_id=${riskOfHarmModule?.id}`
+            )
+          }
           className="p-4 border mb-4 border-red-500 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">
@@ -122,9 +133,9 @@ const FamiliesPage = () => {
   const renderContent = () => {
     if (isModulesLoading || isProjectsLoading || isUncategorizedFormsLoading) {
       return (
-        <View className="mt-6">
+        <View>
           {[1, 2, 3].map((item) => (
-            <Skeleton key={item} />
+            <SimpleSkeletonItem key={item} />
           ))}
         </View>
       );
@@ -134,11 +145,15 @@ const FamiliesPage = () => {
   };
 
   const renderItem = ({ item }: { item: IModule | Survey }) => {
-    if ('module_name' in item) {
+    if ("module_name" in item) {
       // This is a module
       return (
         <TouchableOpacity
-          onPress={() => router.push(`/(forms)/${item.id}?project_id=${item.project_id}&source_module_id=${item.source_module_id}&project_module_id=${item.id}`)}
+          onPress={() =>
+            router.push(
+              `/(forms)/${item.id}?project_id=${item.project_id}&source_module_id=${item.source_module_id}&project_module_id=${item.id}`
+            )
+          }
           className="p-4 border mb-4 border-gray-200 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">
@@ -161,7 +176,11 @@ const FamiliesPage = () => {
       // This is a form
       return (
         <TouchableOpacity
-          onPress={() => router.push(`/(form-element)/${item.id}?project_id=${uncategorizedModule?.project_id}&source_module_id=${uncategorizedModule?.source_module_id}&project_module_id=${uncategorizedModule?.id}`)}
+          onPress={() =>
+            router.push(
+              `/(form-element)/${item.id}?project_id=${uncategorizedModule?.project_id}&source_module_id=${uncategorizedModule?.source_module_id}&project_module_id=${uncategorizedModule?.id}`
+            )
+          }
           className="p-4 border mb-4 border-gray-200 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">
@@ -171,9 +190,7 @@ const FamiliesPage = () => {
               size={24}
               color="#71717A"
             />
-            <Text className="text-lg ml-2 font-semibold">
-              {item.name}
-            </Text>
+            <Text className="text-lg ml-2 font-semibold">{item.name}</Text>
           </View>
           <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
             FORM
@@ -191,13 +208,17 @@ const FamiliesPage = () => {
         title={t("ModulePage.title")}
       />
       <FlatList
-        data={uncategorizedModule ? uncategorizedForms || [] : filteredModules || []}
+        data={
+          uncategorizedModule ? uncategorizedForms || [] : filteredModules || []
+        }
         keyExtractor={(item, index) => `${item.id}-${index}`}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={ListHeaderComponent}
         ListHeaderComponentStyle={{ paddingTop: 16 }}
         ListEmptyComponent={() =>
-          isModulesLoading || isProjectsLoading || isUncategorizedFormsLoading ? (
+          isModulesLoading ||
+          isProjectsLoading ||
+          isUncategorizedFormsLoading ? (
             renderContent()
           ) : (
             <EmptyDynamicComponent />
