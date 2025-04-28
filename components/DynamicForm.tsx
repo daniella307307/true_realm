@@ -29,6 +29,8 @@ import {
   CheckBoxComponent,
   DayInputComponent,
   TimeInputComponent,
+  PasswordComponent,
+  ConfirmPasswordComponent,
 } from "./DynamicComponents";
 import { AnswerPreview } from "./AnswerPreview";
 import { DynamicFieldProps, DynamicFormProps } from "~/types/form-types";
@@ -101,6 +103,22 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
           language={language}
         />
       );
+    case "password":
+      return (
+        <PasswordComponent
+          field={field}
+          control={control}
+          language={language}
+        />
+      );
+    case "confirmPassword":
+      return (
+        <ConfirmPasswordComponent
+          field={field}
+          control={control}
+          language={language}
+        />
+      );
     case "phoneNumber":
       return (
         <TextFieldComponent
@@ -111,6 +129,7 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
         />
       );
     case "select":
+    case "dropdown":
       return (
         <SelectBoxComponent
           field={field}
@@ -354,6 +373,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const totalPages = groupedFields.length;
   const currentPageFields = groupedFields[currentPage] || [];
 
+  // console.log json stringify
+  // console.log(JSON.stringify(currentPageFields, null, 2));
   useEffect(() => {
     if (!language) {
       setCurrentLanguage(i18nInstance.language);
@@ -496,12 +517,19 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           [{ text: "OK" }]
         );
       } finally {
-        // This ensures submitting state is reset whether success or failure
-        // This is redundant for error case but ensures state is reset for success case
+        // Improved callback handling
+        console.log("Submission completed, resetting state");
+
+        // Reset our own submitting state
         setSubmitting(false);
+
+        // Call the callback from AnswerPreview if it exists
         if (resetSubmittingCallback) {
+          console.log("Calling reset submitting callback");
           resetSubmittingCallback();
           setResetSubmittingCallback(null);
+        } else {
+          console.log("No reset submitting callback found");
         }
       }
     } else {
@@ -652,9 +680,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     }
   };
 
-  // Function to register the reset callback from AnswerPreview
   const handleResetSubmitting = (callback: () => void) => {
-    setResetSubmittingCallback(callback);
+    console.log("Registering reset submitting callback");
+    // Store the callback directly rather than wrapping it
+    setResetSubmittingCallback(() => callback);
   };
 
   if (showPreview) {

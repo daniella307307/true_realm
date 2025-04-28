@@ -79,7 +79,8 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
       (family) =>
         (family.hh_head_fullname?.toLowerCase() || "")
           .includes(searchQuery.toLowerCase()) ||
-        family.hh_id.toLowerCase().includes(searchQuery.toLowerCase())
+        (family.hh_id?.toLowerCase() || "")
+          .includes(searchQuery.toLowerCase())
     );
   }, [families, searchQuery]);
 
@@ -118,7 +119,6 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <FamilyItem
-            // @ts-ignore
             family={item as IFamilies}
             isSelected={selectedFamily?.id === item.id}
             onSelect={handleSelect}

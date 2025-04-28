@@ -18,7 +18,7 @@ export async function fetchProjectsFromRemote() {
 
 // Hook for getting all projects with offline support
 export function useGetAllProjects(forceSync: boolean = false) {
-  const realm = useRealm();
+  // const realm = useRealm();
   const storedProjects = useQuery(Project);
 
   const { syncStatus, refresh } = useDataSync([

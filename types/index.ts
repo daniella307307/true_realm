@@ -40,6 +40,7 @@ export interface ILoginResponse {
   token: string;
   name: string;
   role: string;
+  user?: User;
 }
 
 export type IResponseError = {
@@ -728,7 +729,7 @@ export interface IFamilies extends Generic {
   hh_head_fullname: string | null;
   village_name: string | null;
   village_id: number | null;
-  meta: { [key: string]: string | number | boolean | null };
+  meta?: { [key: string]: string | number | boolean | null };
 }
 
 export interface Izus extends Generic {

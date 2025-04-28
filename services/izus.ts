@@ -127,7 +127,7 @@ export const createIzuWithMeta = (
   realm: Realm,
   izuData: Record<string, any>,
   extraFields: FormField[] = []
-) => {
+): Izu => {
   try {
     const id = getNextAvailableId(realm);
     const meta = prepareMetaData(izuData, extraFields);
@@ -153,30 +153,24 @@ export const createIzuWithMeta = (
       submitted_at: new Date(),
     };
 
-    const izu = realm.create(Izu, {
-      id,
-      name: izuData.name,
-      user_code: izuData.user_code,
-      villages_id: izuData.villages_id,
-      score: izuData.score,
-      meta,
-      form_data: formData,
-      location: izuData.location,
-      sync_data: syncData,
+    let result: Izu;
+    realm.write(() => {
+      result = realm.create<Izu>(Izu, {
+        id,
+        name: izuData.name,
+        user_code: izuData.user_code,
+        villages_id: izuData.villages_id,
+        score: izuData.score,
+        meta,
+        form_data: formData,
+        location: izuData.location,
+        sync_data: syncData,
+      });
     });
 
     console.log("Created Izu with ID:", id);
 
-    let result;
-    realm.write(() => {
-      result = realm.create(Izu, izu, Realm.UpdateMode.Modified);
-    });
-
-    if (!result) {
-      throw new Error("Failed to create Izu object");
-    }
-
-    return result;
+    return result!;
   } catch (error) {
     console.error("Error creating Izu with meta:", error);
     throw error;
@@ -287,10 +281,11 @@ export const saveIzuToAPI = async (
     };
 
     const isConnected = isOnline();
-
+    console.log("isConnected", isConnected);
     // If we're online, try to submit to API first
     if (isConnected) {
       try {
+        console.log("Sending to API");
         // Prepare data for API - flatten meta fields at the top level
         const apiData = {
           ...izuData,
@@ -303,6 +298,7 @@ export const saveIzuToAPI = async (
           delete apiData.meta;
         }
 
+        
         // Send to API
         const response = await baseInstance.post(apiUrl, apiData);
         console.log(
@@ -313,7 +309,8 @@ export const saveIzuToAPI = async (
         if (response.data?.result?.id) {
           const completeData = {
             ...sanitizedIzuData,
-            id: izuData.id || getNextAvailableId(realm),
+            id: response.data.result.id,
+            user_code: response.data.result.user_code,
             sync_data: {
               sync_status: true,
               sync_reason: "Successfully synced",
@@ -330,8 +327,10 @@ export const saveIzuToAPI = async (
           // If API didn't return an ID, create with locally generated ID
           return createIzuWithMeta(realm, sanitizedIzuData, extraFields);
         }
-      } catch (error) {
+      } catch (error: any) {
+
         console.error("Error submitting Izu to API:", error);
+        console.log("Advanced error", error.response);
         // Fall back to offline approach if API submission fails
         return createTemporaryIzu(realm, sanitizedIzuData, extraFields);
       }
@@ -361,16 +360,22 @@ export const syncTemporaryIzus = async (
     .objects<Izu>(Izu)
     .filtered("sync_data.sync_status == false");
 
+  console.log(`Found ${izusToSync.length} Izus to sync`);
+
   for (const izu of izusToSync) {
     try {
       // Extract data to send to API
       const locationData = izu.location || {};
 
       const apiData = {
-        ...izu,
-        ...izu.meta,
-        ...izu.form_data,
-        ...locationData,
+        id: izu.id,
+        user_code: izu.user_code,
+        name: izu.name,
+        villages_id: izu.villages_id,
+        score: izu.score,
+        ...(locationData),
+        ...(izu.meta || {}),
+        ...(izu.form_data || {}),
       };
 
       console.log("Syncing Izu to API:", JSON.stringify(apiData, null, 2));
@@ -380,38 +385,89 @@ export const syncTemporaryIzus = async (
       const response = await baseInstance.post(apiUrl, apiData);
 
       if (response.data?.result?.id) {
-        // Update the record with API data
-        replaceTemporaryIzu(realm, izu, {
+        // Prepare updated data
+        const updatedData = {
           ...apiData,
-          id: izu.id, // Keep the same local ID
+          // Update the id with the id from the API
+          // Update the user_code with the user_code from the API
+          id: response.data.result.id,
+          user_code: response.data.result.user_code,
           ...response.data.result,
           sync_data: {
             sync_status: true,
             sync_reason: "Successfully synced",
-            sync_attempts: 1,
-            last_sync_attempt: new Date(),
-            submitted_at: new Date(),
+            sync_attempts: (typeof izu.sync_data?.sync_attempts === 'number' ? izu.sync_data.sync_attempts : 0) + 1,
+            last_sync_attempt: new Date().toISOString(),
+            submitted_at: new Date().toISOString(),
           },
-        });
+        };
+        
+        // Update in a new write transaction
+        if (!realm.isInTransaction) {
+          realm.write(() => {
+            // Use the objects API to update the existing object
+            const existingIzu = realm.objectForPrimaryKey(Izu, izu.id);
+            if (existingIzu) {
+              // Update properties safely
+              if (updatedData.sync_data) {
+                existingIzu.sync_data = updatedData.sync_data;
+              }
+              
+              if (updatedData.name) {
+                existingIzu.name = updatedData.name;
+              }
+              
+              if (updatedData.user_code) {
+                existingIzu.user_code = updatedData.user_code;
+              }
+              
+              if (updatedData.villages_id) {
+                existingIzu.villages_id = updatedData.villages_id;
+              }
+              
+              if (updatedData.score !== undefined) {
+                existingIzu.score = updatedData.score;
+              }
+              
+              if (updatedData.location) {
+                existingIzu.location = updatedData.location;
+              }
+              
+              if (updatedData.meta) {
+                existingIzu.meta = updatedData.meta;
+              }
+              
+              if (updatedData.form_data) {
+                existingIzu.form_data = updatedData.form_data;
+              }
+            }
+          });
+        }
+        
         console.log(
-          `Successfully synced Izu ${izu.id} to server, updated with hh_id: ${response.data.result.hh_id}`
-        );
+          `Successfully synced Izu ${izu.id} to server, updated with server id: ${response.data.result.id}`
+        , izu);
       }
     } catch (error: any) {
+      console.log("Advanced error", error.response.data);
       console.error("Error syncing Izu to API:", error);
+      
       // Update sync data to record the failure
-      realm.write(() => {
-        if (izu.sync_data) {
-          izu.sync_data.sync_status = false;
-          izu.sync_data.sync_reason = `Failed: ${
-            error?.message || "Unknown error"
-          }`;
-          izu.sync_data.sync_attempts =
-            Number(izu.sync_data.sync_attempts || 0) + 1;
-          izu.sync_data.last_sync_attempt = new Date().toISOString();
-          izu.sync_data.submitted_at = new Date().toISOString();
-        }
-      });
+      if (!realm.isInTransaction) {
+        realm.write(() => {
+          const existingIzu = realm.objectForPrimaryKey(Izu, izu.id);
+          if (existingIzu && existingIzu.sync_data) {
+            existingIzu.sync_data.sync_status = false;
+            existingIzu.sync_data.sync_reason = `Failed: ${
+              error?.message || "Unknown error"
+            }`;
+            existingIzu.sync_data.sync_attempts =
+              (typeof existingIzu.sync_data.sync_attempts === 'number' ? existingIzu.sync_data.sync_attempts : 0) + 1;
+            existingIzu.sync_data.last_sync_attempt = new Date().toISOString();
+          }
+        });
+      }
+      
       console.error(`Failed to sync Izu ${izu.id}:`, error);
       // Continue with other records - this one will be tried again next sync
     }

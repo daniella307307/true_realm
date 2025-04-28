@@ -126,7 +126,7 @@ export const saveSurveySubmission = async (
                 form_status: "followup",
               },
             };
-            console.log("Submission with sync status:", syncedSubmission);
+            // console.log("Submission with sync status:", syncedSubmission);
             result = realm.create("SurveySubmission", syncedSubmission);
           });
           console.log("Submission saved to realm.", response.data);
@@ -177,10 +177,10 @@ export const saveSurveySubmission = async (
 
 const syncWithRemote = async (
   submission: ISurveySubmission,
-  apiUrl: string
+  apiUrl: string,
+  realm: Realm
 ) => {
   try {
-    const realm = useRealm();
     let result;
     // Prepare data for API submission
     const apiSubmission = {
@@ -205,111 +205,107 @@ const syncWithRemote = async (
       submittedAt: submission.sync_data?.submitted_at,
     };
 
-    console.log("Syncing submission with remote server:", apiSubmission);
+    // console.log("Syncing submission with remote server:", apiSubmission);
 
     const response = await baseInstance.post(apiUrl, apiSubmission);
-    console.log("Response data: ", JSON.stringify(response, null, 2));
+    console.log("Response data: ", JSON.stringify(response.data, null, 2));
 
     if (response.data.result) {
       console.log("API submission successful and has result object");
       realm.write(() => {
         // Update sync data to reflect successful sync
-        const syncedSubmission = {
-          ...submission,
-          sync_data: {
-            ...submission.sync_data,
-            sync_status: true,
-            sync_reason: "Success",
-            sync_attempts: 1,
-            last_sync_attempt: new Date(),
-          },
-          form_data: {
-            ...submission.form_data,
-            form_status: "followup",
-          },
-        };
-        console.log("Submission with sync status:", syncedSubmission);
-        result = realm.create("SurveySubmission", syncedSubmission);
+        if (submission.sync_data) {
+          submission.sync_data.sync_status = true;
+          submission.sync_data.sync_reason = "Success";
+          submission.sync_data.sync_attempts =
+            (submission.sync_data.sync_attempts || 0) + 1;
+          submission.sync_data.last_sync_attempt = new Date();
+        }
+
+        if (submission.form_data) {
+          submission.form_data.form_status = "followup";
+        }
       });
-      console.log("Submission saved to realm.", response.data);
-      return result;
+      console.log("Submission updated in realm.");
+      return submission;
     }
   } catch (error: any) {
-    const realm = useRealm();
     console.log("Error syncing with remote server:", error);
     // When status is 400, update sync status to failed
     if (error.response?.status === 400) {
-      console.log("Submission already exists in the database");
-      // Save the submission to the offline realm
-      const offlineSyncedSubmission = {
-        ...submission,
-        sync_data: {
-          ...submission.sync_data,
-          sync_status: true,
-          sync_reason: "Already, accepted",
-          sync_attempts: 1,
-          last_sync_attempt: new Date(),
-        },
-        form_data: {
-          ...submission.form_data,
-          form_status: "followup",
-        },
-      };
-      realm.write(() => {
-        realm.create("SurveySubmission", offlineSyncedSubmission);
-      });
-      console.log(
-        "Submission saved to offline realm.",
-        offlineSyncedSubmission
-      );
-      return offlineSyncedSubmission;
+      if (error.response.data.isSaved === true) {
+        console.log("Submission already exists in the database");
+        // Update the submission in the realm
+        realm.write(() => {
+          if (submission.sync_data) {
+            submission.sync_data.sync_status = true;
+            submission.sync_data.sync_reason = "Already, accepted";
+            submission.sync_data.sync_attempts =
+              (submission.sync_data.sync_attempts || 0) + 1;
+            submission.sync_data.last_sync_attempt = new Date();
+          }
+
+          if (submission.form_data) {
+            submission.form_data.form_status = "followup";
+          }
+        });
+        console.log("Submission updated in offline realm as already accepted");
+      } else {
+        realm.write(() => {
+          if (submission.sync_data) {
+            submission.sync_data.sync_status = false;
+            submission.sync_data.sync_reason = "Rejected by the server";
+            submission.sync_data.sync_attempts =
+              (submission.sync_data.sync_attempts || 0) + 1;
+            submission.sync_data.last_sync_attempt = new Date();
+          }
+
+          if (submission.form_data) {
+            submission.form_data.form_status = "followup";
+          }
+        });
+        console.log("Submission rejected by the server and offline");
+      }
+      return submission;
     } else if (error.message === "Network Error") {
       console.log("Network error for submission", submission._id);
-      // Update sync status to failed
-      const errorSyncedSubmission = {
-        ...submission,
-        sync_data: {
-          ...submission.sync_data,
-          sync_status: false,
-          sync_reason: "Network Error",
-          sync_attempts: 1,
-          last_sync_attempt: new Date(),
-        },
-      };
+      // Update sync status to network error
       realm.write(() => {
-        realm.create("SurveySubmission", errorSyncedSubmission);
+        if (submission.sync_data) {
+          submission.sync_data.sync_status = false;
+          submission.sync_data.sync_reason = "Network Error";
+          submission.sync_data.sync_attempts =
+            (submission.sync_data.sync_attempts || 0) + 1;
+          submission.sync_data.last_sync_attempt = new Date();
+        }
       });
-      console.log("Submission saved to offline realm.", errorSyncedSubmission);
-      return errorSyncedSubmission;
+      console.log("Submission updated in offline realm with network error");
+      return submission;
     } else {
       console.log("Other error type:", error);
-      // Update sync status to failed
-      const errorSyncedSubmission = {
-        ...submission,
-        sync_data: {
-          ...submission.sync_data,
-          sync_status: false,
-          sync_reason: "Other error",
-          sync_attempts: 1,
-          last_sync_attempt: new Date(),
-        },
-      };
+      // Update sync status to other error
       realm.write(() => {
-        realm.create("SurveySubmission", errorSyncedSubmission);
+        if (submission.sync_data) {
+          submission.sync_data.sync_status = false;
+          submission.sync_data.sync_reason = "Other error";
+          submission.sync_data.sync_attempts =
+            (submission.sync_data.sync_attempts || 0) + 1;
+          submission.sync_data.last_sync_attempt = new Date();
+        }
       });
-      console.log("Submission saved to offline realm.", errorSyncedSubmission);
+      console.log("Submission updated in offline realm with other error");
+      return submission;
     }
   }
 };
 
-export const syncPendingSubmissions = async () => {
-  const realm = useRealm();
+export const syncPendingSubmissions = async (realm: Realm) => {
   const pendingSubmissions = realm
     .objects<ISurveySubmission>("SurveySubmission")
     .filtered("sync_data.sync_status == false");
 
   for (const submission of pendingSubmissions) {
-    await syncWithRemote(submission, "/sendVisitData");
+    await syncWithRemote(submission, "/sendVisitData", realm);
   }
 };
 

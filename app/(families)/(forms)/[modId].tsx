@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { NotFound } from "~/components/ui/not-found";
 
 const ProjectFormsScreen = () => {
   const { modId, project_id, source_module_id, project_module_id } =
@@ -48,12 +49,11 @@ const ProjectFormsScreen = () => {
 
   if (!modId) {
     return (
-      <View className="flex-1 justify-center items-center bg-background p-4">
-        <Text>Missing module</Text>
-        <Button onPress={() => router.replace("/(home)/home")}>
-          Go to home
-        </Button>
-      </View>
+      <NotFound
+        title="Module not found"
+        description="Please go back to the home screen and try again."
+        redirectTo={() => router.replace("/(home)/home")}
+      />
     );
   }
 

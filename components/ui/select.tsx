@@ -96,7 +96,10 @@ export default function Dropdown({
                   keyExtractor={(item) => 
                     `${item.value}-${item.label}`
                   }
-                  data={data}
+                  data={
+                    // Don't show the item where the label is N/A or select all
+                    data.filter((item) => item.label !== "N/A" && item.label !== "Select")
+                  }
                   renderItem={({ item }) => (
                     <TouchableOpacity
                       activeOpacity={0.8}

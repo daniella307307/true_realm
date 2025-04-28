@@ -16,12 +16,11 @@ import { IProject } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { useGetAllProjects } from "~/services/project";
-import Skeleton from "~/components/ui/skeleton";
+import { SimpleSkeletonItem, Skeleton } from "~/components/ui/skeleton";
 import HeaderNavigation from "~/components/ui/header";
 
 const ProjectScreen = () => {
   const { projects: storedProjects, isLoading, refresh } = useGetAllProjects();
-  // console.log("storedProjects", JSON.stringify(storedProjects, null, 2));
   const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -150,11 +149,11 @@ const ProjectScreen = () => {
         />
 
         {isLoading ? (
-          <>
-            <Skeleton />
-            <Skeleton />
-            <Skeleton />
-          </>
+          <View className="flex-1 justify-center items-center">
+            <SimpleSkeletonItem />
+            <SimpleSkeletonItem />
+            <SimpleSkeletonItem />
+          </View>
         ) : (
           <FlatList
             data={transformedProjects}

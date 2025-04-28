@@ -338,7 +338,7 @@ export const saveFamilyToAPI = async (
         if (response.data?.result?.id) {
           const completeData = {
             ...sanitizedFamilyData,
-            id: familyData.id || getNextAvailableId(realm), // Keep local ID if exists
+            id: response.data.result.id, // Keep local ID if exists
             hh_id: response.data.result.hh_id, // Update hh_id from API
             sync_data: {
               sync_status: true,
@@ -416,7 +416,7 @@ export const syncTemporaryFamilies = async (
         // Update the record with API data
         replaceTemporaryFamily(realm, family, {
           ...apiData,
-          id: family.id, // Keep the same local ID
+          id: response.data.result.id, // Update local ID
           hh_id: response.data.result.hh_id, // Update hh_id from API
           ...response.data.result,
           sync_data: {

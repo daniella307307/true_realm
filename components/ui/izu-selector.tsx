@@ -51,6 +51,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
 
   const { izus: izus, isLoading } = useGetIzus();
 
+  // console.log("izus", JSON.stringify(izus, null, 2));
   const filteredIzus = izus?.filter(
     (izu) =>
       izu.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -103,8 +104,8 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
       {/* Scrollable list of IZU codes */}
       <View className="flex-1 border rounded-lg border-[#E4E4E7] bg-gray-50">
         <FlatList
-          data={filteredIzus as unknown as Izus[]}
-          keyExtractor={(item: Izus) => item.user_code || ""}
+          data={(filteredIzus as unknown as Izus[]).filter(izu => izu.user_code && izu.user_code.trim() !== "")}
+          keyExtractor={(item: Izus) => `${item.user_code || ''}:${item.id || ''}`}
           renderItem={({ item }) => (
             <IzuCodeItem
               item={item}

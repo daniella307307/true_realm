@@ -3,11 +3,12 @@ import { View, TextInput, Switch, TouchableOpacity } from "react-native";
 import { Controller, useForm, useWatch, useFormContext } from "react-hook-form";
 import Dropdown from "./ui/select";
 import { Text } from "./ui/text";
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { getDaysInMonth } from "date-fns";
 import { cn } from "~/lib/utils";
 import { getLocalizedTitle } from "~/utils/form-utils";
 import { DynamicFieldProps } from "~/types/form-types";
+import { Eye, EyeOff } from "lucide-react-native";
 
 const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   field,
@@ -70,6 +71,125 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
     )}
   />
 );
+
+const ConfirmPasswordComponent: React.FC<DynamicFieldProps> = ({
+  field,
+  control,
+  language = "en-US",
+}) => {
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  return (
+    <View className="mb-4">
+      <Controller
+        control={control}
+        name={field.key}
+        rules={{
+          required: field.validate?.required
+            ? field.validate.customMessage || "This field is required"
+            : false,
+        }}
+        render={({ field: { onChange, value }, fieldState: { error } }) => (
+          <View className="mb-4">
+            <Text className="mb-2 text-md font-medium text-[#050F2B]">
+              {getLocalizedTitle(field.title, language)}
+              {field.validate?.required && (
+                <Text className="text-primary"> *</Text>
+              )}
+            </Text>
+            <TextInput
+              className={`w-full px-4 py-4 border rounded-lg ${
+                error ? "border-primary" : "border-[#E4E4E7]"
+              }`}
+              value={value}
+              onChangeText={(text) => {
+                onChange(text);
+              }}
+              secureTextEntry={!showConfirmPassword}
+            />
+            <TouchableOpacity
+              className="absolute right-3 top-3"
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <Text className="text-gray-500">
+                {showConfirmPassword ? (
+                  <EyeOff size={20} color="#050F2B" />
+                ) : (
+                  <Eye size={20} color="#050F2B" />
+                )}
+              </Text>
+            </TouchableOpacity>
+            {error && (
+              <Text className="text-red-500 mt-2">
+                {error.message || "This field is required"}
+              </Text>
+            )}
+          </View>
+        )}
+      />
+    </View>
+  );
+};
+
+const PasswordComponent: React.FC<DynamicFieldProps> = ({
+  field,
+  control,
+  language = "en-US",
+}) => {
+  const [showPassword, setShowPassword] = useState(false);
+  return (
+    <View className="mb-4">
+      <Controller
+        control={control}
+        name={field.key}
+        rules={{
+          required: field.validate?.required
+            ? field.validate.customMessage || "This field is required"
+            : false,
+        }}
+        render={({ field: { onChange, value }, fieldState: { error } }) => (
+          <>
+            <Text className="mb-2 text-md font-medium text-[#050F2B]">
+              {getLocalizedTitle(field.title, language)}
+              {field.validate?.required && (
+                <Text className="text-primary"> *</Text>
+              )}
+            </Text>
+            <View className="relative mb-4">
+              <TextInput
+                className={`w-full px-4 py-4 border rounded-lg ${
+                  error ? "border-primary" : "border-[#E4E4E7]"
+                }`}
+                value={value}
+                onChangeText={(text) => {
+                  onChange(text);
+                }}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                className="absolute right-3 top-3"
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Text className="text-gray-500">
+                  {showPassword ? (
+                    <EyeOff size={20} color="#050F2B" />
+                  ) : (
+                    <Eye size={20} color="#050F2B" />
+                  )}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {error && (
+              <Text className="text-red-500 mt-2 mb-2">
+                {error.message || "This field is required"}
+              </Text>
+            )}
+          </>
+        )}
+      />
+    </View>
+  );
+};
 
 const TextAreaComponent: React.FC<DynamicFieldProps> = ({
   field,
@@ -376,18 +496,18 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
     // console.log("DayInputComponent initializing for field:", {
     //   key: field.key,
     //   type: field.type,
-    //   title: field.title, 
+    //   title: field.title,
     //   fieldsProperty: field.fields,
     //   language
     // });
-    
+
     // Ensure field.fields exists, even if it's not provided
     const fields = field.fields || {
       day: { required: false },
       month: { required: false },
-      year: { required: false }
+      year: { required: false },
     };
-    
+
     const dayValue = useWatch({ control, name: `${field.key}.day` });
     const monthValue = useWatch({ control, name: `${field.key}.month` });
     const yearValue = useWatch({ control, name: `${field.key}.year` });
@@ -441,15 +561,13 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
     }, [dayValue, monthValue, yearValue, field.key, setValue]);
 
     // console.log("DayInputComponent rendering UI for:", field.key);
-  
+
     // I want to print the selected values
     return (
       <View className="mb-4">
         <Text className="mb-2 text-md font-medium text-[#050F2B]">
           {getLocalizedTitle(field.title, language)}
-          {fields.day?.required && (
-            <Text className="text-primary"> *</Text>
-          )}
+          {fields.day?.required && <Text className="text-primary"> *</Text>}
         </Text>
 
         <View className="flex flex-row justify-between gap-2">
@@ -460,11 +578,12 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
               control={control}
               name={`${field.key}.year`}
               rules={{
-                required: fields.year?.required
-                  ? "Year is required"
-                  : false,
+                required: fields.year?.required ? "Year is required" : false,
               }}
-              render={({ field: { onChange, value }, fieldState: { error } }) => (
+              render={({
+                field: { onChange, value },
+                fieldState: { error },
+              }) => (
                 <View>
                   <View
                     className={cn(
@@ -498,11 +617,12 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
               control={control}
               name={`${field.key}.month`}
               rules={{
-                required: fields.month?.required
-                  ? "Month is required"
-                  : false,
+                required: fields.month?.required ? "Month is required" : false,
               }}
-              render={({ field: { onChange, value }, fieldState: { error } }) => (
+              render={({
+                field: { onChange, value },
+                fieldState: { error },
+              }) => (
                 <View>
                   <View
                     className={cn(
@@ -538,7 +658,10 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
               rules={{
                 required: fields.day?.required ? "Day is required" : false,
               }}
-              render={({ field: { onChange, value }, fieldState: { error } }) => (
+              render={({
+                field: { onChange, value },
+                fieldState: { error },
+              }) => (
                 <View>
                   <View
                     className={cn(
@@ -639,4 +762,6 @@ export {
   CheckBoxComponent,
   DayInputComponent,
   TimeInputComponent,
+  PasswordComponent,
+  ConfirmPasswordComponent,
 };

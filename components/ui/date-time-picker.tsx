@@ -108,7 +108,7 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
 
             {showPicker && (
               <View className="mt-2 border rounded-lg border-[#E4E4E7] overflow-hidden">
-                {field.key.includes("dateOfBirth") || field.key.includes("date_of_birth") || field.key.includes("roh_date_occur") || field.key.includes("roh_date_report_same") || field.key.includes("roh_date_report_izu") ? (
+                {field.type === "date" || field.type === "datetime" ? (
                   <DateTimePicker
                     mode="single"
                     date={dateValue}

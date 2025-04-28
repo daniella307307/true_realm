@@ -160,10 +160,12 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
         </Text>
         <Dropdown
           data={
-            provinces?.map((province) => ({
-              value: province.id,
-              label: province.province_name,
-            })) || []
+            // Filter province don't show the province where the name is N/A
+            provinces?.filter((province) => province.province_name !== "N/A")
+              .map((province) => ({
+                value: province.id,
+                label: province.province_name,
+              })) || []
           }
           onChange={(item) => {
             const province = provinces?.find((p) => p.id === item.value);

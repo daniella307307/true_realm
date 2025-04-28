@@ -3,7 +3,13 @@ import { FlowState } from "~/types/form-types";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { formatTime, getLocalizedTitle } from "~/utils/form-utils";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Pencil } from "lucide-react-native";
 import { Button } from "./ui/button";
 
@@ -140,14 +146,24 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
   // Handle submission with loading state
   const handleSubmit = () => {
     if (isSubmitting) return; // Prevent multiple submissions
+
+    // Set loading state immediately
     setIsSubmitting(true);
 
-    onSubmit();
-
-    // Register callback to reset submission state
+    // Register the callback first to ensure it's available when needed
     if (resetSubmitting) {
       resetSubmitting(() => setIsSubmitting(false));
     }
+
+    // Use setTimeout to ensure the callback registration happens before submission
+    setTimeout(() => {
+      onSubmit();
+
+      // Fallback reset in case the callback isn't called
+      if (!resetSubmitting) {
+        setTimeout(() => setIsSubmitting(false), 10000); // 10-second timeout
+      }
+    }, 10);
   };
 
   return (
@@ -304,13 +320,19 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
         </Button>
         <Button
           onPress={handleSubmit}
-          isLoading={isSubmitting}
           disabled={isSubmitting}
-          className={`${isSubmitting ? "bg-gray-500" : "bg-primary"}`}
+          className={isSubmitting ? "bg-gray-500" : "bg-primary"}
         >
-          <Text className="text-white font-semibold">
-            {isSubmitting ? "Submitting..." : "Submit"}
-          </Text>
+          {isSubmitting ? (
+            <View className="flex-row items-center justify-center">
+              <ActivityIndicator size="small" color="#ffffff" />
+              <Text className="text-white font-semibold ml-2">
+                Submitting...
+              </Text>
+            </View>
+          ) : (
+            <Text className="text-white font-semibold">Submit</Text>
+          )}
         </Button>
       </View>
     </ScrollView>

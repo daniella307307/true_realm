@@ -14,7 +14,6 @@ import Toast from "react-native-toast-message";
 import { enableScreens } from "react-native-screens";
 import { FontSizeProvider } from "~/providers/FontSizeContext";
 import { initializeNetworkListener } from "~/services/network";
-import { initializeSyncService } from "~/services/sync";
 import NetInfo from "@react-native-community/netinfo";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { DrawerProvider } from "~/providers/DrawerProvider";
@@ -67,7 +66,6 @@ function Layout() {
         // Only initialize sync service if logged in
         let syncUnsubscribe = null;
         if (loginStatus) {
-          syncUnsubscribe = initializeSyncService();
           console.log("Sync service initialized");
         }
 
@@ -82,7 +80,6 @@ function Layout() {
         
         return () => {
           networkUnsubscribe && networkUnsubscribe();
-          syncUnsubscribe && syncUnsubscribe();
         };
       } catch (error) {
         console.error("Error initializing app:", error);

@@ -13,8 +13,17 @@ import FormNavigation from "./ui/form-navigation";
 import IzuSelector from "./ui/izu-selector";
 import LocationSelector from "./ui/location-selector";
 import StakeholderSelector from "./ui/stakeholder-selector";
-import { FlowState, FlowStepKey, FormFlowManagerProps } from "~/types/form-types";
+import {
+  FlowState,
+  FlowStepKey,
+  FormFlowManagerProps,
+} from "~/types/form-types";
 import { formatTime } from "~/utils/form-utils";
+import { Province } from "~/models/locations/province";
+import { District } from "~/models/locations/district";
+import { Sector } from "~/models/locations/sector";
+import { Cell } from "~/models/locations/cell";
+import { Village } from "~/models/locations/village";
 
 const { useRealm } = RealmContext;
 
@@ -65,20 +74,22 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   // console.log("New loads", loads);
   // Define the flow steps in the correct order: izu-family-location-cohorts-stakeholders
   // Start with izus as mandatory
-  const flowSteps: FlowStepKey[] = ["izus"];
-  
+  const flowSteps: FlowStepKey[] = [];
+
   // Add family if project_id is 3 or if it's in loads
-  const hasFamilies = formSubmissionMandatoryFields.project_id === 3 || loads.families;
+  const hasFamilies =
+    formSubmissionMandatoryFields.project_id === 3 || loads.families;
   if (hasFamilies) {
     flowSteps.push("families");
   }
-  
+
   // Add location only if families are not in the flow but locations are in loads
   if (loads.locations && !hasFamilies) {
     flowSteps.push("locations");
   }
-  
+
   // Add remaining steps in the specified order
+  if (loads.izus) flowSteps.push("izus");
   if (loads.cohorts) flowSteps.push("cohorts");
   if (loads.stakeholders) flowSteps.push("stakeholders");
   // console.log(flowSteps);
@@ -96,7 +107,8 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
       if (familyId && surveyId && projectId && sourceModuleId) {
         const existingSubmission = realm
           .objects<SurveySubmission>(SurveySubmission)
-          .filtered("form_data.project_id == $0 AND form_data.source_module_id == $1 AND form_data.survey_id == $2 AND form_data.family == $3 AND form_data.izucode == $4",
+          .filtered(
+            "form_data.project_id == $0 AND form_data.source_module_id == $1 AND form_data.survey_id == $2 AND form_data.family == $3 AND form_data.izucode == $4",
             projectId,
             sourceModuleId,
             surveyId,
@@ -120,11 +132,35 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
       // Extract location from family and set it to flowState
       const selectedFamily = flowState.selectedValues.families;
       if (selectedFamily?.location) {
-        const familyLocation = selectedFamily.location ? selectedFamily.location : JSON.parse(selectedFamily.location);
-        console.log("Selected family location", 
+        const familyLocation = selectedFamily.location;
+        console.log(
+          "Selected family location",
           JSON.stringify(familyLocation, null, 2)
         );
         const now = new Date().toISOString();
+
+        // find the province, district, sector, cell, village from the location object
+        // Location object is a number
+        const province = realm.objectForPrimaryKey(
+          Province,
+          familyLocation.province?.toString() || ""
+        );
+        const district = realm.objectForPrimaryKey(
+          District,
+          familyLocation.district?.toString() || ""
+        );
+        const sector = realm.objectForPrimaryKey(
+          Sector,
+          familyLocation.sector?.toString() || ""
+        );
+        const cell = realm.objectForPrimaryKey(
+          Cell,
+          familyLocation.cell?.toString() || ""
+        );
+        const village = realm.objectForPrimaryKey(
+          Village,
+          familyLocation.village?.toString() || ""
+        );
 
         setFlowState((prev) => ({
           ...prev,
@@ -132,42 +168,42 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
             ...prev.selectedValues,
             locations: {
               province: {
-                id: familyLocation?.province?.id.toString(),
-                province_code: familyLocation?.province?.id.toString(),
-                province_name: familyLocation?.province?.province_name,
-                province_name_english: familyLocation?.province?.province_name,
+                id: familyLocation?.province?.toString() || "",
+                province_code: province?.province_code || "",
+                province_name: province?.province_name || "",
+                province_name_english: province?.province_name_english || "",
                 created_at: now,
                 updated_at: now,
               },
               district: {
-                id: familyLocation?.district?.id.toString(),
-                district_code: familyLocation?.district?.id.toString(),
-                district_name: familyLocation?.district?.district_name,
-                province_id: familyLocation?.province?.id.toString(),
+                id: familyLocation?.district?.toString() || "",
+                district_code: district?.district_code || "",
+                district_name: district?.district_name || "",
+                province_id: province?.id || "",
                 created_at: now,
                 updated_at: now,
               },
               sector: {
-                id: familyLocation?.sector?.id.toString(),
-                sector_code: familyLocation?.sector?.id.toString(),
-                sector_name: familyLocation?.sector?.sector_name,
-                district_id: familyLocation?.district?.id.toString(),
+                id: familyLocation?.sector?.toString() || "",
+                sector_code: sector?.sector_code || "",
+                sector_name: sector?.sector_name || "",
+                district_id: district?.id || "",
                 created_at: now,
                 updated_at: now,
               },
               cell: {
-                id: familyLocation?.cell?.id.toString(),
-                cell_code: familyLocation?.cell?.id.toString(),
-                cell_name: familyLocation?.cell?.cell_name,
-                sector_id: familyLocation?.sector?.id.toString(),
+                id: familyLocation?.cell?.toString() || "",
+                cell_code: cell?.cell_code || "",
+                cell_name: cell?.cell_name || "",
+                sector_id: sector?.id || "",
                 created_at: now,
                 updated_at: now,
               },
               village: {
-                id: familyLocation?.village?.id.toString(),
-                village_code: familyLocation?.village?.id.toString(),
-                village_name: familyLocation?.village?.village_name,
-                cells_id: familyLocation?.cell?.id.toString(),
+                id: familyLocation?.village?.toString() || "",
+                village_code: village?.village_code || "",
+                village_name: village?.village_name || "",
+                cells_id: cell?.id || "",
                 created_at: now,
                 updated_at: now,
               },

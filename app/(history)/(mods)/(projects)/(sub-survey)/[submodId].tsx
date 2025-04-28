@@ -14,7 +14,7 @@ import {
   useGetAllLocallyCreatedFamilies,
   useGetFamilies,
 } from "~/services/families";
-import { IFamilies } from "~/types";
+import { IFamilies, ISurveySubmission } from "~/types";
 import { ListRenderItemInfo } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 import { ProcessedSubmission } from "~/types/form-types";
@@ -32,6 +32,7 @@ type CombinedItem = {
   family: string | null;
   lastSyncAttempt: string | null;
   project_module_id: number;
+  project_id: number;
   itemType: 'submission' | 'family';
   familyData?: {
     hh_id: string;
@@ -101,35 +102,38 @@ const SubmissionListByModuleScreen = () => {
     const processedSubmissions: CombinedItem[] = Array.from(surveySubmissions).map(
       (sub: any) => ({
         _id: sub._id.toString(),
-        table_name: sub.table_name,
-        sync_status: sub.sync_status,
-        survey_id: sub.survey_id,
-        source_module_id: sub.source_module_id,
-        submittedAt: sub.submittedAt,
-        family: sub.family,
-        lastSyncAttempt: sub.lastSyncAttempt,
-        project_module_id: sub.project_module_id,
+        table_name: sub.form_data?.table_name,
+        sync_status: sub.sync_data?.sync_status,
+        survey_id: sub.form_data?.survey_id,
+        source_module_id: sub.form_data?.source_module_id,
+        submittedAt: sub.sync_data?.submitted_at,
+        family: sub.form_data?.family,
+        lastSyncAttempt: sub.sync_data?.last_sync_attempt,
+        project_module_id: sub.form_data?.project_module_id,
+        project_id: sub.form_data?.project_id,
         itemType: 'submission'
       })
     );
 
     // Process locally created families
     const processedFamilies: CombinedItem[] = locallyCreatedFamilies.map((fam: any) => ({
-      _id: fam?.id || fam?.hh_id,
-      table_name: 'families',
-      sync_status: !fam?.is_temporary, // inverse of is_temporary
+      _id: fam?.id,
+      table_name: fam?.form_data?.table_name,
+      sync_status: fam?.sync_data?.sync_status,
       survey_id: fam?.form_data?.survey_id,
       source_module_id: fam?.form_data?.source_module_id,
-      submittedAt: fam?.form_data?.submittedAt,
+      submittedAt: fam?.sync_data?.submitted_at,
       family: fam?.hh_id,
-      lastSyncAttempt: null,
+      lastSyncAttempt: fam?.sync_data?.last_sync_attempt,
       project_module_id: fam?.form_data?.project_module_id,
+      project_id: fam?.form_data?.project_id,
       itemType: 'family',
       familyData: {
         hh_id: fam?.hh_id,
         hh_head_fullname: fam?.hh_head_fullname,
         village_name: fam?.village_name,
-        cohort: fam?.cohort
+        village_id: fam?.village_id,
+        cohort: fam?.form_data?.cohort
       }
     }));
 
@@ -137,6 +141,7 @@ const SubmissionListByModuleScreen = () => {
     return [...processedSubmissions, ...processedFamilies];
   }, [surveySubmissions, locallyCreatedFamilies]);
   
+  console.log("Combined data", JSON.stringify(combinedData, null, 2));
   // Filter and sort combined data
   const filteredAndSortedData = useMemo(() => {
     return combinedData
@@ -263,7 +268,7 @@ const SubmissionListByModuleScreen = () => {
             >
               <View className="flex-row items-center justify-between mb-2">
                 <Text className="text-lg font-semibold text-gray-800">
-                  {foundFamily?.hh_id ?? item.family ?? "Unknown Family"}
+                  {foundFamily?.hh_id ?? item.family ?? "Unknown Family ID"}
                 </Text>
                 <View
                   className={`px-2 py-1 rounded-full ${

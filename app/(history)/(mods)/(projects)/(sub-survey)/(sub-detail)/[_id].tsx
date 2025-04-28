@@ -12,8 +12,8 @@ import {
   useGetFamilies,
   useGetAllLocallyCreatedFamilies,
 } from "~/services/families";
-import { IFamilies } from "~/types";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
+import { Generic, IFamilies } from "~/types";
 
 const DetailScreen = () => {
   const { _id, project_module_id, source_module_id, isFamily } =
@@ -25,6 +25,7 @@ const DetailScreen = () => {
     }>();
   const { t } = useTranslation();
   const isFamilyDetail = isFamily === "true";
+  console.log("The id:", _id);
 
   // Get all data sources
   const { surveySubmissions, isLoading: isLoadingSubmissions } =
@@ -155,18 +156,17 @@ const DetailScreen = () => {
 
   // Get display data based on item type
   const itemType = isFamilyDetail ? "family" : "submission";
-  const submittedAt = isFamilyDetail
-    ? (dataItem as any)?.form_data?.submittedAt
-    : (dataItem as any)?.submittedAt;
-  const syncStatus = isFamilyDetail
-    ? !(dataItem as any)?.is_temporary
-    : (dataItem as any)?.sync_status;
+  const submittedAt = (dataItem as Generic)?.sync_data?.submitted_at;
+
+  console.log("The submitted at:", submittedAt);
+  const syncStatus = (dataItem as Generic)?.sync_data?.sync_status;
   const answers = isFamilyDetail
     ? (dataItem as any)?.meta || {}
     : (dataItem as any)?.answers || {};
-  const timeSpent = (dataItem as any)?.Time_spent_filling_the_form;
-  const izuCode = (dataItem as any)?.izucode;
-  const cohort = (dataItem as any)?.cohort || foundFamily?.cohort;
+    
+  const timeSpent = (dataItem as any)?.form_data?.time_spent_filling_the_form;
+  const izuCode = (dataItem as any)?.form_data?.izucode;
+  const cohort = (dataItem as any)?.form_data?.cohort || foundFamily?.cohort;
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -183,8 +183,9 @@ const DetailScreen = () => {
         <View className="mb-6">
           <Text className="text-lg font-semibold mb-4">
             {foundFamily?.hh_head_fullname ||
+              foundFamily?.hh_id ||
               familyId ||
-              t("Common.unknown", "Unknown")}
+              t("Common.unknown", "N/A Family Head Name")}
           </Text>
 
           {(foundFamily?.village_name || foundFamily?.hh_id) && (
@@ -192,11 +193,11 @@ const DetailScreen = () => {
               <Text className="font-medium text-gray-700 mb-2">
                 {t("Common.details", "Details")}
               </Text>
-              {foundFamily?.village_name && (
+              {/* {foundFamily?.village_name && (
                 <Text className="text-gray-600">
                   {t("Common.village", "Village")}: {foundFamily.village_name}
                 </Text>
-              )}
+              )} */}
               {foundFamily?.hh_id && (
                 <Text className="text-gray-600">
                   {t("Common.family", "Family")}: {foundFamily.hh_id}
