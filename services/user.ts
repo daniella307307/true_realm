@@ -1,5 +1,6 @@
 import { ILoginDetails, ILoginResponse, IResponse, User } from "~/types";
 import { baseInstance } from "~/utils/axios";
+import { fetchWithRetry, checkNetworkConnection, showNetworkErrorAlert } from "~/utils/networkHelpers";
 
 export async function userLogout() {
   const res = await baseInstance.post<IResponse<{}>>(`/logout`);
@@ -8,33 +9,54 @@ export async function userLogout() {
 
 export async function userLogin(values: ILoginDetails) {
   console.log("Sending login request with data:", { identifier: values.identifier });
-  const res = await baseInstance.post<ILoginResponse>(
-    "/login",
-    { identifier: values.identifier, password: values.password },
-    {
-      headers: {
-        Authorization: undefined,
+  
+  // Check network connection before attempting login
+  const isConnected = await checkNetworkConnection();
+  if (!isConnected) {
+    console.log("No network connection detected. Cannot login.");
+    showNetworkErrorAlert("Cannot login. Please check your internet connection and try again.");
+    throw new Error("No network connection");
+  }
+  
+  try {
+    // Use fetchWithRetry for better reliability
+    const response = await fetchWithRetry(() => 
+      baseInstance.post<ILoginResponse>(
+        "/login",
+        { identifier: values.identifier, password: values.password },
+        {
+          headers: {
+            Authorization: undefined,
+          },
+        }
+      )
+    );
+    
+    console.log("Login API raw response:", JSON.stringify({
+      token: response.data.token,
+      name: response.data.name,
+      role: response.data.role,
+      user: {
+        id: response.data.user?.id,
+        name: response.data.user?.name,
+        email: response.data.user?.email,
+        position: response.data.user?.position,
       },
-    }
-  );
-  console.log("Login API raw response:", JSON.stringify({
-    token: res.data.token,
-    name: res.data.name,
-    role: res.data.role,
-    user: {
-      id: res.data.user?.id,
-      name: res.data.user?.name,
-      email: res.data.user?.email,
-      position: res.data.user?.position,
-    },
-  }, null, 2));
-  return res.data;
+    }, null, 2));
+    
+    return response.data;
+  } catch (error) {
+    console.error("Login failed after retries:", error);
+    throw error;
+  }
 }
 
 export async function useGetCurrentLoggedInProfile() {
   console.log("Fetching current user profile...");
   try {
-    const res = await baseInstance.post<User>(`/profile`);
+    // Use fetchWithRetry for better reliability
+    const res = await fetchWithRetry(() => baseInstance.post<User>(`/profile`));
+    
     console.log("Profile API headers:", JSON.stringify(res.config?.headers, null, 2));
     console.log("Profile API response status:", res.status);
     console.log("Profile user email from API:", res.data.email);
@@ -46,17 +68,29 @@ export async function useGetCurrentLoggedInProfile() {
 }
 
 export async function requestPasswordReset(identifier: string) {
-  const res = await baseInstance.post<IResponse<{}>>(`/user/reset-password`, {
-    identifier,
-  });
-  console.log(res.data);
-  return res.data;
+  try {
+    const res = await fetchWithRetry(() => 
+      baseInstance.post<IResponse<{}>>(`/user/reset-password`, { identifier })
+    );
+    console.log(res.data);
+    return res.data;
+  } catch (error) {
+    console.error("Password reset request failed:", error);
+    throw error;
+  }
 }
 
 export async function verifyPasswordReset(identifier: string, verification_code: string) {
-  const res = await baseInstance.post<ILoginResponse>(`/user/verify-reset-code`, {
-    identifier,
-    verification_code,
-  });
-  return res.data;
+  try {
+    const res = await fetchWithRetry(() =>
+      baseInstance.post<ILoginResponse>(`/user/verify-reset-code`, {
+        identifier,
+        verification_code,
+      })
+    );
+    return res.data;
+  } catch (error) {
+    console.error("Verification code validation failed:", error);
+    throw error;
+  }
 }

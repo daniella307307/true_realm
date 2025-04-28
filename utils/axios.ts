@@ -33,6 +33,10 @@ const baseInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  // Add timeout configuration for better mobile performance
+  timeout: 10000, // 10 seconds timeout
+  // Optimize HTTP requests
+  timeoutErrorMessage: "Network request timed out. Please check your connection.",
 });
 
 // Debug logging function for API requests
@@ -60,14 +64,18 @@ const logAPIRequest = (
       )
     );
     if (config.data) {
-      // console.log('🔹 Request body:', JSON.stringify(config.data, null, 2));
+      console.log("🔹 Request body:", JSON.stringify(config.data, null, 2));
     }
   } else if (type === "RESPONSE") {
     console.log("🔹 Status:", data?.status);
-    // console.log('🔹 Response data:', JSON.stringify(data?.data, null, 2));
+    // console.log("🔹 Response data:", JSON.stringify(data?.data, null, 2));
   } else if (type === "ERROR") {
+    console.log("🔹 error data:", JSON.stringify(data, null, 2));
     console.log("🔹 Error status:", data?.response?.status);
-    // console.log('🔹 Error data:', JSON.stringify(data?.response?.data, null, 2));
+    console.log(
+      "🔹 Error data:",
+      JSON.stringify(data?.response?.data, null, 2)
+    );
   }
 };
 

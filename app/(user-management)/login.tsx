@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { SplashScreen } from "expo-router";
 import Logo from "~/components/Logo";
 import { Text } from "~/components/ui/text";
-import { Eye, EyeOff } from "lucide-react-native";
+import { Eye, EyeOff, WifiOff } from "lucide-react-native";
 import { Button } from "~/components/ui/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -24,15 +24,41 @@ import { ILoginDetails, loginSchema } from "~/types";
 import { useAuth } from "~/lib/hooks/useAuth";
 import Toast from "react-native-toast-message";
 import { useAppData } from "~/providers/AppProvider";
+import { useNetworkStatus } from "~/services/network";
+import { checkNetworkConnection } from "~/utils/networkHelpers";
 
 export default function LoginScreen() {
   const { t, i18n } = useTranslation();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [splashHidden, setSplashHidden] = useState(false);
+  const [isNetworkAvailable, setIsNetworkAvailable] = useState(true);
   
   // Access app data context for centralized data management
   const { refreshAllData, isRefreshing } = useAppData();
+  
+  // Get network status
+  const { isConnected } = useNetworkStatus();
+
+  // Check network on component mount
+  useEffect(() => {
+    const checkNetwork = async () => {
+      const networkAvailable = await checkNetworkConnection();
+      setIsNetworkAvailable(networkAvailable);
+      
+      if (!networkAvailable) {
+        Toast.show({
+          type: "error",
+          text1: t("Login.networkError"),
+          text2: t("Login.checkConnection"),
+          position: "top",
+          visibilityTime: 5000,
+        });
+      }
+    };
+    
+    checkNetwork();
+  }, [isConnected]);
 
   // Ensure splash screen is hidden when login screen is shown
   useEffect(() => {
@@ -111,7 +137,21 @@ export default function LoginScreen() {
     setPasswordVisible((prev) => !prev);
   };
 
-  const onSubmit = (data: ILoginDetails) => {
+  const onSubmit = async (data: ILoginDetails) => {
+    // Check network before attempting login
+    const networkAvailable = await checkNetworkConnection();
+    if (!networkAvailable) {
+      setIsNetworkAvailable(false);
+      Toast.show({
+        type: "error",
+        text1: t("Login.networkError"),
+        text2: t("Login.checkConnection"),
+        position: "top",
+        visibilityTime: 5000,
+      });
+      return;
+    }
+    
     console.log("Login attempt with:", data.identifier);
     login(data);
   };
@@ -128,6 +168,30 @@ export default function LoginScreen() {
     });
   };
 
+  const retryConnection = async () => {
+    const networkAvailable = await checkNetworkConnection();
+    setIsNetworkAvailable(networkAvailable);
+    
+    if (networkAvailable) {
+      Toast.show({
+        type: "success",
+        text1: t("Login.networkRestored"),
+        position: "top",
+        visibilityTime: 3000,
+      });
+    } else {
+      Toast.show({
+        type: "error",
+        text1: t("Login.networkError"),
+        text2: t("Login.checkConnection"),
+        position: "top",
+        visibilityTime: 5000,
+      });
+    }
+  };
+
+  console.log("On login page");
+
   // Display loading state if splash hasn't been hidden yet
   if (!splashHidden) {
     return (
@@ -140,6 +204,27 @@ export default function LoginScreen() {
   return (
     <SafeAreaView className="flex-1 justify-center items-center flex-col gap-y-12 p-8 bg-background">
       <Logo size={96} />
+      
+      {/* Show offline warning if network is not available */}
+      {!isNetworkAvailable && (
+        <View className="bg-red-100 p-4 rounded-lg w-full flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <WifiOff width={24} height={24} stroke="#EF4444" />
+            <Text className="ml-2 text-red-600 font-medium">
+              {t("Login.offline")}
+            </Text>
+          </View>
+          <TouchableOpacity 
+            onPress={retryConnection}
+            className="bg-red-600 px-3 py-1 rounded-md"
+          >
+            <Text className="text-white">
+              {t("Login.retry")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
       <KeyboardAvoidingView 
         className="w-full" 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -245,7 +330,7 @@ export default function LoginScreen() {
               size="default"
               isLoading={isLoggingIn || isRefreshing}
               onPress={handleSubmit(onSubmit)}
-              disabled={isLoggingIn || isRefreshing}
+              disabled={isLoggingIn || isRefreshing || !isNetworkAvailable}
             >
               <Text className="text-white font-semibold">
                 {isLoggingIn 

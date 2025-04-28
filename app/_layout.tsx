@@ -21,28 +21,37 @@ import CustomDrawer from "~/components/ui/custom-drawer";
 import { useDrawer } from "~/providers/DrawerProvider";
 import { RouteProtectionProvider } from "~/providers/RouteProtectionProvider";
 import { AppDataProvider } from "~/providers/AppProvider";
+import { configureNetworkForPlatform } from "~/utils/networkHelpers";
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
+
+// Enable native screens for better performance
 enableScreens();
 
-export default function RootLayout() {
-  Appearance.setColorScheme("light");
+const { RealmProvider } = RealmContext;
+
+export default function AppLayout() {
+  // Configure network as early as possible in the app lifecycle
+  useEffect(() => {
+    configureNetworkForPlatform();
+  }, []);
+
   return (
-    <FontSizeProvider>
-      <QueryProvider>
+    <QueryProvider>
+      <RealmProvider>
         <DrawerProvider>
-          <RouteProtectionProvider>
-            <RealmContext.RealmProvider>
+          <FontSizeProvider>
+            <RouteProtectionProvider>
               <AppDataProvider>
                 <Layout />
               </AppDataProvider>
-            </RealmContext.RealmProvider>
-          </RouteProtectionProvider>
+            </RouteProtectionProvider>
+          </FontSizeProvider>
         </DrawerProvider>
-        <Toast />
-      </QueryProvider>
-    </FontSizeProvider>
+      </RealmProvider>
+      <Toast />
+    </QueryProvider>
   );
 }
 

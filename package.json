@@ -99,6 +99,7 @@
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@types/react": "~18.3.18",
+    "lightningcss": "^1.29.3",
     "typescript": "~5.3.3"
   },
   "private": true
