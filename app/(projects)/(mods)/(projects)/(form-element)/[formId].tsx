@@ -3,7 +3,7 @@ import React from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
-import Skeleton from "~/components/ui/skeleton";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { useGetFormById } from "~/services/formElements";
 import FormFlowManager from "~/components/FormFlowManager";
 import { useAuth } from "~/lib/hooks/useAuth";
@@ -55,9 +55,9 @@ const ProjectFormElementScreen = () => {
   if (isLoading) {
     return (
       <View className="flex-1 p-4 bg-white">
-        <Skeleton />
-        <Skeleton />
-        <Skeleton />
+        <SimpleSkeletonItem />
+        <SimpleSkeletonItem />
+        <SimpleSkeletonItem />
       </View>
     );
   }

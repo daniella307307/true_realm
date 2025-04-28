@@ -15,7 +15,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useGetFamilies, fetchFamiliesFromRemote } from "~/services/families";
-import Skeleton from "~/components/ui/skeleton";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import HeaderNavigation from "~/components/ui/header";
 
 const CohortIndexScreen = () => {
@@ -38,16 +38,17 @@ const CohortIndexScreen = () => {
   const families = useGetFamilies();
 
   useEffect(() => {
-    if (families.data.length > 0) {
+    if (families.families.length > 0) {
       setIsLoading(false);
     }
   }, [families]);
 
-  const filteredFamilies = families.data
-    .filter((family) => cohortId === "all" || family.cohort === cohortId)
+  const filteredFamilies = families.families
+    .filter((family) => cohortId === "all" || family.form_data?.cohort === cohortId)
     .filter((family) =>
       searchQuery
-        ? family.hh_head_fullname
+        ? family.form_data?.hh_head_fullname
+            ?.toString()
             .toLowerCase()
             .includes(searchQuery.toLowerCase())
         : true
@@ -89,7 +90,7 @@ const CohortIndexScreen = () => {
         {isLoading ? (
           <View className="mt-6">
             {[1, 2, 3].map((item) => (
-              <Skeleton key={item} />
+              <SimpleSkeletonItem key={item} />
             ))}
           </View>
         ) : filteredFamilies.length === 0 ? (
@@ -120,7 +121,7 @@ const CohortIndexScreen = () => {
                 </View>
                 <View>
                   <Text className="text-sm py-2 text-gray-600">
-                    {t("CohortPage.cohort")} {item.cohort}
+                    {t("CohortPage.cohort")} {item.form_data?.cohort}
                   </Text>
                 </View>
               </TouchableOpacity>

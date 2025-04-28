@@ -1,4 +1,10 @@
-import { FlatList, Pressable, SafeAreaView, View, TextInput } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  View,
+  TextInput,
+} from "react-native";
 import { router } from "expo-router";
 import { Text } from "~/components/ui/text";
 import { useTranslation } from "react-i18next";
@@ -6,7 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import Skeleton from "~/components/ui/skeleton";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import HeaderNavigation from "~/components/ui/header";
 import { useGetIzus } from "~/services/izus";
 import { useState } from "react";
@@ -30,8 +36,10 @@ const StatisticsScreen = () => {
   const { izus: storedIzus, isLoading } = useGetIzus();
   const filteredIzuMembers = storedIzus.filter((member: IIzu) => {
     if (!searchQuery) return true;
-    return member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           member.user_code.toLowerCase().includes(searchQuery.toLowerCase());
+    return (
+      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.user_code.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
   const handleSelectIzu = (izu: IIzu) => {
@@ -73,7 +81,7 @@ const StatisticsScreen = () => {
         </View>
 
         {isLoading ? (
-          [1, 2, 3, 4].map((index) => <Skeleton key={index} />)
+          [1, 2, 3, 4].map((index) => <SimpleSkeletonItem key={index} />)
         ) : (
           <FlatList
             data={filteredIzuMembers}
@@ -82,7 +90,9 @@ const StatisticsScreen = () => {
               <Pressable
                 onPress={() => handleSelectIzu(item)}
                 className={`p-4 border flex-row items-center justify-between mb-4 rounded-xl ${
-                  selectedIzu?.id === item.id ? "border-primary" : "border-gray-200"
+                  selectedIzu?.id === item.id
+                    ? "border-primary"
+                    : "border-gray-200"
                 }`}
               >
                 <View className="flex-row items-center">

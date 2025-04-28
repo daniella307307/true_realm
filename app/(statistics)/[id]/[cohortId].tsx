@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 import { useGetIzuById } from "~/services/izus";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
-import Skeleton from "~/components/ui/skeleton";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { Card } from "~/components/ui/card";
 
 interface IRiskOfHarm {
@@ -19,7 +19,8 @@ const CohortStatisticsScreen = () => {
   const { t } = useTranslation();
   const { id, cohortId } = useLocalSearchParams();
   const { izu, isLoading: izuLoading } = useGetIzuById(Number(id));
-  const { surveySubmissions, isLoading: surveySubmissionsLoading } = useGetAllSurveySubmissions();
+  const { surveySubmissions, isLoading: surveySubmissionsLoading } =
+    useGetAllSurveySubmissions();
 
   const isLoading = izuLoading || surveySubmissionsLoading;
 
@@ -27,23 +28,27 @@ const CohortStatisticsScreen = () => {
   const calculateVisits = () => {
     if (!surveySubmissions || !izu) return { done: 0, total: 0 };
 
-    const izuSurveys = surveySubmissions.filter((s) => s.izucode === izu.user_code);
-    const uniqueFamilies = new Set(izuSurveys.map((s) => s.family));
+    const izuSurveys = surveySubmissions.filter(
+      (s) => s.form_data?.izucode === izu.user_code
+    );
+    const uniqueFamilies = new Set(izuSurveys.map((s) => s.form_data?.family));
     const totalFamilies = uniqueFamilies.size;
 
     console.log("izuSurveys", JSON.stringify(izuSurveys, null, 2));
-    
+
     // Count completed visits (all forms in a module submitted)
     const completedVisits = izuSurveys.reduce((acc, survey) => {
       const moduleForms = izuSurveys.filter(
-        (s) => s.project_module_id === survey.project_module_id && s.family === survey.family
+        (s) =>
+          s.form_data?.project_module_id === survey.form_data?.project_module_id &&
+          s.form_data?.family === survey.form_data?.family
       );
       return moduleForms.length === 4 ? acc + 1 : acc;
     }, 0);
 
     return {
       done: completedVisits,
-      total: totalFamilies * 16 // 16 modules per family
+      total: totalFamilies * 16, // 16 modules per family
     };
   };
 
@@ -51,19 +56,23 @@ const CohortStatisticsScreen = () => {
 
   // Calculate risk of harms based on survey_id 6 and formStatus
   const riskOfHarms = surveySubmissions
-    .filter(s => s.survey_id === 6 && s.izucode === izu?.user_code)
-    .map(s => ({
+    .filter((s) => s.form_data?.survey_id === 6 && s.form_data?.izucode === izu?.user_code)
+    .map((s) => ({
       id: s._id.toString(),
-      status: s.formStatus as "followup" | "pending" | "resolved",
+      status: s.form_data?.form_status as "followup" | "pending" | "resolved",
       description: s.answers?.description || "No description provided",
-      familyId: s.family
+      familyId: s.form_data?.family,
     }));
 
   const groupedRisks = riskOfHarms.reduce((acc, risk) => {
     if (!acc[risk.status]) {
       acc[risk.status] = [];
     }
-    acc[risk.status].push(risk);
+    // Convert undefined familyId to null before pushing
+    acc[risk.status].push({
+      ...risk,
+      familyId: risk.familyId ?? null
+    });
     return acc;
   }, {} as Record<string, IRiskOfHarm[]>);
 
@@ -77,7 +86,7 @@ const CohortStatisticsScreen = () => {
         />
         <View className="flex-1 p-4 bg-white">
           {[1, 2, 3].map((index) => (
-            <Skeleton key={index} />
+            <SimpleSkeletonItem key={index} />
           ))}
         </View>
       </SafeAreaView>
@@ -141,9 +150,16 @@ const CohortStatisticsScreen = () => {
 
         {/* Now categorize the risk of harms by status, show the number of risk of harms submitted under each status */}
         {Object.entries(groupedRisks).map(([status, risks]) => (
-          <Card key={status} className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
+          <Card
+            key={status}
+            className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]"
+          >
             <Text className="text-lg font-semibold mb-2">
-              {status === "followup" ? t("StatisticsPage.followup", "Submitted") : status === "pending" ? t("StatisticsPage.pending", "Pending") : t("StatisticsPage.resolved", "Resolved")}
+              {status === "followup"
+                ? t("StatisticsPage.followup", "Submitted")
+                : status === "pending"
+                ? t("StatisticsPage.pending", "Pending")
+                : t("StatisticsPage.resolved", "Resolved")}
             </Text>
             <Text className="text-2xl font-bold text-primary">
               {risks.length}
@@ -155,4 +171,4 @@ const CohortStatisticsScreen = () => {
   );
 };
 
-export default CohortStatisticsScreen; 
+export default CohortStatisticsScreen;

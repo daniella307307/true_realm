@@ -11,10 +11,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useQuery } from "@tanstack/react-query";
-import { useGetIZUser } from "~/services/user";
-import Skeleton from "~/components/ui/skeleton";
 import HeaderNavigation from "~/components/ui/header";
-
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
+import { useGetAllLocallyCreatedIzus } from "~/services/izus";
 const IzuMonitoringScreen = () => {
   const { t } = useTranslation();
   const { control, handleSubmit, watch } = useForm({
@@ -34,10 +33,10 @@ const IzuMonitoringScreen = () => {
     refetch,
   } = useQuery({
     queryKey: ["izuMembers"],
-    queryFn: useGetIZUser,
+    queryFn: useGetAllLocallyCreatedIzus,
   });
 
-  const filteredIzuMembers = izuMembers?.izus.filter((member) => {
+  const filteredIzuMembers = izuMembers?.locallyCreatedIzus.filter((member) => {
     if (!searchQuery) return true;
     return member.name.toLowerCase().includes(searchQuery);
   });
@@ -61,7 +60,7 @@ const IzuMonitoringScreen = () => {
           accessibilityLabel={t("IzuMonitoringPage.search_izu")}
         />
         {isLoading ? (
-          [1, 2, 3, 4].map((index) => <Skeleton key={index} />)
+          [1, 2, 3, 4].map((index) => <SimpleSkeletonItem key={index} />)
         ) : (
           <FlatList
             data={filteredIzuMembers}

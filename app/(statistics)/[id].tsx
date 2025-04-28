@@ -9,7 +9,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Text } from "~/components/ui/text";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
-import Skeleton from "~/components/ui/skeleton";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { useGetIzuById } from "~/services/izus";
 import { useGetCohorts } from "~/services/cohorts";
 import { ICohort } from "~/types";
@@ -19,7 +19,7 @@ const StatisticsDetailScreen = () => {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams();
   const { izu, isLoading } = useGetIzuById(Number(id));
-  const { data: cohorts, isLoading: cohortsLoading } = useGetCohorts();
+  const { cohorts, isLoading: cohortsLoading } = useGetCohorts();
 
   const groupedCohorts =
     cohorts?.reduce<Record<string, ICohort[]>>(
@@ -28,7 +28,7 @@ const StatisticsDetailScreen = () => {
           acc[cohortt.cohort] = [];
         }
         acc[cohortt.cohort].push({
-          id: cohortt.id,
+          _id: cohortt._id,
           cohort: cohortt.cohort,
         });
         return acc;
@@ -47,7 +47,7 @@ const StatisticsDetailScreen = () => {
         />
         <View className="flex-1 p-4 bg-white">
           {[1, 2, 3, 4].map((index) => (
-            <Skeleton key={index} />
+            <SimpleSkeletonItem key={index} />
           ))}
         </View>
       </SafeAreaView>
@@ -62,9 +62,9 @@ const StatisticsDetailScreen = () => {
         title={t("StatisticsPage.statistics")}
       />
       <View className="flex-1 p-4 bg-white">
-      <Text className="text-lg font-semibold pb-6 text-primary">
-            {t("StatisticsPage.all_cohorts", "All Cohorts")}
-          </Text>
+        <Text className="text-lg font-semibold pb-6 text-primary">
+          {t("StatisticsPage.all_cohorts", "All Cohorts")}
+        </Text>
         {/* All Cohorts Card */}
         {/* <Pressable
           onPress={() => router.push(`/statistics/${id}/${izu?.id}`)}
@@ -83,7 +83,7 @@ const StatisticsDetailScreen = () => {
           <View key={type}>
             <FlatList
               data={groupedCohorts[type]}
-              keyExtractor={(item) => item.id.toString()}
+              keyExtractor={(item) => item._id.toString()}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   onPress={() => {

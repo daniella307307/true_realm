@@ -10,7 +10,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import CustomInput from "~/components/ui/input";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
-import Skeleton from "~/components/ui/skeleton";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import {
   fetchFormByProjectAndModuleFromRemote,
   useGetFormByProjectAndModule,
@@ -25,7 +25,6 @@ import { useGetAllModules } from "~/services/project";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 
 const ProjectFormsScreen = () => {
   const { modId, project_id } = useLocalSearchParams<{
@@ -54,10 +53,15 @@ const ProjectFormsScreen = () => {
 
   const currentModule = useMemo(() => {
     if (!modules) return null;
-    return modules.find((module: IModule | null) => {
-      if (!module) return false;
-      return module.source_module_id === moduleId && module.project_id === projectId;
-    }) || null;
+    return (
+      modules.find((module: IModule | null) => {
+        if (!module) return false;
+        return (
+          module.source_module_id === moduleId &&
+          module.project_id === projectId
+        );
+      }) || null
+    );
   }, [modules, moduleId, projectId]);
 
   if (!currentModule) {
@@ -82,16 +86,14 @@ const ProjectFormsScreen = () => {
   );
 
   const { control, watch } = useForm({
-    resolver: zodResolver(
-      z.object({
-        searchQuery: z.string(),
-      })
-    ),
+    defaultValues: {
+      searchQuery: "",
+    },
     mode: "onChange",
   });
 
-  const [refreshing, setRefreshing] = useState(false);
   const searchQuery = watch("searchQuery");
+  const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -116,14 +118,17 @@ const ProjectFormsScreen = () => {
   }, [filteredForms, searchQuery]);
 
   // 247
-  console.log("Filtered Forms: ", JSON.stringify(
-    filteredForms.map((form) => ({
-      ...form,
-      json: undefined
-    })),
-    null,
-    2
-  ));
+  console.log(
+    "Filtered Forms: ",
+    JSON.stringify(
+      filteredForms.map((form) => ({
+        ...form,
+        json: undefined,
+      })),
+      null,
+      2
+    )
+  );
   console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
   const ListHeaderComponent = useCallback(
     () => (
@@ -143,7 +148,7 @@ const ProjectFormsScreen = () => {
       return (
         <View className="mt-6">
           {[1, 2, 3].map((item) => (
-            <Skeleton key={item} />
+            <SimpleSkeletonItem key={item} />
           ))}
         </View>
       );
@@ -153,7 +158,9 @@ const ProjectFormsScreen = () => {
       return (
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-red-500">
-            {modulesError?.message || formsError?.message || "An error occurred"}
+            {modulesError?.message ||
+              formsError?.message ||
+              "An error occurred"}
           </Text>
         </View>
       );
@@ -216,4 +223,4 @@ const ProjectFormsScreen = () => {
   );
 };
 
-export default ProjectFormsScreen; 
+export default ProjectFormsScreen;
