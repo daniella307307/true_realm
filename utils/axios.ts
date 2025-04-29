@@ -2,7 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 const env = process.env["EXPO_PUBLIC_API_ENV"] || "development";
-export const BASE_URL = process.env["EXPO_PUBLIC_API_URL"];
+// Add fallback URL if environment variable is not set
+export const BASE_URL = process.env["EXPO_PUBLIC_API_URL"] || "https://api.sugiramuryango.com";
 console.log("The base url: ", BASE_URL);
 
 // Create a flag to track authentication status
