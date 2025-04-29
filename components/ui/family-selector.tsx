@@ -6,6 +6,12 @@ import { IFamilies } from "~/types";
 import { Ionicons } from "@expo/vector-icons";
 import i18n from "~/utils/i18n";
 import { getLocalizedTitle } from "~/utils/form-utils";
+import { RealmContext } from "~/providers/RealContextProvider";
+import { Province } from "~/models/locations/province";
+import { District } from "~/models/locations/district";
+import { Sector } from "~/models/locations/sector";
+import { Cell } from "~/models/locations/cell";
+import { Village } from "~/models/locations/village";
 
 interface FamilySelectorProps {
   onSelect: (value: IFamilies) => void;
@@ -20,44 +26,62 @@ const FamilyItem = ({
   family: IFamilies;
   isSelected: boolean;
   onSelect: (family: IFamilies) => void;
-}) => (
-  <TouchableOpacity
-    onPress={() => onSelect(family)}
-    className={`flex-row items-center mb-2 p-4 rounded-lg border ${
-      isSelected ? "border-primary bg-primary/10" : "border-gray-200 bg-white"
-    }`}
-  >
-    <View className="mr-4">
-      <Ionicons
-        name={isSelected ? "radio-button-on" : "radio-button-off"}
-        size={24}
-        color={isSelected ? "#A23A91" : "#A0A3BD"}
-      />
-    </View>
-    <View className="flex-1">
-      <Text
-        className={`text-sm ${isSelected ? "text-primary" : "text-gray-600"}`}
-      >
-        {family.hh_id}
-      </Text>
-      <Text
-        className={`text-lg font-medium ${
-          isSelected ? "text-primary" : "text-gray-700"
-        }`}
-      >
-        {family.hh_head_fullname}
-      </Text>
-
-      {family.village_name && (
+}) => {
+  const { useRealm } = RealmContext;
+  const realm = useRealm();
+  
+  let villageName = family.village_name;
+  
+  // Try to get village name from location data if available
+  if (family.location && family.location.village) {
+    const village = realm.objectForPrimaryKey(
+      Village,
+      family.location.village.toString()
+    );
+    if (village) {
+      villageName = village.village_name;
+    }
+  }
+  
+  return (
+    <TouchableOpacity
+      onPress={() => onSelect(family)}
+      className={`flex-row items-center mb-2 p-4 rounded-lg border ${
+        isSelected ? "border-primary bg-primary/10" : "border-gray-200 bg-white"
+      }`}
+    >
+      <View className="mr-4">
+        <Ionicons
+          name={isSelected ? "radio-button-on" : "radio-button-off"}
+          size={24}
+          color={isSelected ? "#A23A91" : "#A0A3BD"}
+        />
+      </View>
+      <View className="flex-1">
         <Text
-          className={`text-[12px] ${isSelected ? "text-primary" : "text-gray-600"}`}
+          className={`text-sm ${isSelected ? "text-primary" : "text-gray-600"}`}
         >
-          Village: {family.village_name}
+          {family.hh_id}
         </Text>
-      )}
-    </View>
-  </TouchableOpacity>
-);
+        <Text
+          className={`text-lg font-medium ${
+            isSelected ? "text-primary" : "text-gray-700"
+          }`}
+        >
+          {family.hh_head_fullname}
+        </Text>
+
+        {villageName && (
+          <Text
+            className={`text-[12px] ${isSelected ? "text-primary" : "text-gray-600"}`}
+          >
+            Village: {villageName}
+          </Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const FamilySelector: React.FC<FamilySelectorProps> = ({
   onSelect,

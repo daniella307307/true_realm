@@ -69,7 +69,8 @@ const ProjectFormElementScreen = () => {
     source_module_id: form?.source_module_id ?? 0,
     project_id: parseInt(project_id) || 0,
     post_data: form?.post_data,
-    userId: user?.id ?? 0,
+    userId: user?.json?.id ?? 0,
+    position: parseInt(user?.json?.position) ?? 0,
   };
 
   console.log("Form Structure: ", JSON.stringify(formStructure, null, 2));

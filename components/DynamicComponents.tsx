@@ -1,4 +1,10 @@
-import { View, TextInput, Switch, TouchableOpacity } from "react-native";
+import {
+  View,
+  TextInput,
+  Switch,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 
 import { Controller, useForm, useWatch, useFormContext } from "react-hook-form";
 import Dropdown from "./ui/select";
@@ -493,14 +499,6 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
   language = "en-US",
 }) => {
   try {
-    // console.log("DayInputComponent initializing for field:", {
-    //   key: field.key,
-    //   type: field.type,
-    //   title: field.title,
-    //   fieldsProperty: field.fields,
-    //   language
-    // });
-
     // Ensure field.fields exists, even if it's not provided
     const fields = field.fields || {
       day: { required: false },
@@ -555,14 +553,15 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
         const formattedDay = dayValue.padStart(2, "0");
         const formattedMonth = monthValue.padStart(2, "0");
         const formattedDate = `${yearValue}-${formattedMonth}-${formattedDay}`;
-        console.log("Formatted date in DayInputComponent:", formattedDate);
+        console.log("Formatted date in DayInputComponent:", {
+          fieldKey: field.key,
+          formattedDate: formattedDate,
+        });
+        // Set both the formatted date string and keep the individual parts for the UI
         setValue(field.key, formattedDate);
       }
     }, [dayValue, monthValue, yearValue, field.key, setValue]);
 
-    // console.log("DayInputComponent rendering UI for:", field.key);
-
-    // I want to print the selected values
     return (
       <View className="mb-4">
         <Text className="mb-2 text-md font-medium text-[#050F2B]">
@@ -570,9 +569,9 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
           {fields.day?.required && <Text className="text-primary"> *</Text>}
         </Text>
 
-        <View className="flex flex-row justify-between gap-2">
+        <View className="flex flex-row justify-between gap-2 mb-4">
           {/* Year Dropdown */}
-          <View className="flex-1">
+          <View className="flex-1 mb-2" style={{ zIndex: 3000 }}>
             <Text className="text-sm text-gray-600 mb-1">Year</Text>
             <Controller
               control={control}
@@ -598,6 +597,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
                         setValue(`${field.key}.day`, "");
                       }}
                       placeholder="Select Year"
+                      className="bg-white"
                     />
                   </View>
                   {error && (
@@ -611,7 +611,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
           </View>
 
           {/* Month Dropdown */}
-          <View className="flex-1">
+          <View className="flex-1 mb-2" style={{ zIndex: 2000 }}>
             <Text className="text-sm text-gray-600 mb-1">Month</Text>
             <Controller
               control={control}
@@ -626,7 +626,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
                 <View>
                   <View
                     className={cn(
-                      "border rounded-lg",
+                      "border rounded-lg bg-white",
                       error ? "border-primary" : "border-[#E4E4E7]"
                     )}
                   >
@@ -637,6 +637,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
                         setValue(`${field.key}.day`, "");
                       }}
                       placeholder="Select Month"
+                      className="bg-white"
                     />
                   </View>
                   {error && (
@@ -650,7 +651,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
           </View>
 
           {/* Day Dropdown */}
-          <View className="flex-1">
+          <View className="flex-1 mb-2" style={{ zIndex: 1000 }}>
             <Text className="text-sm text-gray-600 mb-1">Day</Text>
             <Controller
               control={control}
@@ -665,7 +666,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
                 <View>
                   <View
                     className={cn(
-                      "border rounded-lg",
+                      "border rounded-lg bg-white",
                       error ? "border-primary" : "border-[#E4E4E7]"
                     )}
                   >
@@ -673,6 +674,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
                       data={days}
                       onChange={(item) => onChange(item.value)}
                       placeholder="Select Day"
+                      className="bg-white"
                     />
                   </View>
                   {error && (
@@ -691,14 +693,16 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
     console.error("Error in DayInputComponent:", error);
     // Provide a fallback UI in case of errors
     return (
-      <View className="mb-4 p-4 border border-red-300 bg-red-50 rounded-lg">
-        <Text className="text-red-600 font-bold">
-          Error rendering date input for field: {field.key}
-        </Text>
-        <Text className="text-red-500 mt-2">
-          Please try refreshing the form or contact support.
-        </Text>
-      </View>
+      <ScrollView className="mb-4">
+        <View className="p-4 border border-red-300 bg-red-50 rounded-lg">
+          <Text className="text-red-600 font-bold">
+            Error rendering date input for field: {field.key}
+          </Text>
+          <Text className="text-red-500 mt-2">
+            Please try refreshing the form or contact support.
+          </Text>
+        </View>
+      </ScrollView>
     );
   }
 };

@@ -44,6 +44,7 @@ export function useGetFamilies(forceSync: boolean = false) {
     },
   ]);
 
+  // console.log("storedFamilies", JSON.stringify(storedFamilies, null, 2));
   return {
     families: storedFamilies,
     isLoading: syncStatus.families?.isLoading || false,

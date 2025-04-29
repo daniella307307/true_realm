@@ -13,15 +13,74 @@ import {
   useGetAllLocallyCreatedFamilies,
 } from "~/services/families";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
-import { Generic, IFamilies } from "~/types";
+import { Generic, IFamilies, Izus } from "~/types";
+import { useGetAllLocallyCreatedIzus } from "~/services/izus";
+import { NotFound } from "~/components/ui/not-found";
+
+// Type guard to check if item is an Izu
+const isIzu = (item: any): item is Izus => {
+  return item && typeof item.name === 'string';
+};
+
+// Type guard to check if item has family property in the correct location
+const hasFamily = (item: any): boolean => {
+  return item && (
+    (typeof item.family === 'string') || 
+    (item.form_data && typeof item.form_data.family === 'string')
+  );
+};
+
+// Helper to get family ID from any item type
+const getFamilyId = (item: any): string | null => {
+  if (!item) return null;
+  
+  if (typeof item.family === 'string') {
+    return item.family;
+  }
+  
+  if (item.form_data && typeof item.form_data.family === 'string') {
+    return item.form_data.family;
+  }
+  
+  return null;
+};
+
+// Define a type for the different item data types
+type DataItem = IFamilies | Izus | {
+  answers: { [k: string]: string };
+  _id: any;
+  family?: string;
+  form_data?: {
+    time_spent_filling_the_form?: string | null;
+    user_id?: number | null;
+    table_name?: string | null;
+    project_module_id?: number | null;
+    source_module_id?: number | null;
+    project_id?: number | null;
+    survey_id?: number | null;
+    post_data?: string | null;
+    izucode?: string | null;
+    cohort?: string | null;
+    family?: string;
+  };
+  location?: { [key: string]: any };
+  sync_data?: {
+    sync_status?: boolean;
+    sync_reason?: string;
+    sync_attempts?: number;
+    last_sync_attempt?: Date;
+    submitted_at?: Date;
+  };
+};
 
 const DetailScreen = () => {
-  const { _id, project_module_id, source_module_id, isFamily } =
+  const { _id, project_module_id, source_module_id, isFamily, itemType } =
     useLocalSearchParams<{
       _id: string;
       project_module_id: string;
       source_module_id: string;
       isFamily?: string;
+      itemType?: string;
     }>();
   const { t } = useTranslation();
   const isFamilyDetail = isFamily === "true";
@@ -33,30 +92,39 @@ const DetailScreen = () => {
   const { families, isLoading: familiesLoading } = useGetFamilies();
   const { locallyCreatedFamilies, isLoading: locallyCreatedFamiliesLoading } =
     useGetAllLocallyCreatedFamilies();
+  const { locallyCreatedIzus, isLoading: locallyCreatedIzusLoading } =
+    useGetAllLocallyCreatedIzus();
 
-  // Determine which data to display based on the isFamily parameter
+  // Determine which data to display based on the itemType parameter
   const dataItem = useMemo(() => {
-    if (isFamilyDetail) {
-      // Look in locally created families
+    if (itemType === "family") {
       return locallyCreatedFamilies.find(
         (fam: any) => fam.id?.toString() === _id || fam.hh_id === _id
       );
-    } else {
-      // Look in submissions
+    } else if (itemType === "izu") {
+      return locallyCreatedIzus.find((izu: any) => izu.id?.toString() === _id);
+    } else if (itemType === "submission") {
       return surveySubmissions.find((sub) => sub._id.toString() === _id);
     }
-  }, [_id, isFamilyDetail, surveySubmissions, locallyCreatedFamilies]);
+  }, [
+    _id,
+    itemType,
+    surveySubmissions,
+    locallyCreatedFamilies,
+    locallyCreatedIzus,
+  ]);
 
   // Get family information
   const foundFamily = useMemo(() => {
     if (isFamilyDetail) {
       // For family detail, the dataItem itself contains family info
       return dataItem as any;
-      // @ts-ignore
-    } else if (dataItem?.family) {
+    } else {
       // For submission detail, look up the associated family
-      // @ts-ignore
-      return families?.find((fam) => fam.hh_id === dataItem.family);
+      const familyId = getFamilyId(dataItem);
+      if (familyId) {
+        return families?.find((fam) => fam.hh_id === familyId);
+      }
     }
     return null;
   }, [dataItem, families, isFamilyDetail]);
@@ -66,7 +134,7 @@ const DetailScreen = () => {
     if (isFamilyDetail) {
       return (dataItem as any)?.hh_id;
     } else {
-      return (dataItem as any)?.family;
+      return getFamilyId(dataItem);
     }
   }, [dataItem, isFamilyDetail]);
 
@@ -96,16 +164,52 @@ const DetailScreen = () => {
     try {
       const formDefinition = JSON.parse(form.json2);
       const map: { [key: string]: string } = {};
-      if (
-        formDefinition?.components &&
-        Array.isArray(formDefinition.components)
-      ) {
-        formDefinition.components.forEach((field: any) => {
+      
+      // Recursive function to process all components and their children
+      const processComponents = (components: any[]) => {
+        if (!Array.isArray(components)) return;
+        
+        components.forEach((field: any) => {
+          // Store field label if it has a key
           if (field?.key) {
             map[field.key] = field.label || field.title?.default || field.key;
           }
+          
+          // Process child components recursively
+          if (field.components && Array.isArray(field.components)) {
+            processComponents(field.components);
+          }
+          
+          // Process columns for layoutComponents like columns, tables, etc.
+          if (field.columns && Array.isArray(field.columns)) {
+            field.columns.forEach((column: any) => {
+              if (column.components && Array.isArray(column.components)) {
+                processComponents(column.components);
+              }
+            });
+          }
+          
+          // Process rows for tables
+          if (field.rows && Array.isArray(field.rows)) {
+            field.rows.forEach((row: any) => {
+              if (row.components && Array.isArray(row.components)) {
+                processComponents(row.components);
+              }
+            });
+          }
+          
+          // Process panels which might have components
+          if (field.content && Array.isArray(field.content)) {
+            processComponents(field.content);
+          }
         });
+      };
+      
+      if (formDefinition?.components && Array.isArray(formDefinition.components)) {
+        processComponents(formDefinition.components);
       }
+      
+      console.log("Form field labels:", map);
       return map;
     } catch (error) {
       console.error("Error parsing form json2:", error);
@@ -115,12 +219,11 @@ const DetailScreen = () => {
 
   if (!_id) {
     return (
-      <View>
-        <Text>Missing item ID</Text>
-        <Button onPress={() => router.replace("/(home)")}>
-          <Text>Go Back</Text>
-        </Button>
-      </View>
+      <NotFound
+        title="Missing item ID"
+        description="Please try again"
+        redirectTo={() => router.back()}
+      />
     );
   }
 
@@ -129,6 +232,7 @@ const DetailScreen = () => {
     isLoadingSubmissions ||
     locallyCreatedFamiliesLoading ||
     familiesLoading ||
+    locallyCreatedIzusLoading ||
     (dataItem && isLoadingSurvey);
 
   if (isLoading) {
@@ -143,27 +247,22 @@ const DetailScreen = () => {
 
   if (!dataItem) {
     return (
-      <View className="flex-1 justify-center items-center p-4 bg-background">
-        <Text className="text-lg text-destructive mb-4">
-          {isFamilyDetail ? "Family" : "Submission"} not found
-        </Text>
-        <Button onPress={() => router.back()}>
-          <Text>Go Back</Text>
-        </Button>
-      </View>
+      <NotFound
+        title="Item not found"
+        description="Please try again"
+        redirectTo={() => router.back()}
+      />
     );
   }
 
-  // Get display data based on item type
-  const itemType = isFamilyDetail ? "family" : "submission";
   const submittedAt = (dataItem as Generic)?.sync_data?.submitted_at;
 
   console.log("The submitted at:", submittedAt);
   const syncStatus = (dataItem as Generic)?.sync_data?.sync_status;
-  const answers = isFamilyDetail
+  const answers = isFamilyDetail || itemType === "family" || itemType === "izu"
     ? (dataItem as any)?.meta || {}
     : (dataItem as any)?.answers || {};
-    
+
   const timeSpent = (dataItem as any)?.form_data?.time_spent_filling_the_form;
   const izuCode = (dataItem as any)?.form_data?.izucode;
   const cohort = (dataItem as any)?.form_data?.cohort || foundFamily?.cohort;
@@ -182,10 +281,9 @@ const DetailScreen = () => {
       <ScrollView className="flex-1 p-4 bg-background">
         <View className="mb-6">
           <Text className="text-lg font-semibold mb-4">
-            {foundFamily?.hh_head_fullname ||
-              foundFamily?.hh_id ||
-              familyId ||
-              t("Common.unknown", "N/A Family Head Name")}
+            {itemType === "izu" && isIzu(dataItem) ? dataItem.name : null}
+            {itemType === "family" && foundFamily?.hh_head_fullname}
+            {itemType === "submission" && familyId}
           </Text>
 
           {(foundFamily?.village_name || foundFamily?.hh_id) && (
@@ -211,7 +309,11 @@ const DetailScreen = () => {
               {t(
                 `History.${itemType}_details`,
                 `${
-                  itemType.charAt(0).toUpperCase() + itemType.slice(1)
+                  itemType === "family"
+                    ? "Family"
+                    : itemType === "izu"
+                    ? "IZU"
+                    : "Submission"
                 } Details`
               )}
             </Text>
@@ -235,36 +337,57 @@ const DetailScreen = () => {
                 {t("History.type", "Type")}:{" "}
                 {t(
                   `Common.${itemType}`,
-                  itemType.charAt(0).toUpperCase() + itemType.slice(1)
+                  itemType === "family"
+                    ? "Family"
+                    : itemType === "izu"
+                    ? "IZU"
+                    : "Submission"
                 )}
               </Text>
             </View>
           </View>
 
           {Object.keys(answers).length > 0 && (
-            <View className="mb-6">
-              <Text className="font-medium text-gray-700 mb-4">
-                {isFamilyDetail
-                  ? t("History.family_data", "Family Data")
-                  : t("History.answers", "Answers")}
-              </Text>
-              {Object.entries(answers).map(([key, value]) => (
-                <View
-                  key={key}
-                  className="mb-4 p-4 bg-white rounded-lg border border-gray-200"
-                >
-                  <Text className="font-medium text-gray-700 mb-1">
-                    {fieldLabelMap[key] || key}
-                  </Text>
-                  <Text className="text-gray-600">
-                    {value === null || value === undefined
-                      ? t("History.not_answered", "Not answered")
-                      : String(value)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
+              <View className="mb-6">
+                <Text className="font-medium text-gray-700 mb-4">
+                  {isFamilyDetail || itemType === "izu" || itemType === "family"
+                    ? t("History.family_data", "Family Data")
+                    : t("History.answers", "Answers")}
+                </Text>
+                {Object.entries(answers).map(([key, value]) => {
+                  // Format the value based on its type
+                  let displayValue: string = "";
+                  
+                  if (value === null || value === undefined) {
+                    displayValue = t("History.not_answered", "Not answered");
+                  } else if (typeof value === "object") {
+                    try {
+                      displayValue = JSON.stringify(value);
+                    } catch (e) {
+                      displayValue = String(value);
+                    }
+                  } else if (Array.isArray(value)) {
+                    displayValue = value.join(", ");
+                  } else {
+                    displayValue = String(value);
+                  }
+                  
+                  return (
+                    <View
+                      key={key}
+                      className="mb-4 p-4 bg-white rounded-lg border border-gray-200"
+                    >
+                      <Text className="font-medium text-gray-700 mb-1">
+                        {fieldLabelMap[key] || t(`Form.${key}`, key)}
+                      </Text>
+                      <Text className="text-gray-600">
+                        {displayValue}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
 
           <View className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
             <Text className="font-medium text-gray-700 mb-2">

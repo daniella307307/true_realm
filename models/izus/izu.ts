@@ -6,6 +6,7 @@ export class Izu extends Realm.Object {
   user_code!: string;
   villages_id!: number;
   score!: number;
+  position!: number | null;
 
   meta!: { [key: string]: string | number | boolean | null; };
   form_data!: { [key: string]: string | number | boolean | null };
@@ -22,7 +23,7 @@ export class Izu extends Realm.Object {
       user_code: "string?",
       villages_id: "int?",
       score: "int?",
-
+      position: "int?",
       meta: 'mixed{}',
       form_data: 'mixed{}',
       location: 'mixed{}',

@@ -20,6 +20,7 @@ import { Entypo } from "@expo/vector-icons";
 import { ProcessedSubmission } from "~/types/form-types";
 import { NotFound } from "~/components/ui/not-found";
 import CustomInput from "~/components/ui/input";
+import { useGetAllLocallyCreatedIzus } from "~/services/izus";
 
 // Extended type for our combined data
 type CombinedItem = {
@@ -33,13 +34,14 @@ type CombinedItem = {
   lastSyncAttempt: string | null;
   project_module_id: number;
   project_id: number;
-  itemType: 'submission' | 'family';
+  itemType: "submission" | "family" | "izu";
   familyData?: {
     hh_id: string;
     hh_head_fullname: string;
     village_name: string;
     cohort: string;
   };
+  izuName?: string;
 };
 
 const SubmissionListByModuleScreen = () => {
@@ -73,12 +75,16 @@ const SubmissionListByModuleScreen = () => {
     isLoading: locallyCreatedFamiliesLoading,
     refresh: refreshLocallyCreatedFamilies,
   } = useGetAllLocallyCreatedFamilies();
-  
+
+  const { families, isLoading: familiesLoading } = useGetFamilies();
+
   const {
-    families,
-    isLoading: familiesLoading,
-  } = useGetFamilies();
-  
+    locallyCreatedIzus,
+    isLoading: locallyCreatedIzusLoading,
+    refresh: refreshLocallyCreatedIzus,
+  } = useGetAllLocallyCreatedIzus();
+
+  // console.log("locallyCreatedIzus", JSON.stringify(locallyCreatedIzus, null, 2));
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const { control, watch } = useForm({
@@ -99,49 +105,70 @@ const SubmissionListByModuleScreen = () => {
   // Combine and process all data in one step
   const combinedData = useMemo(() => {
     // Process survey submissions
-    const processedSubmissions: CombinedItem[] = Array.from(surveySubmissions).map(
-      (sub: any) => ({
-        _id: sub._id.toString(),
-        table_name: sub.form_data?.table_name,
-        sync_status: sub.sync_data?.sync_status,
-        survey_id: sub.form_data?.survey_id,
-        source_module_id: sub.form_data?.source_module_id,
-        submittedAt: sub.sync_data?.submitted_at,
-        family: sub.form_data?.family,
-        lastSyncAttempt: sub.sync_data?.last_sync_attempt,
-        project_module_id: sub.form_data?.project_module_id,
-        project_id: sub.form_data?.project_id,
-        itemType: 'submission'
+    const processedSubmissions: CombinedItem[] = Array.from(
+      surveySubmissions
+    ).map((sub: any) => ({
+      _id: sub._id.toString(),
+      table_name: sub.form_data?.table_name,
+      sync_status: sub.sync_data?.sync_status,
+      survey_id: sub.form_data?.survey_id,
+      source_module_id: sub.form_data?.source_module_id,
+      submittedAt: sub.sync_data?.submitted_at,
+      family: sub.form_data?.family,
+      lastSyncAttempt: sub.sync_data?.last_sync_attempt,
+      project_module_id: sub.form_data?.project_module_id,
+      project_id: sub.form_data?.project_id,
+      itemType: "submission",
+    }));
+
+    // Process locally created families
+    const processedFamilies: CombinedItem[] = locallyCreatedFamilies.map(
+      (fam: any) => ({
+        _id: fam?.id,
+        table_name: fam?.form_data?.table_name,
+        sync_status: fam?.sync_data?.sync_status,
+        survey_id: fam?.form_data?.survey_id,
+        source_module_id: fam?.form_data?.source_module_id,
+        submittedAt: fam?.sync_data?.submitted_at,
+        family: fam?.hh_id,
+        lastSyncAttempt: fam?.sync_data?.last_sync_attempt,
+        project_module_id: fam?.form_data?.project_module_id,
+        project_id: fam?.form_data?.project_id,
+        itemType: "family",
+        familyData: {
+          hh_id: fam?.hh_id,
+          hh_head_fullname: fam?.hh_head_fullname,
+          village_name: fam?.village_name,
+          village_id: fam?.village_id,
+          cohort: fam?.form_data?.cohort,
+        },
       })
     );
 
-    // Process locally created families
-    const processedFamilies: CombinedItem[] = locallyCreatedFamilies.map((fam: any) => ({
-      _id: fam?.id,
-      table_name: fam?.form_data?.table_name,
-      sync_status: fam?.sync_data?.sync_status,
-      survey_id: fam?.form_data?.survey_id,
-      source_module_id: fam?.form_data?.source_module_id,
-      submittedAt: fam?.sync_data?.submitted_at,
-      family: fam?.hh_id,
-      lastSyncAttempt: fam?.sync_data?.last_sync_attempt,
-      project_module_id: fam?.form_data?.project_module_id,
-      project_id: fam?.form_data?.project_id,
-      itemType: 'family',
-      familyData: {
-        hh_id: fam?.hh_id,
-        hh_head_fullname: fam?.hh_head_fullname,
-        village_name: fam?.village_name,
-        village_id: fam?.village_id,
-        cohort: fam?.form_data?.cohort
-      }
-    }));
+    // Process locally created izus
+    const processedIzus: CombinedItem[] = locallyCreatedIzus.map(
+      (izu: any) => ({
+        _id: izu?.id,
+        table_name: izu?.form_data?.table_name,
+        sync_status: izu?.sync_data?.sync_status,
+        survey_id: izu?.form_data?.survey_id,
+        source_module_id: izu?.form_data?.source_module_id,
+        submittedAt: izu?.sync_data?.submitted_at,
+        family: izu?.form_data?.family,
+        lastSyncAttempt: izu?.sync_data?.last_sync_attempt,
+        project_module_id: izu?.form_data?.project_module_id,
+        project_id: izu?.form_data?.project_id,
+        itemType: "izu",
+        izuName: izu?.name,
+      })
+    );
 
     // Combine both datasets
-    return [...processedSubmissions, ...processedFamilies];
-  }, [surveySubmissions, locallyCreatedFamilies]);
-  
-  console.log("Combined data", JSON.stringify(combinedData, null, 2));
+    return [...processedSubmissions, ...processedFamilies, ...processedIzus];
+  }, [surveySubmissions, locallyCreatedFamilies, locallyCreatedIzus]);
+
+  // console.log("Combined data", JSON.stringify(combinedData, null, 2));
+
   // Filter and sort combined data
   const filteredAndSortedData = useMemo(() => {
     return combinedData
@@ -155,14 +182,18 @@ const SubmissionListByModuleScreen = () => {
         // Search filter
         if (searchQuery) {
           const searchLower = searchQuery.toLowerCase();
-          const foundFamily = item.itemType === 'family'
-            ? item.familyData
-            : families?.find((fam: IFamilies) => fam.hh_id === item.family);
-            
+          const foundFamily =
+            item.itemType === "family"
+              ? item.familyData
+              : families?.find((fam: IFamilies) => fam.hh_id === item.family);
+
           return (
-            foundFamily?.hh_head_fullname?.toLowerCase().includes(searchLower) ||
+            foundFamily?.hh_head_fullname
+              ?.toLowerCase()
+              .includes(searchLower) ||
             foundFamily?.village_name?.toLowerCase().includes(searchLower) ||
-            item.family?.toLowerCase().includes(searchLower) || false
+            item.family?.toLowerCase().includes(searchLower) ||
+            false
           );
         }
 
@@ -250,26 +281,42 @@ const SubmissionListByModuleScreen = () => {
           flexGrow: 1,
         }}
         renderItem={({ item }: ListRenderItemInfo<CombinedItem>) => {
-          const foundFamily = item.itemType === 'family'
-            ? item.familyData
-            : families?.find((fam: IFamilies) => fam.hh_id === item.family);
+          const foundFamily =
+            item.itemType === "family"
+              ? item.familyData
+              : families?.find((fam: IFamilies) => fam.hh_id === item.family);
 
           console.log("item", JSON.stringify(item, null, 2));
           return (
             <TouchableOpacity
               onPress={() =>
                 router.push(
-                  `/(sub-detail)/${item._id}?project_module_id=${item.project_module_id}&source_module_id=${item.source_module_id}${
-                    item.itemType === 'family' ? '&isFamily=true' : ''
-                  }`
+                  `/(sub-detail)/${item._id}?project_module_id=${
+                    item.project_module_id
+                  }&source_module_id=${item.source_module_id}${
+                    item.itemType === "family" ? "&isFamily=true" : ""
+                  }&itemType=${item.itemType}`
                 )
               }
               className="p-4 border mb-4 border-gray-200 rounded-xl bg-white"
             >
               <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-lg font-semibold text-gray-800">
-                  {foundFamily?.hh_id ?? item.family ?? "Unknown Family ID"}
-                </Text>
+                {/* When itemType is izu, show the izu code */}
+                {item.itemType === "izu" && (
+                  <Text className="text-lg font-semibold text-gray-800">
+                    {item?.izuName}
+                  </Text>
+                )}
+                {item.itemType === "family" && (
+                  <Text className="text-lg font-semibold text-gray-800">
+                    {item.familyData?.hh_id}
+                  </Text>
+                )}
+                {item.itemType === "submission" && (
+                  <Text className="text-lg font-semibold text-gray-800">
+                    {item.table_name}
+                  </Text>
+                )}
                 <View
                   className={`px-2 py-1 rounded-full ${
                     item.sync_status ? "bg-green-100" : "bg-yellow-100"
@@ -321,9 +368,11 @@ const SubmissionListByModuleScreen = () => {
                 )}
                 <Text className="text-sm text-gray-600">
                   {t("Common.type", "Type")}:{" "}
-                  {item.itemType === 'family' 
-                    ? t("Common.family", "Family") 
-                    : t("Common.submission", "Submission")}
+                  {item.itemType === "family"
+                    ? t("Common.family", "Family")
+                    : item.itemType === "submission"
+                    ? t("Common.submission", "Submission")
+                    : t("Common.izu", "IZU")}
                 </Text>
               </View>
             </TouchableOpacity>

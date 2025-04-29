@@ -25,6 +25,7 @@ import { useGetFormByProjectAndModule } from "~/services/formElements";
 import { Survey } from "~/models/surveys/survey";
 import { NotFound } from "~/components/ui/not-found";
 import { useGetAllLocallyCreatedFamilies } from "~/services/families";
+import { useGetAllLocallyCreatedIzus } from "~/services/izus";
 
 const ProjectModuleScreens = () => {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
@@ -52,11 +53,24 @@ const ProjectModuleScreens = () => {
     refresh: refreshSubmissions,
   } = useGetAllSurveySubmissions();
 
-  const { locallyCreatedFamilies, isLoading: isLoadingFamilies } =
-    useGetAllLocallyCreatedFamilies();
+  const {
+    locallyCreatedFamilies,
+    isLoading: isLoadingFamilies,
+    refresh: refreshFamilies,
+  } = useGetAllLocallyCreatedFamilies();
+
+  const {
+    locallyCreatedIzus,
+    isLoading: isLoadingIzus,
+    refresh: refreshIzus,
+  } = useGetAllLocallyCreatedIzus();
 
   const isLoading =
-    modulesLoading || surveySubmissionsLoading || isLoadingFamilies;
+    modulesLoading ||
+    surveySubmissionsLoading ||
+    isLoadingFamilies ||
+    isLoadingIzus;
+
   const { t } = useTranslation();
   const { control, watch } = useForm({
     defaultValues: {
@@ -95,15 +109,21 @@ const ProjectModuleScreens = () => {
   const filteredModules = useMemo(() => {
     if (!modules || !surveySubmissions || !locallyCreatedFamilies) return [];
 
-    console.log(
-      "Survey Submissions: ",
-      JSON.stringify(surveySubmissions, null, 2)
-    );
-    console.log(
-      "Locally Created Families: ",
-      JSON.stringify(locallyCreatedFamilies, null, 2)
-    );
+    // console.log(
+    //   "Survey Submissions: ",
+    //   JSON.stringify(surveySubmissions, null, 2)
+    // );
+    // console.log(
+    //   "Locally Created Families: ",
+    //   JSON.stringify(locallyCreatedFamilies, null, 2)
+    // );
+
+    // console.log(
+    //   "Locally Created Izus: ",
+    //   JSON.stringify(locallyCreatedIzus, null, 2)
+    // );
     console.log("Project ID for filtering:", Number(projectId));
+
     // Get module IDs from locally created families
     const locallyCreatedFamilyModuleIds = new Set(
       locallyCreatedFamilies
@@ -124,12 +144,20 @@ const ProjectModuleScreens = () => {
         .map((submission) => submission.form_data?.source_module_id)
     );
 
+    // Get module IDs from locally created izus
+    const locallyCreatedIzuModuleIds = new Set(
+      locallyCreatedIzus
+        .filter((izu) => izu.form_data?.project_id === Number(projectId))
+        .map((izu) => izu.form_data?.source_module_id)
+    );
+
     const activeModules = modules.filter(
       (module: IModule | null): module is IModule =>
         module !== null &&
         module.project_id === Number(projectId) &&
         module.module_status !== 0 &&
         (locallyCreatedFamilyModuleIds.has(module.source_module_id) ||
+          locallyCreatedIzuModuleIds.has(module.source_module_id) ||
           moduleIdsWithSubmissions.has(module.source_module_id))
     );
 
@@ -145,11 +173,23 @@ const ProjectModuleScreens = () => {
             .includes(searchQuery.toLowerCase())
       )
       .sort((a, b) => a.order_list - b.order_list);
-  }, [modules, surveySubmissions, projectId, searchQuery]);
+  }, [
+    modules,
+    surveySubmissions,
+    locallyCreatedFamilies,
+    locallyCreatedIzus,
+    projectId,
+    searchQuery,
+  ]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refreshModules(), refreshSubmissions()]);
+    await Promise.all([
+      refreshModules(),
+      refreshSubmissions(),
+      refreshFamilies(),
+      refreshIzus(),
+    ]);
     setRefreshing(false);
   };
 
@@ -180,27 +220,37 @@ const ProjectModuleScreens = () => {
           family.form_data.project_id === Number(projectId) &&
           family.form_data.source_module_id === item.source_module_id
       );
+      // console.log("Module Families: ", JSON.stringify(moduleFamilies, null, 2));
 
-      console.log("Module Families: ", JSON.stringify(moduleFamilies, null, 2));
+      // Izus created under a module
+      const moduleIzus = locallyCreatedIzus.filter(
+        (izu) =>
+          izu.form_data &&
+          izu.form_data?.project_id === Number(projectId) &&
+          izu.form_data?.source_module_id === item.source_module_id
+      );
 
       // Now create the sorted submissions and families
       // The submittedAt is in the sync_data object
-      const sortedSubmissions = [...moduleSubmissions, ...moduleFamilies].sort(
-        (a, b) => {
-          const dateA = a.sync_data?.submitted_at || 0;
-          const dateB = b.sync_data?.submitted_at || 0;
-          return (dateB as number) - (dateA as number);
-        }
-      );
+      const sortedSubmissions = [
+        ...moduleSubmissions,
+        ...moduleFamilies,
+        ...moduleIzus,
+      ].sort((a, b) => {
+        const dateA = a.sync_data?.submitted_at || 0;
+        const dateB = b.sync_data?.submitted_at || 0;
+        return (dateB as number) - (dateA as number);
+      });
 
       console.log(
         "Sorted Submissions: ",
         JSON.stringify(sortedSubmissions, null, 2)
       );
 
-      const lastSubmission = 
-        sortedSubmissions.length > 0 
-          ? (sortedSubmissions[0]?.sync_data?.submitted_at as number | null) || null
+      const lastSubmission =
+        sortedSubmissions.length > 0
+          ? (sortedSubmissions[0]?.sync_data?.submitted_at as number | null) ||
+            null
           : null;
 
       return (
@@ -257,17 +307,30 @@ const ProjectModuleScreens = () => {
           family.form_data.project_module_id === item.project_module_id
       );
 
-      const sortedSubmissions = [...formSubmissions, ...formFamilies].sort(
+      // Izus created under a form  
+      const formIzus = locallyCreatedIzus.filter(
+        (izu) =>
+          izu.form_data &&
+          izu.form_data?.project_id === Number(projectId) &&
+          izu.form_data?.project_module_id === item.project_module_id
+      );
+
+      const sortedSubmissions = [...formSubmissions, ...formFamilies, ...formIzus].sort(
         (a, b) => {
-          const dateA = new Date(a.sync_data?.submitted_at as number || 0).getTime();
-          const dateB = new Date(b.sync_data?.submitted_at as number || 0).getTime();
+          const dateA = new Date(
+            (a.sync_data?.submitted_at as number) || 0
+          ).getTime();
+          const dateB = new Date(
+            (b.sync_data?.submitted_at as number) || 0
+          ).getTime();
           return dateB - dateA;
         }
       );
 
       const lastSubmission =
         sortedSubmissions.length > 0
-          ? (sortedSubmissions[0]?.sync_data?.submitted_at as number | null) || null
+          ? (sortedSubmissions[0]?.sync_data?.submitted_at as number | null) ||
+            null
           : null;
       return (
         <TouchableOpacity
@@ -370,7 +433,8 @@ const ProjectModuleScreens = () => {
                       {
                         surveySubmissions.filter(
                           (submission) =>
-                            submission.form_data?.project_id === Number(projectId) &&
+                            submission.form_data?.project_id ===
+                              Number(projectId) &&
                             submission.form_data?.source_module_id === 24
                         ).length
                       }
@@ -381,12 +445,15 @@ const ProjectModuleScreens = () => {
                         const riskSubmissions = surveySubmissions
                           .filter(
                             (submission) =>
-                              submission.form_data?.project_id === Number(projectId) &&
+                              submission.form_data?.project_id ===
+                                Number(projectId) &&
                               submission.form_data?.source_module_id === 24
                           )
                           .sort(
                             (a, b) =>
-                              new Date(b.sync_data?.submitted_at || 0).getTime() -
+                              new Date(
+                                b.sync_data?.submitted_at || 0
+                              ).getTime() -
                               new Date(a.sync_data?.submitted_at || 0).getTime()
                           );
 
@@ -413,9 +480,9 @@ const ProjectModuleScreens = () => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#000000"
+                tintColor="#A23A91"
                 title="Pull to refresh"
-                titleColor="#000000"
+                titleColor="#A23A91"
               />
             }
           />

@@ -215,6 +215,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     );
   }
 
+  // Define fieldsPerPage at the component level for consistency
+  const fieldsPerPage = 4;
+  
   const { control, handleSubmit, getValues, trigger, formState, setValue } =
     useForm({
       mode: "onChange",
@@ -350,13 +353,21 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           currentDependency = dependency;
         }
       } else {
-        if (currentGroup.length > 0) {
-          groups.push([...currentGroup]);
+        // For fields without dependencies, just add them to the current group
+        // until we reach fieldsPerPage, then start a new group
+        if (currentDependency !== null) {
+          // If we were collecting dependent fields, push the group and start fresh
+          if (currentGroup.length > 0) {
+            groups.push([...currentGroup]);
+          }
           currentGroup = [];
           currentDependency = null;
         }
+        
         currentGroup.push(field);
-        if (currentGroup.length >= 3) {
+        
+        // Only create a new group when we reach the fieldsPerPage limit
+        if (currentGroup.length >= fieldsPerPage) {
           groups.push([...currentGroup]);
           currentGroup = [];
         }
@@ -367,7 +378,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       groups.push(currentGroup);
     }
     return groups;
-  }, [visibleFields]);
+  }, [visibleFields, fieldsPerPage]);
 
   // Calculate total pages based on groups
   const totalPages = groupedFields.length;
@@ -407,8 +418,20 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           }
         });
 
+        // Format all day-type fields to proper YYYY-MM-DD format
+        const formattedData = { ...completeData };
+        visibleFields.forEach((field) => {
+          if (field && field.type === 'day' && field.key && typeof formattedData[field.key] === 'object') {
+            const dateObj = formattedData[field.key];
+            if (dateObj && dateObj.year && dateObj.month && dateObj.day) {
+              formattedData[field.key] = `${dateObj.year}-${dateObj.month}-${dateObj.day}`;
+            }
+          }
+        });
+
+        console.log("Formatted data:", formattedData);
         const dataWithTime = {
-          ...completeData,
+          ...formattedData,
           table_name: formSubmissionMandatoryFields.table_name,
           project_module_id:
             formSubmissionMandatoryFields.project_module_id || 0,
@@ -439,11 +462,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             : 0,
           language: currentLanguage,
           timeSpentFormatted: formatTime(timeSpent),
-          // Ensure dateOfTheMeeting is a string in YYYY-MM-DD format
-          dateOfTheMeeting:
-            typeof completeData.dateOfTheMeeting === "object"
-              ? `${completeData.dateOfTheMeeting.year}-${completeData.dateOfTheMeeting.month}-${completeData.dateOfTheMeeting.day}`
-              : completeData.dateOfTheMeeting,
         };
 
         dataWithTime.post_data;
@@ -582,8 +600,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     if (currentPage > 0) {
       const previousPage = currentPage - 1;
       const previousFields = visibleFields.slice(
-        previousPage * 3,
-        (previousPage + 1) * 3
+        previousPage * fieldsPerPage,
+        (previousPage + 1) * fieldsPerPage
       );
 
       // If the previous fields control conditional visibility, reset visible fields
@@ -751,19 +769,23 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           )}
 
           {wholeComponent
-            ? visibleFields.map((field) => (
-                <DynamicField
-                  key={field.key}
-                  field={field}
-                  control={control}
-                  language={currentLanguage}
-                />
-              ))
-            : currentPageFields.map((field) => {
-                // console.log(`Rendering field ${field.key} of type ${field.type} on page ${currentPage}`);
+            ? visibleFields.map((field) => 
+                field && field.key ? (
+                  <DynamicField
+                    key={`field-${field.key}`}
+                    field={field}
+                    control={control}
+                    language={currentLanguage}
+                  />
+                ) : null
+              )
+            : currentPageFields.map((field, index) => {
+                // Skip fields without keys to prevent React duplicate key warnings
+                if (!field || !field.key) return null;
+                
                 return (
                   <DynamicField
-                    key={field.key}
+                    key={`field-${field.key}-${index}`}
                     field={field}
                     control={control}
                     language={currentLanguage}

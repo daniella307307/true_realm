@@ -532,6 +532,45 @@ export interface User {
       village_name: string;
     };
   };
+  province: number;
+  district: number;
+  sector: number;
+  cell: number;
+  village: number;
+  json: {
+    id: number;
+    dob: string;
+    cell: string;
+    name: string;
+    email: string;
+    gender: string;
+    sector: string;
+    village: string;
+    Izu_role: string;
+    district: string;
+    position: string;
+    province: string;
+    post_data: string;
+    survey_id: string;
+    telephone: string;
+    user_code: string;
+    nationalId: string;
+    project_id: string;
+    table_name: string;
+    userstatus: string;
+    highestgrade: string;
+    settingnames: string;
+    maritalStatus: string;
+    dateEnrollment: string;
+    source_module_id: string;
+    project_module_id: string;
+    allaw_notification: string;
+    ifaffiliatedwithsm: string;
+    sundaysavailability: string;
+    weekdaysavailability: string;
+    howLongHaveYouBeenAnIzu: string;
+    didYouReceivedOtherVocationalTraining: string;
+  };
 }
 
 export interface IProject {
@@ -675,6 +714,7 @@ export interface IFormSubmissionDetail {
   project_id?: number;
   post_data?: string;
   userId: number;
+  position?: number;
 }
 
 export const protectedBasePaths = [

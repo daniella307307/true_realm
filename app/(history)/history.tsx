@@ -19,6 +19,7 @@ import { IProject } from "~/types";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
+import { useGetAllLocallyCreatedIzus } from "~/services/izus";
 
 const HistoryProjectScreen = () => {
   const storedProjects = useGetAllProjects();
@@ -34,7 +35,16 @@ const HistoryProjectScreen = () => {
     isLoading: isLoadingFamilies,
     refresh: refreshFamilies,
   } = useGetAllLocallyCreatedFamilies();
+
+  const {
+    locallyCreatedIzus,
+    isLoading: isLoadingIzus,
+    refresh: refreshIzus,
+  } = useGetAllLocallyCreatedIzus();
+
+  // console.log("locallyCreatedIzus", JSON.stringify(locallyCreatedIzus, null, 2));
   const { t } = useTranslation();
+
   const { control, watch } = useForm({
     defaultValues: {
       searchQuery: "",
@@ -50,6 +60,7 @@ const HistoryProjectScreen = () => {
     await storedProjects.refresh();
     await refetchSurveySubmissions();
     await refreshFamilies();
+    await refreshIzus();
     setRefreshing(false);
   };
 
@@ -71,12 +82,18 @@ const HistoryProjectScreen = () => {
       surveySubmissions.map((submission) => submission.form_data?.project_id)
     );
 
+    // Get unique project IDs from locally created izus
+    const locallyCreatedIzuProjectIds = new Set(
+      locallyCreatedIzus.map((izu) => izu.form_data?.project_id)
+    );
+
     // Filter projects that have survey submissions
     const activeProjects = storedProjects.projects.filter(
       (project) =>
-        project?.status === 1 &&
+        project?.status !== 0 &&
         (projectIdsWithSubmissions.has(project.id) ||
-          locallyCreatedFamilyProjectIds.has(project.id))
+          locallyCreatedFamilyProjectIds.has(project.id) ||
+          locallyCreatedIzuProjectIds.has(project.id))
     );
 
     if (!searchQuery) {
@@ -113,8 +130,15 @@ const HistoryProjectScreen = () => {
         (family) => family.form_data?.project_id === item?.id
       ) || [];
 
+    const locallyCreatedIzuSubmissions =
+      locallyCreatedIzus?.filter(
+        (izu) => izu.form_data?.project_id === item?.id
+      ) || [];
+
     const totalSubmissions =
-      projectSubmissions.length + locallyCreatedFamilySubmissions.length;
+      projectSubmissions.length +
+      locallyCreatedFamilySubmissions.length +
+      locallyCreatedIzuSubmissions.length;
 
     console.log("The item is:", JSON.stringify(item, null, 2));
     return (
@@ -169,6 +193,19 @@ const HistoryProjectScreen = () => {
                       ?.sync_data?.submitted_at
                   ) {
                     const submissionDate = locallyCreatedFamilySubmissions[locallyCreatedFamilySubmissions.length - 1].sync_data?.submitted_at;
+                    // @ts-ignore
+                    if (submissionDate && (!latestDate || submissionDate > latestDate)) {
+                      // @ts-ignore
+                      latestDate = submissionDate;
+                    }
+                  }
+
+                  // Check izus submissions
+                  if (locallyCreatedIzuSubmissions.length > 0 &&
+                    locallyCreatedIzuSubmissions[locallyCreatedIzuSubmissions.length - 1]
+                      ?.sync_data?.submitted_at
+                  ) {
+                    const submissionDate = locallyCreatedIzuSubmissions[locallyCreatedIzuSubmissions.length - 1].sync_data?.submitted_at;
                     // @ts-ignore
                     if (submissionDate && (!latestDate || submissionDate > latestDate)) {
                       // @ts-ignore
