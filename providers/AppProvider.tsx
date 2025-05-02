@@ -7,6 +7,7 @@ import { useGetPosts } from "~/services/posts";
 import { useGetStakeholders } from "~/services/stakeholders";
 import { useGetCohorts } from "~/services/cohorts";
 import { useAuth } from "~/lib/hooks/useAuth";
+import { useGetStatistics } from '~/services/statistics';
 
 type AppDataContextType = {
   isDataLoaded: boolean;
@@ -35,7 +36,7 @@ export const AppDataProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const { refresh: refreshPosts } = useGetPosts(true);
   const { refresh: refreshStakeholders } = useGetStakeholders(true);
   const { refresh: refreshCohorts } = useGetCohorts(true);
-
+  const { refresh: refreshStatistics } = useGetStatistics(true);
   const refreshAllData = async () => {
     try {
       setIsRefreshing(true);
@@ -49,6 +50,7 @@ export const AppDataProvider: React.FC<{children: React.ReactNode}> = ({ childre
         refreshPosts(),
         refreshStakeholders(),
         refreshCohorts(),
+        refreshStatistics(),
       ]);
       
       console.log("All data refreshed successfully");

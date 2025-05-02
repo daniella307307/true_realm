@@ -3,9 +3,8 @@ import { Realm } from "@realm/react";
 export class Izu extends Realm.Object {
   id!: number;
   name!: string;
-  user_code!: string;
+  izucode!: string;
   villages_id!: number;
-  score!: number;
   position!: number | null;
 
   meta!: { [key: string]: string | number | boolean | null; };
@@ -20,9 +19,8 @@ export class Izu extends Realm.Object {
     properties: {
       id: "int",
       name: "string?",
-      user_code: "string?",
+      izucode: "string?",
       villages_id: "int?",
-      score: "int?",
       position: "int?",
       meta: 'mixed{}',
       form_data: 'mixed{}',

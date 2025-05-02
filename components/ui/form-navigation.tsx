@@ -5,7 +5,7 @@ import { getLocalizedTitle } from "~/utils/form-utils";
 import i18n from "~/utils/i18n";
 
 interface FormNavigationProps {
-  onBack: () => void;
+  onBack?: () => void;
   onNext: () => void;
   isNextDisabled?: boolean;
   showBack?: boolean;

@@ -98,14 +98,6 @@
     "assigned_Family": "Imiryango yahawe",
     "search_family": "Shakisha Imiryango"
   },
-  "StatisticsPage": {
-    "title": "Ibyo Wabonye",
-    "all_statistics": "Ibyo wabonye byose",
-    "statistics": "Ibyo wabonye",
-    "search_izu": "Shakisha IZU",
-    "number_of_families_visited": "Umubare w'imiryango yasuye",
-    "monitoring_behaviors": "Imyitwarire yo gukurikirana"
-  },
   "HistoryProjectPage": {
     "title": "Imishinga ibaruye",
     "all_history_project": "Imishinga ibaruye yose",
@@ -175,9 +167,9 @@
     "description": "Shyiramo imibare ine (4), yanyuma ya telephone",
     "verify": "Emeza"
   },
-  "CohortStatisticsPage": {
-    "title": "Ibyo wabonye",
-    "cohort_statistics": "Ibyo wabonye",
+  "StatisticsPage": {
+    "title": "Ibyo aba Izu babonye",
+    "izu_statistics": "Ibyo Izu yabonye",
     "cohort_id": "ID y'itsinda",
     "family_id": "ID y'imiryango",
     "family_name": "Izina ryawe",

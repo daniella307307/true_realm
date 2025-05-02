@@ -553,7 +553,7 @@ export interface User {
     post_data: string;
     survey_id: string;
     telephone: string;
-    user_code: string;
+    izucode: string;
     nationalId: string;
     project_id: string;
     table_name: string;
@@ -775,7 +775,20 @@ export interface IFamilies extends Generic {
 export interface Izus extends Generic {
   id: number | null;
   name: string;
-  user_code: string | null;
+  izucode: string | null;
   village_id: number | null;
   score: number | null;
+}
+
+export interface IStatistics {
+  id: number;
+  izucode: string;
+  villages_id: number;
+  position: number;
+  izu_statistics?: {
+    visits_done: number;
+    all_visits_to_make: number;
+    riskofharms: number;
+    total_families: number;
+  };
 }

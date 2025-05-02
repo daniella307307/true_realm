@@ -127,14 +127,6 @@
       "assigned_Family": "Assigned Family",
       "search_family": "Search Family"
     },
-    "StatisticsPage": {
-      "title": "Statistics",
-      "all_statistics": "All Statistics",
-      "statistics": "Statistics",
-      "search_izu": "Search IZU",
-      "number_of_families_visited": "Number of families visited",
-      "monitoring_behaviors": "Monitoring behaviors"
-    },
     "IzuMonitoringPage": {
       "title": "IZU Monitoring",
       "all_izu": "All IZU",
@@ -183,9 +175,9 @@
       "description": "Please enter your last 4 digits",
       "verify": "Verify"
     },
-    "CohortStatisticsPage": {
-      "title": "Cohort Statistics",
-      "cohort_statistics": "Cohort Statistics",
+    "StatisticsPage": {
+      "title": "Izus Statistics",
+      "izu_statistics": "Izu Statistics",
       "cohort_id": "Cohort ID",
       "family_id": "Family ID",
       "family_name": "Family Name",

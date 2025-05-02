@@ -212,7 +212,7 @@ export const createIzuWithMeta = (
     console.log("Creating Izu with processed data:", {
       id,
       name: izuData.name,
-      user_code: izuData.user_code,
+      izucode: izuData.izucode,
       villages_id: izuData.villages_id,
       score: izuData.score,
       position,
@@ -227,9 +227,8 @@ export const createIzuWithMeta = (
       result = realm.create<Izu>(Izu, {
         id,
         name: izuData.name,
-        user_code: izuData.user_code,
+        izucode: izuData.izucode,
         villages_id: izuData.villages_id,
-        score: izuData.score,
         position,
         meta,
         form_data: formData,
@@ -381,7 +380,7 @@ export const saveIzuToAPI = async (
           const completeData = {
             ...sanitizedIzuData,
             id: response.data.result.id,
-            user_code: response.data.result.user_code,
+            izucode: response.data.result.izucode,
             position: parsedPosition,
             ...response.data.result,
             sync_data: {
@@ -445,10 +444,9 @@ export const syncTemporaryIzus = async (
 
       const apiData = {
         id: izu.id,
-        user_code: izu.user_code,
+        izucode: izu.izucode,
         name: izu.name,
         villages_id: izu.villages_id,
-        score: izu.score,
         ...locationData,
         ...(izu.meta || {}),
         ...(izu.form_data || {}),
@@ -465,10 +463,10 @@ export const syncTemporaryIzus = async (
         const updatedData = {
           ...apiData,
           // Update the id with the id from the API
-          // Update the user_code with the user_code from the API
+          // Update the izucode with the izucode from the API
           // Update the position with the position from the API
           id: response.data.result.id,
-          user_code: response.data.result.user_code,
+          izucode: response.data.result.izucode,
           position: typeof response.data.result.position === 'string' ? parseInt(response.data.result.position, 10) : response.data.result.position,
           ...response.data.result,
           sync_data: {
@@ -498,16 +496,12 @@ export const syncTemporaryIzus = async (
                 existingIzu.name = updatedData.name;
               }
 
-              if (updatedData.user_code) {
-                existingIzu.user_code = updatedData.user_code;
+              if (updatedData.izucode) {
+                existingIzu.izucode = updatedData.izucode;
               }
 
               if (updatedData.villages_id) {
                 existingIzu.villages_id = updatedData.villages_id;
-              }
-
-              if (updatedData.score !== undefined) {
-                existingIzu.score = updatedData.score;
               }
 
               if (updatedData.location) {

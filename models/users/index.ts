@@ -2,7 +2,7 @@ import { Realm } from '@realm/react';
 
 export class User extends Realm.Object {
     id!: number;
-    user_code?: string;
+    izucode?: string;
     existing_code?: string;
     nationalID?: string;
     name!: string;
@@ -266,7 +266,7 @@ export class User extends Realm.Object {
         primaryKey: 'id',
         properties: {
             id: 'int',
-            user_code: 'string?',
+            izucode: 'string?',
             existing_code: 'string?',
             nationalID: 'string?',
             name: 'string',

@@ -22,14 +22,6 @@ const isIzu = (item: any): item is Izus => {
   return item && typeof item.name === 'string';
 };
 
-// Type guard to check if item has family property in the correct location
-const hasFamily = (item: any): boolean => {
-  return item && (
-    (typeof item.family === 'string') || 
-    (item.form_data && typeof item.form_data.family === 'string')
-  );
-};
-
 // Helper to get family ID from any item type
 const getFamilyId = (item: any): string | null => {
   if (!item) return null;
@@ -43,34 +35,6 @@ const getFamilyId = (item: any): string | null => {
   }
   
   return null;
-};
-
-// Define a type for the different item data types
-type DataItem = IFamilies | Izus | {
-  answers: { [k: string]: string };
-  _id: any;
-  family?: string;
-  form_data?: {
-    time_spent_filling_the_form?: string | null;
-    user_id?: number | null;
-    table_name?: string | null;
-    project_module_id?: number | null;
-    source_module_id?: number | null;
-    project_id?: number | null;
-    survey_id?: number | null;
-    post_data?: string | null;
-    izucode?: string | null;
-    cohort?: string | null;
-    family?: string;
-  };
-  location?: { [key: string]: any };
-  sync_data?: {
-    sync_status?: boolean;
-    sync_reason?: string;
-    sync_attempts?: number;
-    last_sync_attempt?: Date;
-    submitted_at?: Date;
-  };
 };
 
 const DetailScreen = () => {

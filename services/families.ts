@@ -5,6 +5,9 @@ import { baseInstance } from "~/utils/axios";
 import { Realm } from "@realm/react";
 import { useDataSync } from "./dataSync";
 import { isOnline } from "./network";
+import { useAuth } from "~/lib/hooks/useAuth";
+import { useMemo } from "react";
+import { Izu } from "~/models/izus/izu";
 
 const { useQuery } = RealmContext;
 
@@ -19,7 +22,8 @@ export async function fetchFamiliesFromRemote() {
 
 export function useGetFamilies(forceSync: boolean = false) {
   const storedFamilies = useQuery(Families);
-
+  const { user } = useAuth({});
+  
   const { syncStatus, refresh } = useDataSync([
     {
       key: "families",
@@ -44,9 +48,56 @@ export function useGetFamilies(forceSync: boolean = false) {
     },
   ]);
 
-  // console.log("storedFamilies", JSON.stringify(storedFamilies, null, 2));
+  // Filter families based on user's sector or cell and position
+  const filteredFamilies = useMemo(() => {
+    // If no user, return all families
+    if (!user || !user.json) return storedFamilies;
+
+    const position = Number(user.json.position);
+    
+    // If position is Cell Coordinator (7)
+    if (position === 7 && user.json.cell) {
+      // Get all IZUs with position 7 or 8 in the same cell
+      const izus = useQuery(Izu).filtered(
+        "position IN {7, 8} AND location.cell = $0", 
+        user.json.cell
+      );
+      
+      // Get izucodes from these IZUs
+      const izucodes = izus.map((izu: Izu) => izu.izucode);
+      
+      // Filter families by these izucodes
+      return storedFamilies.filtered(
+        "izucode IN $0", 
+        izucodes
+      );
+    }
+    
+    // If position is Sector Coordinator (13)
+    if (position === 13 && user.json.sector) {
+      // Get all IZUs with position 7 or 8 in the same sector
+      const izus = useQuery(Izu).filtered(
+        "position IN {7, 8} AND location.sector = $0", 
+        user.json.sector
+      );
+      
+      // Get izucodes from these IZUs
+      const izucodes = izus.map((izu: Izu) => izu.izucode);
+      
+      // Filter families by these izucodes
+      return storedFamilies.filtered(
+        "izucode IN $0", 
+        izucodes
+      );
+    }
+    
+    // Default return all families
+    return storedFamilies;
+  }, [storedFamilies, user]);
+
+  // console.log("filteredFamilies", JSON.stringify(filteredFamilies, null, 2));
   return {
-    families: storedFamilies,
+    families: filteredFamilies,
     isLoading: syncStatus.families?.isLoading || false,
     error: syncStatus.families?.error || null,
     lastSyncTime: syncStatus.families?.lastSyncTime || null,
@@ -175,6 +226,7 @@ export const createFamilyWithMeta = (
       hh_head_fullname: familyData.hh_head_fullname || "Unknown",
       village_name: familyData.village_name || "Unknown",
       village_id: familyData.village_id || null,
+      izucode: familyData.izucode || null,
       location,
       meta,
       form_data: formData,
@@ -237,6 +289,7 @@ function replaceTemporaryFamily(
     ...apiData,
     id: tempFamily.id, // Keep the same local ID
     hh_id: apiData.hh_id, // Update hh_id from API
+    izucode: apiData.izucode || null,
     sync_data: {
       sync_status: true,
       sync_reason: "Synced with server",
@@ -289,6 +342,7 @@ export const saveFamilyToAPI = async (
       village_id: familyData.village_id || null,
       meta: familyData.meta || prepareMetaData(familyData, extraFields),
       location,
+      izucode: familyData.izucode || null,
       form_data: {
         time_spent_filling_the_form:
           familyData.time_spent_filling_the_form || null,
@@ -341,6 +395,7 @@ export const saveFamilyToAPI = async (
             ...sanitizedFamilyData,
             id: response.data.result.id, // Keep local ID if exists
             hh_id: response.data.result.hh_id, // Update hh_id from API
+            izucode: response.data.result.izucode || null,
             sync_data: {
               sync_status: true,
               sync_reason: "Successfully synced",
@@ -397,6 +452,7 @@ export const syncTemporaryFamilies = async (
       const apiData = {
         hh_id: family.hh_id, // Will be null for unsynced records
         hh_head_fullname: family.hh_head_fullname,
+        izucode: family.izucode || null,
         village_name: family.village_name,
         village_id: family.village_id,
         province: locationData.province || 0,
@@ -419,6 +475,7 @@ export const syncTemporaryFamilies = async (
           ...apiData,
           id: response.data.result.id, // Update local ID
           hh_id: response.data.result.hh_id, // Update hh_id from API
+          izucode: response.data.result.izucode || null,
           ...response.data.result,
           sync_data: {
             sync_status: true,

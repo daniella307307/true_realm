@@ -102,7 +102,7 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
       const projectId = formSubmissionMandatoryFields.project_id || 0;
       const sourceModuleId =
         formSubmissionMandatoryFields.source_module_id || 0;
-      const izuCode = flowState.selectedValues.izus?.user_code || null;
+      const izuCode = flowState.selectedValues.izus?.izucode || null;
 
       if (familyId && surveyId && projectId && sourceModuleId) {
         const existingSubmission = realm

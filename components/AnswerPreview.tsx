@@ -46,7 +46,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
 
     // Handle flow state values
     if (field.key === "izucode" || field.key === "izu_id") {
-      return flowState?.selectedValues?.izus?.user_code || "-";
+      return flowState?.selectedValues?.izus?.izucode || "-";
     }
     if (field.key === "cohort") {
       return flowState?.selectedValues?.cohorts?.cohort || "-";
@@ -187,7 +187,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
           </Text>
 
           {/* IZU */}
-          {flowState.selectedValues.izus?.user_code && (
+          {flowState.selectedValues.izus?.izucode && (
             <View className="mb-4">
               <View className="flex flex-row justify-between items-center mb-2">
                 <Text className="font-medium text-[#050F2B]">
@@ -201,7 +201,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
                 </TouchableOpacity>
               </View>
               <Text className="text-[#52525B]">
-                {flowState.selectedValues.izus.user_code}
+                {flowState.selectedValues.izus.izucode}
               </Text>
             </View>
           )}

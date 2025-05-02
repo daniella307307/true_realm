@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { View, TextInput, FlatList, TouchableOpacity } from "react-native";
+import {
+  View,
+  TextInput,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { Text } from "./text";
 import { useGetIzus } from "~/services/izus";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,13 +28,13 @@ const IzuCodeItem = ({
   isSelected: boolean;
 }) => (
   <TouchableOpacity
-    onPress={() => onSelect(item?.user_code || "")}
+    onPress={() => onSelect(item?.izucode || "")}
     className={`px-4 py-3 mb-2 rounded-lg ${
       isSelected ? "bg-primary bg-opacity-20" : "bg-white"
     } border border-[#E4E4E7]`}
   >
     <Text className={`font-medium ${isSelected ? "text-white" : "text-black"}`}>
-      {item.user_code}
+      {item.izucode}
     </Text>
     <Text
       className={`text-sm text-gray-500 ${
@@ -49,14 +55,16 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
   );
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { izus: izus, isLoading } = useGetIzus();
+  const { izus: izus, isLoading } = useGetIzus(true);
 
-  // console.log("izus", JSON.stringify(izus, null, 2));
-  const filteredIzus = izus?.filter(
-    (izu) =>
-      izu.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      izu.user_code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredIzus = izus?.filter((izu) => {
+    if (!searchQuery) return true;
+    return (
+      izu?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      izu?.izucode?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
   const language = i18n.language;
 
   const handleSelect = (izu: Izus) => {
@@ -67,7 +75,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
   if (isLoading) {
     return (
       <View className="flex-1 p-4">
-        <Text>Loading IZUs...</Text>
+        <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
   }
@@ -85,7 +93,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
       {/* Selected IZU Code Input */}
       <TextInput
         className={`w-full px-4 py-4 border rounded-lg border-[#E4E4E7] bg-white mb-2`}
-        value={selectedIzu?.user_code || ""}
+        value={selectedIzu?.izucode || ""}
         placeholder="Select an IZU code"
         editable={false}
       />
@@ -104,13 +112,17 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
       {/* Scrollable list of IZU codes */}
       <View className="flex-1 border rounded-lg border-[#E4E4E7] bg-gray-50">
         <FlatList
-          data={(filteredIzus as unknown as Izus[]).filter(izu => izu.user_code && izu.user_code.trim() !== "")}
-          keyExtractor={(item: Izus) => `${item.user_code || ''}:${item.id || ''}`}
+          data={(filteredIzus as unknown as Izus[]).filter(
+            (izu) => izu.izucode && izu.izucode.trim() !== ""
+          )}
+          keyExtractor={(item: Izus) =>
+            `${item.izucode || ""}:${item.id || ""}`
+          }
           renderItem={({ item }) => (
             <IzuCodeItem
               item={item}
               onSelect={() => handleSelect(item)}
-              isSelected={selectedIzu?.user_code === item.user_code}
+              isSelected={selectedIzu?.izucode === item.izucode}
             />
           )}
           contentContainerStyle={{ padding: 8 }}

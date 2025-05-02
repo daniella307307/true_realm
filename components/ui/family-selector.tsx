@@ -7,10 +7,6 @@ import { Ionicons } from "@expo/vector-icons";
 import i18n from "~/utils/i18n";
 import { getLocalizedTitle } from "~/utils/form-utils";
 import { RealmContext } from "~/providers/RealContextProvider";
-import { Province } from "~/models/locations/province";
-import { District } from "~/models/locations/district";
-import { Sector } from "~/models/locations/sector";
-import { Cell } from "~/models/locations/cell";
 import { Village } from "~/models/locations/village";
 
 interface FamilySelectorProps {

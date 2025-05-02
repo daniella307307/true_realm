@@ -6,7 +6,7 @@ export class Families extends Realm.Object {
   hh_head_fullname!: string | null;
   village_name!: string | null;
   village_id!: number | null;
-
+  izucode!: string | null;
   meta!: { [key: string]: string | number | boolean | null; };
   form_data!: { [key: string]: string | number | boolean | null };
   location!: { [key: string]: string | number | boolean | null };
@@ -21,7 +21,7 @@ export class Families extends Realm.Object {
       hh_head_fullname: "string?",
       village_name: "string?",
       village_id: "int?",
-
+      izucode: "string?",
       meta: 'mixed{}',
       form_data: 'mixed{}',
       location: 'mixed{}',

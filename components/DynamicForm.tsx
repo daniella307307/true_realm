@@ -456,7 +456,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             ? Number(flowState.selectedValues.locations.village.id)
             : 0,
           family: familyId,
-          izucode: flowState?.selectedValues?.izus?.user_code || null,
+          izucode: flowState?.selectedValues?.izus?.izucode || null,
           cohort: flowState?.selectedValues?.cohorts?.cohort
             ? Number(flowState.selectedValues.cohorts.cohort)
             : 0,
