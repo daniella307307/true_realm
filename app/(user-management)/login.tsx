@@ -105,9 +105,9 @@ export default function LoginScreen() {
         Toast.hide();
         Toast.show({
           type: "success",
-          text1: t("Login.welcome"),
-          text2: t("Login.loginSuccess"),
-          position: "top",
+          text1: t("Login.welcome", "Welcome"),
+          text2: t("Login.loginSuccess", "Login successful"),
+          position: "bottom",
         });
         
         // Navigate to home after successful sync

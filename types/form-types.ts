@@ -1,4 +1,4 @@
-import { FormField, ICohort, IFormSubmissionDetail, IFamilies } from "~/types";
+import { ICohort, IFormSubmissionDetail, IFamilies } from "~/types";
 import { IProvince } from "~/models/locations/province";
 import { ISector } from "~/models/locations/sector";
 import { IVillage } from "~/models/locations/village";
@@ -62,4 +62,70 @@ export interface ProcessedSubmission {
   family?: string | null;
   lastSyncAttempt?: Date | null;
   project_module_id: number;
+}
+
+export interface FormField {
+  key: string;
+  type: string;
+  input: boolean;
+  label: string;
+  title: {
+    en: string;
+    kn: string;
+    default: string;
+  };
+  tableView: boolean;
+  fields?: {
+    day?: {
+      hide?: boolean;
+      required?: boolean;
+      placeholder?: string;
+    };
+    month?: {
+      hide?: boolean;
+      required?: boolean;
+      placeholder?: string;
+      type?: string;
+    };
+    year?: {
+      hide?: boolean;
+      required?: boolean;
+      placeholder?: string;
+    };
+  };
+  data?: {
+    values: Array<{
+      label: string;
+      value: string;
+    }>;
+  };
+  values?: Array<{
+    label: string;
+    value: string;
+    title?: {
+      en: string;
+      kn: string;
+      default: string;
+    };
+  }>;
+  conditional?: {
+    eq: string;
+    show: boolean;
+    when: string;
+  };
+  validate?: {
+    required?: boolean;
+    customMessage?: string;
+    min?: number;
+    max?: number;
+    minLength?: number;
+    maxLength?: number;
+    minWords?: number;
+    maxWords?: number;
+  };
+  errorLabel?: string;
+  validateWhenHidden?: boolean;
+  dependsOn?: string;
+  visibleIf?: string;
+  minDate?: string;
 }

@@ -15,6 +15,7 @@ import { Village } from "~/models/locations/village";
 import { Stakeholder } from "~/models/stakeholders/stakeholder";
 import { Post } from "~/models/posts/post";
 import { Statistics } from "~/models/statistics/statistics";
+import { Notifications } from "~/models/notifications/notifications";
 
 const realmPath = `${FileSystem.documentDirectory}sugiramuryango-offline-db.realm`;
 
@@ -33,7 +34,8 @@ const schemas = [
   Village,
   Stakeholder,
   Post,
-  Statistics
+  Statistics,
+  Notifications
 ];
 export const RealmContext = createRealmContext({
   schema: schemas,

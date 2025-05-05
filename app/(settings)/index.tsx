@@ -20,8 +20,12 @@ const SettingsScreen = () => {
   const realm = useRealm();
   const parsedIncentives = user?.incentives ? JSON.parse(user.incentives) : [];
 
+  console.log("Village", user?.village);
   const { data: locationNames, isLoading: isLoadingLocations } =
     useGetLocationByVillageId(user?.village.toString() || "");
+
+
+  console.log("Location Names", locationNames);
 
   type InfoItemProps = {
     label: string;
@@ -110,31 +114,31 @@ const SettingsScreen = () => {
         {user && (
           <>
             <Text className="text-lg font-semibold mb-2 mt-4">
-              {t("SettingsPage.location")}
+              {t("SettingsPage.location", "Location")}
             </Text>
             <InfoItem
-              label={t("SettingsPage.province")}
-              value={locationNames?.province.province_name || ""}
+              label={t("SettingsPage.province", "Province")}
+              value={locationNames?.location.province.province_name || ""}
               isLoading={isLoadingLocations}
             />
             <InfoItem
-              label={t("SettingsPage.district")}
-              value={locationNames?.district.district_name || ""}
+              label={t("SettingsPage.district", "District")}
+              value={locationNames?.location.district.district_name || ""}
               isLoading={isLoadingLocations}
             />
             <InfoItem
-              label={t("SettingsPage.sector")}
-              value={locationNames?.sector.sector_name || ""}
+              label={t("SettingsPage.sector", "Sector")}
+              value={locationNames?.location.sector.sector_name || ""}
               isLoading={isLoadingLocations}
             />
             <InfoItem
-              label={t("SettingsPage.cell")}
-              value={locationNames?.cell.cell_name || ""}
+              label={t("SettingsPage.cell", "Cell")}
+              value={locationNames?.location.cell.cell_name || ""}
               isLoading={isLoadingLocations}
             />
             <InfoItem
-              label={t("SettingsPage.village")}
-              value={locationNames?.village.village_name || ""}
+              label={t("SettingsPage.village", "Village")}
+              value={locationNames?.location.village.village_name || ""}
               isLoading={isLoadingLocations}
             />
           </>

@@ -41,55 +41,104 @@ const HomeScreen = () => {
   // Calculate item width for grid view (only used when width >= 375)
   const itemWidth = (width - 48) / 2; // 2 columns for normal phones with padding
 
-  const activeLinks = [
-    {
-      icon: <TabBarIcon name="family-restroom" family="MaterialIcons" />,
-      title: t("HomePage.families"),
-      route: "/(families)/",
-    },
-    {
-      icon: (
-        <TabBarIcon name="calendar-month" family="MaterialCommunityIcons" />
-      ),
-      title: t("HomePage.history"),
-      route: "/(history)/history",
-    },
-    {
-      icon: <TabBarIcon name="chart-simple" family="FontAwesome6" />,
-      title: t("HomePage.statistics"),
-      route: "/(statistics)/",
-    },
-    {
-      icon: <TabBarIcon name="account-star" family="MaterialCommunityIcons" />,
-      title: t("HomePage.IZU_Monitoring"),
-      route: "/(izu-monitoring)/izu-monitoring",
-    },
-    {
-      icon: <TabBarIcon name="video" family="Entypo" />,
-      title: t("HomePage.videos"),
-      route: "/(videos)/video",
-    },
-    {
-      icon: <TabBarIcon name="settings" family="Ionicons" />,
-      title: t("HomePage.settings"),
-      route: "/(settings)/",
-    },
-    {
-      icon: <TabBarIcon name="project" family="Octicons" />,
-      title: t("HomePage.projects"),
-      route: "/(projects)/project",
-    },
-    {
-      icon: <TabBarIcon name="phone" family="FontAwesome6" />,
-      title: t("HomePage.Izu_telephone_Supervision"),
-      route: "/(home)/home",
-    },
-    {
-      icon: <TabBarIcon name="chat" family="Entypo" />,
-      title: t("HomePage.community"),
-      route: "/(community)/community",
-    },
-  ];
+  // Project IDs for navigation
+  const HOUSEHOLD_ENROLLMENT_ID = 5;
+  const IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID = 8;
+  const IZU_AT_VILLAGE_DEMOGRAPHICS_ID = 6;
+  const IZU_CELL_TELEPHONE_SUPERVISION_ID = 11;
+  const IZU_SECTOR_TELEPHONE_SUPERVISION_ID = 12;
+
+  // Dynamic links based on user role
+  const getActiveLinks = () => {
+    const baseLinks = [
+      {
+        icon: <TabBarIcon name="family-restroom" family="MaterialIcons" />,
+        title: t("HomePage.families"),
+        route: "/(families)/",
+      },
+      {
+        icon: <TabBarIcon name="home" family="Entypo" />,
+        title: t("HomePage.household_enrollment", "Household Enrollment") || "Household Enrollment",
+        route: `/(mods)/(projects)/${HOUSEHOLD_ENROLLMENT_ID}`,
+      },
+      {
+        icon: (
+          <TabBarIcon name="calendar-month" family="MaterialCommunityIcons" />
+        ),
+        title: t("HomePage.history"),
+        route: "/(history)/history",
+      },
+      {
+        icon: <TabBarIcon name="chart-simple" family="FontAwesome6" />,
+        title: t("HomePage.statistics"),
+        route: "/(statistics)/",
+      },
+      {
+        icon: <TabBarIcon name="account-star" family="MaterialCommunityIcons" />,
+        title: t("HomePage.IZU_Monitoring"),
+        route: "/(izu-monitoring)/izu-monitoring",
+      },
+      {
+        icon: <TabBarIcon name="video" family="Entypo" />,
+        title: t("HomePage.videos"),
+        route: "/(videos)/video",
+      },
+      {
+        icon: <TabBarIcon name="settings" family="Ionicons" />,
+        title: t("HomePage.settings"),
+        route: "/(settings)/",
+      },
+      {
+        icon: <TabBarIcon name="project" family="Octicons" />,
+        title: t("HomePage.projects"),
+        route: "/(projects)/project",
+      },
+      {
+        icon: <TabBarIcon name="chat" family="Entypo" />,
+        title: t("HomePage.community"),
+        route: "/(community)/community",
+      },
+    ];
+
+    // Add Sector Coordinator Demographics for users with position 13
+    if (user?.position === 13) {
+      baseLinks.push({
+        icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
+        title: t("HomePage.IZU_Sector_Coordinator_Demographics", "IZU Sector Coordinator Demographics") || "IZU Sector Coordinator Demographics",
+        route: `/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
+      });
+    }
+
+    // Add Village Demographics for users with position 7
+    if (user?.position === 7) {
+      baseLinks.push({
+        icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
+        title: t("HomePage.IZU_At_Village_Demographics", "IZU At Village Demographics") || "IZU At Village Demographics",
+        route: `/(mods)/(projects)/${IZU_AT_VILLAGE_DEMOGRAPHICS_ID}`,
+      });
+    }
+
+    // Add IZU Sector Telephone Supervision for users with position 13
+    if (user?.position === 13) {
+      baseLinks.push({
+        icon: <TabBarIcon name="phone" family="FontAwesome6" />,
+        title: t("HomePage.IZU_Sector_Telephone_Supervision", "IZU Sector Telephone Supervision") || "IZU Sector Telephone Supervision",
+        route: `/(mods)/(projects)/${IZU_SECTOR_TELEPHONE_SUPERVISION_ID}`,
+      });
+    }
+
+    // Add IZU Cell Telephone Supervision for users with position 7
+    if (user?.position === 7) {
+      baseLinks.push({
+        icon: <TabBarIcon name="phone" family="FontAwesome6" />,
+        title: t("HomePage.IZU_Cell_Telephone_Supervision", "IZU Cell Telephone Supervision") || "IZU Cell Telephone Supervision",
+        route: `/(mods)/(projects)/${IZU_CELL_TELEPHONE_SUPERVISION_ID}`,
+      });
+    }
+    return baseLinks;
+  };
+
+  const activeLinks = getActiveLinks();
 
   useEffect(() => {
     // When data is loaded for the first time, hide the splash screen

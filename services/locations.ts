@@ -293,32 +293,36 @@ export function useLocalLocation() {
 }
 
 interface ILocationDerivedByVillageId {
-  province: {
-    id: number;
-    province_name: string;
-  };
-  district: {
-    id: number;
-    district_name: string;
-  };
-  sector: {
-    id: number;
-    sector_name: string;
-  };
-  cell: {
-    id: number;
-    cell_name: string;
-  };
-  village: {
-    id: number;
-    village_name: string;
-  };
+  location: {
+    province: {
+      id: number;
+      province_name: string;
+    };
+    district: {
+      id: number;
+      district_name: string;
+    };
+    sector: {
+      id: number;
+      sector_name: string;
+    };
+    cell: {
+      id: number;
+      cell_name: string;
+    };
+    village: {
+      id: number;
+      village_name: string;
+    };
+  }
 }
 
 const fetchLocationVillageById = async (
   villageId: string
 ): Promise<ILocationDerivedByVillageId> => {
-  const response = await baseInstance.get(`/locations/village/${villageId}`);
+  console.log("Fetching location village by id", villageId);
+  const response = await baseInstance.get(`/location/village/${villageId}`);
+  console.log("Response", response.data);
   return response.data;
 };
 

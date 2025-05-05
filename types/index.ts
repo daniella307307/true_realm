@@ -742,6 +742,7 @@ export interface Generic {
     cohort?: string | null;
     form_status?: string | null;
     family?: string | null;
+    survey_result_id?: number | null;
   };
   location?: {
     province?: number | null;
@@ -791,4 +792,25 @@ export interface IStatistics {
     riskofharms: number;
     total_families: number;
   };
+}
+
+export interface INotifications extends Generic {
+  id: number;
+  followup_date: string;
+  status: string;
+  comment: string;
+  user?: {
+    id: number;
+    name: string;
+  };
+  survey?: {
+    id: number;
+    name: string;
+  };
+  survey_result?: {
+    id: number;
+    _id: string;
+  };
+  created_at: string;
+  updated_at: string;
 }

@@ -6,7 +6,7 @@ import {
   ScrollView,
 } from "react-native";
 
-import { Controller, useForm, useWatch, useFormContext } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import Dropdown from "./ui/select";
 import { Text } from "./ui/text";
 import { useMemo, useEffect, useState } from "react";
@@ -19,6 +19,7 @@ import { Eye, EyeOff } from "lucide-react-native";
 const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   field,
   control,
+  type,
   language = "en-US",
 }) => (
   <Controller
@@ -26,7 +27,7 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
     name={field.key}
     rules={{
       required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
+        ? field.validate.customMessage || field.errorLabel || "This field is required"
         : false,
       ...(field.type === "phoneNumber" && {
         pattern: {
@@ -34,6 +35,44 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
           message: "Phone number must be exactly 10 digits",
         },
       }),
+      ...(type === "number" || field.type === "number" ? {
+        min: {
+          value: field.validate?.min !== undefined ? field.validate.min : 0,
+          message: field.errorLabel || `Minimum value is ${field.validate?.min}`,
+        },
+        max: {
+          value: field.validate?.max !== undefined ? field.validate.max : Infinity,
+          message: field.errorLabel || `Maximum value is ${field.validate?.max}`,
+        },
+      } : {}),
+      ...(field.validate?.minLength ? {
+        minLength: {
+          value: field.validate.minLength,
+          message: field.errorLabel || `Minimum length is ${field.validate.minLength} characters`,
+        },
+      } : {}),
+      ...(field.validate?.maxLength ? {
+        maxLength: {
+          value: field.validate.maxLength,
+          message: field.errorLabel || `Maximum length is ${field.validate.maxLength} characters`,
+        },
+      } : {}),
+      validate: {
+        ...(field.validate?.minWords && {
+          minWords: (value) =>
+            !value ||
+            value.trim().split(/\s+/).filter(Boolean).length >= (field.validate?.minWords || 0) ||
+            field.errorLabel ||
+            `Minimum ${field.validate?.minWords} words required`,
+        }),
+        ...(field.validate?.maxWords && {
+          maxWords: (value) =>
+            !value ||
+            value.trim().split(/\s+/).filter(Boolean).length <= (field.validate?.maxWords || Infinity) ||
+            field.errorLabel ||
+            `Maximum ${field.validate?.maxWords} words allowed`,
+        }),
+      },
     }}
     render={({ field: { onChange, value }, fieldState: { error } }) => (
       <View className="mb-4">
@@ -45,23 +84,27 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
           className={`w-full px-4 py-4 border rounded-lg ${
             error ? "border-primary" : "border-[#E4E4E7]"
           }`}
-          value={value}
+          value={value?.toString()}
           keyboardType={
-            field.type === "phoneNumber" || field.type === "number"
+            field.type === "phoneNumber" || type === "number" || field.type === "number"
               ? "numeric"
               : "default"
           }
           maxLength={
             field.type === "phoneNumber"
               ? 10
-              : field.type === "number"
-              ? 125
+              : field.validate?.maxLength
+              ? field.validate.maxLength
               : undefined
           }
           onChangeText={(text) => {
             if (field.type === "phoneNumber") {
               // Only allow digits for phone numbers
               const numbersOnly = text.replace(/[^0-9]/g, "");
+              onChange(numbersOnly);
+            } else if (type === "number" || field.type === "number") {
+              // Only allow digits for numbers
+              const numbersOnly = text.replace(/[^0-9.-]/g, "");
               onChange(numbersOnly);
             } else {
               onChange(text);

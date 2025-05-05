@@ -8,6 +8,8 @@ import { useGetStakeholders } from "~/services/stakeholders";
 import { useGetCohorts } from "~/services/cohorts";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useGetStatistics } from '~/services/statistics';
+import { useGetNotifications } from '~/services/notifications';
+import { useGetAllSurveySubmissions, useGetRemoteSurveySubmissions } from '~/services/survey-submission';
 
 type AppDataContextType = {
   isDataLoaded: boolean;
@@ -37,6 +39,8 @@ export const AppDataProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const { refresh: refreshStakeholders } = useGetStakeholders(true);
   const { refresh: refreshCohorts } = useGetCohorts(true);
   const { refresh: refreshStatistics } = useGetStatistics(true);
+  const { refresh: refreshNotifications } = useGetNotifications(true);
+  const { refresh: refreshRemoteSurveySubmissions } = useGetRemoteSurveySubmissions(true);
   const refreshAllData = async () => {
     try {
       setIsRefreshing(true);
@@ -50,7 +54,9 @@ export const AppDataProvider: React.FC<{children: React.ReactNode}> = ({ childre
         refreshPosts(),
         refreshStakeholders(),
         refreshCohorts(),
+        refreshNotifications(),
         refreshStatistics(),
+        refreshRemoteSurveySubmissions(),
       ]);
       
       console.log("All data refreshed successfully");
