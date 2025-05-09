@@ -571,6 +571,8 @@ export interface User {
     howLongHaveYouBeenAnIzu: string;
     didYouReceivedOtherVocationalTraining: string;
   };
+  is_first_login: number;
+  is_password_changed: number;
 }
 
 export interface IProject {
@@ -715,13 +717,16 @@ export interface IFormSubmissionDetail {
   post_data?: string;
   userId: number;
   position?: number;
+  family_id?: number;
+  izu_id?: number;
+  cohort_id?: number;
 }
 
 export const protectedBasePaths = [
   "/(families)",
   "/(history)",
   "/(statistics)",
-  "/(izu-monitoring)",
+  "/(monitoring)",
   "/(videos)",
   "/(settings)",
   "/(projects)",
@@ -739,7 +744,7 @@ export interface Generic {
     survey_id?: number | null;
     post_data?: string | null;
     izucode?: string | null;
-    cohort?: string | null;
+    cohorts?: string | null;
     form_status?: string | null;
     family?: string | null;
     survey_result_id?: number | null;
@@ -758,6 +763,26 @@ export interface Generic {
     last_sync_attempt?: Date;
     submitted_at?: Date;
   };
+}
+export interface IMonitoringModules extends Generic {
+  id: number;
+  monitoring_id: number;
+  modules_id: number;
+  project_id: number;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface IMonitoringForms extends Generic {
+  id: number;
+  name: string;
+  name_kin: string;
+  json2: {
+    components: FormField[];
+  };
+  post_data: string;
+  table_name: string;
+  single_page: string;
+  status: string;
 }
 export interface ISurveySubmission extends Generic {
   _id: Realm.BSON.ObjectId;
@@ -791,6 +816,8 @@ export interface IStatistics {
     all_visits_to_make: number;
     riskofharms: number;
     total_families: number;
+    score?: number;
+    total_points?: number;
   };
 }
 
@@ -814,3 +841,20 @@ export interface INotifications extends Generic {
   created_at: string;
   updated_at: string;
 }
+
+export interface IPerformance extends Generic {
+  id: number;
+  family_id: string;
+  user_id: number;
+  module_id: string;
+  form_id: string;
+  date_recorded: string;
+  type: string;
+  cohort: string;
+  json: string;
+  timestamp: string;
+  answer: string;
+  created_at: string;
+  updated_at: string;
+}
+

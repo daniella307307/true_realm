@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import i18n from "~/utils/i18n";
 import { getLocalizedTitle } from "~/utils/form-utils";
 import { Izus } from "~/types";
+import { useFocusEffect } from "@react-navigation/native";
 
 interface IzuSelectorProps {
   onSelect: (value: Izus) => void;
@@ -55,7 +56,18 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
   );
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { izus: izus, isLoading } = useGetIzus(true);
+  const { izus: izus, isLoading, refresh } = useGetIzus();
+  // console.log("Izus: ", JSON.stringify(izus, null, 2));
+  // Add focus effect to refresh data when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      // Refresh the data when the screen comes into focus
+      refresh();
+      return () => {};
+    }, [refresh])
+  );
+
+  // console.log("Izus: ", JSON.stringify(izus, null, 2));
 
   const filteredIzus = izus?.filter((izu) => {
     if (!searchQuery) return true;

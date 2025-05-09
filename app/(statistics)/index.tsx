@@ -27,7 +27,7 @@ const StatisticsScreen = () => {
       <FormNavigation
         onNext={() => {
           console.log("Izu:", selectedIzu);
-          router.push(`/(statistics)/${selectedIzu?.izucode}?izu_name=${selectedIzu?.name}`);
+          router.push(`/(statistics)/${selectedIzu?.id}?izu_name=${selectedIzu?.name}&izucode=${selectedIzu?.izucode}`);
         }}
         isNextDisabled={!selectedIzu}
         showBack={false}

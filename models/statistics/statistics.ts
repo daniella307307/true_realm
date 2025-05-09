@@ -9,6 +9,7 @@ export class Statistics extends Realm.Object {
 
     static schema = {
         name: "Statistics",
+        primaryKey: "id",
         properties: {
             id: "int",
             izucode: "string",

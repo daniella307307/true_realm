@@ -66,201 +66,201 @@ export const createSurveySubmission = (
   };
 };
 
-// Transform API response survey submissions to the ISurveySubmission format
-export const transformApiSurveySubmissions = (apiResponses: any[]) => {
-  return apiResponses.map(response => {
-    // Parse the JSON field to extract data
-    const jsonData = typeof response.json === 'string' ? JSON.parse(response.json) : response.json;
+// // Transform API response survey submissions to the ISurveySubmission format
+// export const transformApiSurveySubmissions = (apiResponses: any[]) => {
+//   return apiResponses.map(response => {
+//     // Parse the JSON field to extract data
+//     const jsonData = typeof response.json === 'string' ? JSON.parse(response.json) : response.json;
     
-    // Extract answers from jsonData by removing metadata fields
-    const metadataFields = [
-      '_id', 'Time_spent_filling_the_form', 'userId', 'table_name', 'project_module_id', 
-      'source_module_id', 'project_id', 'survey_id', 'post_data', 'izucode', 'family',
-      'province', 'district', 'sector', 'cell', 'village', 'submittedAt',
-      'province_name', 'district_name', 'sector_name', 'cell_name', 'village_name',
-      'izu_name', 'familyID', 'hh_head_fullname', 'enrollment_date'
-    ];
+//     // Extract answers from jsonData by removing metadata fields
+//     const metadataFields = [
+//       '_id', 'Time_spent_filling_the_form', 'userId', 'table_name', 'project_module_id', 
+//       'source_module_id', 'project_id', 'survey_id', 'post_data', 'izucode', 'family',
+//       'province', 'district', 'sector', 'cell', 'village', 'submittedAt',
+//       'province_name', 'district_name', 'sector_name', 'cell_name', 'village_name',
+//       'izu_name', 'familyID', 'hh_head_fullname', 'enrollment_date'
+//     ];
     
-    const answers: Record<string, any> = {};
-    Object.keys(jsonData).forEach(key => {
-      if (!metadataFields.includes(key)) {
-        answers[key] = jsonData[key];
-      }
-    });
+//     const answers: Record<string, any> = {};
+//     Object.keys(jsonData).forEach(key => {
+//       if (!metadataFields.includes(key)) {
+//         answers[key] = jsonData[key];
+//       }
+//     });
     
-    // Create the transformed submission
-    return {
-      _id: new Realm.BSON.ObjectId(jsonData._id || new Realm.BSON.ObjectId().toString()),
-      answers,
-      form_data: {
-        time_spent_filling_the_form: jsonData.Time_spent_filling_the_form || null,
-        user_id: jsonData.userId || response.user_id || null,
-        table_name: jsonData.table_name || null,
-        project_module_id: jsonData.project_module_id || response.project_module_id || null,
-        source_module_id: jsonData.source_module_id || response.module_id || null,
-        project_id: jsonData.project_id || response.project_id || null,
-        survey_id: jsonData.survey_id || response.survey_id || null,
-        post_data: jsonData.post_data || null,
-        izucode: jsonData.izucode || null,
-        family: jsonData.family || response.families_id || null,
-        form_status: "followup",
-        cohort: response.cohort || null,
-      },
-      location: {
-        province: jsonData.province || null,
-        district: jsonData.district || null,
-        sector: jsonData.sector || null,
-        cell: jsonData.cell || null,
-        village: jsonData.village || null,
-      },
-      sync_data: {
-        sync_status: true, // Since this comes from the API, it's already synced
-        sync_reason: "Success, comes from the API",
-        sync_attempts: 1,
-        last_sync_attempt: new Date(),
-        submitted_at: new Date(jsonData.submittedAt || response.created_at || new Date()),
-      },
-    };
-  });
-};
+//     // Create the transformed submission
+//     return {
+//       _id: new Realm.BSON.ObjectId(jsonData._id || new Realm.BSON.ObjectId().toString()),
+//       answers,
+//       form_data: {
+//         time_spent_filling_the_form: jsonData.Time_spent_filling_the_form || null,
+//         user_id: jsonData.userId || response.user_id || null,
+//         table_name: jsonData.table_name || null,
+//         project_module_id: jsonData.project_module_id || response.project_module_id || null,
+//         source_module_id: jsonData.source_module_id || response.module_id || null,
+//         project_id: jsonData.project_id || response.project_id || null,
+//         survey_id: jsonData.survey_id || response.survey_id || null,
+//         post_data: jsonData.post_data || null,
+//         izucode: jsonData.izucode || null,
+//         family: jsonData.family || response.families_id || null,
+//         form_status: "followup",
+//         cohort: response.cohort || null,
+//       },
+//       location: {
+//         province: jsonData.province || null,
+//         district: jsonData.district || null,
+//         sector: jsonData.sector || null,
+//         cell: jsonData.cell || null,
+//         village: jsonData.village || null,
+//       },
+//       sync_data: {
+//         sync_status: true, // Since this comes from the API, it's already synced
+//         sync_reason: "Success, comes from the API",
+//         sync_attempts: 1,
+//         last_sync_attempt: new Date(),
+//         submitted_at: new Date(jsonData.submittedAt || response.created_at || new Date()),
+//       },
+//     };
+//   });
+// };
 
-export async function fetchSurveySubmissionsFromRemote() {
-  try {
-    const res = await baseInstance.get('/responses');
-    console.log(`Received ${res.data.responses.length} survey submissions from API`);
+// export async function fetchSurveySubmissionsFromRemote() {
+//   try {
+//     const res = await baseInstance.get('/responses');
+//     console.log(`Received ${res.data.responses.length} survey submissions from API`);
     
-    // Transform the API response data to match our Realm model
-    return transformApiSurveySubmissions(res.data.responses);
-  } catch (error) {
-    console.error('Error fetching survey submissions from remote:', error);
-    throw error;
-  }
-}
+//     // Transform the API response data to match our Realm model
+//     return transformApiSurveySubmissions(res.data.responses);
+//   } catch (error) {
+//     console.error('Error fetching survey submissions from remote:', error);
+//     throw error;
+//   }
+// }
 
-export function useGetRemoteSurveySubmissions(forceSync: boolean = false) {
-  const realm = useRealm();
-  const [surveySubmissions, setSurveySubmissions] = useState<ISurveySubmission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+// export function useGetRemoteSurveySubmissions(forceSync: boolean = false) {
+//   const realm = useRealm();
+//   const [surveySubmissions, setSurveySubmissions] = useState<ISurveySubmission[]>([]);
+//   const [isLoading, setIsLoading] = useState(true);
+//   const [error, setError] = useState<Error | null>(null);
+//   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   
-  // Prevent excessive API calls with a ref to track if we're already fetching
-  const isFetchingRef = useRef(false);
-  // Track last fetch time to enforce minimum interval between fetches
-  const lastFetchTimeRef = useRef<number>(0);
-  // Minimum time between API calls in milliseconds (5 seconds)
-  const MIN_FETCH_INTERVAL = 5000;
+//   // Prevent excessive API calls with a ref to track if we're already fetching
+//   const isFetchingRef = useRef(false);
+//   // Track last fetch time to enforce minimum interval between fetches
+//   const lastFetchTimeRef = useRef<number>(0);
+//   // Minimum time between API calls in milliseconds (5 seconds)
+//   const MIN_FETCH_INTERVAL = 5000;
   
-  const fetchAndSaveSubmissions = useCallback(async () => {
-    // Skip if already fetching or if it's too soon since last fetch
-    const now = Date.now();
-    if (isFetchingRef.current || (now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL)) {
-      console.log('Skipping fetch: ' + (isFetchingRef.current ? 'Already fetching' : 'Too soon since last fetch'));
-      return;
-    }
+//   const fetchAndSaveSubmissions = useCallback(async () => {
+//     // Skip if already fetching or if it's too soon since last fetch
+//     const now = Date.now();
+//     if (isFetchingRef.current || (now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL)) {
+//       console.log('Skipping fetch: ' + (isFetchingRef.current ? 'Already fetching' : 'Too soon since last fetch'));
+//       return;
+//     }
     
-    try {
-      isFetchingRef.current = true;
-      setIsLoading(true);
-      setError(null);
+//     try {
+//       isFetchingRef.current = true;
+//       setIsLoading(true);
+//       setError(null);
       
-      // Update last fetch time
-      lastFetchTimeRef.current = now;
+//       // Update last fetch time
+//       lastFetchTimeRef.current = now;
       
-      console.log('Starting API fetch for survey submissions...');
-      // Fetch submissions from the remote API
-      const remoteSubmissions = await fetchSurveySubmissionsFromRemote();
-      console.log(`Transformed ${remoteSubmissions.length} survey submissions`);
+//       console.log('Starting API fetch for survey submissions...');
+//       // Fetch submissions from the remote API
+//       const remoteSubmissions = await fetchSurveySubmissionsFromRemote();
+//       console.log(`Transformed ${remoteSubmissions.length} survey submissions`);
       
-      // Keep track of processed IDs to prevent duplicates
-      const processedIds = new Set<string>();
-      let newCount = 0;
-      let updatedCount = 0;
-      let duplicateCount = 0;
+//       // Keep track of processed IDs to prevent duplicates
+//       const processedIds = new Set<string>();
+//       let newCount = 0;
+//       let updatedCount = 0;
+//       let duplicateCount = 0;
       
-      // Save to Realm database
-      realm.write(() => {
-        remoteSubmissions.forEach(submission => {
-          // Generate a unique ID for each response based on MongoDB _id and response ID
-          const uniqueId = submission._id.toString();
+//       // Save to Realm database
+//       realm.write(() => {
+//         remoteSubmissions.forEach(submission => {
+//           // Generate a unique ID for each response based on MongoDB _id and response ID
+//           const uniqueId = submission._id.toString();
           
-          // Skip if already processed in this batch (handles duplicates in API response)
-          if (processedIds.has(uniqueId)) {
-            console.log(`Skipping duplicate in API response: ${uniqueId}`);
-            duplicateCount++;
-            return;
-          }
+//           // Skip if already processed in this batch (handles duplicates in API response)
+//           if (processedIds.has(uniqueId)) {
+//             console.log(`Skipping duplicate in API response: ${uniqueId}`);
+//             duplicateCount++;
+//             return;
+//           }
           
-          processedIds.add(uniqueId);
+//           processedIds.add(uniqueId);
           
-          // Check if the submission already exists
-          const existingSubmission = realm.objectForPrimaryKey<ISurveySubmission>(
-            'SurveySubmission', 
-            submission._id
-          );
+//           // Check if the submission already exists
+//           const existingSubmission = realm.objectForPrimaryKey<ISurveySubmission>(
+//             'SurveySubmission', 
+//             submission._id
+//           );
           
-          if (existingSubmission) {
-            // Update existing submission without changing the _id
-            const { _id, ...submissionWithoutId } = submission;
-            Object.assign(existingSubmission, submissionWithoutId);
-            updatedCount++;
-          } else {
-            // Create new submission
-            realm.create('SurveySubmission', submission);
-            newCount++;
-          }
-        });
-      });
+//           if (existingSubmission) {
+//             // Update existing submission without changing the _id
+//             const { _id, ...submissionWithoutId } = submission;
+//             Object.assign(existingSubmission, submissionWithoutId);
+//             updatedCount++;
+//           } else {
+//             // Create new submission
+//             realm.create('SurveySubmission', submission);
+//             newCount++;
+//           }
+//         });
+//       });
       
-      console.log(`Survey sync results: ${newCount} new, ${updatedCount} updated, ${duplicateCount} duplicates skipped`);
+//       console.log(`Survey sync results: ${newCount} new, ${updatedCount} updated, ${duplicateCount} duplicates skipped`);
       
-      // Get the latest count
-      const totalInDatabase = realm.objects<ISurveySubmission>("SurveySubmission").length;
-      console.log(`Total survey submissions in database: ${totalInDatabase}`);
+//       // Get the latest count
+//       const totalInDatabase = realm.objects<ISurveySubmission>("SurveySubmission").length;
+//       console.log(`Total survey submissions in database: ${totalInDatabase}`);
       
-      // Update state
-      setSurveySubmissions(remoteSubmissions);
-      setLastSyncTime(new Date());
-    } catch (err: any) {
-      console.error('Error in fetchAndSaveSubmissions:', err);
-      setError(err);
-    } finally {
-      setIsLoading(false);
-      isFetchingRef.current = false;
-    }
-  }, [realm]);
+//       // Update state
+//       setSurveySubmissions(remoteSubmissions);
+//       setLastSyncTime(new Date());
+//     } catch (err: any) {
+//       console.error('Error in fetchAndSaveSubmissions:', err);
+//       setError(err);
+//     } finally {
+//       setIsLoading(false);
+//       isFetchingRef.current = false;
+//     }
+//   }, [realm]);
   
-  // Initial fetch - use useEffect with proper control
-  useEffect(() => {
-    let isMounted = true;
+//   // Initial fetch - use useEffect with proper control
+//   useEffect(() => {
+//     let isMounted = true;
     
-    const doFetch = async () => {
-      // Only fetch if component is still mounted and we need to fetch (force or no last sync)
-      if (isMounted && (forceSync || !lastSyncTime)) {
-        await fetchAndSaveSubmissions();
-      }
-    };
+//     const doFetch = async () => {
+//       // Only fetch if component is still mounted and we need to fetch (force or no last sync)
+//       if (isMounted && (forceSync || !lastSyncTime)) {
+//         await fetchAndSaveSubmissions();
+//       }
+//     };
     
-    doFetch();
+//     doFetch();
     
-    // Cleanup function to prevent state updates if unmounted
-    return () => {
-      isMounted = false;
-    };
-  }, [forceSync]); // Remove fetchAndSaveSubmissions from deps to prevent loops
+//     // Cleanup function to prevent state updates if unmounted
+//     return () => {
+//       isMounted = false;
+//     };
+//   }, [forceSync]); // Remove fetchAndSaveSubmissions from deps to prevent loops
   
-  const refresh = useCallback(() => {
-    return fetchAndSaveSubmissions();
-  }, [fetchAndSaveSubmissions]);
+//   const refresh = useCallback(() => {
+//     return fetchAndSaveSubmissions();
+//   }, [fetchAndSaveSubmissions]);
   
-  return {
-    surveySubmissions,
-    isLoading,
-    error,
-    lastSyncTime,
-    refresh,
-  };
-}
+//   return {
+//     surveySubmissions,
+//     isLoading,
+//     error,
+//     lastSyncTime,
+//     refresh,
+//   };
+// }
 
 export const saveSurveySubmission = async (
   realm: Realm,

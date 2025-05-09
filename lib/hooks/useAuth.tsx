@@ -5,13 +5,14 @@ import { useMainStore } from "../store/main";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import {
+  updatePassword,
   useGetCurrentLoggedInProfile,
   userLogin,
   userLogout,
 } from "~/services/user";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { setAuthenticationStatus, clearAuthTokens } from "~/utils/axios";
+import { setAuthenticationStatus } from "~/utils/axios";
 import { Alert } from "react-native";
 
 export type AuthOptions = {
@@ -24,6 +25,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const mainStore = useMainStore();
   const user = useMemo(() => mainStore.user!, [mainStore.user]);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const lastLoginIdentifier = useRef<string | null>(null);
@@ -89,6 +91,62 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     },
     onError: (error) => {
       logoutUser();
+    },
+  });
+
+  const _updatePasswordAuth = useMutation<
+    { message: string },
+    AxiosError<IResponseError>,
+    { password: string; identifier: string }
+  >({
+    mutationFn: async ({
+      password,
+      identifier,
+    }): Promise<{ message: string }> => {
+      const result = await updatePassword(password, identifier);
+      return result;
+    },
+    onMutate: async ({ password }) => {
+      setIsUpdatingPassword(true);
+      Toast.show({
+        text1: "Updating password...",
+        type: "info",
+        position: "bottom",
+        visibilityTime: 3000,
+        autoHide: true,
+        topOffset: 30,
+      });
+    },
+    onError: (error) => {
+      console.error("Password update failed:", error);
+      Toast.show({
+        text1: "Password update failed",
+        text2: error.message || "Unknown error occurred",
+        type: "error",
+        position: "bottom",
+        visibilityTime: 6000,
+        autoHide: true,
+        topOffset: 30,
+      });
+      setIsUpdatingPassword(false);
+    },
+    onSuccess: async (data) => {
+      // Show success message from the API response
+      Toast.show({
+        text1: data.message || "Password updated successfully",
+        type: "success",
+        position: "bottom",
+        visibilityTime: 3000,
+        autoHide: true,
+        topOffset: 30,
+      });
+      setIsUpdatingPassword(false);
+
+      // Logout the user and clear any existing tokens
+      await logoutUser();
+
+      // Navigate to login page after successful password update
+      router.replace("/(user-management)/login");
     },
   });
 
@@ -213,27 +271,11 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
             return;
           }
 
-          console.log(
-            "PROFILE DATA RECEIVED:",
-            JSON.stringify(
-              {
-                id: profileData.id,
-                name: profileData.name,
-                email: profileData.email,
-                position: profileData.position,
-              },
-              null,
-              2
-            )
-          );
-
-          // Accept the profile data without validation since you confirmed
-          // the API is working correctly and there's no need to verify email match
-
           const didStoreUserInfo = mainStore.login({
             userAccount: profileData,
           });
-          console.log("User info stored in state:", 
+          console.log(
+            "User info stored in state:",
             JSON.stringify(
               {
                 user: {
@@ -241,6 +283,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
                   name: profileData.name,
                   email: profileData.email,
                   position: profileData.position,
+                  is_password_changed: profileData.is_password_changed,
                 },
                 didStoreUserInfo,
               },
@@ -248,6 +291,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
               2
             )
           );
+          console.log("didStoreUserInfo", didStoreUserInfo);
           if (didStoreUserInfo) {
             Toast.show({
               text1: "Login successful",
@@ -259,7 +303,25 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
             });
             setIsLoggingIn(false);
             setIsLoading(false);
-            onLogin?.(profileData);
+
+            console.log("is_password_changed: ", profileData.is_password_changed);
+            
+            // First call onLogin to handle data sync
+            await onLogin?.(profileData);
+            
+            // Then handle navigation based on password status
+            if (profileData.is_password_changed === 0) {
+              console.log("Password needs to be changed, redirecting to update password page");
+              // Navigate to password update screen with identifier
+              router.replace({
+                pathname: "/(user-management)/update-password",
+                params: { identifier: lastLoginIdentifier.current },
+              });
+            } else {
+              console.log("Password already changed, redirecting to home");
+              // Navigate to home screen
+              router.replace("/(home)/home");
+            }
           } else {
             Toast.show({
               text1: "Failed to store user data",
@@ -301,12 +363,15 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
 
   const login = _userLogin.mutate;
   const logout = _userLogout.mutate;
+  const updatePasswordAuth = _updatePasswordAuth.mutate;
 
   return {
     login,
     user,
     logout,
+    updatePasswordAuth,
     isLoggingIn,
+    isUpdatingPassword,
     isLoggedIn,
     isLoading,
     authChecked,

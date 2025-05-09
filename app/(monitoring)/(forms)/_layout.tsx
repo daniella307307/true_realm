@@ -1,12 +1,12 @@
 import React from "react";
 import { Stack } from "expo-router";
 
-const StatisticsLayout = () => {
+const FormsLayout = () => {
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
+      <Stack.Screen name="[modId]" />
     </Stack>
   );
 };
 
-export default StatisticsLayout;
+export default FormsLayout; 

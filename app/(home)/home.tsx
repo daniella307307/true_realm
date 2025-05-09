@@ -48,6 +48,8 @@ const HomeScreen = () => {
   const IZU_CELL_TELEPHONE_SUPERVISION_ID = 11;
   const IZU_SECTOR_TELEPHONE_SUPERVISION_ID = 12;
 
+  const IZU_MONITORING_ID = 10;
+
   // Dynamic links based on user role
   const getActiveLinks = () => {
     const baseLinks = [
@@ -59,7 +61,7 @@ const HomeScreen = () => {
       {
         icon: <TabBarIcon name="home" family="Entypo" />,
         title: t("HomePage.household_enrollment", "Household Enrollment") || "Household Enrollment",
-        route: `/(mods)/(projects)/${HOUSEHOLD_ENROLLMENT_ID}`,
+        route: `/(projects)/(mods)/(projects)/${HOUSEHOLD_ENROLLMENT_ID}`,
       },
       {
         icon: (
@@ -76,7 +78,7 @@ const HomeScreen = () => {
       {
         icon: <TabBarIcon name="account-star" family="MaterialCommunityIcons" />,
         title: t("HomePage.IZU_Monitoring"),
-        route: "/(izu-monitoring)/izu-monitoring",
+        route: `/(monitoring)/`,
       },
       {
         icon: <TabBarIcon name="video" family="Entypo" />,
@@ -105,7 +107,7 @@ const HomeScreen = () => {
       baseLinks.push({
         icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
         title: t("HomePage.IZU_Sector_Coordinator_Demographics", "IZU Sector Coordinator Demographics") || "IZU Sector Coordinator Demographics",
-        route: `/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
+        route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
       });
     }
 
@@ -114,25 +116,25 @@ const HomeScreen = () => {
       baseLinks.push({
         icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
         title: t("HomePage.IZU_At_Village_Demographics", "IZU At Village Demographics") || "IZU At Village Demographics",
-        route: `/(mods)/(projects)/${IZU_AT_VILLAGE_DEMOGRAPHICS_ID}`,
+        route: `/(projects)/(mods)/(projects)/${IZU_AT_VILLAGE_DEMOGRAPHICS_ID}`,
       });
     }
 
     // Add IZU Sector Telephone Supervision for users with position 13
-    if (user?.position === 13) {
+    if (user?.position === 14) {
       baseLinks.push({
         icon: <TabBarIcon name="phone" family="FontAwesome6" />,
         title: t("HomePage.IZU_Sector_Telephone_Supervision", "IZU Sector Telephone Supervision") || "IZU Sector Telephone Supervision",
-        route: `/(mods)/(projects)/${IZU_SECTOR_TELEPHONE_SUPERVISION_ID}`,
+        route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_TELEPHONE_SUPERVISION_ID}`,
       });
     }
 
-    // Add IZU Cell Telephone Supervision for users with position 7
-    if (user?.position === 7) {
+    // Add IZU Cell Telephone Supervision for users with position 7 0791774091
+    if (user?.position === 13) {
       baseLinks.push({
         icon: <TabBarIcon name="phone" family="FontAwesome6" />,
         title: t("HomePage.IZU_Cell_Telephone_Supervision", "IZU Cell Telephone Supervision") || "IZU Cell Telephone Supervision",
-        route: `/(mods)/(projects)/${IZU_CELL_TELEPHONE_SUPERVISION_ID}`,
+        route: `/(projects)/(mods)/(projects)/${IZU_CELL_TELEPHONE_SUPERVISION_ID}`,
       });
     }
     return baseLinks;

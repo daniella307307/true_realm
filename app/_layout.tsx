@@ -1,6 +1,6 @@
 // _layout.tsx
 import "~/global.css";
-import { router, Slot, SplashScreen } from "expo-router";
+import { router, Slot, SplashScreen, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { PortalHost } from "@rn-primitives/portal";
 import { useAuth } from "~/lib/hooks/useAuth";
@@ -59,6 +59,7 @@ function Layout() {
   const { isLoggedIn, authChecked, user } = useAuth({});
   const { isDrawerOpen, closeDrawer } = useDrawer();
   const [appReady, setAppReady] = useState(false);
+  const [initialNavigationDone, setInitialNavigationDone] = useState(false);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -85,8 +86,6 @@ function Layout() {
         // App is ready now, but keep splash screen visible until navigation completes
         setAppReady(true);
         
-        // Navigation will be handled after splash screen hides
-        
         return () => {
           networkUnsubscribe && networkUnsubscribe();
         };
@@ -103,16 +102,29 @@ function Layout() {
   // Handle navigation and splash screen hiding after app is ready
   useEffect(() => {
     const handleNavigation = async () => {
-      if (!appReady) return;
+      if (!appReady || initialNavigationDone) return;
+      const currentPath = usePathname();
 
       try {
         const loginStatus = await isLoggedIn;
-        
+        console.log("Login status:", loginStatus);
         if (loginStatus) {
-          // User is logged in, navigate to home but don't hide splash screen yet
-          // Home screen will hide the splash screen after data is loaded
-          console.log("Navigating to home screen");
-          router.replace("/(home)/home");
+          console.log("Login status down:", loginStatus);
+          // Check the current route to avoid interrupting the password update flow
+          console.log("Current route:", currentPath);
+          
+          // Only navigate to home if not already in a specific path
+          // and NOT in the update-password path
+          if (!currentPath || 
+              (currentPath !== "/(user-management)/update-password" && 
+               !currentPath.includes("update-password"))) {
+            console.log("Navigating to home screen");
+            router.replace("/(home)/home");
+          } else {
+            console.log("Already on update-password, not redirecting to home");
+            // Still need to hide splash screen when staying on update-password
+            await SplashScreen.hideAsync();
+          }
         } else {
           // User is not logged in, navigate to login and hide splash screen
           console.log("Navigating to login screen");
@@ -120,11 +132,15 @@ function Layout() {
           await SplashScreen.hideAsync();
           console.log("App loaded - Login screen displayed");
         }
+        
+        // Mark that initial navigation is done
+        setInitialNavigationDone(true);
       } catch (error) {
         console.error("Error during navigation:", error);
         // On error, navigate to login and hide splash screen
         router.replace("/(user-management)/login");
         await SplashScreen.hideAsync();
+        setInitialNavigationDone(true);
       }
     };
 

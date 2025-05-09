@@ -9,7 +9,10 @@ import { useGetCohorts } from "~/services/cohorts";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useGetStatistics } from '~/services/statistics';
 import { useGetNotifications } from '~/services/notifications';
-import { useGetAllSurveySubmissions, useGetRemoteSurveySubmissions } from '~/services/survey-submission';
+import { useGetAllSurveySubmissions } from '~/services/survey-submission';
+import { useGetPerformances } from '~/services/performance';
+import { useGetMonitoringForms } from '~/services/monitoring/monitoring-forms';
+import { useGetMonitoringModules } from '~/services/monitoring/monitoring-module';
 
 type AppDataContextType = {
   isDataLoaded: boolean;
@@ -31,32 +34,39 @@ export const AppDataProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const { isLoggedIn } = useAuth({});
 
   // Data fetching hooks
+  const { refresh: refreshIzus } = useGetIzus(true);
   const { refresh: refreshProjects } = useGetAllProjects(true);
   const { refresh: refreshFamilies } = useGetFamilies(true);
   const { refresh: refreshForms } = useGetForms(true);
-  const { refresh: refreshIzus } = useGetIzus(true);
   const { refresh: refreshPosts } = useGetPosts(true);
   const { refresh: refreshStakeholders } = useGetStakeholders(true);
   const { refresh: refreshCohorts } = useGetCohorts(true);
   const { refresh: refreshStatistics } = useGetStatistics(true);
   const { refresh: refreshNotifications } = useGetNotifications(true);
-  const { refresh: refreshRemoteSurveySubmissions } = useGetRemoteSurveySubmissions(true);
+  const { refresh: refreshPerformances } = useGetPerformances(true);
+  const { refresh: refreshMonitoringModules } = useGetMonitoringModules(true);
+  const { refresh: refreshMonitoringForms } = useGetMonitoringForms(true);
+  // const { refresh: refreshRemoteSurveySubmissions } = useGetRemoteSurveySubmissions(true);
+
   const refreshAllData = async () => {
     try {
       setIsRefreshing(true);
       console.log("Starting data refresh...");
       
       await Promise.all([
+        refreshIzus(),
         refreshProjects(),
         refreshFamilies(),
         refreshForms(),
-        refreshIzus(),
         refreshPosts(),
         refreshStakeholders(),
         refreshCohorts(),
         refreshNotifications(),
         refreshStatistics(),
-        refreshRemoteSurveySubmissions(),
+        refreshPerformances(),
+        refreshMonitoringModules(),
+        refreshMonitoringForms(),
+        // refreshRemoteSurveySubmissions(),
       ]);
       
       console.log("All data refreshed successfully");

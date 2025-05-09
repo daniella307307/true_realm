@@ -1,14 +1,14 @@
-import { ICohort, IFormSubmissionDetail, IFamilies } from "~/types";
+import { ICohort, IFormSubmissionDetail, IFamilies, Izus } from "~/types";
 import { IProvince } from "~/models/locations/province";
 import { ISector } from "~/models/locations/sector";
 import { IVillage } from "~/models/locations/village";
 import { IDistrict } from "~/models/locations/district";
 import { ICell } from "~/models/locations/cell";
-import { IIzu } from "~/models/izus/izu";
 export interface FormFlowManagerProps {
   form: any;
   fields: any[];
   formSubmissionMandatoryFields: IFormSubmissionDetail;
+  isMonitoring?: boolean;
 }
 
 export type FlowStepKey =
@@ -23,7 +23,7 @@ export interface FlowState {
   [key: string]: any;
   currentStep: number;
   selectedValues: {
-    izus?: IIzu | null;
+    izus?: Izus | null;
     cohorts?: ICohort | null;
     families?: IFamilies | null;
     locations?: {
@@ -122,6 +122,10 @@ export interface FormField {
     maxLength?: number;
     minWords?: number;
     maxWords?: number;
+  };
+  validation?: {
+    required?: boolean;
+    customMessage?: string;
   };
   errorLabel?: string;
   validateWhenHidden?: boolean;

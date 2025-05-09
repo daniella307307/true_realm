@@ -94,3 +94,20 @@ export async function verifyPasswordReset(identifier: string, verification_code:
     throw error;
   }
 }
+
+export async function updatePassword(password: string, identifier: string): Promise<{ message: string }> {
+  try {
+    const res = await fetchWithRetry(() => 
+      baseInstance.put<IResponse<{ message: string }>>(`/user/update-password`, { 
+        password,
+        identifier 
+      })
+    );
+    console.log("Password update response:", res.data);
+    // The message is directly in the response data
+    return { message: res.data.message };
+  } catch (error) {
+    console.error("Password update failed:", error);
+    throw error;
+  }
+}

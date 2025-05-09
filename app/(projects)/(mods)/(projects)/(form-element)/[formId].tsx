@@ -1,7 +1,6 @@
-import { SafeAreaView, View, FlatList } from "react-native";
-import React from "react";
+import { SafeAreaView, View } from "react-native";
+import { useMemo } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { useGetFormById } from "~/services/formElements";
@@ -11,6 +10,7 @@ import { IFormSubmissionDetail } from "~/types";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NotFound } from "~/components/ui/not-found";
 
 const ProjectFormElementScreen = () => {
   const { formId, project_module_id, source_module_id, project_id } =
@@ -20,39 +20,43 @@ const ProjectFormElementScreen = () => {
       source_module_id: string;
       project_id: string;
     }>();
+
   const insets = useSafeAreaInsets();
   const formIdNumber = parseInt(formId);
   console.log("Form ID: ", formIdNumber);
-  const projectIdNumber = parseInt(project_module_id);
-  console.log("Project Module ID: ", projectIdNumber);
-  const sourceModuleId = parseInt(source_module_id);
+
+  // Safely parse IDs, defaulting to 0 if undefined or not parseable
+  const projectModuleId = project_module_id ? parseInt(project_module_id) : 0;
+  console.log("Project Module ID: ", projectModuleId);
+
+  const sourceModuleId = source_module_id ? parseInt(source_module_id) : 0;
   console.log("Source Module ID: ", sourceModuleId);
-  const projectId = parseInt(project_id);
+
+  const projectId = project_id ? parseInt(project_id) : 0;
   console.log("Project ID: ", projectId);
+
   const { user } = useAuth({});
+  const { t } = useTranslation();
 
   if (!formId || !project_module_id) {
     return (
-      <View>
-        <Text>Missing form or project ID</Text>
-        <Button onPress={() => router.back()}>Go back</Button>
-      </View>
+      <NotFound
+        title="Form not found"
+        description="Please try again"
+        redirectTo={() => router.back()}
+      />
     );
   }
 
-  const { form, isLoading } = useGetFormById(
-    parseInt(formId),
-    parseInt(project_module_id),
-    parseInt(source_module_id),
-    parseInt(project_id)
+  // For regular forms
+  const { form: regularForm, isLoading: regularFormLoading } = useGetFormById(
+    formIdNumber,
+    projectModuleId,
+    sourceModuleId,
+    projectId
   );
-  const parsedForm = form?.json2
-    ? typeof form.json2 === "string"
-      ? JSON.parse(form.json2)
-      : form.json2
-    : null;
 
-  if (isLoading) {
+  if (regularFormLoading) {
     return (
       <View className="flex-1 p-4 bg-white">
         <SimpleSkeletonItem />
@@ -62,19 +66,38 @@ const ProjectFormElementScreen = () => {
     );
   }
 
-  const formStructure: IFormSubmissionDetail = {
-    id: form?.id ?? 0,
-    table_name: form?.table_name,
-    project_module_id: form?.project_module_id ?? 0,
-    source_module_id: form?.source_module_id ?? 0,
-    project_id: parseInt(project_id) || 0,
-    post_data: form?.post_data,
-    userId: user?.json?.id ?? 0,
-    position: parseInt(user?.json?.position) ?? 0,
-  };
+  if (!regularForm) {
+    return (
+      <NotFound
+        title="Form not found"
+        description="Please try again"
+        redirectTo={() => router.back()}
+      />
+    );
+  }
+  console.log(
+    "Parsed Json2:",
+    regularForm.json2
+  );
 
-  console.log("Form Structure: ", JSON.stringify(formStructure, null, 2));
-  const { t } = useTranslation();
+  const parsedForm = regularForm?.json2
+    ? typeof regularForm.json2 === "string"
+      ? JSON.parse(regularForm.json2)
+      : regularForm.json2
+    : null;
+
+  console.log("Parsed Formula: ", JSON.stringify(parsedForm.components, null, 2));
+
+  const formStructure: IFormSubmissionDetail = {
+    id: regularForm.id,
+    table_name: regularForm.table_name?.toString() || "",
+    project_module_id: regularForm.project_module_id || 0,
+    source_module_id: parseInt(String(regularForm.source_module_id)) || 0,
+    project_id: parseInt(String(regularForm.project_id)) || 0,
+    post_data: regularForm.post_data?.toString() || "",
+    userId: user?.json?.id || 0,
+    position: parseInt(user?.json?.position || "0"),
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -85,14 +108,14 @@ const ProjectFormElementScreen = () => {
       />
       <View className="flex-1">
         <View className="px-4 pt-4">
-          <Text className="text-lg font-semibold mb-4">{form?.name}</Text>
+          <Text className="text-lg font-semibold mb-4">{regularForm.name}</Text>
         </View>
         <View className="flex-1">
-          {form?.json2 && (
+          {parsedForm && (
             <FormFlowManager
-              form={form}
+              form={regularForm}
               formSubmissionMandatoryFields={formStructure}
-              fields={parsedForm?.components || []}
+              fields={parsedForm.components || []}
             />
           )}
         </View>

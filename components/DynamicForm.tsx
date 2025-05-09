@@ -36,6 +36,7 @@ import { AnswerPreview } from "./AnswerPreview";
 import { DynamicFieldProps, DynamicFormProps } from "~/types/form-types";
 import { saveFamilyToAPI } from "~/services/families";
 import { saveIzuToAPI } from "~/services/izus";
+import { saveMonitoringResponseToAPI } from "~/services/monitoring/monitoring-responses";
 const { useRealm } = RealmContext;
 
 // Use the interface directly rather than exporting it
@@ -59,6 +60,20 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
       setIsVisible(shouldShow);
     }
   }, [field.conditional, dependentFieldValue]);
+
+  // Special logging for number fields
+  useEffect(() => {
+    if (field.type === 'number') {
+      console.log("Number field details:", {
+        key: field.key,
+        title: field.title,
+        validation: field.validate,
+        errorLabel: (field as any).errorLabel,
+        min: field.validate?.min,
+        max: field.validate?.max
+      });
+    }
+  }, [field]);
 
   if (field.type === "day") {
     return (
@@ -221,6 +236,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const { control, handleSubmit, getValues, trigger, formState, setValue } =
     useForm({
       mode: "onChange",
+      reValidateMode: "onChange",
+      criteriaMode: "all",
+      shouldFocusError: true,
     });
   const { t, i18n: i18nInstance } = useTranslation();
   const [currentPage, setCurrentPage] = useState(0);
@@ -429,7 +447,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           }
         });
 
-        console.log("Formatted data:", formattedData);
         const dataWithTime = {
           ...formattedData,
           table_name: formSubmissionMandatoryFields.table_name,
@@ -457,26 +474,26 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             : 0,
           family: familyId,
           izucode: flowState?.selectedValues?.izus?.izucode || null,
-          cohort: flowState?.selectedValues?.cohorts?.cohort
+          cohorts: flowState?.selectedValues?.cohorts?.cohort
             ? Number(flowState.selectedValues.cohorts.cohort)
             : 0,
           language: currentLanguage,
           timeSpentFormatted: formatTime(timeSpent),
         };
 
-        dataWithTime.post_data;
+        const postData = dataWithTime.post_data || "";
         console.log(
           "Final Data submitted:",
           JSON.stringify(dataWithTime, null, 2)
         );
-        console.log("API URL:", dataWithTime.post_data);
+        console.log("API URL:", postData);
 
-        if (dataWithTime.post_data === "/createFamily") {
+        if (postData === "/createFamily") {
           // Create a family instead of a survey submission
           await saveFamilyToAPI(
             realm,
             dataWithTime,
-            dataWithTime.post_data,
+            postData,
             fields
           );
 
@@ -491,12 +508,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               },
             ]
           );
-        } else if (dataWithTime.post_data === "/izucelldemography/create") {
+        } else if (postData === "/izucelldemography/create") {
           // Create an izu instead of a survey submission
           await saveIzuToAPI(
             realm,
             dataWithTime,
-            dataWithTime.post_data,
+            postData,
             fields
           );
 
@@ -507,6 +524,100 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               {
                 text: "OK",
                 onPress: () => router.push("/(history)/history"),
+              },
+            ]
+          );
+        } else if (postData === "/sendMonitoringData" || postData.includes("sendMonitoringData")) {
+          const moduleId = formSubmissionMandatoryFields.source_module_id?.toString() || "";
+          const formId = formSubmissionMandatoryFields.id?.toString() || "";
+          const dateRecorded = formattedData.date_recorded || new Date().toISOString().split('T')[0];
+          const responseType = formattedData.type || "1";
+          const cohort = flowState?.selectedValues?.cohorts?.cohort || "";
+          
+          // Calculate score based on answers
+          let totalScore = 0;
+          let totalPossibleScore = 0;
+          let scoredFieldsCount = 0;
+          let scoringDetails: Record<string, any> = {};
+          
+          // Score mapping based on provided value system
+          const scoreMapping: Record<string, number> = {
+            'Did not occur': 0,
+            'Nta byabayeho': 0,
+            'Nta Byabayeho': 0,
+            'Poor': 1,
+            'Gacye cyane': 1,
+            'Needs Improvement': 2,
+            'Hackenewe kwikosora': 2,
+            'Bikeneye kunozwa': 2,
+            'Average': 3,
+            'Biraringaniye': 3,
+            'Excellent': 4,
+            'Byiza Cyane': 4
+          };
+          
+          // Count scorable fields and calculate total score
+          Object.entries(formattedData).forEach(([key, value]) => {
+            if (typeof value === 'string' && scoreMapping[value] !== undefined) {
+              const score = scoreMapping[value];
+              totalScore += score;
+              totalPossibleScore += 4; // Maximum possible score per field is 4
+              scoredFieldsCount++;
+              scoringDetails[key] = {
+                answer: value,
+                score: score,
+                possible: 4
+              };
+              console.log(`Field ${key} with answer "${value}" scored ${score}`);
+            }
+          });
+          
+          // Calculate percentage score
+          const percentageScore = totalPossibleScore > 0 
+            ? Math.round((totalScore / totalPossibleScore) * 100) 
+            : 0;
+          
+          console.log(`Total score: ${totalScore}/${totalPossibleScore} (${percentageScore}%)`);
+          
+          // Create score_data object with all scoring information
+          const scoreData = {
+            total: totalScore,
+            possible: totalPossibleScore,
+            percentage: percentageScore,
+            fields_count: scoredFieldsCount,
+            details: scoringDetails
+          };
+          
+          const monitoringData = {
+            family_id: flowState?.selectedValues?.families?.hh_id || null,
+            family: flowState?.selectedValues?.families?.hh_id || null,
+            module_id: moduleId,
+            form_id: formId,
+            project_id: formSubmissionMandatoryFields.project_id,
+            date_recorded: dateRecorded,
+            type: responseType,
+            cohort: cohort || "1",
+            izucode: flowState?.selectedValues?.izus?.izucode || null,
+            user_id: formSubmissionMandatoryFields.userId || null,
+            response: formattedData, // This includes all the form fields
+            score_data: scoreData
+          };
+
+          console.log("Monitoring data:", JSON.stringify(monitoringData, null, 2));
+          
+          await saveMonitoringResponseToAPI(
+            realm,
+            monitoringData,
+            "/sendMonitoringData"
+          );
+
+          Alert.alert(
+            "Monitoring Response Submitted Successfully",
+            "Your monitoring response has been submitted successfully.",
+            [
+              {
+                text: "OK",
+                onPress: () => router.push("/(statistics)/"),
               },
             ]
           );
@@ -573,16 +684,29 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const validateAndProceed = async () => {
     if (visibleFields.length === 0) return;
 
+
     // Validate all fields on the current page
     const currentPageFieldKeys = currentPageFields.map((field) => field.key);
-    const isValid = await trigger(currentPageFieldKeys);
+    
+    try {
+      // Trigger validation on all fields from the current page
+      const isValid = await trigger(currentPageFieldKeys, { shouldFocus: true });
+      console.log("Validation result:", isValid);
+      
+      // Log form state to see errors
+      console.log("Form state errors:", formState.errors);
 
-    if (isValid) {
-      setValidationError(false);
-      if (currentPage < totalPages - 1) {
-        setCurrentPage(currentPage + 1);
+      if (isValid) {
+        setValidationError(false);
+        if (currentPage < totalPages - 1) {
+          setCurrentPage(currentPage + 1);
+        }
+      } else {
+        setValidationError(true);
+        setTimeout(() => setValidationError(false), 2000);
       }
-    } else {
+    } catch (error) {
+      console.error("Validation error:", error);
       setValidationError(true);
       setTimeout(() => setValidationError(false), 2000);
     }

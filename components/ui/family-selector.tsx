@@ -8,6 +8,7 @@ import i18n from "~/utils/i18n";
 import { getLocalizedTitle } from "~/utils/form-utils";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { Village } from "~/models/locations/village";
+import { useFocusEffect } from "@react-navigation/native";
 
 interface FamilySelectorProps {
   onSelect: (value: IFamilies) => void;
@@ -85,8 +86,18 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
 }) => {
   const [selectedFamily, setSelectedFamily] = useState<IFamilies | null>(initialValue || null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { families, isLoading } = useGetFamilies();
+  const { families, isLoading, refresh } = useGetFamilies();
 
+  // Add focus effect to refresh data when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      // Refresh the data when the screen comes into focus
+      refresh && refresh();
+      return () => {};
+    }, [refresh])
+  );
+
+  // console.log("Families: ", JSON.stringify(families, null, 2));
   const handleSelect = (family: IFamilies) => {
     setSelectedFamily(family);
     onSelect(family);
@@ -95,13 +106,15 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
   // Filter families based on search query
   const filteredFamilies = useMemo(() => {
     if (!families) return [];
-    return families.filter(
-      (family) =>
-        (family.hh_head_fullname?.toLowerCase() || "")
-          .includes(searchQuery.toLowerCase()) ||
-        (family.hh_id?.toLowerCase() || "")
-          .includes(searchQuery.toLowerCase())
-    );
+    return families
+      .filter(family => family.hh_id) // Filter out families with null/undefined hh_id
+      .filter(
+        (family) =>
+          (family.hh_head_fullname?.toLowerCase() || "")
+            .includes(searchQuery.toLowerCase()) ||
+          (family.hh_id?.toLowerCase() || "")
+            .includes(searchQuery.toLowerCase())
+      );
   }, [families, searchQuery]);
 
   if (isLoading) {
@@ -136,7 +149,7 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
 
       <FlatList
         data={filteredFamilies}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.hh_id?.toString() || ""}
         renderItem={({ item }) => (
           <FamilyItem
             family={item as IFamilies}

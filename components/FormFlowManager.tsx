@@ -31,6 +31,7 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   form,
   fields,
   formSubmissionMandatoryFields,
+  isMonitoring = false,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [timeSpent, setTimeSpent] = useState(0);
@@ -54,6 +55,7 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   const realm = useRealm();
   const { t } = useTranslation();
 
+  // console.log("Form fields: ", fields);
   useEffect(() => {
     startTimeRef.current = Date.now();
     timerRef.current = setInterval(() => {
@@ -71,26 +73,36 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   }, []);
 
   const loads = form.loads ? JSON.parse(form.loads) : {};
+  // console.log("loads: ", loads);
   // console.log("New loads", loads);
   // Define the flow steps in the correct order: izu-family-location-cohorts-stakeholders
   // Start with izus as mandatory
   const flowSteps: FlowStepKey[] = [];
 
-  // Add family if project_id is 3 or if it's in loads
-  const hasFamilies =
-    formSubmissionMandatoryFields.project_id === 3 || loads.families;
-  if (hasFamilies) {
+  // For monitoring forms, families, izus, and cohorts are mandatory
+  if (isMonitoring) {
     flowSteps.push("families");
-  }
+    flowSteps.push("izus");
+    flowSteps.push("cohorts");
+  } else {
+    // Add family if project_id is 3 or if it's in loads
+    const hasFamilies =
+      formSubmissionMandatoryFields.project_id === 3 || loads.families;
+    if (hasFamilies) {
+      flowSteps.push("families");
+    }
 
-  // Add location only if families are not in the flow but locations are in loads
-  if (loads.locations && !hasFamilies) {
-    flowSteps.push("locations");
-  }
+    // Add location only if families are not in the flow but locations are in loads
+    if (loads.locations && !hasFamilies) {
+      flowSteps.push("locations");
+    }
 
-  // Add remaining steps in the specified order
-  if (loads.izus) flowSteps.push("izus");
-  if (loads.cohorts) flowSteps.push("cohorts");
+    // Add remaining steps in the specified order based on loads
+    if (loads.izus) flowSteps.push("izus");
+    if (loads.cohorts) flowSteps.push("cohorts");
+  }
+  
+  // Add stakeholders if in loads (for both monitoring and non-monitoring)
   if (loads.stakeholders) flowSteps.push("stakeholders");
   // console.log(flowSteps);
   const handleNext = () => {

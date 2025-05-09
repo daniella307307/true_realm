@@ -1,7 +1,6 @@
 import { createRealmContext, RealmProvider } from "@realm/react";
 import { Families } from "~/models/family/families";
 import * as FileSystem from "expo-file-system";
-import { Module } from "~/models/modules/module";
 import { Project } from "~/models/projects/project";
 import { Survey } from "~/models/surveys/survey";
 import { SurveySubmission } from "~/models/surveys/survey-submission";
@@ -16,12 +15,14 @@ import { Stakeholder } from "~/models/stakeholders/stakeholder";
 import { Post } from "~/models/posts/post";
 import { Statistics } from "~/models/statistics/statistics";
 import { Notifications } from "~/models/notifications/notifications";
-
+import { Performance } from "~/models/performance/performance";
+import { MonitoringForms } from "~/models/monitoring/monitoringforms";
+import { MonitoringModules } from "~/models/monitoring/monitoringmodule";
+import { MonitoringResponses } from "~/models/monitoring/monitoringresponses";
 const realmPath = `${FileSystem.documentDirectory}sugiramuryango-offline-db.realm`;
 
 const schemas = [
   Families,
-  Module,
   Project,
   Survey,
   SurveySubmission,
@@ -35,7 +36,11 @@ const schemas = [
   Stakeholder,
   Post,
   Statistics,
-  Notifications
+  Notifications,
+  Performance,
+  MonitoringForms,
+  MonitoringModules,
+  MonitoringResponses
 ];
 export const RealmContext = createRealmContext({
   schema: schemas,

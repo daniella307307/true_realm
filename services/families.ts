@@ -9,7 +9,7 @@ import { useAuth } from "~/lib/hooks/useAuth";
 import { useMemo } from "react";
 import { Izu } from "~/models/izus/izu";
 
-const { useQuery } = RealmContext;
+const { useQuery, useRealm } = RealmContext;
 
 export async function fetchFamiliesFromRemote() {
   const res = await baseInstance.get<{
@@ -19,11 +19,14 @@ export async function fetchFamiliesFromRemote() {
     families: res.data.families || [],
   };
 }
-
 export function useGetFamilies(forceSync: boolean = false) {
+  const realm = useRealm();
   const storedFamilies = useQuery(Families);
   const { user } = useAuth({});
-  
+  // Move these queries to the top level
+  const allIzus = useQuery(Izu);
+  // console.log("The allIzus: ", JSON.stringify(allIzus, null, 2));
+
   const { syncStatus, refresh } = useDataSync([
     {
       key: "families",
@@ -53,49 +56,65 @@ export function useGetFamilies(forceSync: boolean = false) {
     // If no user, return all families
     if (!user || !user.json) return storedFamilies;
 
-    const position = Number(user.json.position);
-    
+    const position = Number(user.position || user.json.position);
+    console.log("User position: ", position);
+
     // If position is Cell Coordinator (7)
-    if (position === 7 && user.json.cell) {
-      // Get all IZUs with position 7 or 8 in the same cell
-      const izus = useQuery(Izu).filtered(
-        "position IN {7, 8} AND location.cell = $0", 
-        user.json.cell
+    if (position === 7 && (user.cell || user.json.cell)) {
+      const userCell = user.cell || user.json.cell;
+      // Filter IZUs at top level, then use filtered results here
+      const relevantIzus = allIzus.filtered(
+        "position IN {7, 8} AND location.cell = $0",
+        userCell
       );
-      
-      // Get izucodes from these IZUs
-      const izucodes = izus.map((izu: Izu) => izu.izucode);
-      
+
+      const izucodes = relevantIzus.map((izu: Izu) => izu.izucode);
+      console.log("The izucodes: ", JSON.stringify(izucodes, null, 2));
+
       // Filter families by these izucodes
-      return storedFamilies.filtered(
-        "izucode IN $0", 
-        izucodes
-      );
+      return storedFamilies.filtered("izucode IN $0", izucodes);
     }
-    
+
     // If position is Sector Coordinator (13)
-    if (position === 13 && user.json.sector) {
-      // Get all IZUs with position 7 or 8 in the same sector
-      const izus = useQuery(Izu).filtered(
-        "position IN {7, 8} AND location.sector = $0", 
-        user.json.sector
+    if (position === 13 && (user.sector || user.json.sector)) {
+      const userSector = user.sector || user.json.sector;
+      // Filter IZUs at top level, then use filtered results here
+      const relevantIzus = allIzus.filtered(
+        "position IN {7, 8} AND location.sector = $0",
+        userSector
       );
-      
-      // Get izucodes from these IZUs
-      const izucodes = izus.map((izu: Izu) => izu.izucode);
-      
+
+      const izucodes = relevantIzus.map((izu: Izu) => izu.izucode);
+      console.log("The izucodes: ", JSON.stringify(izucodes, null, 2));
       // Filter families by these izucodes
-      return storedFamilies.filtered(
-        "izucode IN $0", 
-        izucodes
-      );
+      return storedFamilies.filtered("izucode IN $0", izucodes);
     }
-    
+    console.log("User izucode: ", user.user_code);
+    // If position is Village Coordinator (8) and village is logged in izu's village check that the position matches and the village is the logged in izu's village
+    if (
+      position === 8 &&
+      (user.village || user.json.village) &&
+      user.user_code
+    ) {
+      const userVillage = user.village || user.json.village;
+      // Filter IZUs at top level, then use filtered results here
+      const relevantIzus = allIzus.filtered(
+        "position = $0 AND location.village = $1 AND izucode = $2",
+        position,
+        userVillage,
+        user.user_code
+      );
+
+      const izucodes = relevantIzus.map((izu: Izu) => izu.izucode);
+      console.log("The izucodes: ", JSON.stringify(izucodes, null, 2));
+      // Filter families by these izucodes
+      return storedFamilies.filtered("izucode IN $0", izucodes);
+    }
+
     // Default return all families
     return storedFamilies;
-  }, [storedFamilies, user]);
+  }, [storedFamilies, user, allIzus]);
 
-  // console.log("filteredFamilies", JSON.stringify(filteredFamilies, null, 2));
   return {
     families: filteredFamilies,
     isLoading: syncStatus.families?.isLoading || false,
@@ -244,7 +263,7 @@ export const createFamilyWithMeta = (
     }
     return result;
   } catch (error) {
-    console.error("Error creating family with meta:", error);
+    console.log("Error creating family with meta:", error);
     throw error;
   }
 };
@@ -413,7 +432,7 @@ export const saveFamilyToAPI = async (
           return createFamilyWithMeta(realm, sanitizedFamilyData, []);
         }
       } catch (apiError) {
-        console.error("Error submitting family to API:", apiError);
+        console.log("Error submitting family to API:", apiError);
         // Fall back to offline approach if API submission fails
         return createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
       }
@@ -424,7 +443,7 @@ export const saveFamilyToAPI = async (
       return createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
     }
   } catch (error) {
-    console.error("Error in saveFamilyToAPI:", error);
+    console.log("Error in saveFamilyToAPI:", error);
     throw error;
   }
 };
@@ -503,7 +522,7 @@ export const syncTemporaryFamilies = async (
           family.sync_data.submitted_at = new Date().toISOString();
         }
       });
-      console.error(`Failed to sync family ${family.id}:`, error);
+      console.log(`Failed to sync family ${family.id}:`, error);
       // Continue with other records - this one will be tried again next sync
     }
   }

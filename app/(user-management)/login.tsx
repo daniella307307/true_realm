@@ -66,7 +66,7 @@ export default function LoginScreen() {
       try {
         await SplashScreen.hideAsync();
         setSplashHidden(true);
-        console.log("App loaded - Login screen displayed");
+        // console.log("App loaded - Login screen displayed");
       } catch (error) {
         // Splash might already be hidden, ignore error
         setSplashHidden(true);
@@ -101,7 +101,7 @@ export default function LoginScreen() {
         // Use the centralized data refresh function
         await refreshAllData();
         
-        console.log("Data sync completed, navigating to home");
+        console.log("Data sync completed");
         Toast.hide();
         Toast.show({
           type: "success",
@@ -110,8 +110,8 @@ export default function LoginScreen() {
           position: "bottom",
         });
         
-        // Navigate to home after successful sync
-        router.replace("/(home)/home");
+        // Navigation is handled in useAuth based on is_password_changed
+        // No navigation here to avoid conflicts
       } catch (error) {
         console.error("Data sync failed:", error);
         Toast.show({

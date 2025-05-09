@@ -131,7 +131,6 @@ import { Button } from "~/components/ui/button";
 import { t } from "i18next";
 import { useAuth } from "~/lib/hooks/useAuth";
 import HeaderNavigation from "~/components/ui/header";
-import { useRouteProtection } from "~/providers/RouteProtectionProvider";
 
 const CELL_COUNT = 4;
 
@@ -147,6 +146,7 @@ const VerificationCode: React.FC = () => {
     setValue: setCode,
   });
   const { user } = useAuth({});
+  console.log("User telephone: ", user?.telephone);
   
   const handleCodeSubmit = async () => {
     setLoading(true);

@@ -21,105 +21,199 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   control,
   type,
   language = "en-US",
-}) => (
-  <Controller
-    control={control}
-    name={field.key}
-    rules={{
-      required: field.validate?.required
-        ? field.validate.customMessage || field.errorLabel || "This field is required"
-        : false,
-      ...(field.type === "phoneNumber" && {
-        pattern: {
-          value: /^\d{10}$/,
-          message: "Phone number must be exactly 10 digits",
-        },
-      }),
-      ...(type === "number" || field.type === "number" ? {
-        min: {
-          value: field.validate?.min !== undefined ? field.validate.min : 0,
-          message: field.errorLabel || `Minimum value is ${field.validate?.min}`,
-        },
-        max: {
-          value: field.validate?.max !== undefined ? field.validate.max : Infinity,
-          message: field.errorLabel || `Maximum value is ${field.validate?.max}`,
-        },
-      } : {}),
-      ...(field.validate?.minLength ? {
-        minLength: {
-          value: field.validate.minLength,
-          message: field.errorLabel || `Minimum length is ${field.validate.minLength} characters`,
-        },
-      } : {}),
-      ...(field.validate?.maxLength ? {
-        maxLength: {
-          value: field.validate.maxLength,
-          message: field.errorLabel || `Maximum length is ${field.validate.maxLength} characters`,
-        },
-      } : {}),
-      validate: {
-        ...(field.validate?.minWords && {
-          minWords: (value) =>
-            !value ||
-            value.trim().split(/\s+/).filter(Boolean).length >= (field.validate?.minWords || 0) ||
-            field.errorLabel ||
-            `Minimum ${field.validate?.minWords} words required`,
-        }),
-        ...(field.validate?.maxWords && {
-          maxWords: (value) =>
-            !value ||
-            value.trim().split(/\s+/).filter(Boolean).length <= (field.validate?.maxWords || Infinity) ||
-            field.errorLabel ||
-            `Maximum ${field.validate?.maxWords} words allowed`,
-        }),
-      },
-    }}
-    render={({ field: { onChange, value }, fieldState: { error } }) => (
-      <View className="mb-4">
-        <Text className="mb-2 text-md font-medium text-[#050F2B]">
-          {getLocalizedTitle(field.title, language)}
-          {field.validate?.required && <Text className="text-primary"> *</Text>}
-        </Text>
-        <TextInput
-          className={`w-full px-4 py-4 border rounded-lg ${
-            error ? "border-primary" : "border-[#E4E4E7]"
-          }`}
-          value={value?.toString()}
-          keyboardType={
-            field.type === "phoneNumber" || type === "number" || field.type === "number"
-              ? "numeric"
-              : "default"
-          }
-          maxLength={
-            field.type === "phoneNumber"
-              ? 10
-              : field.validate?.maxLength
-              ? field.validate.maxLength
-              : undefined
-          }
-          onChangeText={(text) => {
-            if (field.type === "phoneNumber") {
-              // Only allow digits for phone numbers
-              const numbersOnly = text.replace(/[^0-9]/g, "");
-              onChange(numbersOnly);
-            } else if (type === "number" || field.type === "number") {
-              // Only allow digits for numbers
-              const numbersOnly = text.replace(/[^0-9.-]/g, "");
-              onChange(numbersOnly);
-            } else {
-              onChange(text);
+}) => {
+  // Log fields with required validation
+  useEffect(() => {
+    if (field.validate?.required) {
+      console.log("Required field:", {
+        key: field.key,
+        type: field.type || type,
+        title: field.title,
+        errorLabel: field.errorLabel,
+        validate: field.validate,
+        customMessage: field.validate.customMessage
+      });
+    }
+  }, [field, type]);
+
+  return (
+    <Controller
+      control={control}
+      name={field.key}
+      rules={{
+        required: field.validate?.required
+          ? { value: true, message: field.errorLabel || field.validate.customMessage || "Field required!" }
+          : false,
+        ...(field.type === "phoneNumber" && {
+          validate: {
+            phoneFormat: (value) => {
+              if (!value) return true; // Skip validation if empty (handled by required)
+              
+              // For phone numbers, validate the exact length (10 digits)
+              const phoneStr = value.toString().replace(/\D/g, ''); // Remove non-digits
+              
+              if (phoneStr.length !== 10) {
+                return field.errorLabel || "Phone number must be exactly 10 digits";
+              }
+              
+              return true;
             }
-          }}
-        />
-        {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
-          </Text>
-        )}
-      </View>
-    )}
-  />
-);
+          }
+        }),
+        ...(type === "number" || field.type === "number" ? {
+          validate: {
+            number: (value) => {
+              console.log(`Validating field ${field.key}:`, {
+                value,
+                fieldType: field.type || type,
+                min: field.validate?.min,
+                max: field.validate?.max,
+                errorLabel: field.errorLabel
+              });
+              
+              // Skip validation if empty (handled by required)
+              if (value === undefined || value === null || value === '') {
+                return true;
+              }
+              
+              // Special handling for phone numbers and IDs - they need exact digit count
+              const isPhoneOrId = field.key?.includes('phone') || field.key?.includes('id') || field.key?.includes('_id');
+              
+              // If min and max are the same, it's likely an exact length requirement
+              const exactLengthRequired = field.validate?.min !== undefined && 
+                                         field.validate?.max !== undefined && 
+                                         field.validate.min === field.validate.max;
+              
+              // Check if this is a field that requires exact length validation
+              if (isPhoneOrId || exactLengthRequired) {
+                const strValue = value.toString().replace(/\D/g, '');
+                const requiredLength = field.validate?.min || field.validate?.max;
+                
+                console.log(`Validating ${field.key} for exact length:`, {
+                  currentLength: strValue.length,
+                  requiredLength,
+                  isValid: strValue.length === requiredLength
+                });
+                
+                if (requiredLength && strValue.length !== requiredLength) {
+                  return field.errorLabel || `Must be exactly ${requiredLength} digits`;
+                }
+                
+                return true;
+              }
+              
+              // Regular numeric validation for other number fields
+              const numValue = Number(value);
+              
+              if (isNaN(numValue)) {
+                return field.errorLabel || "Please enter a valid number";
+              }
+              
+              if (field.validate?.min !== undefined && numValue < field.validate.min) {
+                return field.errorLabel || `Minimum value is ${field.validate.min}`;
+              }
+              
+              if (field.validate?.max !== undefined && numValue > field.validate.max) {
+                return field.errorLabel || `Maximum value is ${field.validate.max}`;
+              }
+              
+              return true;
+            }
+          }
+        } : {}),
+        ...(field.validate?.minLength && !field.key?.includes('id') && !field.key?.includes('phone') ? {
+          minLength: {
+            value: field.validate.minLength,
+            message: field.errorLabel || `Minimum length is ${field.validate.minLength} characters`,
+          },
+        } : {}),
+        ...(field.validate?.maxLength && !field.key?.includes('id') && !field.key?.includes('phone') ? {
+          maxLength: {
+            value: field.validate.maxLength,
+            message: field.errorLabel || `Maximum length is ${field.validate.maxLength} characters`,
+          },
+        } : {}),
+        validate: {
+          ...(field.validate?.minWords && {
+            minWords: (value) =>
+              !value ||
+              value.trim().split(/\s+/).filter(Boolean).length >= (field.validate?.minWords || 0) ||
+              field.errorLabel ||
+              `Minimum ${field.validate?.minWords} words required`,
+          }),
+          ...(field.validate?.maxWords && {
+            maxWords: (value) =>
+              !value ||
+              value.trim().split(/\s+/).filter(Boolean).length <= (field.validate?.maxWords || Infinity) ||
+              field.errorLabel ||
+              `Maximum ${field.validate?.maxWords} words allowed`,
+          }),
+        },
+      }}
+      render={({ field: { onChange, value, onBlur }, fieldState: { error, isDirty, isTouched } }) => {
+        // Log validation state when there's an error
+        if (error) {
+          console.log(`Validation error for ${field.key}:`, {
+            error: error.message,
+            value,
+            isDirty,
+            isTouched,
+            fieldType: field.type || type,
+            errorLabel: field.errorLabel
+          });
+        }
+        
+        return (
+          <View className="mb-4">
+            <Text className="mb-2 text-md font-medium text-[#050F2B]">
+              {getLocalizedTitle(field.title, language)}
+              {field.validate?.required && <Text className="text-primary"> *</Text>}
+            </Text>
+            <TextInput
+              className={`w-full px-4 py-4 border rounded-lg ${
+                error ? "border-primary" : "border-[#E4E4E7]"
+              }`}
+              value={value?.toString()}
+              keyboardType={
+                field.type === "phoneNumber" || type === "number" || field.type === "number"
+                  ? "numeric"
+                  : "default"
+              }
+              maxLength={
+                field.type === "phoneNumber"
+                  ? 10
+                  : field.validate?.maxLength
+                  ? field.validate.maxLength
+                  : field.validate?.max && field.validate.max === field.validate?.min 
+                  ? field.validate.max
+                  : undefined
+              }
+              onBlur={onBlur}
+              onChangeText={(text) => {
+                if (field.type === "phoneNumber") {
+                  // Only allow digits for phone numbers
+                  const numbersOnly = text.replace(/[^0-9]/g, "");
+                  onChange(numbersOnly);
+                } else if (type === "number" || field.type === "number") {
+                  // Only allow digits for numbers
+                  const numbersOnly = text.replace(/[^0-9.-]/g, "");
+                  onChange(numbersOnly);
+                } else {
+                  onChange(text);
+                }
+              }}
+            />
+            {error && (
+              <Text className="text-red-500 mt-2">
+                {error.message}
+              </Text>
+            )}
+          </View>
+        );
+      }}
+    />
+  );
+};
 
 const ConfirmPasswordComponent: React.FC<DynamicFieldProps> = ({
   field,
@@ -250,10 +344,38 @@ const TextAreaComponent: React.FC<DynamicFieldProps> = ({
     name={field.key}
     rules={{
       required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
+        ? { value: true, message: field.errorLabel || field.validate.customMessage || "This field is required" }
         : false,
+      ...(field.validate?.minLength ? {
+        minLength: {
+          value: field.validate.minLength,
+          message: field.errorLabel || `Minimum length is ${field.validate.minLength} characters`,
+        },
+      } : {}),
+      ...(field.validate?.maxLength ? {
+        maxLength: {
+          value: field.validate.maxLength,
+          message: field.errorLabel || `Maximum length is ${field.validate.maxLength} characters`,
+        },
+      } : {}),
+      validate: {
+        ...(field.validate?.minWords && {
+          minWords: (value) =>
+            !value ||
+            value.trim().split(/\s+/).filter(Boolean).length >= (field.validate?.minWords || 0) ||
+            field.errorLabel ||
+            `Minimum ${field.validate?.minWords} words required`,
+        }),
+        ...(field.validate?.maxWords && {
+          maxWords: (value) =>
+            !value ||
+            value.trim().split(/\s+/).filter(Boolean).length <= (field.validate?.maxWords || Infinity) ||
+            field.errorLabel ||
+            `Maximum ${field.validate?.maxWords} words allowed`,
+        }),
+      },
     }}
-    render={({ field: { onChange, value }, fieldState: { error } }) => (
+    render={({ field: { onChange, value, onBlur }, fieldState: { error } }) => (
       <View className="mb-4">
         <Text className="mb-2 text-md font-medium text-[#050F2B]">
           {getLocalizedTitle(field.title, language)}
@@ -265,13 +387,14 @@ const TextAreaComponent: React.FC<DynamicFieldProps> = ({
           }`}
           value={value}
           onChangeText={onChange}
+          onBlur={onBlur}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
         />
         {error && (
           <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
+            {error.message}
           </Text>
         )}
       </View>
@@ -760,14 +883,14 @@ const TimeInputComponent: React.FC<DynamicFieldProps> = ({
     name={field.key}
     rules={{
       required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
+        ? { value: true, message: field.errorLabel || field.validate.customMessage || "This field is required" }
         : false,
       pattern: {
         value: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
-        message: "Invalid time format (HH:MM)",
+        message: field.errorLabel || "Invalid time format (HH:MM)",
       },
     }}
-    render={({ field: { onChange, value }, fieldState: { error } }) => (
+    render={({ field: { onChange, value, onBlur }, fieldState: { error } }) => (
       <View className="mb-4">
         <Text className="mb-2 text-md font-medium text-[#050F2B]">
           {getLocalizedTitle(field.title, language)}
@@ -778,6 +901,7 @@ const TimeInputComponent: React.FC<DynamicFieldProps> = ({
             error ? "border-primary" : "border-[#E4E4E7]"
           }`}
           value={value}
+          onBlur={onBlur}
           onChangeText={(text) => {
             // Format the input as HH:MM
             const formattedText = text
@@ -792,7 +916,7 @@ const TimeInputComponent: React.FC<DynamicFieldProps> = ({
         />
         {error && (
           <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
+            {error.message}
           </Text>
         )}
       </View>

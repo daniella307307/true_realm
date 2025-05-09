@@ -15,10 +15,10 @@ export function useProtectedNavigation() {
         params: { next: route },
       });
     }
-    // else {
-    //   // Route doesn't need verification or has been verified
-    //   router.push(route as Href);
-    // }
+    else {
+      // Route doesn't need verification or has been verified
+      router.push(route as Href);
+    }
   };
 
   // Back navigation that bypasses PIN auth

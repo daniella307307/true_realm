@@ -51,7 +51,16 @@ export function useGetIzus(forceSync: boolean = false) {
         loggedInIzu.location.sector
       );
     }
-    return storedIzus;
+
+    // if position is 8 means village, return that the izu that has that position equals and that village is the logged in izu's village
+    if (position === 8 && loggedInIzu.location?.village && loggedInIzu.izucode) {
+      return storedIzus.filtered(
+        "position = $0 AND location.village = $1 AND izucode = $2",
+        position,
+        loggedInIzu.location.village,
+        loggedInIzu.izucode
+      );
+    }
   }, [storedIzus, loggedInIzu]);
 
   const { syncStatus, refresh } = useDataSync([
@@ -81,7 +90,7 @@ export function useGetIzuById(id: number, forceSync: boolean = false) {
   const { izus, isLoading, error, lastSyncTime, refresh } =
     useGetIzus(forceSync);
   const izu = useMemo(() => {
-    return izus.find((izu) => izu.id === id);
+    return izus?.find((izu) => izu.id === id);
   }, [izus, id]);
 
   return {
@@ -242,8 +251,8 @@ export const createIzuWithMeta = (
 
     return result!;
   } catch (error) {
-    console.error("Error creating Izu with meta:", error);
-    console.error("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.log("Error creating Izu with meta:", error);
+    console.log("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
     throw error;
   }
 };
@@ -401,9 +410,9 @@ export const saveIzuToAPI = async (
           return createIzuWithMeta(realm, sanitizedIzuData, extraFields);
         }
       } catch (error: any) {
-        console.error("Error submitting Izu to API:", error);
-        console.error("Error response:", error.response?.data);
-        console.error("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        console.log("Error submitting Izu to API:", error);
+        console.log("Error response:", error.response?.data);
+        console.log("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
         // Fall back to offline approach if API submission fails
         console.log("Falling back to offline mode due to API error");
         return createTemporaryIzu(realm, sanitizedIzuData, extraFields);
@@ -415,8 +424,8 @@ export const saveIzuToAPI = async (
       return createTemporaryIzu(realm, sanitizedIzuData, extraFields);
     }
   } catch (error) {
-    console.error("Error saving Izu to API:", error);
-    console.error("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.log("Error saving Izu to API:", error);
+    console.log("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
     throw error;
   }
 };
@@ -526,7 +535,7 @@ export const syncTemporaryIzus = async (
       }
     } catch (error: any) {
       console.log("Advanced error", error.response.data);
-      console.error("Error syncing Izu to API:", error);
+      console.log("Error syncing Izu to API:", error);
 
       // Update sync data to record the failure
       if (!realm.isInTransaction) {
@@ -546,7 +555,7 @@ export const syncTemporaryIzus = async (
         });
       }
 
-      console.error(`Failed to sync Izu ${izu.id}:`, error);
+      console.log(`Failed to sync Izu ${izu.id}:`, error);
       // Continue with other records - this one will be tried again next sync
     }
   }

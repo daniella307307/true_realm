@@ -2,7 +2,7 @@ import { View, ScrollView, SafeAreaView, TouchableOpacity } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
-import { useGetAllSurveySubmissions, useGetRemoteSurveySubmissions } from "~/services/survey-submission";
+import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { format } from "date-fns";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
@@ -31,7 +31,7 @@ const NotificationDetailScreen = () => {
 
   const { notification } = useGetNotificationById(id || "");
   const { surveySubmissions, isLoading: isLoadingSubmissions } =
-    useGetRemoteSurveySubmissions();
+    useGetAllSurveySubmissions();
 
   // Find the submission that matches this notification
   const submission = useMemo(() => {

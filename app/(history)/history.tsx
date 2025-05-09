@@ -173,7 +173,7 @@ const HistoryProjectScreen = () => {
             locallyCreatedFamilySubmissions.length > 0
               ? (() => {
                   // Find the most recent submission from either array
-                  let latestDate: Date | null = null;
+                  let latestDate: Date | null = new Date();
 
                   // Check project submissions
                   if (projectSubmissions.length > 0 &&

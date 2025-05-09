@@ -11,21 +11,17 @@ import CustomInput from "~/components/ui/input";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
-import {
-  fetchFormByProjectAndModuleFromRemote,
-  useGetFormByProjectAndModule,
-} from "~/services/formElements";
-import { IModule } from "~/types";
-import { Survey } from "~/models/surveys/survey";
+import { IMonitoringModules } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { useForm } from "react-hook-form";
-import { useGetAllModules } from "~/services/project";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { useGetMonitoringFormsByModule } from "~/services/monitoring/monitoring-forms";
 import { NotFound } from "~/components/ui/not-found";
+import { useGetMonitoringModules } from "~/services/monitoring/monitoring-module";
 
-const ProjectFormsScreen = () => {
+const MonitoringFormsScreen = () => {
   const { modId, project_id } = useLocalSearchParams<{
     modId: string;
     project_id: string;
@@ -44,38 +40,17 @@ const ProjectFormsScreen = () => {
     );
   }
 
-  const {
-    modules,
-    isLoading: isModulesLoading,
-    error: modulesError,
-  } = useGetAllModules();
+  const { monitoringModules, isLoading: isMonitoringLoading } = useGetMonitoringModules();
   
   const moduleId = parseInt(modId);
-  const projectId = parseInt(project_id);
+  const projectId = parseInt(project_id || "3");
 
-  const currentModule = useMemo(() => {
-    if (!modules) return null;
-    return (
-      modules.find((module: IModule | null) => {
-        if (!module) return false;
-        return (
-          module.source_module_id === moduleId &&
-          module.project_id === projectId
-        );
-      }) || null
-    );
-  }, [modules, moduleId, projectId]);
-
-  // For regular forms
-  const {
-    filteredForms,
-    isLoading: isFormsLoading,
-    error: formsError,
-  } = useGetFormByProjectAndModule(
-    currentModule?.project_id || 0,
-    currentModule?.source_module_id || 0,
-    currentModule?.id || 0
-  );
+  // Get monitoring forms for this module
+  const { 
+    moduleForms, 
+    isLoading: isMonitoringFormsLoading,
+    refreshModuleForms
+  } = useGetMonitoringFormsByModule(moduleId);
   
   const { control, watch } = useForm({
     defaultValues: {
@@ -90,40 +65,24 @@ const ProjectFormsScreen = () => {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await fetchFormByProjectAndModuleFromRemote(
-        currentModule?.project_id || 0,
-        currentModule?.source_module_id || 0
-      );
+      if (refreshModuleForms) {
+        await refreshModuleForms();
+      }
     } catch (error) {
-      console.error("Error refreshing forms:", error);
+      console.error("Error refreshing monitoring forms:", error);
     } finally {
       setRefreshing(false);
     }
-  }, [currentModule]);
+  }, [moduleId, refreshModuleForms]);
 
   // Filter forms based on search query
   const filteredItems = useMemo(() => {
-    // Filter regular forms
-    if (!filteredForms) return [];
-    return filteredForms.filter((form: Survey) => {
+    return moduleForms.filter((form: any) => {
       if (!searchQuery) return true;
-      return form.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const formName = form.name || "";
+      return formName.toString().toLowerCase().includes(searchQuery.toLowerCase());
     });
-  }, [filteredForms, searchQuery]);
-
-  // 247
-  console.log(
-    "Filtered Forms: ",
-    JSON.stringify(
-      filteredForms.map((form) => ({
-        ...form,
-        json: undefined,
-      })),
-      null,
-      2
-    )
-  );
-  console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
+  }, [moduleForms, searchQuery]);
   
   const ListHeaderComponent = useCallback(
     () => (
@@ -138,21 +97,18 @@ const ProjectFormsScreen = () => {
     [control, t]
   );
 
-  const renderItem = ({ item }: { item: Survey }) => {
-    // Render regular form item
+  const renderItem = ({ item }: { item: any }) => {
     return (
       <TouchableOpacity
-        onPress={() =>
-          router.push(
-            `/(projects)/(mods)/(projects)/(form-element)/${item.id}?project_module_id=${currentModule?.id}&source_module_id=${currentModule?.source_module_id}&project_id=${currentModule?.project_id}`
-          )
+        onPress={() => 
+          router.push(`/(monitoring)/(form-element)/${item.id}?project_id=${projectId}&monitoring_module_id=${moduleId}`)
         }
         className="p-4 border mb-4 border-gray-200 rounded-xl"
       >
         <View className="flex-row items-center pr-4 justify-start">
           <TabBarIcon
-            name="description"
-            family="MaterialIcons"
+            name="account-star"
+            family="MaterialCommunityIcons"
             size={24}
             color="#71717A"
           />
@@ -162,7 +118,7 @@ const ProjectFormsScreen = () => {
     );
   };
 
-  const isLoading = isFormsLoading || isModulesLoading;
+  const isLoading = isMonitoringLoading || isMonitoringFormsLoading;
 
   const renderContent = () => {
     if (isLoading) {
@@ -175,18 +131,6 @@ const ProjectFormsScreen = () => {
       );
     }
 
-    if (modulesError || formsError) {
-      return (
-        <View className="flex-1 justify-center items-center p-4">
-          <Text className="text-red-500">
-            {modulesError?.message ||
-              formsError?.message ||
-              "An error occurred"}
-          </Text>
-        </View>
-      );
-    }
-
     return null;
   };
 
@@ -195,7 +139,7 @@ const ProjectFormsScreen = () => {
       <HeaderNavigation
         showLeft={true}
         showRight={true}
-        title={t("FormPage.title")}
+        title={t("FormPage.monitoring_title", "Monitoring Forms")}
       />
 
       <FlatList
@@ -208,7 +152,7 @@ const ProjectFormsScreen = () => {
           isLoading ? (
             renderContent()
           ) : (
-            <EmptyDynamicComponent message="No forms available" />
+            <EmptyDynamicComponent message="No monitoring forms available" />
           )
         }
         contentContainerStyle={{
@@ -225,4 +169,4 @@ const ProjectFormsScreen = () => {
   );
 };
 
-export default ProjectFormsScreen;
+export default MonitoringFormsScreen; 
