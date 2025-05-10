@@ -68,7 +68,7 @@ const DetailScreen = () => {
     } else if (itemType === "izu") {
       return locallyCreatedIzus.find((izu: any) => izu.id?.toString() === _id);
     } else if (itemType === "submission") {
-      return surveySubmissions.find((sub) => sub._id.toString() === _id);
+      return surveySubmissions.find((sub) => sub.id?.toString() === _id);
     }
   }, [
     _id,

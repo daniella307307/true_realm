@@ -16,7 +16,7 @@ interface INotificationResponse {
     project_id: number;
     source_module_id: number;
     survey_id: number;
-    servey_result_id: number;
+    survey_result_id: number;
     user_id: number;
     created_at: string;
     updated_at: string;
@@ -52,7 +52,7 @@ export async function fetchNotificationsFromRemote() {
         project_id: notification.project_id,
         source_module_id: notification.source_module_id,
         survey_id: notification.survey_id,
-        survey_result_id: notification.servey_result_id,
+        survey_result_id: notification.survey_result_id,
         user_id: notification.user_id,
     },
     user: notification.user,

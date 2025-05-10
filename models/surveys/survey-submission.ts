@@ -1,17 +1,17 @@
 import { Realm } from "@realm/react";
 
 export class SurveySubmission extends Realm.Object {
-  _id!: Realm.BSON.ObjectId;
+  id!: number;
   answers!: { [key: string]: string | number | boolean | null };
   form_data!: { [key: string]: string | number | boolean | null };
   location!: { [key: string]: string | number | boolean | null };
-  sync_data!: { [key: string]: string | number | boolean | null };
+  sync_data!: { [key: string]: string | number | boolean | null | Date };
 
   static schema = {
     name: 'SurveySubmission',
-    primaryKey: '_id',
+    primaryKey: 'id',
     properties: {
-      _id: 'objectId',
+      id: 'int',
       answers: 'mixed{}',
 
       form_data: 'mixed{}',

@@ -12,7 +12,7 @@ import { router } from "expo-router";
 import { useForm, useWatch } from "react-hook-form";
 import { FormField } from "~/types";
 import { RealmContext } from "~/providers/RealContextProvider";
-import { saveSurveySubmission } from "~/services/survey-submission";
+import { saveSurveySubmissionToAPI } from "~/services/survey-submission";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { formatTime } from "~/utils/form-utils";
@@ -63,14 +63,14 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
 
   // Special logging for number fields
   useEffect(() => {
-    if (field.type === 'number') {
+    if (field.type === "number") {
       console.log("Number field details:", {
         key: field.key,
         title: field.title,
         validation: field.validate,
         errorLabel: (field as any).errorLabel,
         min: field.validate?.min,
-        max: field.validate?.max
+        max: field.validate?.max,
       });
     }
   }, [field]);
@@ -232,7 +232,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
   // Define fieldsPerPage at the component level for consistency
   const fieldsPerPage = 4;
-  
+
   const { control, handleSubmit, getValues, trigger, formState, setValue } =
     useForm({
       mode: "onChange",
@@ -381,9 +381,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           currentGroup = [];
           currentDependency = null;
         }
-        
+
         currentGroup.push(field);
-        
+
         // Only create a new group when we reach the fieldsPerPage limit
         if (currentGroup.length >= fieldsPerPage) {
           groups.push([...currentGroup]);
@@ -439,10 +439,17 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         // Format all day-type fields to proper YYYY-MM-DD format
         const formattedData = { ...completeData };
         visibleFields.forEach((field) => {
-          if (field && field.type === 'day' && field.key && typeof formattedData[field.key] === 'object') {
+          if (
+            field &&
+            field.type === "day" &&
+            field.key &&
+            typeof formattedData[field.key] === "object"
+          ) {
             const dateObj = formattedData[field.key];
             if (dateObj && dateObj.year && dateObj.month && dateObj.day) {
-              formattedData[field.key] = `${dateObj.year}-${dateObj.month}-${dateObj.day}`;
+              formattedData[
+                field.key
+              ] = `${dateObj.year}-${dateObj.month}-${dateObj.day}`;
             }
           }
         });
@@ -490,12 +497,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
         if (postData === "/createFamily") {
           // Create a family instead of a survey submission
-          await saveFamilyToAPI(
-            realm,
-            dataWithTime,
-            postData,
-            fields
-          );
+          await saveFamilyToAPI(realm, dataWithTime, postData, fields);
 
           // Show success alert and navigate
           Alert.alert(
@@ -510,12 +512,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           );
         } else if (postData === "/izucelldemography/create") {
           // Create an izu instead of a survey submission
-          await saveIzuToAPI(
-            realm,
-            dataWithTime,
-            postData,
-            fields
-          );
+          await saveIzuToAPI(realm, dataWithTime, postData, fields);
 
           Alert.alert(
             "Izu Created Successfully",
@@ -527,38 +524,47 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               },
             ]
           );
-        } else if (postData === "/sendMonitoringData" || postData.includes("sendMonitoringData")) {
-          const moduleId = formSubmissionMandatoryFields.source_module_id?.toString() || "";
+        } else if (
+          postData === "/sendMonitoringData" ||
+          postData.includes("sendMonitoringData")
+        ) {
+          const moduleId =
+            formSubmissionMandatoryFields.source_module_id?.toString() || "";
           const formId = formSubmissionMandatoryFields.id?.toString() || "";
-          const dateRecorded = formattedData.date_recorded || new Date().toISOString().split('T')[0];
+          const dateRecorded =
+            formattedData.date_recorded ||
+            new Date().toISOString().split("T")[0];
           const responseType = formattedData.type || "1";
           const cohort = flowState?.selectedValues?.cohorts?.cohort || "";
-          
+
           // Calculate score based on answers
           let totalScore = 0;
           let totalPossibleScore = 0;
           let scoredFieldsCount = 0;
           let scoringDetails: Record<string, any> = {};
-          
+
           // Score mapping based on provided value system
           const scoreMapping: Record<string, number> = {
-            'Did not occur': 0,
-            'Nta byabayeho': 0,
-            'Nta Byabayeho': 0,
-            'Poor': 1,
-            'Gacye cyane': 1,
-            'Needs Improvement': 2,
-            'Hackenewe kwikosora': 2,
-            'Bikeneye kunozwa': 2,
-            'Average': 3,
-            'Biraringaniye': 3,
-            'Excellent': 4,
-            'Byiza Cyane': 4
+            "Did not occur": 0,
+            "Nta byabayeho": 0,
+            "Nta Byabayeho": 0,
+            Poor: 1,
+            "Gacye cyane": 1,
+            "Needs Improvement": 2,
+            "Hackenewe kwikosora": 2,
+            "Bikeneye kunozwa": 2,
+            Average: 3,
+            Biraringaniye: 3,
+            Excellent: 4,
+            "Byiza Cyane": 4,
           };
-          
+
           // Count scorable fields and calculate total score
           Object.entries(formattedData).forEach(([key, value]) => {
-            if (typeof value === 'string' && scoreMapping[value] !== undefined) {
+            if (
+              typeof value === "string" &&
+              scoreMapping[value] !== undefined
+            ) {
               const score = scoreMapping[value];
               totalScore += score;
               totalPossibleScore += 4; // Maximum possible score per field is 4
@@ -566,28 +572,33 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               scoringDetails[key] = {
                 answer: value,
                 score: score,
-                possible: 4
+                possible: 4,
               };
-              console.log(`Field ${key} with answer "${value}" scored ${score}`);
+              console.log(
+                `Field ${key} with answer "${value}" scored ${score}`
+              );
             }
           });
-          
+
           // Calculate percentage score
-          const percentageScore = totalPossibleScore > 0 
-            ? Math.round((totalScore / totalPossibleScore) * 100) 
-            : 0;
-          
-          console.log(`Total score: ${totalScore}/${totalPossibleScore} (${percentageScore}%)`);
-          
+          const percentageScore =
+            totalPossibleScore > 0
+              ? Math.round((totalScore / totalPossibleScore) * 100)
+              : 0;
+
+          console.log(
+            `Total score: ${totalScore}/${totalPossibleScore} (${percentageScore}%)`
+          );
+
           // Create score_data object with all scoring information
           const scoreData = {
             total: totalScore,
             possible: totalPossibleScore,
             percentage: percentageScore,
             fields_count: scoredFieldsCount,
-            details: scoringDetails
+            details: scoringDetails,
           };
-          
+
           const monitoringData = {
             family_id: flowState?.selectedValues?.families?.hh_id || null,
             family: flowState?.selectedValues?.families?.hh_id || null,
@@ -600,11 +611,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             izucode: flowState?.selectedValues?.izus?.izucode || null,
             user_id: formSubmissionMandatoryFields.userId || null,
             response: formattedData, // This includes all the form fields
-            score_data: scoreData
+            score_data: scoreData,
           };
 
-          console.log("Monitoring data:", JSON.stringify(monitoringData, null, 2));
-          
+          console.log(
+            "Monitoring data:",
+            JSON.stringify(monitoringData, null, 2)
+          );
+
           await saveMonitoringResponseToAPI(
             realm,
             monitoringData,
@@ -623,7 +637,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           );
         } else {
           // Regular survey submission
-          await saveSurveySubmission(realm, dataWithTime, fields);
+          await saveSurveySubmissionToAPI(
+            realm,
+            dataWithTime,
+            postData,
+            fields
+          );
 
           // Show success alert and navigate
           Alert.alert(
@@ -684,15 +703,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const validateAndProceed = async () => {
     if (visibleFields.length === 0) return;
 
-
     // Validate all fields on the current page
     const currentPageFieldKeys = currentPageFields.map((field) => field.key);
-    
+
     try {
       // Trigger validation on all fields from the current page
-      const isValid = await trigger(currentPageFieldKeys, { shouldFocus: true });
+      const isValid = await trigger(currentPageFieldKeys, {
+        shouldFocus: true,
+      });
       console.log("Validation result:", isValid);
-      
+
       // Log form state to see errors
       console.log("Form state errors:", formState.errors);
 
@@ -817,8 +837,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       ["province", "district", "sector", "cell", "village"].includes(fieldKey)
     ) {
       onEditFlowState("locations");
-    } else if (!wholeComponent && fieldKey in fieldIndexMap) {
-      setCurrentPage(fieldIndexMap[fieldKey]);
+    } else {
+      // Find the page containing the field
+      const fieldIndex = visibleFields.findIndex(field => field.key === fieldKey);
+      if (fieldIndex !== -1) {
+        const pageIndex = Math.floor(fieldIndex / fieldsPerPage);
+        setCurrentPage(pageIndex);
+      }
     }
   };
 
@@ -893,7 +918,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           )}
 
           {wholeComponent
-            ? visibleFields.map((field) => 
+            ? visibleFields.map((field) =>
                 field && field.key ? (
                   <DynamicField
                     key={`field-${field.key}`}
@@ -906,7 +931,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             : currentPageFields.map((field, index) => {
                 // Skip fields without keys to prevent React duplicate key warnings
                 if (!field || !field.key) return null;
-                
+
                 return (
                   <DynamicField
                     key={`field-${field.key}-${index}`}

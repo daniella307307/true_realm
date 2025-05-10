@@ -785,8 +785,11 @@ export interface IMonitoringForms extends Generic {
   status: string;
 }
 export interface ISurveySubmission extends Generic {
-  _id: Realm.BSON.ObjectId;
+  id: number;
   answers: { [key: string]: string | number | boolean | null };
+  form_data: { [key: string]: string | number | boolean | null };
+  location: { [key: string]: string | number | boolean | null };
+  sync_data: { [key: string]: string | number | boolean | null | Date };
 }
 
 export interface IFamilies extends Generic {
@@ -842,6 +845,27 @@ export interface INotifications extends Generic {
   updated_at: string;
 }
 
+export interface IFollowUps extends Generic {
+  id: number;
+  followup_date: string;
+  status: string;
+  comment: string;
+  user?: {
+    id: number;
+    name: string;
+  };
+  survey?: {
+    id: number;
+    name: string;
+  };
+  survey_result?: {
+    id: number;
+    _id: string;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
 export interface IPerformance extends Generic {
   id: number;
   family_id: string;
@@ -857,4 +881,3 @@ export interface IPerformance extends Generic {
   created_at: string;
   updated_at: string;
 }
-

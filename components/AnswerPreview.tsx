@@ -247,7 +247,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
           )}
 
           {/* Location */}
-          {flowState.selectedValues.locations?.province && (
+          {flowState.selectedValues.locations?.province?.province_name && (
             <View className="mb-4">
               <View className="flex flex-row justify-between items-center mb-2">
                 <Text className="font-medium text-[#050F2B]">

@@ -183,7 +183,7 @@ const HistoryProjectScreen = () => {
                     const submissionDate = projectSubmissions[projectSubmissions.length - 1].sync_data?.submitted_at
                     // @ts-ignore
                     if (submissionDate && (!latestDate || submissionDate > latestDate)) {
-                      latestDate = submissionDate;
+                      latestDate = new Date(submissionDate.toLocaleString());
                     }
                   }
 

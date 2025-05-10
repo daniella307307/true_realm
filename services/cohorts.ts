@@ -9,7 +9,6 @@ const { useRealm, useQuery } = RealmContext;
 
 export async function fetchCohortsFromRemote() {
   const res = await baseInstance.get<[{}]>("/get-cohorts");
-  console.log("Cohorts from remote:", JSON.stringify(res.data, null, 2));
   return res.data;
 }
 

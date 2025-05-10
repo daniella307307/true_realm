@@ -10,10 +10,20 @@ const { useQuery, useRealm } = RealmContext;
 
 export async function fetchMonitoringResponsesFromRemote() {
   const res = await baseInstance.get<{
-    monitoring_responses: any[];
-  }>("/monitoring/responses");
+    performances: any[];
+  }>("/get-performances");
+  
+  // Create a map of existing IDs from the response to prevent duplicates
+  const uniquePerformances = res.data.performances.reduce((acc, performance) => {
+    // Only add if we haven't seen this ID before
+    if (!acc.has(performance.id)) {
+      acc.set(performance.id, performance);
+    }
+    return acc;
+  }, new Map());
+
   return {
-    monitoring_responses: res.data.monitoring_responses || [],
+    monitoring_responses: Array.from(uniquePerformances.values()) || [],
   };
 }
 
@@ -30,24 +40,46 @@ export function useGetMonitoringResponses(forceSync: boolean = false) {
       staleTime: 5 * 60 * 1000, // 5 minutes
       forceSync,
       transformData: (data: { monitoring_responses: any[] }) => {
-        if (!data.monitoring_responses || data.monitoring_responses.length === 0) {
+        if (
+          !data.monitoring_responses ||
+          data.monitoring_responses.length === 0
+        ) {
           console.log("No monitoring responses data to transform");
           return [];
         }
 
-        return data.monitoring_responses.map((response) => ({
-          ...response,
-          sync_data: {
-            sync_status: true,
-            sync_reason: "Fetched from server",
-            sync_attempts: 0,
-            last_sync_attempt: new Date().toISOString(),
-            submitted_at: new Date().toISOString(),
-          },
-        }));
+        return data.monitoring_responses.map((response) => {
+          // Handle score_data parsing
+          let parsedScoreData = {};
+          if (response.score_data) {
+            try {
+              // If score_data is a string, parse it
+              parsedScoreData = typeof response.score_data === 'string' 
+                ? JSON.parse(response.score_data)
+                : response.score_data;
+            } catch (error) {
+              console.log("Error parsing score_data:", error);
+              parsedScoreData = {};
+            }
+          }
+
+          return {
+            ...response,
+            score_data: parsedScoreData,
+            sync_data: {
+              sync_status: true,
+              sync_reason: "Fetched from server",
+              sync_attempts: 0,
+              last_sync_attempt: new Date().toISOString(),
+              submitted_at: new Date().toISOString(),
+            },
+          };
+        });
       },
     },
   ]);
+
+  // console.log("stored Monitoring Responses: ", JSON.stringify(storedResponses, null, 2));
 
   return {
     responses: storedResponses,
@@ -118,17 +150,25 @@ export const createMonitoringResponse = (
       cohort: responseData.cohort,
       user_id: responseData.user_id || null,
       score_data: responseData.score_data || {},
-      json: typeof responseData.json === 'string' 
-        ? responseData.json 
-        : JSON.stringify(responseData.response || {}),
+      json:
+        typeof responseData.json === "string"
+          ? responseData.json
+          : JSON.stringify(responseData.response || {}),
       sync_data: syncData,
     };
 
-    console.log("Creating monitoring response with data:", JSON.stringify(response, null, 2));
+    console.log(
+      "Creating monitoring response with data:",
+      JSON.stringify(response, null, 2)
+    );
 
     let result;
     realm.write(() => {
-      result = realm.create(MonitoringResponses, response, Realm.UpdateMode.Modified);
+      result = realm.create(
+        MonitoringResponses,
+        response,
+        Realm.UpdateMode.Modified
+      );
     });
     if (!result) {
       throw new Error("Failed to create monitoring response object");
@@ -156,14 +196,11 @@ function createTemporaryMonitoringResponse(
     submitted_at: new Date().toISOString(),
   };
 
-  return createMonitoringResponse(
-    realm,
-    {
-      ...responseData,
-      id: localId,
-      sync_data: syncData,
-    }
-  );
+  return createMonitoringResponse(realm, {
+    ...responseData,
+    id: localId,
+    sync_data: syncData,
+  });
 }
 
 // Function to replace a temporary response with the official one from API
@@ -214,9 +251,10 @@ export const saveMonitoringResponseToAPI = async (
       cohort: responseData.cohort,
       user_id: responseData.user_id || null,
       score_data: responseData.score_data || {},
-      json: typeof responseData.response === 'object' 
-        ? JSON.stringify(responseData.response) 
-        : responseData.json || "{}",
+      json:
+        typeof responseData.response === "object"
+          ? JSON.stringify(responseData.response)
+          : responseData.json || "{}",
       sync_data: {
         sync_status: false,
         sync_reason: "New record",
@@ -231,7 +269,7 @@ export const saveMonitoringResponseToAPI = async (
     // If we're online, try to submit to API first
     if (isConnected) {
       try {
-        // Prepare data for API 
+        // Prepare data for API
         const apiData = {
           family_id: sanitizedResponseData.family_id,
           module_id: sanitizedResponseData.module_id,
@@ -241,9 +279,10 @@ export const saveMonitoringResponseToAPI = async (
           type: sanitizedResponseData.type,
           cohort: sanitizedResponseData.cohort,
           score_data: sanitizedResponseData.score_data,
-          response: typeof responseData.response === 'object' 
-            ? responseData.response 
-            : JSON.parse(sanitizedResponseData.json),
+          response:
+            typeof responseData.response === "object"
+              ? responseData.response
+              : JSON.parse(sanitizedResponseData.json),
         };
 
         // Send to API
@@ -284,7 +323,9 @@ export const saveMonitoringResponseToAPI = async (
     } else {
       // Offline mode - create with locally generated ID
       // These will be marked for sync later
-      console.log("Offline mode - creating temporary monitoring response record");
+      console.log(
+        "Offline mode - creating temporary monitoring response record"
+      );
       return createTemporaryMonitoringResponse(realm, sanitizedResponseData);
     }
   } catch (error) {
@@ -326,9 +367,12 @@ export const syncTemporaryMonitoringResponses = async (
         response: parsedJson,
       };
 
-      console.log("Syncing monitoring response to API:", JSON.stringify(apiData, null, 2));
+      console.log(
+        "Syncing monitoring response to API:",
+        JSON.stringify(apiData, null, 2)
+      );
       console.log("API URL:", apiUrl);
-      
+
       // Submit to API
       const apiResponse = await baseInstance.post(apiUrl, apiData);
 
@@ -369,4 +413,46 @@ export const syncTemporaryMonitoringResponses = async (
       // Continue with other records - this one will be tried again next sync
     }
   }
-}; 
+};
+
+export function useGetIzuStatisticsByMonitoringResponse(
+  izuId: number | null,
+  forceSync: boolean = false
+) {
+  // Find monitoring responses for this IZU
+  const monitoringResponses = useQuery(MonitoringResponses).filtered(
+    "user_id == $0",
+    izuId
+  );
+
+// Convert to array for easier consumption and sort by date (most recent first)
+  const monitoringResponsesArray = monitoringResponses
+    ? Array.from(monitoringResponses)
+        .map((response) => ({
+          id: response.id,
+          family_id: response.family_id,
+          date_recorded: response.date_recorded,
+          type: response.type,
+          cohort: response.cohort,
+          form_id: response.form_id,
+          score_data: response.score_data as unknown as {
+            total: number;
+            possible: number;
+            percentage: number;
+            fields_count: number;
+            details: Record<string, any>;
+          },
+        }))
+        .sort((a, b) => {
+          // Sort by date, most recent first
+          return (
+            new Date(b.date_recorded).getTime() -
+            new Date(a.date_recorded).getTime()
+          );
+        })
+    : [];
+
+  return {
+    monitoringResponses: monitoringResponsesArray,
+  };
+}

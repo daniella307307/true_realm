@@ -67,7 +67,7 @@ const ProjectScreen = () => {
   const renderItem = ({ item, index }: { item: IProject; index: number }) => {
     const isRiskManagement = item.name
       .toLowerCase()
-      .includes("isk of harm management");
+      .includes("risk of harm management");
     const isFirstItem = index === 0;
 
     return (

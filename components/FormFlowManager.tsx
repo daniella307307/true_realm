@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { View, Text, Alert } from "react-native";
 import { ICohort, IFamilies, Izus } from "~/types";
 
@@ -246,6 +246,56 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
     }
   };
 
+  const handleCohortSelect = useCallback((value: ICohort) => {
+    setFlowState((prev) => ({
+      ...prev,
+      selectedValues: {
+        ...prev.selectedValues,
+        cohorts: value,
+      },
+    }));
+  }, []);
+
+  const handleFamilySelect = useCallback((value: IFamilies) => {
+    setFlowState((prev) => ({
+      ...prev,
+      selectedValues: {
+        ...prev.selectedValues,
+        families: value,
+      },
+    }));
+  }, []);
+
+  const handleIzuSelect = useCallback((value: Izus) => {
+    setFlowState((prev) => ({
+      ...prev,
+      selectedValues: {
+        ...prev.selectedValues,
+        izus: value,
+      },
+    }));
+  }, []);
+
+  const handleLocationSelect = useCallback((value: FlowState["selectedValues"]["locations"]) => {
+    setFlowState((prev) => ({
+      ...prev,
+      selectedValues: {
+        ...prev.selectedValues,
+        locations: value,
+      },
+    }));
+  }, []);
+
+  const handleStakeholderSelect = useCallback((value: any[]) => {
+    setFlowState((prev) => ({
+      ...prev,
+      selectedValues: {
+        ...prev.selectedValues,
+        stakeholders: value,
+      },
+    }));
+  }, []);
+
   const renderStep = () => {
     const currentStepKey = flowSteps[currentStep] as FlowStepKey;
     const currentValue =
@@ -257,60 +307,28 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
       case "cohorts":
         return (
           <CohortSelector
-            onSelect={(value) => {
-              setFlowState((prev) => ({
-                ...prev,
-                selectedValues: {
-                  ...prev.selectedValues,
-                  cohorts: value,
-                },
-              }));
-            }}
+            onSelect={handleCohortSelect}
             initialValue={currentValue as ICohort}
           />
         );
       case "families":
         return (
           <FamilySelector
-            onSelect={(value) => {
-              setFlowState((prev) => ({
-                ...prev,
-                selectedValues: {
-                  ...prev.selectedValues,
-                  families: value,
-                },
-              }));
-            }}
+            onSelect={handleFamilySelect}
             initialValue={currentValue as IFamilies}
           />
         );
       case "izus":
         return (
           <IzuSelector
-            onSelect={(value) => {
-              setFlowState((prev) => ({
-                ...prev,
-                selectedValues: {
-                  ...prev.selectedValues,
-                  izus: value,
-                },
-              }));
-            }}
+            onSelect={handleIzuSelect}
             initialValue={currentValue as Izus}
           />
         );
       case "locations":
         return (
           <LocationSelector
-            onSelect={(value) => {
-              setFlowState((prev) => ({
-                ...prev,
-                selectedValues: {
-                  ...prev.selectedValues,
-                  locations: value,
-                },
-              }));
-            }}
+            onSelect={handleLocationSelect}
             initialValues={
               currentValue as FlowState["selectedValues"]["locations"]
             }
@@ -319,15 +337,7 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
       case "stakeholders":
         return (
           <StakeholderSelector
-            onSelect={(value) => {
-              setFlowState((prev) => ({
-                ...prev,
-                selectedValues: {
-                  ...prev.selectedValues,
-                  stakeholders: value,
-                },
-              }));
-            }}
+            onSelect={handleStakeholderSelect}
             initialValue={currentValue as any[]}
           />
         );

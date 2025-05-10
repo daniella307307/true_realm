@@ -5,9 +5,14 @@ import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { Card } from "~/components/ui/card";
-import { useGetIzuStatistics } from "~/services/statistics";
 import { NotFound } from "~/components/ui/not-found";
 import { useState } from "react";
+import { useGetFamilies } from "~/services/families";
+import {
+  useGetAllSurveySubmissions,
+  useGetRemoteSurveySubmissions,
+} from "~/services/survey-submission";
+import { useGetIzuStatisticsByMonitoringResponse } from "~/services/monitoring/monitoring-responses";
 
 // Define interface for monitoring response
 interface MonitoringResponseData {
@@ -15,6 +20,7 @@ interface MonitoringResponseData {
   family_id: string;
   date_recorded: string;
   type: string;
+  form_id: string;
   score_data: {
     total: number;
     possible: number;
@@ -31,9 +37,9 @@ const IzuIndexStatisticsScreen = () => {
     izu_name: string;
     izucode: string;
   }>();
-  
+
   const [showScoreDetails, setShowScoreDetails] = useState(false);
-  
+
   if (!_id) {
     return (
       <NotFound
@@ -43,38 +49,56 @@ const IzuIndexStatisticsScreen = () => {
       />
     );
   }
-  console.log("id", _id);
-  console.log("izu_name", izu_name);
-  console.log("izucode", izucode);
 
   const selectedIzuId = parseInt(_id);
-  const { 
-    statistics: izuStatistics, 
-    score, 
-    totalPoints, 
-    isLoading,
-    monitoringResponses 
-  } = useGetIzuStatistics(selectedIzuId);
+  const { monitoringResponses } =
+    useGetIzuStatisticsByMonitoringResponse(selectedIzuId);
 
-  console.log("score", score);
-  console.log("totalPoints", totalPoints);
-  console.log("izuStatistics", JSON.stringify(izuStatistics, null, 2));
+  // console.log(
+  //   "monitoringResponses",
+  //   JSON.stringify(monitoringResponses, null, 2)
+  // );
 
-  if (isLoading) {
-    return (
-      <View className="flex-1 bg-background flex-col items-center justify-center">
-        {[1, 2, 3].map((index) => (
-          <SimpleSkeletonItem key={index} />
-        ))}
-      </View>
-    );
-  }
+  // Get families and survey submissions
+  const { families } = useGetFamilies();
+  const { surveySubmissions } = useGetAllSurveySubmissions();
+  const { surveySubmissions: remoteSurveySubmissions } =
+    useGetRemoteSurveySubmissions();
+
+  // Calculate total families for this IZU
+  const totalFamilies = families.filter(
+    (family) => family.izucode === izucode
+  ).length;
+
+  // Calculate visits done for this IZU
+  const visitsDone = surveySubmissions.filter(
+    (submission) => submission.form_data?.izucode === izucode
+  ).length;
+
+  // Calculate total visits (families * 16 modules)
+  const totalVisits = totalFamilies * 16;
+
+  // Calculate average percentage from monitoring responses
+  const averagePercentage =
+    monitoringResponses?.length > 0
+      ? monitoringResponses.reduce(
+          (acc, curr) => acc + (curr.score_data?.percentage || 0),
+          0
+        ) / monitoringResponses.length
+      : 0;
+
+  // Calculate risk of harms
+  const riskOfHarms = [...surveySubmissions, ...remoteSurveySubmissions].filter(
+    (submission) =>
+      submission.form_data?.project_module_id === 177 &&
+      submission.form_data?.project_id === 17 &&
+      submission.form_data?.izucode === izucode
+  ).length;
 
   // Function to get score color based on percentage
   const getScoreColor = (scoreValue: number, maxValue: number) => {
     const percentage = (scoreValue / maxValue) * 100;
-    if (percentage >= 75) return "text-green-600";
-    if (percentage >= 50) return "text-yellow-600";
+    if (percentage >= 50) return "text-green-600";
     return "text-red-600";
   };
 
@@ -101,7 +125,7 @@ const IzuIndexStatisticsScreen = () => {
             {t("StatisticsPage.families", "Families")}
           </Text>
           <Text className="text-2xl font-bold text-primary">
-            {izuStatistics?.izu_statistics?.total_families}
+            {totalFamilies}
           </Text>
           <Text className="text-gray-500">
             {t("StatisticsPage.total_families", "Total Families")}
@@ -116,7 +140,7 @@ const IzuIndexStatisticsScreen = () => {
           <View className="flex-row justify-between">
             <View>
               <Text className="text-2xl font-bold text-primary">
-                {izuStatistics?.izu_statistics?.visits_done}
+                {visitsDone}
               </Text>
               <Text className="text-gray-500">
                 {t("StatisticsPage.visits_done", "Visits Done")}
@@ -124,7 +148,7 @@ const IzuIndexStatisticsScreen = () => {
             </View>
             <View>
               <Text className="text-2xl font-bold text-black">
-                {izuStatistics?.izu_statistics?.all_visits_to_make}
+                {totalVisits}
               </Text>
               <Text className="text-gray-500">
                 {t("StatisticsPage.total_visits", "Total Visits")}
@@ -139,21 +163,33 @@ const IzuIndexStatisticsScreen = () => {
             {t("StatisticsPage.performance_score", "Performance Score")}
           </Text>
           <View className="flex-row justify-between items-center">
-            {totalPoints > 0 ? (
+            {monitoringResponses && monitoringResponses.length > 0 ? (
               <>
-                <Text className={`text-2xl font-bold ${getScoreColor(score, totalPoints)}`}>
-                  {score}/{totalPoints}
+                <Text
+                  className={`text-2xl font-bold ${getScoreColor(
+                    averagePercentage,
+                    100
+                  )}`}
+                >
+                  {Math.round(averagePercentage)}%
                 </Text>
-                <Text className={`text-lg font-medium ${getScoreColor(score, totalPoints)}`}>
-                  {Math.round((score / totalPoints) * 100)}%
+                <Text
+                  className={`text-lg font-medium ${getScoreColor(
+                    averagePercentage,
+                    100
+                  )}`}
+                >
+                  Average Score
                 </Text>
               </>
             ) : (
-              <Text className="text-2xl font-bold text-gray-500">The score of izu below:</Text>
+              <Text className="text-2xl font-bold text-gray-500">
+                No monitoring data available
+              </Text>
             )}
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             onPress={() => setShowScoreDetails(!showScoreDetails)}
             className="mt-2 py-2"
           >
@@ -161,45 +197,66 @@ const IzuIndexStatisticsScreen = () => {
               {showScoreDetails ? "Hide details" : "Show details"}
             </Text>
           </TouchableOpacity>
-          
-          {showScoreDetails && monitoringResponses && monitoringResponses.length > 0 && (
-            <View className="mt-2">
-              <Text className="font-semibold mb-2">Monitoring History</Text>
-              {monitoringResponses.map((response: MonitoringResponseData, index: number) => (
-                <View key={index} className="mb-3 p-2 bg-white rounded-md">
-                  <View className="flex-row justify-between">
-                    <Text className="text-gray-700">
-                      {formatDate(response.date_recorded)}
-                    </Text>
-                    <View className="flex-row">
-                      <Text className={`font-semibold ${getScoreColor(
-                        response.score_data?.total || 0, 
-                        response.score_data?.possible || 1
-                      )}`}>
-                        {response.score_data?.percentage || 0}%
+
+          {showScoreDetails &&
+            monitoringResponses &&
+            monitoringResponses.length > 0 && (
+              <View className="mt-2">
+                <Text className="font-semibold mb-2">Monitoring History</Text>
+                {monitoringResponses.map(
+                  (response: MonitoringResponseData, index: number) => (
+                    <TouchableOpacity
+                      key={index}
+                      className="mb-3 p-2 bg-white rounded-md"
+                      onPress={() => {
+                        // Navigate to score details page
+                        router.push({
+                          pathname: "/score-details" as any,
+                          params: {
+                            score_data: JSON.stringify(response.score_data),
+                            date: response.date_recorded,
+                            form_id: response.form_id,
+                          },
+                        });
+                      }}
+                    >
+                      <View className="flex-row justify-between">
+                        <Text className="text-gray-700">
+                          {formatDate(response.date_recorded)}
+                        </Text>
+                        <View className="flex-row">
+                          <Text
+                            className={`font-semibold ${getScoreColor(
+                              response.score_data?.total || 0,
+                              response.score_data?.possible || 1
+                            )}`}
+                          >
+                            {response.score_data?.percentage || 0}%
+                          </Text>
+                        </View>
+                      </View>
+                      <Text className="text-gray-500 text-sm">
+                        Score: {response.score_data?.total || 0}/
+                        {response.score_data?.possible || 0}
                       </Text>
-                    </View>
-                  </View>
-                  <Text className="text-gray-500 text-sm">
-                    Score: {response.score_data?.total || 0}/{response.score_data?.possible || 0}
-                  </Text>
-                  <Text className="text-gray-500 text-sm">
-                    Fields scored: {response.score_data?.fields_count || 0}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
+                      <Text className="text-gray-500 text-sm">
+                        Fields scored: {response.score_data?.fields_count || 0}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                )}
+              </View>
+            )}
         </Card>
 
         {/* Risk of Harms Section */}
-        {izuStatistics?.izu_statistics?.riskofharms !== 0 && (
+        {riskOfHarms > 0 && (
           <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
             <Text className="text-lg font-semibold mb-2">
               {t("StatisticsPage.risk_of_harms", "Risk of Harms")}
             </Text>
             <Text className="text-2xl font-bold text-primary">
-              {izuStatistics?.izu_statistics?.riskofharms}
+              {riskOfHarms}
             </Text>
           </Card>
         )}

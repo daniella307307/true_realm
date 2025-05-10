@@ -93,7 +93,7 @@ export default function LoginScreen() {
         console.log("Authentication successful, starting data sync");
         Toast.show({
           type: "info",
-          text1: t("Login.syncingData"),
+          text1: t("Login.syncingData", "Syncing data..."),
           position: "top",
           autoHide: false,
         });

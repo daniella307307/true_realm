@@ -14,17 +14,16 @@ import {
   useGetAllLocallyCreatedFamilies,
   useGetFamilies,
 } from "~/services/families";
-import { IFamilies, ISurveySubmission } from "~/types";
+import { IFamilies } from "~/types";
 import { ListRenderItemInfo } from "react-native";
 import { Entypo } from "@expo/vector-icons";
-import { ProcessedSubmission } from "~/types/form-types";
 import { NotFound } from "~/components/ui/not-found";
 import CustomInput from "~/components/ui/input";
 import { useGetAllLocallyCreatedIzus } from "~/services/izus";
 
 // Extended type for our combined data
 type CombinedItem = {
-  _id: string;
+  _id: number;
   table_name: string;
   sync_status: boolean;
   survey_id: string | null;
@@ -108,7 +107,7 @@ const SubmissionListByModuleScreen = () => {
     const processedSubmissions: CombinedItem[] = Array.from(
       surveySubmissions
     ).map((sub: any) => ({
-      _id: sub._id.toString(),
+      _id: sub.id,
       table_name: sub.form_data?.table_name,
       sync_status: sub.sync_data?.sync_status,
       survey_id: sub.form_data?.survey_id,
@@ -312,11 +311,6 @@ const SubmissionListByModuleScreen = () => {
                     {item.familyData?.hh_id}
                   </Text>
                 )}
-                {item.itemType === "submission" && (
-                  <Text className="text-lg font-semibold text-gray-800">
-                    {item.table_name}
-                  </Text>
-                )}
                 <View
                   className={`px-2 py-1 rounded-full ${
                     item.sync_status ? "bg-green-100" : "bg-yellow-100"
@@ -338,41 +332,48 @@ const SubmissionListByModuleScreen = () => {
                 </View>
               </View>
               <View className="space-y-1 mb-3">
-                {foundFamily && (
+                {foundFamily ? (
                   <>
-                    <Text className="text-sm text-gray-600">
+                    <Text className="text-sm mb-1 text-gray-600">
+                      {t("Common.family", "Family")}: {item.family}
+                    </Text>
+                    <Text className="text-sm mb-1 text-gray-600">
                       {t("Common.headName", "Head Name")}:{" "}
                       {foundFamily.hh_head_fullname}
                     </Text>
                     {foundFamily.village_name && (
-                      <Text className="text-sm text-gray-600">
+                      <Text className="text-sm mb-1 text-gray-600">
                         {t("Common.village", "Village")}:{" "}
                         {foundFamily.village_name}
                       </Text>
                     )}
                   </>
+                ) : (
+                  <Text className="text-sm mb-1 text-gray-600">
+                    {t("Common.family", "Family")}: {item.family}
+                  </Text>
                 )}
-                <Text className="text-sm text-gray-600">
+                <Text className="text-sm mb-1 text-gray-600">
                   {t("History.createdAt", "Created At")}:{" "}
                   {item.submittedAt
                     ? new Date(item.submittedAt).toLocaleString()
                     : "-"}
                 </Text>
                 {item.lastSyncAttempt && (
-                  <Text className="text-sm text-gray-600">
+                  <Text className="text-sm mb-1 text-gray-600">
                     {t("History.lastSync", "Last Synced")}:{" "}
                     {item.lastSyncAttempt
                       ? new Date(item.lastSyncAttempt).toLocaleString()
                       : "-"}
                   </Text>
                 )}
-                <Text className="text-sm text-gray-600">
-                  {t("Common.type", "Type")}:{" "}
+                <Text className="text-sm mb-1 text-gray-600">
+                  {t("Common.type", "Submitted: ")}
                   {item.itemType === "family"
-                    ? t("Common.family", "Family")
+                    ? t("Common.family", "a family")
                     : item.itemType === "submission"
-                    ? t("Common.submission", "Submission")
-                    : t("Common.izu", "IZU")}
+                    ? t("Common.submission", "a submission")
+                    : t("Common.izu", "an IZU")}
                 </Text>
               </View>
             </TouchableOpacity>

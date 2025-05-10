@@ -237,9 +237,9 @@ const ProjectModuleScreens = () => {
         ...moduleFamilies,
         ...moduleIzus,
       ].sort((a, b) => {
-        const dateA = a.sync_data?.submitted_at || 0;
-        const dateB = b.sync_data?.submitted_at || 0;
-        return (dateB as number) - (dateA as number);
+        const dateA = typeof a.sync_data?.submitted_at === 'number' ? a.sync_data.submitted_at : 0;
+        const dateB = typeof b.sync_data?.submitted_at === 'number' ? b.sync_data.submitted_at : 0;
+        return dateB - dateA;
       });
 
       console.log(
@@ -317,12 +317,8 @@ const ProjectModuleScreens = () => {
 
       const sortedSubmissions = [...formSubmissions, ...formFamilies, ...formIzus].sort(
         (a, b) => {
-          const dateA = new Date(
-            (a.sync_data?.submitted_at as number) || 0
-          ).getTime();
-          const dateB = new Date(
-            (b.sync_data?.submitted_at as number) || 0
-          ).getTime();
+          const dateA = typeof a.sync_data?.submitted_at === 'number' ? a.sync_data.submitted_at : 0;
+          const dateB = typeof b.sync_data?.submitted_at === 'number' ? b.sync_data.submitted_at : 0;
           return dateB - dateA;
         }
       );
@@ -450,16 +446,18 @@ const ProjectModuleScreens = () => {
                               submission.form_data?.source_module_id === 24
                           )
                           .sort(
-                            (a, b) =>
-                              new Date(
-                                b.sync_data?.submitted_at || 0
-                              ).getTime() -
-                              new Date(a.sync_data?.submitted_at || 0).getTime()
+                            (a, b) => {
+                              const dateA = typeof a.sync_data?.submitted_at === 'number' ? a.sync_data.submitted_at : 0;
+                              const dateB = typeof b.sync_data?.submitted_at === 'number' ? b.sync_data.submitted_at : 0;
+                              return dateB - dateA;
+                            }
                           );
 
                         return riskSubmissions.length > 0
                           ? new Date(
-                              riskSubmissions[0].sync_data?.submitted_at || 0
+                              typeof riskSubmissions[0].sync_data?.submitted_at === 'number' 
+                                ? riskSubmissions[0].sync_data.submitted_at 
+                                : 0
                             ).toLocaleDateString("en-GB", {
                               day: "2-digit",
                               month: "2-digit",

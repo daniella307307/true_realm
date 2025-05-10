@@ -8,11 +8,12 @@ import {
 } from "react-native";
 import { Text } from "./text";
 import { useGetIzus } from "~/services/izus";
-import { Ionicons } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
 import i18n from "~/utils/i18n";
 import { getLocalizedTitle } from "~/utils/form-utils";
 import { Izus } from "~/types";
 import { useFocusEffect } from "@react-navigation/native";
+import { useGetIzuStatisticsByMonitoringResponse } from "~/services/monitoring/monitoring-responses";
 
 interface IzuSelectorProps {
   onSelect: (value: Izus) => void;
@@ -27,25 +28,57 @@ const IzuCodeItem = ({
   item: Izus;
   onSelect: (code: string) => void;
   isSelected: boolean;
-}) => (
-  <TouchableOpacity
-    onPress={() => onSelect(item?.izucode || "")}
-    className={`px-4 py-3 mb-2 rounded-lg ${
-      isSelected ? "bg-primary bg-opacity-20" : "bg-white"
-    } border border-[#E4E4E7]`}
-  >
-    <Text className={`font-medium ${isSelected ? "text-white" : "text-black"}`}>
-      {item.izucode}
-    </Text>
-    <Text
-      className={`text-sm text-gray-500 ${
-        isSelected ? "text-white" : "text-black"
-      }`}
+}) => {
+  const { monitoringResponses } = useGetIzuStatisticsByMonitoringResponse(item.id);
+
+  // Calculate average percentage from monitoring responses
+  const averagePercentage =
+    monitoringResponses?.length > 0
+      ? monitoringResponses.reduce(
+          (acc, curr) => acc + (curr.score_data?.percentage || 0),
+          0
+        ) / monitoringResponses.length
+      : 0;
+
+  // Determine arrow direction based on percentage
+  const arrowIcon = averagePercentage >= 50 ? "arrowup" : "arrowdown";
+  const arrowColor = averagePercentage >= 50 ? "green" : "red";
+  const arrowRotation = averagePercentage >= 50 ? "rotate-45" : "rotate-135";
+
+  return (
+    <TouchableOpacity
+      onPress={() => onSelect(item?.izucode || "")}
+      className={`px-4 py-3 mb-2 rounded-lg ${
+        isSelected ? "bg-primary bg-opacity-20" : "bg-white"
+      } border border-[#E4E4E7]`}
     >
-      {item.name}
-    </Text>
-  </TouchableOpacity>
-);
+      <View className="flex-row justify-between items-center">
+        <View>
+          <Text
+            className={`font-medium ${
+              isSelected ? "text-white" : "text-black"
+            }`}
+          >
+            {item.izucode}
+          </Text>
+          <Text
+            className={`text-sm text-gray-500 ${
+              isSelected ? "text-white" : "text-black"
+            }`}
+          >
+            {item.name}
+          </Text>
+        </View>
+        <AntDesign
+          name={arrowIcon}
+          size={24}
+          color={arrowColor}
+          className={arrowRotation}
+        />
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 const IzuSelector: React.FC<IzuSelectorProps> = ({
   onSelect,
@@ -57,7 +90,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
 
   const { izus: izus, isLoading, refresh } = useGetIzus();
-  // console.log("Izus: ", JSON.stringify(izus, null, 2));
+
   // Add focus effect to refresh data when screen is focused
   useFocusEffect(
     React.useCallback(() => {
@@ -66,8 +99,6 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
       return () => {};
     }, [refresh])
   );
-
-  // console.log("Izus: ", JSON.stringify(izus, null, 2));
 
   const filteredIzus = izus?.filter((izu) => {
     if (!searchQuery) return true;

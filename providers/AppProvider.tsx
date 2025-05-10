@@ -7,12 +7,12 @@ import { useGetPosts } from "~/services/posts";
 import { useGetStakeholders } from "~/services/stakeholders";
 import { useGetCohorts } from "~/services/cohorts";
 import { useAuth } from "~/lib/hooks/useAuth";
-import { useGetStatistics } from '~/services/statistics';
 import { useGetNotifications } from '~/services/notifications';
-import { useGetAllSurveySubmissions } from '~/services/survey-submission';
-import { useGetPerformances } from '~/services/performance';
+import { useGetAllSurveySubmissions, useGetRemoteSurveySubmissions } from '~/services/survey-submission';
 import { useGetMonitoringForms } from '~/services/monitoring/monitoring-forms';
 import { useGetMonitoringModules } from '~/services/monitoring/monitoring-module';
+import { useGetMonitoringResponses } from '~/services/monitoring/monitoring-responses';
+import { useGetAllFollowUps } from '~/services/followups';
 
 type AppDataContextType = {
   isDataLoaded: boolean;
@@ -41,13 +41,12 @@ export const AppDataProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const { refresh: refreshPosts } = useGetPosts(true);
   const { refresh: refreshStakeholders } = useGetStakeholders(true);
   const { refresh: refreshCohorts } = useGetCohorts(true);
-  const { refresh: refreshStatistics } = useGetStatistics(true);
   const { refresh: refreshNotifications } = useGetNotifications(true);
-  const { refresh: refreshPerformances } = useGetPerformances(true);
   const { refresh: refreshMonitoringModules } = useGetMonitoringModules(true);
   const { refresh: refreshMonitoringForms } = useGetMonitoringForms(true);
-  // const { refresh: refreshRemoteSurveySubmissions } = useGetRemoteSurveySubmissions(true);
-
+  const { refresh: refreshRemoteSurveySubmissions } = useGetRemoteSurveySubmissions(true);
+  const { refresh: refreshMonitoringResponses } = useGetMonitoringResponses(true);
+  const { refresh: refreshFollowUps } = useGetAllFollowUps(true);
   const refreshAllData = async () => {
     try {
       setIsRefreshing(true);
@@ -62,11 +61,11 @@ export const AppDataProvider: React.FC<{children: React.ReactNode}> = ({ childre
         refreshStakeholders(),
         refreshCohorts(),
         refreshNotifications(),
-        refreshStatistics(),
-        refreshPerformances(),
         refreshMonitoringModules(),
         refreshMonitoringForms(),
-        // refreshRemoteSurveySubmissions(),
+        refreshRemoteSurveySubmissions(),
+        refreshMonitoringResponses(),
+        refreshFollowUps(),
       ]);
       
       console.log("All data refreshed successfully");

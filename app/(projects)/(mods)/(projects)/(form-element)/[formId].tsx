@@ -75,10 +75,12 @@ const ProjectFormElementScreen = () => {
       />
     );
   }
-  console.log(
-    "Parsed Json2:",
-    regularForm.json2
-  );
+  // console.log(
+  //   "Parsed Json2:",
+  //   regularForm.json2
+  // );
+
+  // console.log("Regular Form: ", JSON.stringify(regularForm, null, 2));
 
   const parsedForm = regularForm?.json2
     ? typeof regularForm.json2 === "string"
@@ -86,7 +88,7 @@ const ProjectFormElementScreen = () => {
       : regularForm.json2
     : null;
 
-  console.log("Parsed Formula: ", JSON.stringify(parsedForm.components, null, 2));
+  // console.log("Parsed Formula: ", JSON.stringify(parsedForm.components, null, 2));
 
   const formStructure: IFormSubmissionDetail = {
     id: regularForm.id,

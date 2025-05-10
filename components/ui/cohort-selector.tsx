@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, FlatList, TouchableOpacity, TextInput } from "react-native";
 import { Text } from "./text";
 import { useGetCohorts } from "~/services/cohorts";
@@ -6,7 +6,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { getLocalizedTitle } from "~/utils/form-utils";
 import i18n from "~/utils/i18n";
 import { ICohort } from "~/types";
-import { useFocusEffect } from "@react-navigation/native";
 
 interface CohortSelectorProps {
   onSelect: (value: ICohort) => void;
@@ -59,19 +58,9 @@ const CohortSelector: React.FC<CohortSelectorProps> = ({
   const [selectedCohort, setSelectedCohort] = useState<ICohort | undefined>(
     initialValue
   );
-  const { cohorts, isLoading, refresh } = useGetCohorts(true);
+  const { cohorts, isLoading, refresh } = useGetCohorts();
   
-  // Add focus effect to refresh data when screen is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      // Refresh the data when the screen comes into focus
-      refresh && refresh();
-      return () => {};
-    }, [refresh])
-  );
-  
-  console.log("Cohorts:", JSON.stringify(cohorts, null, 2));
-  const language = i18n.language;
+  const language = useMemo(() => i18n.language, []);
 
   const handleSelect = (cohort: ICohort) => {
     const cohortCopy = { ...cohort };
@@ -80,17 +69,22 @@ const CohortSelector: React.FC<CohortSelectorProps> = ({
   };
 
   // Filter out empty or null cohorts, then apply search filter
-  const validCohorts = cohorts?.filter(cohort => 
-    cohort && cohort.cohort && cohort.cohort.trim() !== ""
-  ) || [];
+  const validCohorts = useMemo(() => 
+    cohorts?.filter(cohort => 
+      cohort && cohort.cohort && cohort.cohort.trim() !== ""
+    ) || [],
+    [cohorts]
+  );
   
-  const filteredCohorts = validCohorts.filter((cohort) => {
-    if (!searchQuery) {
-      return true;
-    }
-
-    return cohort.cohort.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredCohorts = useMemo(() => 
+    validCohorts.filter((cohort) => {
+      if (!searchQuery) {
+        return true;
+      }
+      return cohort.cohort.toLowerCase().includes(searchQuery.toLowerCase());
+    }),
+    [validCohorts, searchQuery]
+  );
 
   if (isLoading) {
     return (
