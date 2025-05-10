@@ -100,7 +100,7 @@ const HeaderNavigation = ({
             }}
           >
             <Feather name="bell" size={size - 2} color={themeColor} />
-            {unreadCount > 0 && (
+            {/* {unreadCount > 0 && (
               <View
                 style={{
                   position: 'absolute',
@@ -119,7 +119,7 @@ const HeaderNavigation = ({
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </Text>
               </View>
-            )}
+            )} */}
           </TouchableOpacity>
         )}
         

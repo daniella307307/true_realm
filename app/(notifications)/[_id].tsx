@@ -373,10 +373,10 @@ const NotificationDetailScreen = () => {
           </View>
         ) : (
           <View>
-            <View className="mb-4">
+            <View className="mb-4 flex justify-center items-end">
               <Button
                 onPress={() => setShowAddFollowup(true)}
-                className="bg-primary"
+                className="bg-primary w-1/2 justify-center items-center"
               >
                 <Text className="text-white">
                   {t("Notifications.add_followup", "Add Follow-up")}
