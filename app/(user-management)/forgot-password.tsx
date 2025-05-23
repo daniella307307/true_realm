@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useForm, FieldValues, SubmitHandler } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Logo from "~/components/Logo";
@@ -211,9 +211,9 @@ export default function ForgotScreen() {
               </View>
             </View>
             <TouchableOpacity className="pb-20">
-              <View className="text-center flex-row justify-center items-center">
-                <View className="w-1/2">
-                  <Text className="text-gray-500 whitespace-nowrap line-clamp-1">
+              <View className="text-center flex-col justify-center items-center">
+                <View className="w-full">
+                  <Text className="text-gray-500 whitespace-nowrap">
                     {t("ForgotPassword.rememberPassword")}
                   </Text>
                 </View>

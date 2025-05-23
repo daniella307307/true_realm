@@ -76,8 +76,6 @@ export function useGetFamilies(forceSync: boolean = false) {
       );
 
       const izucodes = relevantIzus.map((izu: Izu) => izu.izucode);
-      console.log("The izucodes: ", JSON.stringify(izucodes, null, 2));
-
       // Filter families by these izucodes
       return userFilteredFamilies.filtered("izucode IN $0", izucodes);
     }
@@ -244,6 +242,7 @@ export const createFamilyWithMeta = (
       sync_attempts: 0,
       last_sync_attempt: new Date(),
       submitted_at: new Date(),
+      created_by_user_id: familyData.user_id || null,
     };
 
     const family = {
@@ -458,17 +457,28 @@ export const saveFamilyToAPI = async (
 // Function to sync temporary families with the server
 export const syncTemporaryFamilies = async (
   realm: Realm,
-  apiUrl: string
+  apiUrl: string,
+  userId?: number
 ): Promise<void> => {
   if (!isOnline()) {
     console.log("Cannot sync temporary families - offline");
     return;
   }
 
-  // Find all families that need syncing
+  if (!userId) {
+    console.log("No user ID provided, cannot sync");
+    return;
+  }
+
+  // Find all families that need syncing AND were created by the current user
   const familiesToSync = realm
     .objects<Families>(Families)
-    .filtered("sync_data.sync_status == false");
+    .filtered(
+      "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
+      userId
+    );
+
+  console.log(`Found ${familiesToSync.length} families to sync for current user`);
 
   for (const family of familiesToSync) {
     try {

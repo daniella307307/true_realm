@@ -22,7 +22,7 @@ const FormElementIndexScreen = () => {
   const projectIdNumber = parseInt(project_id);
   const sourceModuleId = parseInt(source_module_id);
   const projectModuleId = parseInt(project_module_id);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth({});
   
   const { form, isLoading } = useGetFormById(
@@ -85,7 +85,9 @@ const FormElementIndexScreen = () => {
       />
       <View className="flex-1">
         <View className="px-4 pt-4">
-          <Text className="text-lg font-semibold mb-4">{form?.name}</Text>
+          <Text className="text-lg font-semibold mb-4">
+            {i18n.language === "rw-RW" ? form?.name_kin || form?.name : form?.name}
+          </Text>
         </View>
         <View className="flex-1">
           {form?.json2 && (

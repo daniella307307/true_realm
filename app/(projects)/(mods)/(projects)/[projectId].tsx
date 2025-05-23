@@ -24,7 +24,7 @@ import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { NotFound } from "~/components/ui/not-found";
 
 const ProjectModuleScreens = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { projectId } = useLocalSearchParams<{ 
     projectId: string;
   }>();
@@ -105,6 +105,7 @@ const ProjectModuleScreens = () => {
   const renderItem = ({ item }: { item: IModule | Survey }) => {
     if ('module_name' in item) {
       // This is a module
+      // console.log("Item: ", JSON.stringify(item, null, 2));
       return (
         <TouchableOpacity
           onPress={() => {
@@ -126,12 +127,13 @@ const ProjectModuleScreens = () => {
               color="#71717A"
             />
             <Text className="text-lg ml-2 font-semibold">
-              {item.module_name}
+              {i18n.language === "rw-RW" ? item.kin_title || item.module_name : item.module_name}
             </Text>
           </View>
         </TouchableOpacity>
       );
     } else {
+      // console.log("Item: ", JSON.stringify(item, null, 2));
       // This is a form
       return (
         <TouchableOpacity
@@ -154,7 +156,7 @@ const ProjectModuleScreens = () => {
               color="#71717A"
             />
             <Text className="text-lg ml-2 font-semibold">
-              {item.name}
+              {i18n.language === "rw-RW" ? item.name_kin || item.name : item.name}
             </Text>
           </View>
         </TouchableOpacity>
@@ -190,7 +192,7 @@ const ProjectModuleScreens = () => {
             keyExtractor={(item, index) => `${item?.id}-${index}`}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={() => (
-              <EmptyDynamicComponent message={t("ProjectModulePage.no_related_modules")} />
+              <EmptyDynamicComponent message={t("ProductModulePage.no_related_modules")} />
             )}
             renderItem={renderItem}
             refreshControl={

@@ -11,7 +11,7 @@ import { Image } from "react-native";
 import { useAuth } from "~/lib/hooks/useAuth";
 import HeaderNavigation from "~/components/ui/header";
 import { RealmContext } from "~/providers/RealContextProvider";
-import { useGetLocationByVillageId } from "~/services/locations";
+import { useGetLocationByVillageId, useGetLocationByVillageIdOffline } from "~/services/locations";
 const { useRealm } = RealmContext;
 
 const SettingsScreen = () => {
@@ -21,11 +21,11 @@ const SettingsScreen = () => {
   const parsedIncentives = user?.incentives ? JSON.parse(user.incentives) : [];
 
   console.log("Village", user?.village);
-  const { data: locationNames, isLoading: isLoadingLocations } =
-    useGetLocationByVillageId(user?.village.toString() || "");
 
+  const { data: locationNamesOffline, isLoading: isLoadingLocationsOffline } =
+    useGetLocationByVillageIdOffline(user?.village.toString() || "");
 
-  console.log("Location Names", locationNames);
+  // console.log("Location Names", locationNamesOffline);
 
   type InfoItemProps = {
     label: string;
@@ -118,28 +118,28 @@ const SettingsScreen = () => {
             </Text>
             <InfoItem
               label={t("SettingsPage.province")}
-              value={locationNames?.location.province.province_name || ""}
-              isLoading={isLoadingLocations}
+              value={locationNamesOffline?.location.province.province_name || ""}
+              isLoading={isLoadingLocationsOffline}
             />
             <InfoItem
               label={t("SettingsPage.district")}
-              value={locationNames?.location.district.district_name || ""}
-              isLoading={isLoadingLocations}
+              value={locationNamesOffline?.location.district.district_name || ""}
+              isLoading={isLoadingLocationsOffline}
             />
             <InfoItem
               label={t("SettingsPage.sector")}
-              value={locationNames?.location.sector.sector_name || ""}
-              isLoading={isLoadingLocations}
+              value={locationNamesOffline?.location.sector.sector_name || ""}
+              isLoading={isLoadingLocationsOffline}
             />
             <InfoItem
               label={t("SettingsPage.cell")}
-              value={locationNames?.location.cell.cell_name || ""}
-              isLoading={isLoadingLocations}
+              value={locationNamesOffline?.location.cell.cell_name || ""}
+              isLoading={isLoadingLocationsOffline}
             />
             <InfoItem
               label={t("SettingsPage.village")}
-              value={locationNames?.location.village.village_name || ""}
-              isLoading={isLoadingLocations}
+              value={locationNamesOffline?.location.village.village_name || ""}
+              isLoading={isLoadingLocationsOffline}
             />
           </>
         )}

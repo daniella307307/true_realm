@@ -142,14 +142,14 @@ export async function updateComment({
 
 export async function reportPost({
   id,
-  report,
+  reason,
 }: {
   id: number;
-  report: string;
+  reason: string;
 }) {
   const res = await baseInstance.post<IResponse<{ message: string }>>(
     `/posts/${id}/report`,
-    { report }
+    { reason }
   );
   return res.data;
 }

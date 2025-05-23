@@ -35,16 +35,24 @@ const NewPostScreen: React.FC = () => {
     mode: "onChange", // Validate on every change
   });
 
-  const onSubmit = (data: PostFormData) => {
-    useCreatePost(
-      { title: data.title, body: data.description },
-      {
-        onSuccess: () => {
-          router.push("/community");
-        },
-      }
-    );
+  const onSubmit = async (data: PostFormData) => {
+    try {
+      await useCreatePost(
+        { title: data.title, body: data.description },
+        {
+          onSuccess: () => {
+            // Navigate back immediately after successful post creation
+            router.back();
+          },
+        }
+      );
+    } catch (error) {
+      console.error("Error creating post:", error);
+    }
   };
+
+  // Memoize the submit handler to prevent unnecessary re-renders
+  const memoizedSubmit = React.useCallback(handleSubmit(onSubmit), [handleSubmit, onSubmit]);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -61,7 +69,7 @@ const NewPostScreen: React.FC = () => {
           </Text>
           <TextInput
             className="w-full px-2 h-14 border border-[#E4E4E7] rounded-lg bg-white"
-            placeholder={t("CommunityPage.add_post_title")}
+            placeholder={t("CommunityPage.post_title_placeholder")}
             value={watch("title") || ""}
             onChangeText={(text) =>
               setValue("title", text, { shouldValidate: true })
@@ -81,8 +89,8 @@ const NewPostScreen: React.FC = () => {
             {t("CommunityPage.post_description")}
           </Text>
           <TextInput
-            className="h-32 border px-2 border-[#E4E4E7] rounded-lg justify-start items-start flex-col"
-            placeholder={t("CommunityPage.add_post_description")}
+            className="h-32 border p-4 border-[#E4E4E7] rounded-lg justify-start items-start flex-col"
+            placeholder={t("CommunityPage.post_description_placeholder")}
             value={watch("description") || ""}
             onChangeText={(text) =>
               setValue("description", text, { shouldValidate: true })
@@ -90,6 +98,7 @@ const NewPostScreen: React.FC = () => {
             multiline
             numberOfLines={4}
             {...register("description")}
+            textAlignVertical="top"
           />
           {errors.description && (
             <Text className="text-red-500 text-xs/1 mt-2">
@@ -100,14 +109,16 @@ const NewPostScreen: React.FC = () => {
 
         {/* Submit Button */}
         <Button
-          onPress={handleSubmit(onSubmit)}
+          onPress={memoizedSubmit}
           isLoading={isLoading}
           disabled={!isValid || isLoading}
           className={`p-4 rounded-lg flex-row items-center justify-center ${
-            !isValid || isLoading ? "bg-gray-400" : "bg-primary"
+            !isValid || isLoading ? "" : "bg-primary"
           }`}
         >
-          <Text className="ml-2 text-white font-semibold">{t("CommunityPage.create_post_button")}</Text>
+          <Text className="ml-2 text-white font-semibold">
+            {t("CommunityPage.save_post")}
+          </Text>
         </Button>
       </View>
     </SafeAreaView>

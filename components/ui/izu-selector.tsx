@@ -34,6 +34,7 @@ const IzuCodeItem = ({
   const { monitoringResponses } = useGetIzuStatisticsByMonitoringResponse(
     item.id
   );
+  // console.log("Monitoring responses:", monitoringResponses);
 
   // Calculate average percentage from monitoring responses
   const averagePercentage =

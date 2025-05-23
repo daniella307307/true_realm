@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Realm } from "@realm/react";
 import provincesData from "~/mocks/provinces.json";
 import districtsData from "~/mocks/districts.json";
@@ -338,4 +338,98 @@ export function useGetLocationByVillageId(
   });
 
   return { data, isLoading, error };
+}
+
+export function useGetLocationByVillageIdOffline(
+  villageId: string
+) {
+  const realm = useRealm();
+  const [isLoading, setIsLoading] = useState(true);
+  const [locationData, setLocationData] = useState<ILocationDerivedByVillageId | null>(null);
+
+  useEffect(() => {
+    if (!villageId) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Get village
+      const village = getEntityById<Village>(realm, "Village", villageId);
+      
+      if (!village) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Get cell using the village's cells_id
+      const cell = getEntityById<Cell>(realm, "Cell", village.cells_id);
+      
+      if (!cell) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Get sector using the cell's sector_id
+      const sector = getEntityById<Sector>(realm, "Sector", cell.sector_id);
+      
+      if (!sector) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Get district using the sector's district_id
+      const district = getEntityById<District>(realm, "District", sector.district_id);
+      
+      if (!district) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Get province using the district's province_id
+      const province = getEntityById<Province>(realm, "Province", district.province_id);
+      
+      if (!province) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Format data to match the online API response structure
+      const formattedLocation: ILocationDerivedByVillageId = {
+        location: {
+          province: {
+            id: Number(province.id),
+            province_name: province.province_name
+          },
+          district: {
+            id: Number(district.id),
+            district_name: district.district_name
+          },
+          sector: {
+            id: Number(sector.id),
+            sector_name: sector.sector_name
+          },
+          cell: {
+            id: Number(cell.id),
+            cell_name: cell.cell_name
+          },
+          village: {
+            id: Number(village.id),
+            village_name: village.village_name
+          }
+        }
+      };
+
+      setLocationData(formattedLocation);
+      setIsLoading(false);
+    } catch (error) {
+      console.log("Error fetching offline location data:", error);
+      setIsLoading(false);
+    }
+  }, [realm, villageId]);
+
+  return { 
+    data: locationData, 
+    isLoading 
+  };
 }

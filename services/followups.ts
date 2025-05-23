@@ -44,7 +44,16 @@ interface IFollowUpsResponse {
 export async function fetchFollowUpsFromRemote() {
   const res = await baseInstance.get<IFollowUpsResponse>("/get-all-followups");
   
-  return res.data.data.map(followup => ({
+  // Create a map of existing IDs from the response to prevent duplicates
+  const uniqueFollowUps = res.data.data.reduce((acc, followup) => {
+    // Only add if we haven't seen this ID before
+    if (!acc.has(followup.id)) {
+      acc.set(followup.id, followup);
+    }
+    return acc;
+  }, new Map());
+
+  return Array.from(uniqueFollowUps.values()).map(followup => ({
     id: followup.id,
     followup_date: followup.followup_date,
     status: followup.status,
@@ -73,6 +82,7 @@ export async function fetchFollowUpsFromRemote() {
 }
 
 export function useGetAllFollowUps(forceSync: boolean = false) {
+  const realm = useRealm();
   const storedFollowUps = useQuery(FollowUps);
   const { user } = useAuth({});
 
@@ -89,6 +99,23 @@ export function useGetAllFollowUps(forceSync: boolean = false) {
       model: FollowUps,
       staleTime: 5 * 60 * 1000, // 5 minutes
       forceSync,
+      transformData: (data: any[]) => {
+        if (!data || data.length === 0) {
+          console.log("No followups data to transform");
+          return [];
+        }
+
+        return data.map((followup) => ({
+          ...followup,
+          sync_data: {
+            sync_status: true,
+            sync_reason: "Fetched from server",
+            sync_attempts: 0,
+            last_sync_attempt: new Date().toISOString(),
+            submitted_at: new Date().toISOString(),
+          },
+        }));
+      },
     },
   ]);
 
@@ -127,6 +154,7 @@ function createTemporaryFollowup(
     sync_attempts: 0,
     last_sync_attempt: new Date().toISOString(),
     submitted_at: new Date().toISOString(),
+    created_by_user_id: followupData.user.id,
   };
 
   return createFollowupWithMeta(realm, {
@@ -158,6 +186,7 @@ function createFollowupWithMeta(
       sync_attempts: 0,
       last_sync_attempt: new Date().toISOString(),
       submitted_at: new Date().toISOString(),
+      created_by_user_id: followupData.user.id,
     };
 
     let result: FollowUps | undefined;
@@ -231,11 +260,12 @@ export const saveFollowupToAPI = async (
               sync_attempts: 1,
               last_sync_attempt: new Date().toISOString(),
               submitted_at: new Date().toISOString(),
+              created_by_user_id: followupData.user.id,
             },
           };
 
           realm.write(() => {
-            realm.create(FollowUps, completeData);
+            realm.create(FollowUps, completeData, Realm.UpdateMode.Modified);
           });
 
           return {
@@ -271,73 +301,91 @@ export const saveFollowupToAPI = async (
   }
 };
 
-export const syncTemporaryFollowups = async (realm: Realm): Promise<void> => {
+export const syncTemporaryFollowups = async (
+  realm: Realm,
+  apiUrl: string,
+  userId?: number
+): Promise<void> => {
   if (!isOnline()) {
-    console.log("Cannot sync temporary Followups - offline");
+    console.log("Cannot sync temporary followups - offline");
     return;
   }
 
+  if (!userId) {
+    console.log("No user ID provided, cannot sync");
+    return;
+  }
+
+  // Find all followups that need syncing AND were created by the current user
   const followupsToSync = realm
     .objects<FollowUps>(FollowUps)
-    .filtered("sync_data.sync_status == false");
+    .filtered(
+      "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
+      userId
+    );
 
-  console.log(`Found ${followupsToSync.length} Followups to sync`);
+  console.log(`Found ${followupsToSync.length} followups to sync for current user`);
 
   for (const followup of followupsToSync) {
     try {
+      // Format the date
+      let formattedDate = followup.followup_date;
+      if (typeof followup.followup_date === 'object' && followup.followup_date !== null) {
+        const { year, month, day } = followup.followup_date as any;
+        formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      } else if (typeof followup.followup_date === 'string' && followup.followup_date.includes('T')) {
+        formattedDate = followup.followup_date.split('T')[0];
+      }
+
       const apiData = {
-        id: followup.id,
-        followup_date: followup.followup_date,
+        followup_date: formattedDate,
         status: followup.status,
         comment: followup.comment,
-        ...(followup.form_data || {}),
+        project_module_id: followup.form_data?.project_module_id,
+        survey_result_id: followup.form_data?.survey_result_id,
+        project_id: followup.form_data?.project_id,
+        module_id: followup.form_data?.source_module_id,
+        survey_id: followup.form_data?.survey_id,
       };
 
-      const response = await baseInstance.post("/followups", apiData);
+      const response = await baseInstance.post(apiUrl, apiData);
 
-      if (response.data?.result?.id) {
+      if (response.data?.data) {
         const updatedData = {
-          ...apiData,
-          id: response.data.result.id,
+          ...response.data.data,
+          user: followup.user,
+          survey: followup.survey,
+          survey_result: followup.survey_result,
           sync_data: {
             sync_status: true,
             sync_reason: "Successfully synced",
             sync_attempts: (followup.sync_data?.sync_attempts ? Number(followup.sync_data.sync_attempts) : 0) + 1,
             last_sync_attempt: new Date().toISOString(),
-            submitted_at: new Date().toISOString(),
+            submitted_at: followup.sync_data?.submitted_at || new Date().toISOString(),
           },
         };
 
-        if (!realm.isInTransaction) {
-          realm.write(() => {
-            const existingFollowup = realm.objectForPrimaryKey(FollowUps, followup.id);
-            if (existingFollowup) {
-              Object.assign(existingFollowup, updatedData);
-            }
-          });
-        }
-      }
-    } catch (error: any) {
-      console.log("Error syncing Followup to API:", error);
-
-      if (!realm.isInTransaction) {
         realm.write(() => {
-          const existingFollowup = realm.objectForPrimaryKey(FollowUps, followup.id);
-          if (existingFollowup && existingFollowup.sync_data) {
-            existingFollowup.sync_data.sync_status = false;
-            existingFollowup.sync_data.sync_reason = `Failed: ${error?.message || "Unknown error"}`;
-            existingFollowup.sync_data.sync_attempts = (existingFollowup.sync_data.sync_attempts ? Number(existingFollowup.sync_data.sync_attempts) : 0) + 1;
-            existingFollowup.sync_data.last_sync_attempt = new Date().toISOString();
-          }
+          realm.create(FollowUps, updatedData, Realm.UpdateMode.Modified);
         });
       }
+    } catch (error: any) {
+      console.error("Error syncing Followup to API:", error);
+
+      realm.write(() => {
+        if (followup.sync_data) {
+          followup.sync_data.sync_status = false;
+          followup.sync_data.sync_reason = `Failed: ${error?.message || "Unknown error"}`;
+          followup.sync_data.sync_attempts = (followup.sync_data.sync_attempts ? Number(followup.sync_data.sync_attempts) : 0) + 1;
+          followup.sync_data.last_sync_attempt = new Date().toISOString();
+        }
+      });
     }
   }
 };
 
 // Function to get followups by survey result ID
 export function useGetFollowUpsBySurveyResultId(surveyResultId: string, surveyId: string) {
-  console.log("surveyResultId", surveyResultId);
   const followups = useQuery(FollowUps);
   const filteredFollowups = followups.filter(followup => 
     followup.survey_result?.id === Number(surveyResultId) && followup.survey?.id === Number(surveyId)
@@ -348,7 +396,6 @@ export function useGetFollowUpsBySurveyResultId(surveyResultId: string, surveyId
 
 // Function to get notification by ID
 export function useGetFollowUpById(id: number) {
-  const realm = useRealm();
   const followups = useQuery(FollowUps);
   
   const followup = followups.find(followup => 

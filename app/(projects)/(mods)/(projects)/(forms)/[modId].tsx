@@ -32,7 +32,7 @@ const ProjectFormsScreen = () => {
   }>();
   
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   if (!modId) {
     return (
@@ -111,19 +111,6 @@ const ProjectFormsScreen = () => {
     });
   }, [filteredForms, searchQuery]);
 
-  // 247
-  console.log(
-    "Filtered Forms: ",
-    JSON.stringify(
-      filteredForms.map((form) => ({
-        ...form,
-        json: undefined,
-      })),
-      null,
-      2
-    )
-  );
-  console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
   
   const ListHeaderComponent = useCallback(
     () => (
@@ -156,7 +143,9 @@ const ProjectFormsScreen = () => {
             size={24}
             color="#71717A"
           />
-          <Text className="text-lg ml-4 font-semibold">{item.name}</Text>
+          <Text className="text-lg ml-4 font-semibold">
+            {i18n.language === "rw-RW" ? item.name_kin || item.name : item.name}
+          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -208,7 +197,7 @@ const ProjectFormsScreen = () => {
           isLoading ? (
             renderContent()
           ) : (
-            <EmptyDynamicComponent message="No forms available" />
+            <EmptyDynamicComponent message={t("FormPage.empty_forms")} />
           )
         }
         contentContainerStyle={{

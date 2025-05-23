@@ -22,7 +22,7 @@ import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { useGetMonitoringModules } from "~/services/monitoring/monitoring-module";
 
 const MonitoringScreen = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // For monitoring project, we use a fixed project ID of 3
   const PROJECT_ID = 3;
@@ -121,7 +121,9 @@ const MonitoringScreen = () => {
             size={24}
             color="#71717A"
           />
-          <Text className="text-lg ml-2 font-semibold">{item.module_name}</Text>
+          <Text className="text-lg ml-2 font-semibold">
+            {i18n.language === "rw-RW" ? item.kin_title || item.module_name : item.module_name}
+          </Text>
         </View>
       </TouchableOpacity>
     );

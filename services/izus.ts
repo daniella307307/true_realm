@@ -80,6 +80,7 @@ export function useGetIzus(forceSync: boolean = false) {
     },
   ]);
 
+  // console.log("Filtered Izus:", JSON.stringify(filteredIzus?.length, null, 2));
   return {
     izus: filteredIzus,
     isLoading: syncStatus.izus?.isLoading || false,
@@ -223,6 +224,7 @@ export const createIzuWithMeta = (
       sync_attempts: 0,
       last_sync_attempt: new Date(),
       submitted_at: new Date(),
+      created_by_user_id: izuData.userId || null,
     };
 
     console.log("Creating Izu with processed data:", {
@@ -439,19 +441,28 @@ export const saveIzuToAPI = async (
 
 export const syncTemporaryIzus = async (
   realm: Realm,
-  apiUrl: string
+  apiUrl: string,
+  userId?: number
 ): Promise<void> => {
   if (!isOnline()) {
     console.log("Cannot sync temporary Izus - offline");
     return;
   }
 
-  // Find all Izus that need syncing
+  if (!userId) {
+    console.log("No user ID provided, cannot sync");
+    return;
+  }
+
+  // Find all Izus that need syncing AND were created by the current user
   const izusToSync = realm
     .objects<Izu>(Izu)
-    .filtered("sync_data.sync_status == false");
+    .filtered(
+      "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
+      userId
+    );
 
-  console.log(`Found ${izusToSync.length} Izus to sync`);
+  console.log(`Found ${izusToSync.length} Izus to sync for current user`);
 
   for (const izu of izusToSync) {
     try {
@@ -567,3 +578,4 @@ export const syncTemporaryIzus = async (
     }
   }
 };
+

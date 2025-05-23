@@ -41,10 +41,12 @@ type CombinedItem = {
     cohort: string;
   };
   izuName?: string;
+  name_kin?: string;
+  name?: string;
 };
 
 const SubmissionListByModuleScreen = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { submodId, family } = useLocalSearchParams<{
     submodId: string;
     family?: string;
@@ -157,6 +159,8 @@ const SubmissionListByModuleScreen = () => {
         project_id: izu?.form_data?.project_id,
         itemType: "izu",
         izuName: izu?.name,
+        name_kin: izu?.name_kin,
+        name: izu?.name,
       })
     );
 
@@ -337,7 +341,13 @@ const SubmissionListByModuleScreen = () => {
                     </Text>
                     <Text className="text-sm mb-1 text-gray-600">
                       {t("Common.headName")}:{" "}
-                      {foundFamily.hh_head_fullname}
+                      <Text className="text-lg ml-2 font-semibold">
+                        {item.itemType === "family"
+                          ? foundFamily?.hh_head_fullname
+                          : item.itemType === "izu"
+                          ? i18n.language === "rw-RW" ? item.name_kin || item.name : item.name
+                          : i18n.language === "rw-RW" ? item.name_kin || item.name : item.name}
+                      </Text>
                     </Text>
                     {foundFamily.village_name && (
                       <Text className="text-sm mb-1 text-gray-600">
@@ -346,11 +356,7 @@ const SubmissionListByModuleScreen = () => {
                       </Text>
                     )}
                   </>
-                ) : (
-                  <Text className="text-sm mb-1 text-gray-600">
-                    {t("Common.family")}: {item.family}
-                  </Text>
-                )}
+                ) : null}
                 <Text className="text-sm mb-1 text-gray-600">
                   {t("History.createdAt")}:{" "}
                   {item.submittedAt

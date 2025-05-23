@@ -27,8 +27,6 @@ const HistoryProjectScreen = () => {
   const { submissions: surveySubmissions, isLoading: isLoadingSubmissions } =
     useGetAllSurveySubmissions();
 
-  // console.log("surveySubmissions", JSON.stringify(surveySubmissions, null, 2));
-
   const {
     locallyCreatedFamilies,
     isLoading: isLoadingFamilies,
@@ -42,7 +40,7 @@ const HistoryProjectScreen = () => {
   } = useGetAllLocallyCreatedIzus();
 
   // console.log("locallyCreatedIzus", JSON.stringify(locallyCreatedIzus, null, 2));
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const { control, watch } = useForm({
     defaultValues: {
@@ -157,7 +155,7 @@ const HistoryProjectScreen = () => {
               isRiskManagement ? "text-red-500" : ""
             }`}
           >
-            {item.name || ""}
+            {i18n.language === "rw-RW" ? item.kin_name || item.name : item.name}
           </Text>
         </View>
         <View className="flex flex-col justify-between items-start mt-2">
@@ -243,9 +241,9 @@ const HistoryProjectScreen = () => {
                         minute: "2-digit",
                         hour12: false,
                       })
-                    : t("History.noSubmissions");
+                    : t("History.no_submissions");
                 })()
-              : t("History.noSubmissions")}
+              : t("History.no_submissions")}
           </Text>
         </View>
       </TouchableOpacity>
@@ -271,6 +269,7 @@ const HistoryProjectScreen = () => {
   const transformedProjects = organizedProjects.map((project) => ({
     id: project.id,
     name: project.name || "",
+    kin_name: project.kin_name || "",
     duration: project.duration || "",
     progress: project.progress || "",
     description: project.description || "",

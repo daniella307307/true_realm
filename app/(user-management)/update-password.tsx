@@ -20,14 +20,18 @@ import { useAuth } from "~/lib/hooks/useAuth";
 import Toast from "react-native-toast-message";
 import { checkNetworkConnection } from "~/utils/networkHelpers";
 import { z } from "zod";
+import { t } from "i18next";
+import HeaderNavigation from "~/components/ui/header";
 
-const updatePasswordSchema = z.object({
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const updatePasswordSchema = z
+  .object({
+    password: z.string().min(6, t("UpdatePassword.passwordMinLength")),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: t("UpdatePassword.passwordMismatch"),
+    path: ["confirmPassword"],
+  });
 
 type UpdatePasswordForm = z.infer<typeof updatePasswordSchema>;
 
@@ -58,7 +62,7 @@ export default function UpdatePasswordScreen() {
     const checkNetwork = async () => {
       const networkAvailable = await checkNetworkConnection();
       setIsNetworkAvailable(networkAvailable);
-      
+
       if (!networkAvailable) {
         Toast.show({
           type: "error",
@@ -69,11 +73,15 @@ export default function UpdatePasswordScreen() {
         });
       }
     };
-    
+
     checkNetwork();
   }, []);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<UpdatePasswordForm>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<UpdatePasswordForm>({
     resolver: zodResolver(updatePasswordSchema),
     mode: "onChange",
     defaultValues: {
@@ -97,51 +105,57 @@ export default function UpdatePasswordScreen() {
       setIsNetworkAvailable(false);
       Toast.show({
         type: "error",
-        text1: t("UpdatePassword.networkError", "Network error"),
-        text2: t("UpdatePassword.checkConnection", "Check your connection"),
+        text1: t("UpdatePassword.networkError"),
+        text2: t("UpdatePassword.checkConnection"),
         position: "top",
         visibilityTime: 5000,
       });
       return;
     }
-    
+
     if (!identifier) {
       Toast.show({
         type: "error",
-        text1: t("UpdatePassword.error", "Error"),
-        text2: t("UpdatePassword.missingIdentifier", "Missing identifier"),
+        text1: t("UpdatePassword.error"),
+        text2: t("UpdatePassword.missingIdentifier"),
         position: "top",
         visibilityTime: 5000,
       });
       return;
     }
-    
+
     updatePasswordAuth({ password: data.password, identifier });
   };
 
   return (
     <SafeAreaView className="flex-1 justify-center items-center flex-col gap-y-12 p-8 bg-background">
+      <HeaderNavigation
+        showLeft={false}
+        showRight={false}
+        showLogo={true}
+        logoSize={32}
+      />
       <View>
         <Text className="text-2xl font-bold text-center">
-          {t("UpdatePassword.title", "Update password")}
+          {t("UpdatePassword.title")}
         </Text>
         <Text className="text-sm text-center text-gray-500">
-          {t("UpdatePassword.subtitle", "Please enter your new password below")}
+          {t("UpdatePassword.subtitle")}
         </Text>
       </View>
-      
-      <KeyboardAvoidingView 
-        className="w-full" 
+
+      <KeyboardAvoidingView
+        className="w-full"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
         >
           <View>
             <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-              {t("UpdatePassword.newPassword", "New password")}
+              {t("UpdatePassword.newPassword")}
             </Text>
             <Controller
               control={control}
@@ -158,12 +172,14 @@ export default function UpdatePasswordScreen() {
                   >
                     <TextInput
                       className="flex-1 px-4"
-                      placeholder={t("UpdatePassword.newPasswordPlaceholder", "New password")}
+                      placeholder={t("UpdatePassword.newPasswordPlaceholder")}
                       secureTextEntry={!passwordVisible}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
-                      accessibilityLabel={t("UpdatePassword.newPassword", "New password")}
+                      accessibilityLabel={t(
+                        "UpdatePassword.newPassword"
+                      )}
                       editable={!isUpdatingPassword}
                     />
                     <TouchableOpacity
@@ -171,8 +187,8 @@ export default function UpdatePasswordScreen() {
                       className="px-4 h-full justify-center"
                       accessibilityLabel={
                         passwordVisible
-                          ? t("UpdatePassword.hidePassword", "Hide")
-                          : t("UpdatePassword.showPassword", "Show")
+                          ? t("UpdatePassword.hidePassword")
+                          : t("UpdatePassword.showPassword")
                       }
                       disabled={isUpdatingPassword}
                     >
@@ -193,7 +209,7 @@ export default function UpdatePasswordScreen() {
 
           <View className="mt-4">
             <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-              {t("UpdatePassword.confirmPassword", "Confirm password")}
+              {t("UpdatePassword.confirmPassword")}
             </Text>
             <Controller
               control={control}
@@ -210,12 +226,16 @@ export default function UpdatePasswordScreen() {
                   >
                     <TextInput
                       className="flex-1 px-4"
-                      placeholder={t("UpdatePassword.confirmPasswordPlaceholder", "Confirm password")}
+                      placeholder={t(
+                        "UpdatePassword.confirmPasswordPlaceholder"
+                      )}
                       secureTextEntry={!confirmPasswordVisible}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       value={value}
-                      accessibilityLabel={t("UpdatePassword.confirmPassword", "Confirm password")}
+                      accessibilityLabel={t(
+                        "UpdatePassword.confirmPassword"
+                      )}
                       editable={!isUpdatingPassword}
                     />
                     <TouchableOpacity
@@ -223,8 +243,8 @@ export default function UpdatePasswordScreen() {
                       className="px-4 h-full justify-center"
                       accessibilityLabel={
                         confirmPasswordVisible
-                          ? t("UpdatePassword.hidePassword", "Hide")
-                          : t("UpdatePassword.showPassword", "Show")
+                          ? t("UpdatePassword.hidePassword")
+                          : t("UpdatePassword.showPassword")
                       }
                       disabled={isUpdatingPassword}
                     >
@@ -253,9 +273,9 @@ export default function UpdatePasswordScreen() {
               disabled={isUpdatingPassword || !isNetworkAvailable}
             >
               <Text className="text-white font-semibold">
-                {isUpdatingPassword 
-                  ? t("UpdatePassword.updating", "Updating") 
-                  : t("UpdatePassword.update", "Update")}
+                {isUpdatingPassword
+                  ? t("UpdatePassword.updating")
+                  : t("UpdatePassword.update")}
               </Text>
             </Button>
           </View>
@@ -263,4 +283,4 @@ export default function UpdatePasswordScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-} 
+}

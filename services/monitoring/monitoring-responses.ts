@@ -7,6 +7,7 @@ import { isOnline } from "../network";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useMemo } from "react";
 import { filterDataByUserId } from "../filterData";
+import { Izu } from "~/models/izus/izu";
 
 const { useQuery, useRealm } = RealmContext;
 
@@ -14,15 +15,18 @@ export async function fetchMonitoringResponsesFromRemote() {
   const res = await baseInstance.get<{
     performances: any[];
   }>("/get-performances");
-  
+
   // Create a map of existing IDs from the response to prevent duplicates
-  const uniquePerformances = res.data.performances.reduce((acc, performance) => {
-    // Only add if we haven't seen this ID before
-    if (!acc.has(performance.id)) {
-      acc.set(performance.id, performance);
-    }
-    return acc;
-  }, new Map());
+  const uniquePerformances = res.data.performances.reduce(
+    (acc, performance) => {
+      // Only add if we haven't seen this ID before
+      if (!acc.has(performance.id)) {
+        acc.set(performance.id, performance);
+      }
+      return acc;
+    },
+    new Map()
+  );
 
   return {
     monitoring_responses: Array.from(uniquePerformances.values()) || [],
@@ -62,9 +66,10 @@ export function useGetMonitoringResponses(forceSync: boolean = false) {
           if (response.score_data) {
             try {
               // If score_data is a string, parse it
-              parsedScoreData = typeof response.score_data === 'string' 
-                ? JSON.parse(response.score_data)
-                : response.score_data;
+              parsedScoreData =
+                typeof response.score_data === "string"
+                  ? JSON.parse(response.score_data)
+                  : response.score_data;
             } catch (error) {
               console.log("Error parsing score_data:", error);
               parsedScoreData = {};
@@ -80,6 +85,7 @@ export function useGetMonitoringResponses(forceSync: boolean = false) {
               sync_attempts: 0,
               last_sync_attempt: new Date().toISOString(),
               submitted_at: new Date().toISOString(),
+              created_by_user_id: user.id,
             },
           };
         });
@@ -145,7 +151,21 @@ export const createMonitoringResponse = (
       sync_attempts: 0,
       last_sync_attempt: new Date().toISOString(),
       submitted_at: new Date().toISOString(),
+      created_by_user_id: responseData.user_id || null,
     };
+
+    // Parse score_data if it's a string
+    let parsedScoreData = {};
+    if (responseData.score_data) {
+      try {
+        parsedScoreData = typeof responseData.score_data === 'string'
+          ? JSON.parse(responseData.score_data)
+          : responseData.score_data;
+      } catch (error) {
+        console.log("Error parsing score_data:", error);
+        parsedScoreData = {};
+      }
+    }
 
     const response = {
       id,
@@ -157,7 +177,7 @@ export const createMonitoringResponse = (
       type: responseData.type,
       cohort: responseData.cohort,
       user_id: responseData.user_id || null,
-      score_data: responseData.score_data || {},
+      score_data: parsedScoreData,
       json:
         typeof responseData.json === "string"
           ? responseData.json
@@ -202,6 +222,7 @@ function createTemporaryMonitoringResponse(
     sync_attempts: 0,
     last_sync_attempt: new Date().toISOString(),
     submitted_at: new Date().toISOString(),
+    created_by_user_id: responseData.user_id,
   };
 
   return createMonitoringResponse(realm, {
@@ -231,6 +252,7 @@ function replaceTemporaryMonitoringResponse(
       last_sync_attempt: new Date().toISOString(),
       submitted_at:
         tempResponse.sync_data?.submitted_at || new Date().toISOString(),
+      created_by_user_id: apiData.user_id,
     },
   };
 
@@ -247,6 +269,25 @@ export const saveMonitoringResponseToAPI = async (
       "saveMonitoringResponseToAPI received data:",
       JSON.stringify(responseData, null, 2)
     );
+    const loggedInCreatorId = responseData.user_id;
+
+    // We have the responseData.izuCode, we need to get the id of the izus
+    const izus = realm.objects<Izu>(Izu);
+    console.log("All IZUs in database:", JSON.stringify(Array.from(izus), null, 2));
+    
+    const izusArray = Array.from(izus);
+    console.log("Looking for IZU with code:", responseData.izucode);
+    
+    const izusById = izusArray.find(
+      (izu) => {
+        console.log("Comparing IZU code:", izu.izucode, "with:", responseData.izucode);
+        return izu.izucode === responseData.izucode;
+      }
+    );
+    console.log("Found IZU:", JSON.stringify(izusById, null, 2));
+    const izusId = izusById?.id;
+
+    console.log("Final resolved Izu ID:", izusId);
 
     // Format response data
     const sanitizedResponseData = {
@@ -257,20 +298,22 @@ export const saveMonitoringResponseToAPI = async (
       date_recorded: responseData.date_recorded,
       type: responseData.type || "1",
       cohort: responseData.cohort,
-      user_id: responseData.user_id || null,
-      score_data: responseData.score_data || {},
-      json:
-        typeof responseData.response === "object"
-          ? JSON.stringify(responseData.response)
-          : responseData.json || "{}",
+      user_id: izusId,
+      score_data: typeof responseData.score_data === 'string' 
+        ? JSON.parse(responseData.score_data)
+        : responseData.score_data || {},
+      json: responseData.json,
       sync_data: {
         sync_status: false,
         sync_reason: "New record",
         sync_attempts: 0,
         last_sync_attempt: new Date().toISOString(),
         submitted_at: new Date().toISOString(),
+        created_by_user_id: loggedInCreatorId,
       },
     };
+
+    console.log("Sanitized response data:", JSON.stringify(sanitizedResponseData, null, 2));
 
     const isConnected = isOnline();
 
@@ -286,12 +329,17 @@ export const saveMonitoringResponseToAPI = async (
           date_recorded: sanitizedResponseData.date_recorded,
           type: sanitizedResponseData.type,
           cohort: sanitizedResponseData.cohort,
-          score_data: sanitizedResponseData.score_data,
+          user_id: sanitizedResponseData.user_id,
+          score_data: typeof sanitizedResponseData.score_data === 'string'
+            ? JSON.parse(sanitizedResponseData.score_data)
+            : sanitizedResponseData.score_data,
           response:
             typeof responseData.response === "object"
               ? responseData.response
               : JSON.parse(sanitizedResponseData.json),
         };
+
+        console.log("API request data:", JSON.stringify(apiData, null, 2));
 
         // Send to API
         const response = await baseInstance.post(apiUrl, apiData);
@@ -307,16 +355,22 @@ export const saveMonitoringResponseToAPI = async (
             id: response.data.result.id,
             family_id: response.data.result.family_id,
             json: response.data.result.json || sanitizedResponseData.json,
+            score_data: typeof response.data.result.score_data === 'string' 
+              ? JSON.parse(response.data.result.score_data)
+              : response.data.result.score_data,
             sync_data: {
               sync_status: true,
               sync_reason: "Successfully synced",
               sync_attempts: 1,
               last_sync_attempt: new Date().toISOString(),
               submitted_at: new Date().toISOString(),
+              created_by_user_id: loggedInCreatorId,
             },
             // Include any other fields returned from the API
             ...response.data.result,
           };
+
+          console.log("Complete Data:", JSON.stringify(completeData, null, 2));
 
           return createMonitoringResponse(realm, completeData);
         } else {
@@ -345,17 +399,30 @@ export const saveMonitoringResponseToAPI = async (
 // Function to sync temporary monitoring responses with the server
 export const syncTemporaryMonitoringResponses = async (
   realm: Realm,
-  apiUrl: string = "/monitoring/responses"
+  apiUrl: string = "/monitoring/responses",
+  userId?: number
 ): Promise<void> => {
   if (!isOnline()) {
     console.log("Cannot sync temporary monitoring responses - offline");
     return;
   }
 
-  // Find all monitoring responses that need syncing
+  if (!userId) {
+    console.log("No user ID provided, cannot sync");
+    return;
+  }
+
+  // Find all monitoring responses that need syncing AND were created by the current user
   const responsesToSync = realm
     .objects<MonitoringResponses>(MonitoringResponses)
-    .filtered("sync_data.sync_status == false");
+    .filtered(
+      "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
+      userId
+    );
+
+  console.log(
+    `Found ${responsesToSync.length} monitoring responses to sync for current user`
+  );
 
   for (const response of responsesToSync) {
     try {
@@ -398,6 +465,7 @@ export const syncTemporaryMonitoringResponses = async (
             sync_attempts: 1,
             last_sync_attempt: new Date().toISOString(),
             submitted_at: new Date().toISOString(),
+            created_by_user_id: apiResponse.data.result.user_id,
           },
         });
         console.log(
@@ -424,16 +492,17 @@ export const syncTemporaryMonitoringResponses = async (
 };
 
 export function useGetIzuStatisticsByMonitoringResponse(
-  izuId: number | null,
+  userId: number | null,
   forceSync: boolean = false
 ) {
+  // console.log("Izu ID:", izuId);
   // Find monitoring responses for this IZU
   const monitoringResponses = useQuery(MonitoringResponses).filtered(
     "user_id == $0",
-    izuId
+    userId
   );
 
-// Convert to array for easier consumption and sort by date (most recent first)
+  // Convert to array for easier consumption and sort by date (most recent first)
   const monitoringResponsesArray = monitoringResponses
     ? Array.from(monitoringResponses)
         .map((response) => ({
@@ -460,6 +529,7 @@ export function useGetIzuStatisticsByMonitoringResponse(
         })
     : [];
 
+  // console.log("Monitoring responses array:", JSON.stringify(monitoringResponsesArray, null, 2));
   return {
     monitoringResponses: monitoringResponsesArray,
   };

@@ -100,6 +100,7 @@ export interface FormField {
     }>;
   };
   values?: Array<{
+    kn?: string;
     label: string;
     value: string;
     title?: {

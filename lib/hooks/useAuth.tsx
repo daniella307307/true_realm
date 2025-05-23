@@ -15,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setAuthenticationStatus } from "~/utils/axios";
 import { Alert } from "react-native";
 import { RealmContext } from "~/providers/RealContextProvider";
+import { useTranslation } from "react-i18next";
 
 export type AuthOptions = {
   onLogin?: (data: User) => void;
@@ -32,7 +33,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const lastLoginIdentifier = useRef<string | null>(null);
   const { useRealm } = RealmContext;
   const realm = useRealm();
-
+  const { t } = useTranslation();
   const isLoggedIn = useMemo(async () => {
     const token = await AsyncStorage.getItem("tknToken");
     const loggedIn = !!(user && token);
@@ -112,7 +113,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     onMutate: async ({ password }) => {
       setIsUpdatingPassword(true);
       Toast.show({
-        text1: "Updating password...",
+        text1: t("Auth.updating_password"),
         type: "info",
         position: "bottom",
         visibilityTime: 3000,
@@ -123,7 +124,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     onError: (error) => {
       console.error("Password update failed:", error);
       Toast.show({
-        text1: "Password update failed",
+        text1: t("Auth.password_update_failed"),
         text2: error.message || "Unknown error occurred",
         type: "error",
         position: "bottom",
@@ -136,7 +137,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     onSuccess: async (data) => {
       // Show success message from the API response
       Toast.show({
-        text1: data.message || "Password updated successfully",
+        text1: data.message || t("Auth.password_update_success"),
         type: "success",
         position: "bottom",
         visibilityTime: 3000,
@@ -176,7 +177,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       );
 
       Toast.show({
-        text1: "Logging in...",
+        text1: t("Auth.logging_in"),
         type: "success",
         position: "bottom",
         visibilityTime: 3000,
@@ -202,7 +203,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       Alert.alert("Login Error", error.message || "Unknown error occurred");
 
       Toast.show({
-        text1: "Login failed",
+        text1: t("Auth.login_failed"),
         text2: error.message || "Unknown error occurred",
         type: "error",
         position: "bottom",
@@ -242,7 +243,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         );
 
         Toast.show({
-          text1: "Loading essential data...",
+          text1: t("Auth.loading_essential_data"),
           type: "success",
         });
 
@@ -253,7 +254,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         const tokenStoredInCookie = await storeTokenInAsynStorage(data.token);
         if (!tokenStoredInCookie) {
           Toast.show({
-            text1: "Failed to store authentication token",
+            text1: t("Auth.failed_to_store_token"),
             type: "error",
           });
           setIsLoggingIn(false);
@@ -269,7 +270,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
           const profileData = await useGetCurrentLoggedInProfile();
 
           if (!profileData) {
-            Toast.show({ text1: "Profile fetch failed", type: "error" });
+            Toast.show({ text1: t("Auth.profile_fetch_failed"), type: "error" });
             await logoutUser();
             return;
           }
@@ -297,7 +298,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
           console.log("didStoreUserInfo", didStoreUserInfo);
           if (didStoreUserInfo) {
             Toast.show({
-              text1: "Login successful",
+              text1: t("Auth.login_success"),
               type: "success",
               position: "bottom",
               visibilityTime: 3000,
@@ -314,20 +315,20 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
             
             // Then handle navigation based on password status
             if (profileData.is_password_changed === 0) {
-              console.log("Password needs to be changed, redirecting to update password page");
+              console.log(t("Auth.password_needs_change"));
               // Navigate to password update screen with identifier
               router.replace({
                 pathname: "/(user-management)/update-password",
                 params: { identifier: lastLoginIdentifier.current },
               });
             } else {
-              console.log("Password already changed, redirecting to home");
+              console.log(t("Auth.password_already_changed"));
               // Navigate to home screen
               router.replace("/(home)/home");
             }
           } else {
             Toast.show({
-              text1: "Failed to store user data",
+              text1: t("Auth.failed_to_store_user_data"),
               type: "error",
               position: "bottom",
               visibilityTime: 3000,
@@ -339,7 +340,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         } catch (error) {
           console.error("Error fetching profile:", error);
           Toast.show({
-            text1: "Error loading profile data",
+            text1: t("Auth.error_loading_profile"),
             type: "error",
             position: "bottom",
             visibilityTime: 3000,
@@ -350,7 +351,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         }
       } else {
         Toast.show({
-          text1: "Login failed. Please check your credentials",
+          text1: t("Auth.login_failed"),
           type: "error",
           position: "bottom",
           visibilityTime: 3000,

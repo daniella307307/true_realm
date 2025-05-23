@@ -29,7 +29,7 @@ const FormNavigation: React.FC<FormNavigationProps> = ({
           >
             <Text className="text-center text-gray-700 font-medium">
               {getLocalizedTitle(
-                { en: "Previous", kn: "Gusubira inyuma", default: "Previous" },
+                { en: "Previous", kn: "Inyuma", default: "Previous" },
                 language
               )}
             </Text>

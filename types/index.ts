@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { t } from "i18next";
 
 export interface IUsers {
   id: number;
@@ -20,17 +21,17 @@ const phoneRegex = /^[0-9]{10,}$/; // Numbers only, minimum 10 digits
 export const loginSchema = z.object({
   identifier: z
     .string()
-    .nonempty("Email or Phone number is required")
+    .nonempty(t("Login.Validation.identifierRequired"))
     .refine(
       (value) =>
         phoneRegex.test(value) || z.string().email().safeParse(value).success,
-      "Invalid email or phone number format"
+      t("Login.Validation.invalidIdentifier")
     ),
 
   password: z
     .string()
-    .nonempty("Password is required")
-    .min(5, "Password must be at least 5 characters")
+    .nonempty(t("Login.Validation.requiredPassword"))
+    .min(5, t("Login.Validation.passwordMin"))
 });
 
 export type ILoginDetails = z.infer<typeof loginSchema>;
@@ -577,6 +578,7 @@ export interface User {
 export interface IProject {
   id: number;
   name: string;
+  kin_name?: string;
   duration: string;
   progress: string;
   description: string;
@@ -593,6 +595,7 @@ export interface IModule {
   id: number;
   project_id: number;
   module_name: string;
+  kin_name?: string;
   module_description: string;
   expected_duration?: string;
   module_status: number;
@@ -642,6 +645,7 @@ export interface FormField {
     }>;
   };
   values?: Array<{
+    kn?: string;
     label: string;
     value: string;
     title?: {
@@ -761,6 +765,7 @@ export interface Generic {
     sync_attempts?: number;
     last_sync_attempt?: Date;
     submitted_at?: Date;
+    created_by_user_id?: number;
   };
 }
 export interface IMonitoringModules extends Generic {
@@ -803,6 +808,7 @@ export interface IFamilies extends Generic {
 export interface Izus extends Generic {
   id: number | null;
   name: string;
+  name_kin?: string;
   izucode: string | null;
   village_id: number | null;
   score: number | null;

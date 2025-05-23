@@ -6,11 +6,9 @@ import HeaderNavigation from "~/components/ui/header";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { Card } from "~/components/ui/card";
 import { NotFound } from "~/components/ui/not-found";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useGetFamilies } from "~/services/families";
-import {
-  useGetAllSurveySubmissions,
-} from "~/services/survey-submission";
+import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { useGetIzuStatisticsByMonitoringResponse } from "~/services/monitoring/monitoring-responses";
 
 // Define interface for monitoring response
@@ -53,12 +51,6 @@ const IzuIndexStatisticsScreen = () => {
   const { monitoringResponses } =
     useGetIzuStatisticsByMonitoringResponse(selectedIzuId);
 
-  // console.log(
-  //   "monitoringResponses",
-  //   JSON.stringify(monitoringResponses, null, 2)
-  // );
-
-  // Get families and survey submissions - now using unified hook with forceSync=true to ensure we get remote data
   const { families } = useGetFamilies();
   const { submissions: surveySubmissions } = useGetAllSurveySubmissions(true);
 
@@ -67,10 +59,26 @@ const IzuIndexStatisticsScreen = () => {
     (family) => family.izucode === izucode
   ).length;
 
-  // Calculate visits done for this IZU
-  const visitsDone = surveySubmissions.filter(
-    (submission) => submission.form_data?.izucode === izucode
-  ).length;
+  // Calculate visits done for this IZU grouped by source module
+  const visitsByModule = useMemo(() => {
+    const moduleGroups = surveySubmissions
+      .filter(
+        (submission) =>
+          submission.form_data?.izucode === izucode &&
+          submission.form_data?.project_id === 3 &&
+          submission.form_data?.source_module_id !== 22
+      )
+      .reduce<Record<string, number>>((acc, submission) => {
+        const moduleId = String(submission.form_data?.source_module_id || 'unknown');
+        acc[moduleId] = (acc[moduleId] || 0) + 1;
+        return acc;
+      }, {});
+
+    return moduleGroups;
+  }, [surveySubmissions, izucode]);
+
+  // Calculate total visits done
+  const totalVisitsDone = Object.values(visitsByModule).reduce((sum, count) => sum + count, 0);
 
   // Calculate total visits (families * 16 modules)
   const totalVisits = totalFamilies * 16;
@@ -134,10 +142,10 @@ const IzuIndexStatisticsScreen = () => {
           <Text className="text-lg font-semibold mb-2">
             {t("StatisticsPage.visits")}
           </Text>
-          <View className="flex-row justify-between">
+          <View className="flex-row justify-between mb-4">
             <View>
               <Text className="text-2xl font-bold text-primary">
-                {visitsDone}
+                {totalVisitsDone}
               </Text>
               <Text className="text-gray-500">
                 {t("StatisticsPage.visits_done")}
@@ -151,6 +159,21 @@ const IzuIndexStatisticsScreen = () => {
                 {t("StatisticsPage.total_visits")}
               </Text>
             </View>
+          </View>
+          
+          {/* Module-wise breakdown */}
+          <View className="mt-2">
+            <Text className="text-md font-semibold mb-2">
+              {t("StatisticsPage.visits_by_module", "Visits by Module")}
+            </Text>
+            {Object.entries(visitsByModule).map(([moduleId, count]) => (
+              <View key={moduleId} className="flex-row justify-between py-1">
+                <Text className="text-gray-600">
+                  {t("StatisticsPage.module", "Module")} {moduleId}
+                </Text>
+                <Text className="font-medium">{count}</Text>
+              </View>
+            ))}
           </View>
         </Card>
 
@@ -186,20 +209,26 @@ const IzuIndexStatisticsScreen = () => {
             )}
           </View>
 
-          <TouchableOpacity
-            onPress={() => setShowScoreDetails(!showScoreDetails)}
-            className="mt-2 py-2"
-          >
-            <Text className="text-primary font-medium">
-              {showScoreDetails ? t("StatisticsPage.hide_details") : t("StatisticsPage.show_details")}
-            </Text>
-          </TouchableOpacity>
+          {monitoringResponses && monitoringResponses.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setShowScoreDetails(!showScoreDetails)}
+              className="mt-2 py-2"
+            >
+              <Text className="text-primary font-medium">
+                {showScoreDetails
+                  ? t("StatisticsPage.hide_details")
+                  : t("StatisticsPage.show_details")}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {showScoreDetails &&
             monitoringResponses &&
             monitoringResponses.length > 0 && (
               <View className="mt-2">
-                <Text className="font-semibold mb-2">{t("StatisticsPage.monitoring_history")}</Text>
+                <Text className="font-semibold mb-2">
+                  {t("StatisticsPage.monitoring_history", "Monitoring History")}
+                </Text>
                 {monitoringResponses.map(
                   (response: MonitoringResponseData, index: number) => (
                     <TouchableOpacity
@@ -233,11 +262,13 @@ const IzuIndexStatisticsScreen = () => {
                         </View>
                       </View>
                       <Text className="text-gray-500 text-sm">
-                        Score: {response.score_data?.total || 0}/
+                        {t("StatisticsPage.score")}:{" "}
+                        {response.score_data?.total || 0}/
                         {response.score_data?.possible || 0}
                       </Text>
                       <Text className="text-gray-500 text-sm">
-                        {t("StatisticsPage.fields_scored", "Fields scored")}: {response.score_data?.fields_count || 0}
+                        {t("StatisticsPage.fields_scored")}:{" "}
+                        {response.score_data?.fields_count || 0}
                       </Text>
                     </TouchableOpacity>
                   )
@@ -246,17 +277,12 @@ const IzuIndexStatisticsScreen = () => {
             )}
         </Card>
 
-        {/* Risk of Harms Section */}
-        {riskOfHarms > 0 && (
-          <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
-            <Text className="text-lg font-semibold mb-2">
-              {t("StatisticsPage.risk_of_harms", "Risk of Harms")}
-            </Text>
-            <Text className="text-2xl font-bold text-primary">
-              {riskOfHarms}
-            </Text>
-          </Card>
-        )}
+        <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
+          <Text className="text-lg font-semibold mb-2">
+            {t("StatisticsPage.risk_of_harms")}
+          </Text>
+          <Text className="text-2xl font-bold text-primary">{riskOfHarms}</Text>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );

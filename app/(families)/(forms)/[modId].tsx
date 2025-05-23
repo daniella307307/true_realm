@@ -19,7 +19,7 @@ import {
   useGetFormByProjectAndModule,
 } from "~/services/formElements";
 import { Button } from "~/components/ui/button";
-import { IExistingForm, IModule } from "~/types";
+import { IModule } from "~/types";
 import { Survey } from "~/models/surveys/survey";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
@@ -40,7 +40,7 @@ const ProjectFormsScreen = () => {
       project_module_id: string;
     }>();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   console.log("ID: ", modId);
   console.log("Project ID: ", project_id);
@@ -90,7 +90,7 @@ const ProjectFormsScreen = () => {
     );
   }, [modules, moduleId, sourceModuleId, projectId, projectModuleId]);
 
-  console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
+  // console.log("Current Module: ", JSON.stringify(currentModule, null, 2));
 
   if (!currentModule) {
     return (
@@ -232,7 +232,9 @@ const ProjectFormsScreen = () => {
                 size={24}
                 color="#71717A"
               />
-              <Text className="text-lg ml-4 font-semibold">{item.name}</Text>
+              <Text className="text-lg ml-4 font-semibold">
+                {i18n.language === "rw-RW" ? item.name_kin || item.name : item.name}
+              </Text>
             </View>
           </TouchableOpacity>
         )}

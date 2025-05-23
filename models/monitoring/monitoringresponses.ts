@@ -14,15 +14,15 @@ export class MonitoringResponses extends Realm.Object {
   json!: string;
   sync_data!: { [key: string]: string | number | boolean | null };
 
-  // Helper method to get the user ID consistently
-  getUserId(): number | null {
-    if (this.user_id !== undefined) {
-      return typeof this.user_id === 'string'
-        ? parseInt(this.user_id, 10)
-        : this.user_id;
+    // Helper method to get the user ID consistently
+    getUserId(): number | null {
+      if (this.user_id !== undefined) {
+        return typeof this.user_id === 'string'
+          ? parseInt(this.user_id, 10)
+          : this.user_id;
+      }
+      return null;
     }
-    return null;
-  }
 
   static schema = {
     name: "MonitoringResponses",

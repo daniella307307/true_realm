@@ -24,6 +24,8 @@ import { District } from "~/models/locations/district";
 import { Sector } from "~/models/locations/sector";
 import { Cell } from "~/models/locations/cell";
 import { Village } from "~/models/locations/village";
+import { useGetAllSurveySubmissions } from "~/services/survey-submission";
+import { useGetAllLocallyCreatedMonitoringResponses, useGetMonitoringResponses } from "~/services/monitoring/monitoring-responses";
 
 const { useRealm } = RealmContext;
 
@@ -54,6 +56,8 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   const startTimeRef = useRef<number>(Date.now());
   const realm = useRealm();
   const { t } = useTranslation();
+  const { submissions } = useGetAllSurveySubmissions();
+  const { responses: monitoringResponses } = useGetMonitoringResponses();
 
   // console.log("Form fields: ", fields);
   useEffect(() => {
@@ -101,41 +105,70 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
     if (loads.izus) flowSteps.push("izus");
     if (loads.cohorts) flowSteps.push("cohorts");
   }
-  
+
   // Add stakeholders if in loads (for both monitoring and non-monitoring)
   if (loads.stakeholders) flowSteps.push("stakeholders");
   // console.log(flowSteps);
   const handleNext = () => {
     const currentStepKey = flowSteps[currentStep] as FlowStepKey;
+    // console.log('=== handleNext Debug ===');
+    // console.log('Current Step:', currentStep);
+    // console.log('Current Step Key:', currentStepKey);
+    // console.log('Flow Steps:', flowSteps);
+    // console.log('Flow State:', JSON.stringify(flowState, null, 2));
+    // console.log('Is Step Complete:', isStepComplete(currentStepKey));
 
-    if (currentStepKey === "families") {
+    if (currentStepKey === "families" ) {
       const familyId = flowState.selectedValues.families?.hh_id || null;
       const surveyId = formSubmissionMandatoryFields.id || 0;
       const projectId = formSubmissionMandatoryFields.project_id || 0;
-      const sourceModuleId =
-        formSubmissionMandatoryFields.source_module_id || 0;
+      const sourceModuleId = formSubmissionMandatoryFields.source_module_id || 0;
       const izuCode = flowState.selectedValues.izus?.izucode || null;
 
-      if (familyId && surveyId && projectId && sourceModuleId) {
-        const existingSubmission = realm
-          .objects<SurveySubmission>(SurveySubmission)
-          .filtered(
-            "form_data.project_id == $0 AND form_data.source_module_id == $1 AND form_data.survey_id == $2 AND form_data.family == $3 AND form_data.izucode == $4",
-            projectId,
-            sourceModuleId,
-            surveyId,
-            familyId,
-            izuCode
+      // console.log('Family Selection Debug:');
+      // console.log('Family ID:', familyId);
+      // console.log('Survey ID:', surveyId);
+      // console.log('Project ID:', projectId);
+      // console.log('Source Module ID:', sourceModuleId);
+      // console.log('IZU Code:', izuCode);
+
+      if (projectId === 3) {
+        if (familyId && surveyId && projectId && sourceModuleId) {
+          const existingSubmission = submissions.filter(
+            (submission) =>
+              submission.form_data.project_id === projectId &&
+              submission.form_data.source_module_id === sourceModuleId &&
+              submission.form_data.survey_id === surveyId &&
+              submission.form_data.family === familyId &&
+              submission.form_data.izucode === izuCode
           );
 
-        if (existingSubmission.length > 0) {
+          // console.log('Existing Submissions:', existingSubmission);
+
+          if (existingSubmission.length > 0) {
+            Alert.alert(
+              t("SubmissionExists.title"),
+              t("SubmissionExists.message"),
+              [{ text: t("Common.ok") }]
+            );
+            return;
+          }
+        }
+      } else if (isMonitoring) {
+        const existingMonitoringResponse = monitoringResponses.filter(
+          (response) =>
+            response.module_id.toString() === sourceModuleId.toString() &&
+            response.form_id.toString() === surveyId.toString() &&
+            response.family_id.toString() === familyId?.toString()
+        );
+
+        // console.log('Existing Monitoring Responses:', existingMonitoringResponse);
+
+        if (existingMonitoringResponse.length > 0) {
           Alert.alert(
-            t("SubmissionExists.title", "Submission Already Exists"),
-            t(
-              "SubmissionExists.message",
-              "A submission for this form and family already exists."
-            ),
-            [{ text: t("Common.ok", "OK") }]
+            t("SubmissionExists.title"),
+            t("SubmissionExists.message"),
+            [{ text: t("Common.ok") }]
           );
           return;
         }
@@ -143,16 +176,14 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
 
       // Extract location from family and set it to flowState
       const selectedFamily = flowState.selectedValues.families;
+      // console.log('Selected Family:', JSON.stringify(selectedFamily, null, 2));
+
       if (selectedFamily?.location) {
         const familyLocation = selectedFamily.location;
-        console.log(
-          "Selected family location",
-          JSON.stringify(familyLocation, null, 2)
-        );
+        // console.log('Family Location:', JSON.stringify(familyLocation, null, 2));
         const now = new Date().toISOString();
 
         // find the province, district, sector, cell, village from the location object
-        // Location object is a number
         const province = realm.objectForPrimaryKey(
           Province,
           familyLocation.province?.toString() || ""
@@ -226,11 +257,8 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
     }
 
     const nextStep = currentStep + 1;
-    if (nextStep >= flowSteps.length) {
-      setCurrentStep(nextStep);
-    } else {
-      setCurrentStep(nextStep);
-    }
+    // console.log('Moving to next step:', nextStep);
+    setCurrentStep(nextStep);
   };
 
   const handleBack = () => {
@@ -257,13 +285,19 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   }, []);
 
   const handleFamilySelect = useCallback((value: IFamilies) => {
-    setFlowState((prev) => ({
-      ...prev,
-      selectedValues: {
-        ...prev.selectedValues,
-        families: value,
-      },
-    }));
+    // console.log('=== handleFamilySelect Debug ===');
+    // console.log('Selected Family:', JSON.stringify(value, null, 2));
+    setFlowState((prev) => {
+      const newState = {
+        ...prev,
+        selectedValues: {
+          ...prev.selectedValues,
+          families: value,
+        },
+      };
+      // console.log('New Flow State:', JSON.stringify(newState, null, 2));
+      return newState;
+    });
   }, []);
 
   const handleIzuSelect = useCallback((value: Izus) => {
@@ -276,15 +310,18 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
     }));
   }, []);
 
-  const handleLocationSelect = useCallback((value: FlowState["selectedValues"]["locations"]) => {
-    setFlowState((prev) => ({
-      ...prev,
-      selectedValues: {
-        ...prev.selectedValues,
-        locations: value,
-      },
-    }));
-  }, []);
+  const handleLocationSelect = useCallback(
+    (value: FlowState["selectedValues"]["locations"]) => {
+      setFlowState((prev) => ({
+        ...prev,
+        selectedValues: {
+          ...prev.selectedValues,
+          locations: value,
+        },
+      }));
+    },
+    []
+  );
 
   const handleStakeholderSelect = useCallback((value: any[]) => {
     setFlowState((prev) => ({
@@ -357,35 +394,40 @@ const FormFlowManager: React.FC<FormFlowManagerProps> = ({
   };
 
   const isStepComplete = (stepKey: FlowStepKey) => {
-    const value =
-      flowState.selectedValues[
-        stepKey as keyof typeof flowState.selectedValues
-      ];
+    const value = flowState.selectedValues[stepKey as keyof typeof flowState.selectedValues];
 
+    let isComplete = false;
     switch (stepKey) {
       case "izus":
-        return value !== null && value !== undefined;
+        isComplete = value !== null && value !== undefined;
+        break;
       case "cohorts":
-        return value !== null && value !== undefined;
+        isComplete = value !== null && value !== undefined;
+        break;
       case "families":
-        return value !== null && value !== undefined;
+        isComplete = value !== null && value !== undefined;
+        break;
       case "locations":
         const locations = value as FlowState["selectedValues"]["locations"];
-        return (
+        isComplete = Boolean(
           locations?.province &&
           locations?.district &&
           locations?.sector &&
           locations?.cell &&
           locations?.village
         );
+        break;
       case "stakeholders":
-        return Array.isArray(value) && value.length > 0;
+        isComplete = Array.isArray(value) && value.length > 0;
+        break;
       case "onPhone":
-        // For onPhone, consider it always complete if it exists in the flow
-        return true;
+        isComplete = true;
+        break;
       default:
-        return false;
+        isComplete = false;
     }
+    // console.log('Is step complete:', isComplete);
+    return isComplete;
   };
 
   // If we've completed all steps, show the dynamic form

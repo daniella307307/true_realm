@@ -36,7 +36,7 @@ const ProjectFormElementScreen = () => {
   console.log("Project ID: ", projectId);
 
   const { user } = useAuth({});
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   if (!formId || !project_module_id) {
     return (
@@ -75,20 +75,12 @@ const ProjectFormElementScreen = () => {
       />
     );
   }
-  // console.log(
-  //   "Parsed Json2:",
-  //   regularForm.json2
-  // );
-
-  // console.log("Regular Form: ", JSON.stringify(regularForm, null, 2));
-
   const parsedForm = regularForm?.json2
     ? typeof regularForm.json2 === "string"
       ? JSON.parse(regularForm.json2)
       : regularForm.json2
     : null;
 
-  // console.log("Parsed Formula: ", JSON.stringify(parsedForm.components, null, 2));
 
   const formStructure: IFormSubmissionDetail = {
     id: regularForm.id,
@@ -101,6 +93,9 @@ const ProjectFormElementScreen = () => {
     position: parseInt(user?.json?.position || "0"),
   };
 
+  // Console the form without the json2 make it undefined
+
+  // console.log("Form: ", JSON.stringify(regularForm, null, 2));
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation
@@ -110,7 +105,9 @@ const ProjectFormElementScreen = () => {
       />
       <View className="flex-1">
         <View className="px-4 pt-4">
-          <Text className="text-lg font-semibold mb-4">{regularForm.name}</Text>
+          <Text className="text-lg font-semibold mb-4">
+            {i18n.language === "rw-RW" ? regularForm.name_kin || regularForm.name : regularForm.name}
+          </Text>
         </View>
         <View className="flex-1">
           {parsedForm && (

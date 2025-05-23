@@ -24,7 +24,7 @@ import { useGetFormByProjectAndModule } from "~/services/formElements";
 import { Survey } from "~/models/surveys/survey";
 
 const FamiliesPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -164,7 +164,7 @@ const FamiliesPage = () => {
               color="#71717A"
             />
             <Text className="text-lg ml-2 font-semibold">
-              {item.module_name}
+              {i18n.language === "rw-RW" ? item.kin_title || item.module_name : item.module_name}
             </Text>
           </View>
           {/* <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
@@ -190,7 +190,9 @@ const FamiliesPage = () => {
               size={24}
               color="#71717A"
             />
-            <Text className="text-lg ml-2 font-semibold">{item.name}</Text>
+            <Text className="text-lg ml-2 font-semibold">
+              {i18n.language === "rw-RW" ? item.name_kin || item.name : item.name}
+            </Text>
           </View>
           <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
             {t("ModulePage.form_type")}

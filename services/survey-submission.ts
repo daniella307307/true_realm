@@ -67,6 +67,7 @@ export const createSurveySubmission = (
       sync_attempts: 0,
       last_sync_attempt: new Date(),
       submitted_at: new Date(),
+      created_by_user_id: formData.userId || null,
     } as { [key: string]: string | number | boolean | null | Date },
   };
 
@@ -282,19 +283,31 @@ export const saveSurveySubmissionToAPI = async (
   }
 };
 
-export const syncPendingSubmissions = async (realm: Realm) => {
+export const syncPendingSubmissions = async (
+  realm: Realm,
+  userId?: number
+): Promise<void> => {
   if (!isOnline()) {
     console.log("Cannot sync pending submissions - offline");
     return;
   }
 
-  const pendingSubmissions = realm
+  if (!userId) {
+    console.log("No user ID provided, cannot sync");
+    return;
+  }
+
+  // Find all submissions that need syncing AND were created by the current user
+  const submissionsToSync = realm
     .objects<SurveySubmission>(SurveySubmission)
-    .filtered("sync_data.sync_status == false");
+    .filtered(
+      "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
+      userId
+    );
 
-  console.log(`Found ${pendingSubmissions.length} submissions to sync`);
+  console.log(`Found ${submissionsToSync.length} submissions to sync for current user`);
 
-  for (const submission of pendingSubmissions) {
+  for (const submission of submissionsToSync) {
     try {
       const locationData = submission.location || {};
 

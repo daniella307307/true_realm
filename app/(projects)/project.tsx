@@ -21,7 +21,7 @@ import HeaderNavigation from "~/components/ui/header";
 
 const ProjectScreen = () => {
   const { projects: storedProjects, isLoading, refresh } = useGetAllProjects();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
       z.object({
@@ -89,7 +89,7 @@ const ProjectScreen = () => {
               isRiskManagement ? "text-red-500" : ""
             }`}
           >
-            {item.name}
+            {i18n.language === "rw-RW" ? item.kin_name || item.name : item.name}
           </Text>
         </View>
         {/* <Text className="text-sm py-2 text-gray-600">{item.description}</Text> */}
@@ -116,6 +116,7 @@ const ProjectScreen = () => {
   const transformedProjects: IProject[] = organizedProjects.map((project) => ({
     id: project.id,
     name: project.name,
+    kin_name: project.kin_name,
     duration: project.duration || "",
     progress: project.progress || "",
     description: project.description || "",
@@ -129,7 +130,7 @@ const ProjectScreen = () => {
     updated_at: project.updated_at
       ? new Date(project.updated_at).toDateString()
       : undefined,
-    project_modules: Array.from(project.project_modules), // Convert Realm List to array
+    project_modules: Array.from(project.project_modules),
   }));
 
   return (

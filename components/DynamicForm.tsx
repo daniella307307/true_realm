@@ -610,11 +610,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             score_data: scoreData,
           };
 
-          console.log(
-            "Monitoring data:",
-            JSON.stringify(monitoringData, null, 2)
-          );
-
           await saveMonitoringResponseToAPI(
             realm,
             monitoringData,

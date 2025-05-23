@@ -15,7 +15,23 @@ import { cn } from "~/lib/utils";
 import { getLocalizedTitle } from "~/utils/form-utils";
 import { DynamicFieldProps } from "~/types/form-types";
 import { Eye, EyeOff } from "lucide-react-native";
-import { useTranslation } from 'react-i18next';
+import { t } from "i18next";
+import i18n from "~/utils/i18n";
+
+// Helper function to get localized error message
+const getLocalizedError = (field: any, defaultKey: string, params?: any) => {
+  const currentLanguage = i18n.language;
+  
+  if (currentLanguage === "rw-RW" && field.errorLabel) {
+    return field.errorLabel;
+  }
+  
+  if (field.validate?.customMessage) {
+    return field.validate.customMessage;
+  }
+  
+  return t(defaultKey, params);
+};
 
 const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   field,
@@ -32,7 +48,7 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
         title: field.title,
         errorLabel: field.errorLabel,
         validate: field.validate,
-        customMessage: field.validate.customMessage
+        customMessage: field.validate.customMessage,
       });
     }
   }, [field, type]);
@@ -43,132 +59,52 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
       name={field.key}
       rules={{
         required: field.validate?.required
-          ? { value: true, message: field.errorLabel || field.validate.customMessage || "Field required!" }
+          ? {
+              value: true,
+              message: getLocalizedError(field, "validation.fieldRequired"),
+            }
           : false,
-        ...(field.type === "phoneNumber" && {
-          validate: {
-            phoneFormat: (value) => {
-              if (!value) return true; // Skip validation if empty (handled by required)
-              
-              // For phone numbers, validate the exact length (10 digits)
-              const phoneStr = value.toString().replace(/\D/g, ''); // Remove non-digits
-              
-              if (phoneStr.length !== 10) {
-                return field.errorLabel || "Phone number must be exactly 10 digits";
-              }
-              
-              return true;
+        ...(field.type === "number" || type === "number"
+          ? {
+              validate: {
+                number: (value) => {
+                  if (!value) return true; // Skip validation if empty (handled by required)
+
+                  // Remove any non-digit characters
+                  const numStr = value.toString().replace(/\D/g, "");
+
+                  // For exact length requirements (when min equals max)
+                  if (field.validate?.min !== undefined && field.validate?.max !== undefined && field.validate.min === field.validate.max) {
+                    if (numStr.length !== field.validate.min) {
+                      return getLocalizedError(field, "validation.exactDigits", { count: field.validate.min });
+                    }
+                  } else {
+                    // For min/max range validation
+                    if (field.validate?.min !== undefined && numStr.length < field.validate.min) {
+                      return getLocalizedError(field, "validation.minDigits", { count: field.validate.min });
+                    }
+                    if (field.validate?.max !== undefined && numStr.length > field.validate.max) {
+                      return getLocalizedError(field, "validation.maxDigits", { count: field.validate.max });
+                    }
+                  }
+
+                  return true;
+                },
+              },
             }
-          }
-        }),
-        ...(type === "number" || field.type === "number" ? {
-          validate: {
-            number: (value) => {
-              console.log(`Validating field ${field.key}:`, {
-                value,
-                fieldType: field.type || type,
-                min: field.validate?.min,
-                max: field.validate?.max,
-                errorLabel: field.errorLabel
-              });
-              
-              // Skip validation if empty (handled by required)
-              if (value === undefined || value === null || value === '') {
-                return true;
-              }
-              
-              // Special handling for phone numbers and IDs - they need exact digit count
-              const isPhoneOrId = field.key?.includes('phone') || field.key?.includes('id') || field.key?.includes('_id');
-              
-              // If min and max are the same, it's likely an exact length requirement
-              const exactLengthRequired = field.validate?.min !== undefined && 
-                                         field.validate?.max !== undefined && 
-                                         field.validate.min === field.validate.max;
-              
-              // Check if this is a field that requires exact length validation
-              if (isPhoneOrId || exactLengthRequired) {
-                const strValue = value.toString().replace(/\D/g, '');
-                const requiredLength = field.validate?.min || field.validate?.max;
-                
-                console.log(`Validating ${field.key} for exact length:`, {
-                  currentLength: strValue.length,
-                  requiredLength,
-                  isValid: strValue.length === requiredLength
-                });
-                
-                if (requiredLength && strValue.length !== requiredLength) {
-                  return field.errorLabel || `Must be exactly ${requiredLength} digits`;
-                }
-                
-                return true;
-              }
-              
-              // Regular numeric validation for other number fields
-              const numValue = Number(value);
-              
-              if (isNaN(numValue)) {
-                return field.errorLabel || "Please enter a valid number";
-              }
-              
-              if (field.validate?.min !== undefined && numValue < field.validate.min) {
-                return field.errorLabel || `Minimum value is ${field.validate.min}`;
-              }
-              
-              if (field.validate?.max !== undefined && numValue > field.validate.max) {
-                return field.errorLabel || `Maximum value is ${field.validate.max}`;
-              }
-              
-              return true;
-            }
-          }
-        } : {}),
-        ...(field.validate?.minLength && !field.key?.includes('id') && !field.key?.includes('phone') ? {
-          minLength: {
-            value: field.validate.minLength,
-            message: field.errorLabel || `Minimum length is ${field.validate.minLength} characters`,
-          },
-        } : {}),
-        ...(field.validate?.maxLength && !field.key?.includes('id') && !field.key?.includes('phone') ? {
-          maxLength: {
-            value: field.validate.maxLength,
-            message: field.errorLabel || `Maximum length is ${field.validate.maxLength} characters`,
-          },
-        } : {}),
-        validate: {
-          ...(field.validate?.minWords && {
-            minWords: (value) =>
-              !value ||
-              value.trim().split(/\s+/).filter(Boolean).length >= (field.validate?.minWords || 0) ||
-              field.errorLabel ||
-              `Minimum ${field.validate?.minWords} words required`,
-          }),
-          ...(field.validate?.maxWords && {
-            maxWords: (value) =>
-              !value ||
-              value.trim().split(/\s+/).filter(Boolean).length <= (field.validate?.maxWords || Infinity) ||
-              field.errorLabel ||
-              `Maximum ${field.validate?.maxWords} words allowed`,
-          }),
-        },
+          : {}),
       }}
-      render={({ field: { onChange, value, onBlur }, fieldState: { error, isDirty, isTouched } }) => {
-        // Log validation state when there's an error
-        // if (error) {
-        //   console.log(`Validation error for ${field.key}:`, {
-        //     error: error.message,
-        //     value,
-        //     isDirty,
-        //     isTouched,
-        //     fieldType: field.type || type,
-        //     errorLabel: field.errorLabel
-        //   });
-        // }
-        
+      render={({
+        field: { onChange, value, onBlur },
+        fieldState: { error },
+      }) => {
         return (
           <View className="mb-4">
             <Text className="mb-2 text-md font-medium text-[#050F2B]">
               {getLocalizedTitle(field.title, language)}
-              {field.validate?.required && <Text className="text-primary"> *</Text>}
+              {field.validate?.required && (
+                <Text className="text-primary"> *</Text>
+              )}
             </Text>
             <TextInput
               className={`w-full px-4 py-4 border rounded-lg ${
@@ -176,37 +112,38 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
               }`}
               value={value?.toString()}
               keyboardType={
-                field.type === "phoneNumber" || type === "number" || field.type === "number"
-                  ? "numeric"
+                field.type === "number" || 
+                type === "number" || 
+                field.type === "phonenumber" || 
+                field.type === "phoneNumber" || 
+                type === "phonenumber" || 
+                type === "phoneNumber" 
+                  ? "numeric" 
                   : "default"
               }
-              maxLength={
-                field.type === "phoneNumber"
-                  ? 10
-                  : field.validate?.maxLength
-                  ? field.validate.maxLength
-                  : field.validate?.max && field.validate.max === field.validate?.min 
-                  ? field.validate.max
-                  : undefined
-              }
+              maxLength={field.validate?.max || undefined}
               onBlur={onBlur}
               onChangeText={(text) => {
-                if (field.type === "phoneNumber") {
-                  // Only allow digits for phone numbers
-                  const numbersOnly = text.replace(/[^0-9]/g, "");
-                  onChange(numbersOnly);
-                } else if (type === "number" || field.type === "number") {
-                  // Only allow digits for numbers
-                  const numbersOnly = text.replace(/[^0-9.-]/g, "");
-                  onChange(numbersOnly);
+                // Only allow digits for number-related fields
+                if (field.type === "number" || 
+                    type === "number" || 
+                    field.type === "phonenumber" || 
+                    field.type === "phoneNumber" || 
+                    type === "phonenumber" || 
+                    type === "phoneNumber") {
+                  const numbersOnly = text.replace(/\D/g, "");
+                  // Only update if we haven't reached max length or if we're removing characters
+                  if (numbersOnly.length <= (field.validate?.max || Infinity)) {
+                    onChange(numbersOnly);
+                  }
                 } else {
                   onChange(text);
                 }
               }}
             />
-            {error && (
+            {(error || (field.type === "number" && value && field.validate?.min && value.toString().length < field.validate.min)) && (
               <Text className="text-red-500 mt-2">
-                {error.message}
+                {error?.message || getLocalizedError(field, "validation.minDigits", { count: field.validate?.min })}
               </Text>
             )}
           </View>
@@ -230,7 +167,7 @@ const ConfirmPasswordComponent: React.FC<DynamicFieldProps> = ({
         name={field.key}
         rules={{
           required: field.validate?.required
-            ? field.validate.customMessage || "This field is required"
+            ? getLocalizedError(field, "validation.fieldRequired")
             : false,
         }}
         render={({ field: { onChange, value }, fieldState: { error } }) => (
@@ -265,7 +202,7 @@ const ConfirmPasswordComponent: React.FC<DynamicFieldProps> = ({
             </TouchableOpacity>
             {error && (
               <Text className="text-red-500 mt-2">
-                {error.message || "This field is required"}
+                {error.message || t("validation.fieldRequired")}
               </Text>
             )}
           </View>
@@ -288,7 +225,7 @@ const PasswordComponent: React.FC<DynamicFieldProps> = ({
         name={field.key}
         rules={{
           required: field.validate?.required
-            ? field.validate.customMessage || "This field is required"
+            ? getLocalizedError(field, "validation.fieldRequired")
             : false,
         }}
         render={({ field: { onChange, value }, fieldState: { error } }) => (
@@ -325,7 +262,7 @@ const PasswordComponent: React.FC<DynamicFieldProps> = ({
             </View>
             {error && (
               <Text className="text-red-500 mt-2 mb-2">
-                {error.message || "This field is required"}
+                {error.message || t("validation.fieldRequired")}
               </Text>
             )}
           </>
@@ -345,34 +282,41 @@ const TextAreaComponent: React.FC<DynamicFieldProps> = ({
     name={field.key}
     rules={{
       required: field.validate?.required
-        ? { value: true, message: field.errorLabel || field.validate.customMessage || "This field is required" }
+        ? {
+            value: true,
+            message: getLocalizedError(field, "validation.fieldRequired"),
+          }
         : false,
-      ...(field.validate?.minLength ? {
-        minLength: {
-          value: field.validate.minLength,
-          message: field.errorLabel || `Minimum length is ${field.validate.minLength} characters`,
-        },
-      } : {}),
-      ...(field.validate?.maxLength ? {
-        maxLength: {
-          value: field.validate.maxLength,
-          message: field.errorLabel || `Maximum length is ${field.validate.maxLength} characters`,
-        },
-      } : {}),
+      ...(field.validate?.minLength
+        ? {
+            minLength: {
+              value: field.validate.minLength,
+              message: getLocalizedError(field, "validation.minLength", { count: field.validate.minLength }),
+            },
+          }
+        : {}),
+      ...(field.validate?.maxLength
+        ? {
+            maxLength: {
+              value: field.validate.maxLength,
+              message: getLocalizedError(field, "validation.maxLength", { count: field.validate.maxLength }),
+            },
+          }
+        : {}),
       validate: {
         ...(field.validate?.minWords && {
           minWords: (value) =>
             !value ||
-            value.trim().split(/\s+/).filter(Boolean).length >= (field.validate?.minWords || 0) ||
-            field.errorLabel ||
-            `Minimum ${field.validate?.minWords} words required`,
+            value.trim().split(/\s+/).filter(Boolean).length >=
+              (field.validate?.minWords || 0) ||
+            getLocalizedError(field, "validation.minWords", { count: field.validate?.minWords }),
         }),
         ...(field.validate?.maxWords && {
           maxWords: (value) =>
             !value ||
-            value.trim().split(/\s+/).filter(Boolean).length <= (field.validate?.maxWords || Infinity) ||
-            field.errorLabel ||
-            `Maximum ${field.validate?.maxWords} words allowed`,
+            value.trim().split(/\s+/).filter(Boolean).length <=
+              (field.validate?.maxWords || Infinity) ||
+            getLocalizedError(field, "validation.maxWords", { count: field.validate?.maxWords }),
         }),
       },
     }}
@@ -393,11 +337,7 @@ const TextAreaComponent: React.FC<DynamicFieldProps> = ({
           numberOfLines={4}
           textAlignVertical="top"
         />
-        {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message}
-          </Text>
-        )}
+        {error && <Text className="text-red-500 mt-2">{error.message}</Text>}
       </View>
     )}
   />
@@ -413,7 +353,7 @@ const RadioBoxComponent: React.FC<DynamicFieldProps> = ({
     name={field.key}
     rules={{
       required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
+        ? getLocalizedError(field, "validation.fieldRequired")
         : false,
     }}
     render={({ field: { onChange, value }, fieldState: { error } }) => (
@@ -439,18 +379,23 @@ const RadioBoxComponent: React.FC<DynamicFieldProps> = ({
                     )}
                   </View>
                   <Text className="ml-2 text-md">
-                    {option.title
-                      ? getLocalizedTitle(option.title, language)
-                      : option.label}
+                    {getLocalizedTitle(
+                      {
+                        en: String(option.label || option.title || ""),
+                        kn: String(
+                          option.kn || option.label || option.title || ""
+                        ),
+                        default: String(option.label || option.title || ""),
+                      },
+                      language
+                    )}
                   </Text>
                 </TouchableOpacity>
               ))
             : null}
         </View>
         {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
-          </Text>
+          <Text className="text-red-500 mt-2">{error.message}</Text>
         )}
       </View>
     )}
@@ -467,7 +412,7 @@ const SelectBoxComponent: React.FC<DynamicFieldProps> = ({
     name={field.key}
     rules={{
       required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
+        ? getLocalizedError(field, "validation.fieldRequired")
         : false,
     }}
     render={({ field: { onChange, value }, fieldState: { error } }) => (
@@ -488,7 +433,7 @@ const SelectBoxComponent: React.FC<DynamicFieldProps> = ({
         />
         {error && (
           <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
+            {error.message || t("validation.fieldRequired")}
           </Text>
         )}
       </View>
@@ -506,7 +451,7 @@ const SwitchComponent: React.FC<DynamicFieldProps> = ({
     name={field.key}
     rules={{
       required: field.validate?.required
-        ? field.validate.customMessage || "This field is required"
+        ? getLocalizedError(field, "validation.fieldRequired")
         : false,
     }}
     render={({ field: { onChange, value }, fieldState: { error } }) => (
@@ -518,7 +463,7 @@ const SwitchComponent: React.FC<DynamicFieldProps> = ({
         <Switch value={value} onValueChange={onChange} />
         {error && (
           <Text className="text-red-500 mt-2">
-            {error.message || "This field is required"}
+            {error.message || t("validation.fieldRequired")}
           </Text>
         )}
       </View>
@@ -537,7 +482,7 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
       name={field.key}
       rules={{
         required: field.validate?.required
-          ? field.validate.customMessage || "This field is required"
+          ? getLocalizedError(field, "validation.fieldRequired")
           : false,
       }}
       render={({ field: { onChange, value }, fieldState: { error } }) => {
@@ -584,9 +529,16 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
                       )}
                     </View>
                     <Text className="ml-2 text-md">
-                      {option.title
-                        ? getLocalizedTitle(option.title, language)
-                        : option.label}
+                      {getLocalizedTitle(
+                        {
+                          en: String(option.label || option.title || ""),
+                          kn: String(
+                            option.kn || option.label || option.title || ""
+                          ),
+                          default: String(option.label || option.title || ""),
+                        },
+                        language
+                      )}
                     </Text>
                   </TouchableOpacity>
                 ))
@@ -634,7 +586,7 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
             </View>
             {error && (
               <Text className="text-red-500 mt-2">
-                {error.message || "This field is required"}
+                {error.message || t("validation.fieldRequired")}
               </Text>
             )}
           </View>
@@ -670,18 +622,18 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
 
     // Month options
     const months = [
-      { value: "01", label: "January" },
-      { value: "02", label: "February" },
-      { value: "03", label: "March" },
-      { value: "04", label: "April" },
-      { value: "05", label: "May" },
-      { value: "06", label: "June" },
-      { value: "07", label: "July" },
-      { value: "08", label: "August" },
-      { value: "09", label: "September" },
-      { value: "10", label: "October" },
-      { value: "11", label: "November" },
-      { value: "12", label: "December" },
+      { value: "01", label: t("Months.january") },
+      { value: "02", label: t("Months.february") },
+      { value: "03", label: t("Months.march") },
+      { value: "04", label: t("Months.april") },
+      { value: "05", label: t("Months.may") },
+      { value: "06", label: t("Months.june") },
+      { value: "07", label: t("Months.july") },
+      { value: "08", label: t("Months.august") },
+      { value: "09", label: t("Months.september") },
+      { value: "10", label: t("Months.october") },
+      { value: "11", label: t("Months.november") },
+      { value: "12", label: t("Months.december") },
     ];
 
     // Calculate days based on selected month and year
@@ -728,7 +680,9 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
               control={control}
               name={`${field.key}.year`}
               rules={{
-                required: fields.year?.required ? "Year is required" : false,
+                required: fields.year?.required
+                  ? getLocalizedError(field, "validation.fieldRequired")
+                  : false,
               }}
               render={({
                 field: { onChange, value },
@@ -808,7 +762,9 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
               control={control}
               name={`${field.key}.day`}
               rules={{
-                required: fields.day?.required ? "Day is required" : false,
+                required: fields.day?.required
+                  ? getLocalizedError(field, "DayInputComponent.dayRequired")
+                  : false,
               }}
               render={({
                 field: { onChange, value },
@@ -868,11 +824,14 @@ const TimeInputComponent: React.FC<DynamicFieldProps> = ({
     name={field.key}
     rules={{
       required: field.validate?.required
-        ? { value: true, message: field.errorLabel || field.validate.customMessage || "This field is required" }
+        ? {
+            value: true,
+            message: getLocalizedError(field, "validation.fieldRequired"),
+          }
         : false,
       pattern: {
         value: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
-        message: field.errorLabel || "Invalid time format (HH:MM)",
+        message: getLocalizedError(field, "validation.invalidTimeFormat"),
       },
     }}
     render={({ field: { onChange, value, onBlur }, fieldState: { error } }) => (
@@ -899,11 +858,7 @@ const TimeInputComponent: React.FC<DynamicFieldProps> = ({
           maxLength={5}
           placeholder="HH:MM"
         />
-        {error && (
-          <Text className="text-red-500 mt-2">
-            {error.message}
-          </Text>
-        )}
+        {error && <Text className="text-red-500 mt-2">{error.message}</Text>}
       </View>
     )}
   />

@@ -32,7 +32,7 @@ const MonitoringFormElementScreen = () => {
     : 0;
   console.log("Monitoring Module ID: ", monitoringId);
   const { user } = useAuth({});
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   if (!formId) {
     return (
@@ -107,17 +107,18 @@ const MonitoringFormElementScreen = () => {
     position: parseInt(user?.json?.position || "0"),
   };
 
-  console.log("form structure: ", JSON.stringify(formStructure, null, 2));
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <HeaderNavigation
+      <HeaderNavigation 
         showLeft={true}
         showRight={true}
         title={t("FormElementPage.monitoring_title")}
       />
       <View className="flex-1">
         <View className="px-4 pt-4">
-          <Text className="text-lg font-semibold mb-4">{formData.name}</Text>
+          <Text className="text-lg font-semibold mb-4">
+            {i18n.language === "rw-RW" ? formData.name_kin || formData.name : formData.name}
+          </Text>
         </View>
         <View className="flex-1">
           {parsedForm && parsedForm.components && (
