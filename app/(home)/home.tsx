@@ -60,7 +60,7 @@ const HomeScreen = () => {
       },
       {
         icon: <TabBarIcon name="home" family="Entypo" />,
-        title: t("HomePage.household_enrollment", "Household Enrollment") || "Household Enrollment",
+        title: t("HomePage.household_enrollment"),
         route: `/(projects)/(mods)/(projects)/${HOUSEHOLD_ENROLLMENT_ID}`,
       },
       {
@@ -106,7 +106,7 @@ const HomeScreen = () => {
     if (user?.position === 13) {
       baseLinks.push({
         icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
-        title: t("HomePage.IZU_Sector_Coordinator_Demographics", "IZU Sector Coordinator Demographics") || "IZU Sector Coordinator Demographics",
+        title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
         route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
       });
     }
@@ -115,7 +115,7 @@ const HomeScreen = () => {
     if (user?.position === 7) {
       baseLinks.push({
         icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
-        title: t("HomePage.IZU_At_Village_Demographics", "IZU At Village Demographics") || "IZU At Village Demographics",
+        title: t("HomePage.IZU_At_Village_Demographics"),
         route: `/(projects)/(mods)/(projects)/${IZU_AT_VILLAGE_DEMOGRAPHICS_ID}`,
       });
     }
@@ -124,7 +124,7 @@ const HomeScreen = () => {
     if (user?.position === 14) {
       baseLinks.push({
         icon: <TabBarIcon name="phone" family="FontAwesome6" />,
-        title: t("HomePage.IZU_Sector_Telephone_Supervision", "IZU Sector Telephone Supervision") || "IZU Sector Telephone Supervision",
+        title: t("HomePage.IZU_Sector_Telephone_Supervision"),
         route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_TELEPHONE_SUPERVISION_ID}`,
       });
     }
@@ -133,7 +133,7 @@ const HomeScreen = () => {
     if (user?.position === 13) {
       baseLinks.push({
         icon: <TabBarIcon name="phone" family="FontAwesome6" />,
-        title: t("HomePage.IZU_Cell_Telephone_Supervision", "IZU Cell Telephone Supervision") || "IZU Cell Telephone Supervision",
+        title: t("HomePage.IZU_Cell_Telephone_Supervision"),
         route: `/(projects)/(mods)/(projects)/${IZU_CELL_TELEPHONE_SUPERVISION_ID}`,
       });
     }
@@ -224,7 +224,7 @@ const HomeScreen = () => {
       <SafeAreaView className="flex-1 bg-white justify-center items-center">
         <ActivityIndicator size="large" color="#A23A91" />
         <Text className="mt-4 text-base text-gray-600">
-          {t("Loading data...")}
+          {t("HomePage.loading_data")}
         </Text>
       </SafeAreaView>
     );
@@ -256,7 +256,7 @@ const HomeScreen = () => {
         {isRefreshing && (
           <View className="p-4">
             <Text className="text-center text-gray-500">
-              {t("Loading data...")}
+              {t("HomePage.loading_data")}
             </Text>
           </View>
         )}

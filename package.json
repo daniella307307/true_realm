@@ -91,6 +91,7 @@
     "tailwind-merge": "^2.2.1",
     "tailwindcss": "3.3.5",
     "tailwindcss-animate": "^1.0.7",
+    "xlsx": "^0.18.5",
     "yup": "^1.4.0",
     "zod": "^3.23.8",
     "zod-i18n-map": "^2.27.0",

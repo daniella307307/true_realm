@@ -37,8 +37,8 @@ const ProjectFormsScreen = () => {
   if (!modId) {
     return (
       <NotFound 
-        title="Module not found"
-        description="Please try again"
+        title={t("FormPage.module_not_found")}
+        description={t("FormPage.module_not_found_description")}
         redirectTo={() => router.back()}
       />
     );

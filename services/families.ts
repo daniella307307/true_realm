@@ -8,6 +8,7 @@ import { isOnline } from "./network";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useMemo } from "react";
 import { Izu } from "~/models/izus/izu";
+import { filterDataByUserId } from "./filterData";
 
 const { useQuery, useRealm } = RealmContext;
 
@@ -51,10 +52,16 @@ export function useGetFamilies(forceSync: boolean = false) {
     },
   ]);
 
+  // Apply user ID filtering first
+  const userFilteredFamilies = useMemo(() => {
+    if (!user || !user.id) return storedFamilies;
+    return filterDataByUserId(storedFamilies, user.id);
+  }, [storedFamilies, user]);
+
   // Filter families based on user's sector or cell and position
   const filteredFamilies = useMemo(() => {
     // If no user, return all families
-    if (!user || !user.json) return storedFamilies;
+    if (!user || !user.json) return userFilteredFamilies;
 
     const position = Number(user.position || user.json.position);
     console.log("User position: ", position);
@@ -72,7 +79,7 @@ export function useGetFamilies(forceSync: boolean = false) {
       console.log("The izucodes: ", JSON.stringify(izucodes, null, 2));
 
       // Filter families by these izucodes
-      return storedFamilies.filtered("izucode IN $0", izucodes);
+      return userFilteredFamilies.filtered("izucode IN $0", izucodes);
     }
 
     // If position is Sector Coordinator (13)
@@ -87,7 +94,7 @@ export function useGetFamilies(forceSync: boolean = false) {
       const izucodes = relevantIzus.map((izu: Izu) => izu.izucode);
       console.log("The izucodes: ", JSON.stringify(izucodes, null, 2));
       // Filter families by these izucodes
-      return storedFamilies.filtered("izucode IN $0", izucodes);
+      return userFilteredFamilies.filtered("izucode IN $0", izucodes);
     }
     console.log("User izucode: ", user.user_code);
     // If position is Village Coordinator (8) and village is logged in izu's village check that the position matches and the village is the logged in izu's village
@@ -108,12 +115,12 @@ export function useGetFamilies(forceSync: boolean = false) {
       const izucodes = relevantIzus.map((izu: Izu) => izu.izucode);
       console.log("The izucodes: ", JSON.stringify(izucodes, null, 2));
       // Filter families by these izucodes
-      return storedFamilies.filtered("izucode IN $0", izucodes);
+      return userFilteredFamilies.filtered("izucode IN $0", izucodes);
     }
 
     // Default return all families
-    return storedFamilies;
-  }, [storedFamilies, user, allIzus]);
+    return userFilteredFamilies;
+  }, [userFilteredFamilies, user, allIzus]);
 
   return {
     families: filteredFamilies,

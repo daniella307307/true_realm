@@ -51,7 +51,7 @@ const DetailScreen = () => {
   console.log("The id:", _id);
 
   // Get all data sources
-  const { surveySubmissions, isLoading: isLoadingSubmissions } =
+  const { submissions: surveySubmissions, isLoading: isLoadingSubmissions } =
     useGetAllSurveySubmissions();
   const { families, isLoading: familiesLoading } = useGetFamilies();
   const { locallyCreatedFamilies, isLoading: locallyCreatedFamiliesLoading } =

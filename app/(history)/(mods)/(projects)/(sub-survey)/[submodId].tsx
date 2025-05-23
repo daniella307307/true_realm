@@ -44,6 +44,7 @@ type CombinedItem = {
 };
 
 const SubmissionListByModuleScreen = () => {
+  const { t } = useTranslation();
   const { submodId, family } = useLocalSearchParams<{
     submodId: string;
     family?: string;
@@ -53,8 +54,8 @@ const SubmissionListByModuleScreen = () => {
   if (!submodId) {
     return (
       <NotFound
-        title="Missing module id"
-        description="Please go back and select a module"
+        title={t("History.missing_module_id")}
+        description={t("History.go_back_select_module")}
         redirectTo={() => router.back()}
       />
     );
@@ -64,9 +65,8 @@ const SubmissionListByModuleScreen = () => {
     "all"
   );
   const {
-    surveySubmissions,
+    submissions: surveySubmissions,
     isLoading: surveySubmissionsLoading,
-    refresh: refreshSurveySubmissions,
   } = useGetAllSurveySubmissions();
 
   const {
@@ -84,7 +84,6 @@ const SubmissionListByModuleScreen = () => {
   } = useGetAllLocallyCreatedIzus();
 
   // console.log("locallyCreatedIzus", JSON.stringify(locallyCreatedIzus, null, 2));
-  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const { control, watch } = useForm({
     defaultValues: {
@@ -96,7 +95,6 @@ const SubmissionListByModuleScreen = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refreshSurveySubmissions();
     await refreshLocallyCreatedFamilies();
     setRefreshing(false);
   };
@@ -244,9 +242,9 @@ const SubmissionListByModuleScreen = () => {
         />
 
         <View className="flex flex-row justify-between items-center p-2 gap-2 rounded-full mb-4 bg-gray-100">
-          {renderTab("all", t("History.all", "All"))}
-          {renderTab("synced", t("History.synced", "Synced"))}
-          {renderTab("pending", t("History.pending", "Pending"))}
+          {renderTab("all", t("History.all"))}
+          {renderTab("synced", t("History.synced"))}
+          {renderTab("pending", t("History.pending"))}
         </View>
       </>
     ),
@@ -260,10 +258,10 @@ const SubmissionListByModuleScreen = () => {
         showRight={true}
         title={
           family
-            ? t("History.family_submissions", "Family Submissions: ") +
+            ? t("History.family_submissions") +
               (families?.find((f) => f.hh_id === family)?.hh_head_fullname ||
                 family)
-            : t("History.submissions", "Submissions")
+            : t("History.submissions")
         }
       />
 
@@ -285,7 +283,7 @@ const SubmissionListByModuleScreen = () => {
               ? item.familyData
               : families?.find((fam: IFamilies) => fam.hh_id === item.family);
 
-          console.log("item", JSON.stringify(item, null, 2));
+          // console.log("item", JSON.stringify(item, null, 2));
           return (
             <TouchableOpacity
               onPress={() =>
@@ -335,45 +333,45 @@ const SubmissionListByModuleScreen = () => {
                 {foundFamily ? (
                   <>
                     <Text className="text-sm mb-1 text-gray-600">
-                      {t("Common.family", "Family")}: {item.family}
+                      {t("Common.family")}: {item.family}
                     </Text>
                     <Text className="text-sm mb-1 text-gray-600">
-                      {t("Common.headName", "Head Name")}:{" "}
+                      {t("Common.headName")}:{" "}
                       {foundFamily.hh_head_fullname}
                     </Text>
                     {foundFamily.village_name && (
                       <Text className="text-sm mb-1 text-gray-600">
-                        {t("Common.village", "Village")}:{" "}
+                        {t("Common.village")}:{" "}
                         {foundFamily.village_name}
                       </Text>
                     )}
                   </>
                 ) : (
                   <Text className="text-sm mb-1 text-gray-600">
-                    {t("Common.family", "Family")}: {item.family}
+                    {t("Common.family")}: {item.family}
                   </Text>
                 )}
                 <Text className="text-sm mb-1 text-gray-600">
-                  {t("History.createdAt", "Created At")}:{" "}
+                  {t("History.createdAt")}:{" "}
                   {item.submittedAt
                     ? new Date(item.submittedAt).toLocaleString()
                     : "-"}
                 </Text>
                 {item.lastSyncAttempt && (
                   <Text className="text-sm mb-1 text-gray-600">
-                    {t("History.lastSync", "Last Synced")}:{" "}
+                    {t("History.lastSync")}:{" "}
                     {item.lastSyncAttempt
                       ? new Date(item.lastSyncAttempt).toLocaleString()
                       : "-"}
                   </Text>
                 )}
                 <Text className="text-sm mb-1 text-gray-600">
-                  {t("Common.type", "Submitted: ")}
+                  {t("Common.type")}:{" "}
                   {item.itemType === "family"
-                    ? t("Common.family", "a family")
+                    ? t("Common.family")
                     : item.itemType === "submission"
-                    ? t("Common.submission", "a submission")
-                    : t("Common.izu", "an IZU")}
+                    ? t("Common.submission")
+                    : t("Common.izu")}
                 </Text>
               </View>
             </TouchableOpacity>

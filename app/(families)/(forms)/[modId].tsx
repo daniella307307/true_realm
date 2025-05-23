@@ -50,8 +50,8 @@ const ProjectFormsScreen = () => {
   if (!modId) {
     return (
       <NotFound
-        title="Module not found"
-        description="Please go back to the home screen and try again."
+        title={t("FormPage.module_not_found")}
+        description={t("FormPage.go_back_and_try_again")}
         redirectTo={() => router.replace("/(home)/home")}
       />
     );
@@ -95,12 +95,12 @@ const ProjectFormsScreen = () => {
   if (!currentModule) {
     return (
       <View className="flex-1 justify-center items-center bg-background p-4">
-        <Text className="text-red-500 font-semibold">Module not found</Text>
+        <Text className="text-red-500 font-semibold">{t("FormPage.module_not_found")}</Text>
         <Button
           className="mt-10"
           onPress={() => router.replace("/(families)/")}
         >
-          <Text>Go to home</Text>
+          <Text>{t("FormPage.go_to_home")}</Text>
         </Button>
       </View>
     );

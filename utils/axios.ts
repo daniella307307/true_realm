@@ -12,7 +12,7 @@ let isAuthenticated = false;
 // Function to update authentication status - call this from useAuth
 export const setAuthenticationStatus = (status: boolean) => {
   isAuthenticated = status;
-  console.log("Authentication status updated:", isAuthenticated);
+  // console.log("Authentication status updated:", isAuthenticated);
 };
 
 // Function to clear authentication tokens

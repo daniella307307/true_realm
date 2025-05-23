@@ -22,22 +22,24 @@ import { useAuth } from "~/lib/hooks/useAuth";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
 
-const commentSchema = z.object({
-  comment: z.string().min(1, "Comment is required"),
-});
-
-interface Comment {
-  id: number;
-  user: {
-    id: number;
-    name: string;
-    picture: string;
-  };
-  comment: string;
-  created_at: string;
-}
-
 const PostScreen: React.FC = () => {
+  const { t } = useTranslation();
+  
+  const commentSchema = z.object({
+    comment: z.string().min(1, t("CommunityPage.comment_required")),
+  });
+
+  interface Comment {
+    id: number;
+    user: {
+      id: number;
+      name: string;
+      picture: string;
+    };
+    comment: string;
+    created_at: string;
+  }
+
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const {
     control,
@@ -92,8 +94,6 @@ const PostScreen: React.FC = () => {
     await refresh();
     setRefreshing(false);
   };
-
-  const { t } = useTranslation();
 
   const renderHeader = () => (
     <View className="bg-white p-4 rounded-lg">
@@ -160,7 +160,7 @@ const PostScreen: React.FC = () => {
         render={({ field: { value, onChange } }) => (
           <TextInput
             className="px-2 flex-1"
-            placeholder="Write your comment ......"
+            placeholder={t("CommunityPage.write_comment")}
             value={value}
             style={{ height: 40 }}
             onChangeText={onChange}

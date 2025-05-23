@@ -132,7 +132,7 @@ const MonitoringScreen = () => {
       <HeaderNavigation
         showLeft={true}
         showRight={true}
-        title={t("ModulePage.monitoring_title", "IZU Monitoring")}
+        title={t("ModulePage.monitoring_title")}
       />
       <View className="flex-1 p-4 bg-white">
         <CustomInput
@@ -156,7 +156,7 @@ const MonitoringScreen = () => {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={() => (
               <EmptyDynamicComponent
-                message={"No monitoring modules available"}
+                message={t("ModulePage.no_monitoring_modules")}
               />
             )}
             renderItem={renderItem}

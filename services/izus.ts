@@ -7,6 +7,7 @@ import { FormField, Izus } from "~/types";
 import { Izu } from "~/models/izus/izu";
 import { isOnline } from "./network";
 import { useAuth } from "~/lib/hooks/useAuth";
+import { filterDataByUserId } from "./filterData";
 
 const { useQuery } = RealmContext;
 
@@ -23,30 +24,36 @@ export function useGetIzus(forceSync: boolean = false) {
   const storedIzus = useQuery(Izu);
   const { user } = useAuth({});
 
+  // Filter IZUs by current user first
+  const userFilteredIzus = useMemo(() => {
+    if (!user || !user.id) return storedIzus;
+    return filterDataByUserId(storedIzus, user.id);
+  }, [storedIzus, user]);
+
   // console.log("storedIzus", JSON.stringify(storedIzus, null, 2));
   const loggedInIzu = useMemo(() => {
-    return storedIzus.find((izu) => izu.id === user?.json?.id);
-  }, [storedIzus, user]);
+    return userFilteredIzus.find((izu) => izu.id === user?.json?.id);
+  }, [userFilteredIzus, user]);
 
   // console.log("loggedInIzu", JSON.stringify(loggedInIzu, null, 2));
   // Filter izus based on logged in user's position
   const filteredIzus = useMemo(() => {
     // If no logged in Izu or no position, return all izus
-    if (!loggedInIzu) return storedIzus;
+    if (!loggedInIzu) return userFilteredIzus;
 
     const position = loggedInIzu.position;
 
-    if (position === undefined) return storedIzus;
+    if (position === undefined) return userFilteredIzus;
 
     if (position === 7 && loggedInIzu.location?.cell) {
-      return storedIzus.filtered(
+      return userFilteredIzus.filtered(
         "position IN {7, 8} AND location.cell = $0",
         loggedInIzu.location.cell
       );
     }
 
     if (position === 13 && loggedInIzu.location?.sector) {
-      return storedIzus.filtered(
+      return userFilteredIzus.filtered(
         "position IN {7, 8} AND location.sector = $0",
         loggedInIzu.location.sector
       );
@@ -54,14 +61,14 @@ export function useGetIzus(forceSync: boolean = false) {
 
     // if position is 8 means village, return that the izu that has that position equals and that village is the logged in izu's village
     if (position === 8 && loggedInIzu.location?.village && loggedInIzu.izucode) {
-      return storedIzus.filtered(
+      return userFilteredIzus.filtered(
         "position = $0 AND location.village = $1 AND izucode = $2",
         position,
         loggedInIzu.location.village,
         loggedInIzu.izucode
       );
     }
-  }, [storedIzus, loggedInIzu]);
+  }, [userFilteredIzus, loggedInIzu]);
 
   const { syncStatus, refresh } = useDataSync([
     {

@@ -31,7 +31,6 @@ export const loginSchema = z.object({
     .string()
     .nonempty("Password is required")
     .min(5, "Password must be at least 5 characters")
-    .regex(/[0-9]/, "Password must include a digit"),
 });
 
 export type ILoginDetails = z.infer<typeof loginSchema>;

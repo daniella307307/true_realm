@@ -15,6 +15,7 @@ import { cn } from "~/lib/utils";
 import { getLocalizedTitle } from "~/utils/form-utils";
 import { DynamicFieldProps } from "~/types/form-types";
 import { Eye, EyeOff } from "lucide-react-native";
+import { useTranslation } from 'react-i18next';
 
 const TextFieldComponent: React.FC<DynamicFieldProps> = ({
   field,
@@ -152,16 +153,16 @@ const TextFieldComponent: React.FC<DynamicFieldProps> = ({
       }}
       render={({ field: { onChange, value, onBlur }, fieldState: { error, isDirty, isTouched } }) => {
         // Log validation state when there's an error
-        if (error) {
-          console.log(`Validation error for ${field.key}:`, {
-            error: error.message,
-            value,
-            isDirty,
-            isTouched,
-            fieldType: field.type || type,
-            errorLabel: field.errorLabel
-          });
-        }
+        // if (error) {
+        //   console.log(`Validation error for ${field.key}:`, {
+        //     error: error.message,
+        //     value,
+        //     isDirty,
+        //     isTouched,
+        //     fieldType: field.type || type,
+        //     errorLabel: field.errorLabel
+        //   });
+        // }
         
         return (
           <View className="mb-4">
@@ -541,22 +542,6 @@ const CheckBoxComponent: React.FC<DynamicFieldProps> = ({
       }}
       render={({ field: { onChange, value }, fieldState: { error } }) => {
         const selectedValues = value ? value.split(",").filter(Boolean) : [];
-
-        // Enhanced logging for debugging
-        // console.log(`Checkbox values for ${field.key}:`, {
-        //   values: selectedValues,
-        //   fieldLabel: getLocalizedTitle(field.title, language),
-        //   dependentFields: field.conditional
-        //     ? {
-        //         when: field.conditional.when,
-        //         eq: field.conditional.eq,
-        //         shouldShow:
-        //           field.conditional.eq === "!"
-        //             ? !selectedValues.includes(field.conditional.when)
-        //             : selectedValues.includes(field.conditional.when),
-        //       }
-        //     : null,
-        // });
 
         const handleToggle = (optionValue: string) => {
           let newValues: string[];

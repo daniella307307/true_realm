@@ -3,8 +3,11 @@ import { Realm } from "@realm/react";
 import { isOnline } from "./network";
 import { baseInstance } from "~/utils/axios";
 import { RealmContext } from "~/providers/RealContextProvider";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { SurveySubmission } from "~/models/surveys/survey-submission";
+import { filterDataByUserId } from "./filterData";
+import { useAuth } from "~/lib/hooks/useAuth";
+import { useDataSync } from "./dataSync";
 const { useRealm, useQuery } = RealmContext;
 
 export const createSurveySubmission = (
@@ -71,237 +74,6 @@ export const createSurveySubmission = (
 };
 
 // Transform API response survey submissions to the ISurveySubmission format
-export const transformApiSurveySubmissions = (apiResponses: any[]) => {
-  return apiResponses.map((response) => {
-    // Parse the JSON field to extract data
-    const jsonData =
-      typeof response.json === "string"
-        ? JSON.parse(response.json)
-        : response.json;
-
-    // Extract answers from jsonData by removing metadata fields
-    const metadataFields = [
-      "table_name",
-      "project_module_id",
-      "source_module_id",
-      "project_id",
-      "survey_id",
-      "post_data",
-      "cohorts",
-      "province",
-      "district",
-      "sector",
-      "cell",
-      "village",
-      "izucode",
-      "family",
-      "province_name",
-      "district_name",
-      "sector_name",
-      "cell_name",
-      "village_name",
-      "izu_name",
-      "familyID",
-      "hh_head_fullname",
-      "enrollment_date"
-    ];
-
-    const answers: Record<string, any> = {};
-    Object.keys(jsonData).forEach((key) => {
-      if (!metadataFields.includes(key)) {
-        answers[key] = jsonData[key];
-      }
-    });
-
-    // Create the transformed submission
-    return {
-      id: response.id,
-      answers,
-      form_data: {
-        time_spent_filling_the_form: null,
-        user_id: response.user_id || null,
-        table_name: jsonData.table_name || null,
-        project_module_id: jsonData.project_module_id || response.project_module_id || null,
-        source_module_id: jsonData.source_module_id || response.module_id || null,
-        project_id: jsonData.project_id || response.project_id || null,
-        survey_id: jsonData.survey_id || response.curr_form_id || null,
-        post_data: jsonData.post_data || null,
-        izucode: jsonData.izucode || null,
-        family: jsonData.family || response.families_id || null,
-        form_status: "followup",
-        cohort: jsonData.cohorts || response.cohort || null,
-      },
-      location: {
-        province: jsonData.province || response.province || null,
-        district: jsonData.district || response.district || null,
-        sector: jsonData.sector || response.sector || null,
-        cell: jsonData.cell || response.cell || null,
-        village: jsonData.village || response.village || null,
-      },
-      sync_data: {
-        sync_status: true,
-        sync_reason: "Success, comes from the API",
-        sync_attempts: 1,
-        last_sync_attempt: new Date(response.updated_at || response.created_at),
-        submitted_at: new Date(response.recorded_on || response.created_at),
-      },
-    };
-  });
-};
-
-export async function fetchSurveySubmissionsFromRemote() {
-  try {
-    const res = await baseInstance.get("/responses");
-    console.log(
-      `Received ${res.data.responses.length} survey submissions from API`
-    );
-
-    // Transform the API response data to match our Realm model
-    return transformApiSurveySubmissions(res.data.responses);
-  } catch (error) {
-    console.error("Error fetching survey submissions from remote:", error);
-    throw error;
-  }
-}
-
-export function useGetRemoteSurveySubmissions(forceSync: boolean = false) {
-  const realm = useRealm();
-  const [surveySubmissions, setSurveySubmissions] = useState<
-    ISurveySubmission[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-
-  // Prevent excessive API calls with a ref to track if we're already fetching
-  const isFetchingRef = useRef(false);
-  // Track last fetch time to enforce minimum interval between fetches
-  const lastFetchTimeRef = useRef<number>(0);
-  // Minimum time between API calls in milliseconds (5 seconds)
-  const MIN_FETCH_INTERVAL = 5000;
-
-  const fetchAndSaveSubmissions = useCallback(async () => {
-    // Skip if already fetching or if it's too soon since last fetch
-    const now = Date.now();
-    if (
-      isFetchingRef.current ||
-      now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL
-    ) {
-      console.log(
-        "Skipping fetch: " +
-          (isFetchingRef.current
-            ? "Already fetching"
-            : "Too soon since last fetch")
-      );
-      return;
-    }
-
-    try {
-      isFetchingRef.current = true;
-      setIsLoading(true);
-      setError(null);
-
-      // Update last fetch time
-      lastFetchTimeRef.current = now;
-
-      console.log("Starting API fetch for survey submissions...");
-      // Fetch submissions from the remote API
-      const remoteSubmissions = await fetchSurveySubmissionsFromRemote();
-      console.log(`Transformed ${remoteSubmissions.length} survey submissions`);
-
-      // Keep track of processed IDs to prevent duplicates
-      const processedIds = new Set<string>();
-      let newCount = 0;
-      let updatedCount = 0;
-      let duplicateCount = 0;
-
-      // Save to Realm database
-      realm.write(() => {
-        remoteSubmissions.forEach((submission) => {
-          // Generate a unique ID for each response based on response ID
-          const uniqueId = submission.id.toString();
-
-          // Skip if already processed in this batch (handles duplicates in API response)
-          if (processedIds.has(uniqueId)) {
-            console.log(`Skipping duplicate in API response: ${uniqueId}`);
-            duplicateCount++;
-            return;
-          }
-
-          processedIds.add(uniqueId);
-
-          // Check if the submission already exists
-          const existingSubmission =
-            realm.objectForPrimaryKey<ISurveySubmission>(
-              "SurveySubmission",
-              submission.id
-            );
-
-          if (existingSubmission) {
-            // Update existing submission without changing the id
-            const { id, ...submissionWithoutId } = submission;
-            Object.assign(existingSubmission, submissionWithoutId);
-            updatedCount++;
-          } else {
-            // Create new submission
-            realm.create("SurveySubmission", submission);
-            newCount++;
-          }
-        });
-      });
-
-      console.log(
-        `Survey sync results: ${newCount} new, ${updatedCount} updated, ${duplicateCount} duplicates skipped`
-      );
-
-      // Get the latest count
-      const totalInDatabase =
-        realm.objects<ISurveySubmission>("SurveySubmission").length;
-      console.log(`Total survey submissions in database: ${totalInDatabase}`);
-
-      // Update state
-      setSurveySubmissions(remoteSubmissions as ISurveySubmission[]);
-      setLastSyncTime(new Date());
-    } catch (err: any) {
-      console.error("Error in fetchAndSaveSubmissions:", err);
-      setError(err);
-    } finally {
-      setIsLoading(false);
-      isFetchingRef.current = false;
-    }
-  }, [realm]);
-
-  // Initial fetch - use useEffect with proper control
-  useEffect(() => {
-    let isMounted = true;
-
-    const doFetch = async () => {
-      // Only fetch if component is still mounted and we need to fetch (force or no last sync)
-      if (isMounted && (forceSync || !lastSyncTime)) {
-        await fetchAndSaveSubmissions();
-      }
-    };
-
-    doFetch();
-
-    // Cleanup function to prevent state updates if unmounted
-    return () => {
-      isMounted = false;
-    };
-  }, [forceSync]); // Remove fetchAndSaveSubmissions from deps to prevent loops
-
-  const refresh = useCallback(() => {
-    return fetchAndSaveSubmissions();
-  }, [fetchAndSaveSubmissions]);
-
-  return {
-    surveySubmissions,
-    isLoading,
-    error,
-    lastSyncTime,
-    refresh,
-  };
-}
 
 function getNextAvailableId(realm: Realm): number {
   try {
@@ -352,13 +124,6 @@ export const saveSurveySubmissionToAPI = async (
   fields: FormField[] = []
 ): Promise<SurveySubmission> => {
   try {
-    console.log(
-      "saveSurveySubmissionToAPI received data:",
-      JSON.stringify(formData, null, 2)
-    );
-    console.log("API URL:", apiUrl);
-    console.log("Fields:", JSON.stringify(fields, null, 2));
-
     // Prepare location data
     const location =
       typeof formData.location === "object"
@@ -370,8 +135,6 @@ export const saveSurveySubmissionToAPI = async (
             cell: formData.cell,
             village: formData.village,
           };
-
-    console.log("Prepared location data:", JSON.stringify(location, null, 2));
 
     // Prepare form data
     const formDataObj = {
@@ -400,7 +163,7 @@ export const saveSurveySubmissionToAPI = async (
 
     const sanitizedFormData = {
       ...formData,
-      id: formData.id || null,
+      id: formData.id || getNextAvailableId(realm),
       sync_data: syncData,
       form_data: formDataObj,
       location,
@@ -418,10 +181,15 @@ export const saveSurveySubmissionToAPI = async (
     if (isConnected) {
       try {
         console.log("Attempting to send data to API");
-        // Prepare data for API
+        // Prepare data for API - exclude the fields that should be standardized
+        const { userId, timeSpentFormatted, ...formDataWithoutDuplicates } =
+          formData;
+
+        // Combine the form data without duplicates and the standardized form data
         const apiData = {
-          ...formData,
-          ...(sanitizedFormData.form_data || {}),
+          ...formDataWithoutDuplicates,
+          ...sanitizedFormData.form_data,
+          ...sanitizedFormData.location,
         };
 
         console.log(
@@ -437,7 +205,7 @@ export const saveSurveySubmissionToAPI = async (
         );
 
         let submission: SurveySubmission;
-        
+
         // Wrap all Realm operations in a write transaction
         realm.write(() => {
           if (response.data?.result?.id) {
@@ -464,7 +232,11 @@ export const saveSurveySubmissionToAPI = async (
             submission = createSurveySubmission(completeData, fields, realm);
           } else {
             console.log("API did not return an ID, creating with local ID");
-            submission = createSurveySubmission(sanitizedFormData, fields, realm);
+            submission = createSurveySubmission(
+              sanitizedFormData,
+              fields,
+              realm
+            );
           }
         });
 
@@ -477,7 +249,7 @@ export const saveSurveySubmissionToAPI = async (
           JSON.stringify(error, Object.getOwnPropertyNames(error))
         );
         console.log("Falling back to offline mode due to API error");
-        
+
         let submission: SurveySubmission;
         realm.write(() => {
           submission = createTemporarySurveySubmission(
@@ -492,7 +264,11 @@ export const saveSurveySubmissionToAPI = async (
       console.log("Offline mode - creating temporary survey submission record");
       let submission: SurveySubmission;
       realm.write(() => {
-        submission = createTemporarySurveySubmission(realm, sanitizedFormData, fields);
+        submission = createTemporarySurveySubmission(
+          realm,
+          sanitizedFormData,
+          fields
+        );
       });
       return submission!;
     }
@@ -536,7 +312,7 @@ export const syncPendingSubmissions = async (realm: Realm) => {
 
       const response = await baseInstance.post("/sendVisitData", apiData);
 
-      if (response.data?.result?.id) {
+      if (response.data.result.id) {
         const updatedData = {
           ...apiData,
           id: response.data.result.id,
@@ -610,37 +386,126 @@ export const syncPendingSubmissions = async (realm: Realm) => {
   }
 };
 
-export const useGetAllSurveySubmissions = () => {
-  const surveySubmissions = useQuery<ISurveySubmission>("SurveySubmission");
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+export const transformApiSurveySubmissions = (apiResponses: any[]) => {
+  return apiResponses.map((response) => {
+    // Parse the JSON field to extract data
+    const jsonData =
+      typeof response.json === "string"
+        ? JSON.parse(response.json)
+        : response.json;
 
-  // Set loading to false once the query has been executed
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 300);
+    // Extract answers from jsonData by removing metadata fields
+    const metadataFields = [
+      "table_name",
+      "project_module_id",
+      "source_module_id",
+      "project_id",
+      "survey_id",
+      "post_data",
+      "cohorts",
+      "province",
+      "district",
+      "sector",
+      "cell",
+      "village",
+      "izucode",
+      "family",
+      "province_name",
+      "district_name",
+      "sector_name",
+      "cell_name",
+      "village_name",
+      "izu_name",
+      "familyID",
+      "hh_head_fullname",
+      "enrollment_date",
+    ];
 
-    return () => clearTimeout(timer);
-  }, [surveySubmissions, refreshKey]);
+    const answers: Record<string, any> = {};
+    Object.keys(jsonData).forEach((key) => {
+      if (!metadataFields.includes(key)) {
+        answers[key] = jsonData[key];
+      }
+    });
 
-  const refresh = useCallback(() => {
-    setRefreshKey((prev) => prev + 1);
-    setIsLoading(true);
-  }, []);
+    // Create the transformed submission
+    return {
+      id: response.id,
+      answers,
+      form_data: {
+        time_spent_filling_the_form: null,
+        user_id: response.user_id || null,
+        table_name: jsonData.table_name || null,
+        project_module_id:
+          jsonData.project_module_id || response.project_module_id || null,
+        source_module_id:
+          jsonData.source_module_id || response.module_id || null,
+        project_id: jsonData.project_id || response.project_id || null,
+        survey_id: jsonData.survey_id || response.curr_form_id || null,
+        post_data: jsonData.post_data || null,
+        izucode: jsonData.izucode || null,
+        family: jsonData.family || response.families_id || null,
+        form_status: "followup",
+        cohort: jsonData.cohorts || response.cohort || null,
+      },
+      location: {
+        province: jsonData.province || response.province || null,
+        district: jsonData.district || response.district || null,
+        sector: jsonData.sector || response.sector || null,
+        cell: jsonData.cell || response.cell || null,
+        village: jsonData.village || response.village || null,
+      },
+      sync_data: {
+        sync_status: true,
+        sync_reason: "Success, comes from the API",
+        sync_attempts: 1,
+        last_sync_attempt: new Date(response.updated_at || response.created_at),
+        submitted_at: new Date(response.recorded_on || response.created_at),
+      },
+    };
+  });
+};
+
+export async function fetchSurveySubmissionsFromRemote() {
+  try {
+    const res = await baseInstance.get("/responses");
+    console.log(
+      `Received ${res.data.responses.length} survey submissions from API`
+    );
+
+    // Transform the API response data to match our Realm model
+    return transformApiSurveySubmissions(res.data.responses);
+  } catch (error) {
+    console.log("Error fetching survey submissions from remote:", error);
+    throw error;
+  }
+}
+
+export const useGetAllSurveySubmissions = (forceSync: boolean = false) => {
+  const { user } = useAuth({});
+  const allLocalSubmissions = useQuery<SurveySubmission>(SurveySubmission);
+  
+  // Filter submissions by current user
+  const userSubmissions = useMemo(() => {
+    if (!user || !user.id) return allLocalSubmissions;
+    return filterDataByUserId(allLocalSubmissions, user.id);
+  }, [allLocalSubmissions, user]);
+
+  const { syncStatus, refresh } = useDataSync([
+    {
+      key: "surveySubmissions",
+      fetchFn: fetchSurveySubmissionsFromRemote,
+      model: SurveySubmission,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      forceSync,
+    },
+  ]);
 
   return {
-    surveySubmissions: surveySubmissions.map((submission) => ({
-      ...submission,
-      answers: Object.fromEntries(
-        Object.entries(submission.answers).map(([key, value]) => [
-          key,
-          value?.toString() ?? "",
-        ])
-      ),
-    })),
-    isLoading,
-    error: null,
-    refresh,
+    submissions: userSubmissions,
+    isLoading: syncStatus.surveySubmissions?.isLoading || false,
+    error: syncStatus.surveySubmissions?.error || null,
+    lastSyncTime: syncStatus.surveySubmissions?.lastSyncTime || null,
+    refresh: () => refresh("surveySubmissions", forceSync),
   };
 };

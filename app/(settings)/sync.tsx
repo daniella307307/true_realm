@@ -10,7 +10,10 @@ import {
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useGetAllProjects } from "~/services/project";
-import { useGetAllSurveySubmissions, syncPendingSubmissions } from "~/services/survey-submission";
+import {
+  useGetAllSurveySubmissions,
+  syncPendingSubmissions,
+} from "~/services/survey-submission";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { useGetStakeholders } from "~/services/stakeholders";
 import HeaderNavigation from "~/components/ui/header";
@@ -24,18 +27,27 @@ import { Izu } from "~/models/izus/izu";
 import { IModule, IProject } from "~/types";
 import { SurveySubmission } from "~/models/surveys/survey-submission";
 import Toast from "react-native-toast-message"; // Make sure to install this package
-import { syncTemporaryMonitoringResponses, useGetAllLocallyCreatedMonitoringResponses } from "~/services/monitoring/monitoring-responses";
+import {
+  syncTemporaryMonitoringResponses,
+  useGetAllLocallyCreatedMonitoringResponses,
+} from "~/services/monitoring/monitoring-responses";
 import { MonitoringResponses } from "~/models/monitoring/monitoringresponses";
 import { Stack } from "expo-router";
 
 // Network-related imports
-import { isOnline } from '~/services/network';
+import { isOnline } from "~/services/network";
 import { useGetForms } from "~/services/formElements";
 
 const { useRealm, useQuery } = RealmContext;
 
 // Define sync status types for better type safety
-type SyncStatusType = "Not Synced" | "Syncing" | "Success" | "Failed" | "Network Errors" | "No Pending Submissions";
+type SyncStatusType =
+  | "Not Synced"
+  | "Syncing"
+  | "Success"
+  | "Failed"
+  | "Network Errors"
+  | "No Pending Submissions";
 
 interface SyncItem {
   key: string;
@@ -61,12 +73,16 @@ interface SyncStatuses {
 }
 
 // Toast helper function
-const showToast = (type: 'success' | 'error' | 'info', text1: string, text2: string) => {
+const showToast = (
+  type: "success" | "error" | "info",
+  text1: string,
+  text2: string
+) => {
   Toast.show({
     type,
     text1,
     text2,
-    position: 'top',
+    position: "top",
     visibilityTime: 4000,
     autoHide: true,
     topOffset: 50,
@@ -87,10 +103,12 @@ const SyncPage = () => {
   const [failedFamiliesCount, setFailedFamiliesCount] = useState<number>(0);
   const [pendingIzusCount, setPendingIzusCount] = useState<number>(0);
   const [failedIzusCount, setFailedIzusCount] = useState<number>(0);
-  const [pendingMonitoringResponsesCount, setPendingMonitoringResponsesCount] = useState<number>(0);
-  const [failedMonitoringResponsesCount, setFailedMonitoringResponsesCount] = useState<number>(0);
+  const [pendingMonitoringResponsesCount, setPendingMonitoringResponsesCount] =
+    useState<number>(0);
+  const [failedMonitoringResponsesCount, setFailedMonitoringResponsesCount] =
+    useState<number>(0);
   const [forceRefresh, setForceRefresh] = useState<number>(0); // Used to force remounting
-  
+
   // Keep track of sync statuses
   const [syncStatuses, setSyncStatuses] = useState<SyncStatuses>({
     Projects: "Not Synced",
@@ -99,19 +117,21 @@ const SyncPage = () => {
     Stakeholders: "Not Synced",
     Families: "Not Synced",
     Izus: "Not Synced",
-    MonitoringResponses: "Not Synced"
+    MonitoringResponses: "Not Synced",
   });
 
   // Ref to track the latest sync statuses (not affected by React's asynchronous state updates)
-  const currentSyncStatusesRef = useRef<SyncStatuses>({...syncStatuses});
+  const currentSyncStatusesRef = useRef<SyncStatuses>({ ...syncStatuses });
 
   // Service hooks
   const { refresh: refreshProjects } = useGetAllProjects(true);
-  const { surveySubmissions, refresh: refreshSubmissions } = useGetAllSurveySubmissions();
+  const { submissions: surveySubmissions, refresh } =
+    useGetAllSurveySubmissions();
   const { refresh: refreshStakeholders } = useGetStakeholders(true);
   const { refresh: refreshForms } = useGetForms(true);
   const { refresh: refreshIzus } = useGetIzus(true);
-  const { refresh: refreshMonitoringResponses } = useGetAllLocallyCreatedMonitoringResponses();
+  const { refresh: refreshMonitoringResponses } =
+    useGetAllLocallyCreatedMonitoringResponses();
   // Sync translation
   const { t } = useTranslation();
 
@@ -119,24 +139,26 @@ const SyncPage = () => {
   const updateSubmissionCounts = useCallback(() => {
     // Direct realm query for maximum accuracy
     const allSubmissions = realm.objects(SurveySubmission);
-    
+
     // Count pending submissions (not synced and status is pending or undefined)
     const pendingCount = allSubmissions.filtered(
       'sync_data.sync_status == false && (sync_data.sync_reason == "pending" || sync_data.sync_reason == null || sync_data.sync_reason == "")'
     ).length;
-    
+
     // Count network error submissions
     const networkErrorCount = allSubmissions.filtered(
       'sync_data.sync_reason == "Network Error"'
     ).length;
-    
+
     // Count failed submissions
     const failedCount = allSubmissions.filtered(
       'sync_data.sync_reason == "failed" || sync_data.sync_reason == "Other error"'
     ).length;
-    
-    console.log(`Direct Realm count - Pending: ${pendingCount}, Network Errors: ${networkErrorCount}, Failed: ${failedCount}`);
-    
+
+    console.log(
+      `Direct Realm count - Pending: ${pendingCount}, Network Errors: ${networkErrorCount}, Failed: ${failedCount}`
+    );
+
     setPendingCount(pendingCount);
     setNetworkErrorCount(networkErrorCount);
     setFailedCount(failedCount);
@@ -169,13 +191,20 @@ const SyncPage = () => {
   // Update counts whenever submissions change
   useEffect(() => {
     updateSubmissionCounts();
+    console.log("surveySubmissions", surveySubmissions.length);
   }, [surveySubmissions, updateSubmissionCounts, forceRefresh]);
 
   // Get direct submissions from Realm - more reliable than using the hook data
-  const getDirectSubmissions = useCallback((filter: string) => {
-    console.log("getDirectSubmissions", realm.objects(SurveySubmission).filtered(filter));
-    return realm.objects(SurveySubmission).filtered(filter);
-  }, [realm]);
+  const getDirectSubmissions = useCallback(
+    (filter: string) => {
+      console.log(
+        "getDirectSubmissions",
+        realm.objects(SurveySubmission).filtered(filter)
+      );
+      return realm.objects(SurveySubmission).filtered(filter);
+    },
+    [realm]
+  );
 
   const syncFormsAndSurveys = async () => {
     if (isSyncing) return;
@@ -198,25 +227,25 @@ const SyncPage = () => {
       Stakeholders: "Not Synced",
       Families: "Not Synced",
       Izus: "Not Synced",
-      MonitoringResponses: "Not Synced"
+      MonitoringResponses: "Not Synced",
     };
-    
+
     // Update the ref to the initial state
-    currentSyncStatusesRef.current = {...localSyncStatuses};
-    
+    currentSyncStatusesRef.current = { ...localSyncStatuses };
+
     // Reset state sync statuses
-    setSyncStatuses({...localSyncStatuses});
+    setSyncStatuses({ ...localSyncStatuses });
 
     try {
       // Sync Projects and Modules together
       setCurrentSyncItem("Projects");
-      
+
       // Update both local and state statuses
       localSyncStatuses.Projects = "Syncing";
       localSyncStatuses.Modules = "Syncing";
-      currentSyncStatusesRef.current = {...localSyncStatuses};
-      setSyncStatuses({...localSyncStatuses});
-      
+      currentSyncStatusesRef.current = { ...localSyncStatuses };
+      setSyncStatuses({ ...localSyncStatuses });
+
       try {
         console.log("Starting Projects and Modules sync...");
         await refreshProjects();
@@ -240,41 +269,43 @@ const SyncPage = () => {
 
           localSyncStatuses.Projects = "Success";
           localSyncStatuses.Modules = "Success";
-          currentSyncStatusesRef.current = {...localSyncStatuses};
-          setSyncStatuses({...localSyncStatuses});
-          
+          currentSyncStatusesRef.current = { ...localSyncStatuses };
+          setSyncStatuses({ ...localSyncStatuses });
+
           successCount += 2; // Count both projects and modules as successful
           setSyncProgress((successCount / totalItems) * 100);
           console.log("Projects and Modules sync completed successfully");
         } else {
-          console.log("No projects were stored, but not treating as error since this might be valid");
-          
+          console.log(
+            "No projects were stored, but not treating as error since this might be valid"
+          );
+
           localSyncStatuses.Projects = "Success";
           localSyncStatuses.Modules = "Success";
-          currentSyncStatusesRef.current = {...localSyncStatuses};
-          setSyncStatuses({...localSyncStatuses});
-          
+          currentSyncStatusesRef.current = { ...localSyncStatuses };
+          setSyncStatuses({ ...localSyncStatuses });
+
           successCount += 2;
           setSyncProgress((successCount / totalItems) * 100);
         }
       } catch (error) {
         console.log("Error syncing projects and modules:", error);
-        
+
         localSyncStatuses.Projects = "Failed";
         localSyncStatuses.Modules = "Failed";
-        currentSyncStatusesRef.current = {...localSyncStatuses};
-        setSyncStatuses({...localSyncStatuses});
-        
+        currentSyncStatusesRef.current = { ...localSyncStatuses };
+        setSyncStatuses({ ...localSyncStatuses });
+
         hasErrors = true;
       }
 
       // Sync Forms
       setCurrentSyncItem("Forms");
-      
+
       localSyncStatuses.Forms = "Syncing";
-      currentSyncStatusesRef.current = {...localSyncStatuses};
-      setSyncStatuses({...localSyncStatuses});
-      
+      currentSyncStatusesRef.current = { ...localSyncStatuses };
+      setSyncStatuses({ ...localSyncStatuses });
+
       try {
         console.log("Starting Forms sync...");
         await refreshForms();
@@ -282,62 +313,62 @@ const SyncPage = () => {
         const storedForms = realm.objects(Survey);
         console.log("Forms check - count:", storedForms.length);
         // Don't treat empty as an error
-        
+
         localSyncStatuses.Forms = "Success";
-        currentSyncStatusesRef.current = {...localSyncStatuses};
-        setSyncStatuses({...localSyncStatuses});
-        
+        currentSyncStatusesRef.current = { ...localSyncStatuses };
+        setSyncStatuses({ ...localSyncStatuses });
+
         successCount++;
         setSyncProgress((successCount / totalItems) * 100);
         console.log("Forms sync completed successfully");
       } catch (error) {
         console.log("Error syncing forms:", error);
-        
+
         localSyncStatuses.Forms = "Failed";
-        currentSyncStatusesRef.current = {...localSyncStatuses};
-        setSyncStatuses({...localSyncStatuses});
-        
+        currentSyncStatusesRef.current = { ...localSyncStatuses };
+        setSyncStatuses({ ...localSyncStatuses });
+
         hasErrors = true;
       }
 
       // Sync Stakeholders
       setCurrentSyncItem("Stakeholders");
-      
+
       localSyncStatuses.Stakeholders = "Syncing";
-      currentSyncStatusesRef.current = {...localSyncStatuses};
-      setSyncStatuses({...localSyncStatuses});
-      
+      currentSyncStatusesRef.current = { ...localSyncStatuses };
+      setSyncStatuses({ ...localSyncStatuses });
+
       try {
         console.log("Starting Stakeholders sync...");
         await refreshStakeholders();
         // Verify stakeholders were stored by checking the realm
         const storedStakeholders = realm.objects(Stakeholder);
         console.log("Stakeholders stored", storedStakeholders.length);
-        
+
         localSyncStatuses.Stakeholders = "Success";
-        currentSyncStatusesRef.current = {...localSyncStatuses};
-        setSyncStatuses({...localSyncStatuses});
-        
+        currentSyncStatusesRef.current = { ...localSyncStatuses };
+        setSyncStatuses({ ...localSyncStatuses });
+
         successCount++;
         setSyncProgress((successCount / totalItems) * 100);
         console.log("Stakeholders sync completed successfully");
       } catch (error) {
         console.log("Error syncing stakeholders:", error);
-        
+
         localSyncStatuses.Stakeholders = "Failed";
-        currentSyncStatusesRef.current = {...localSyncStatuses};
-        setSyncStatuses({...localSyncStatuses});
-        
+        currentSyncStatusesRef.current = { ...localSyncStatuses };
+        setSyncStatuses({ ...localSyncStatuses });
+
         hasErrors = true;
       }
 
       // Sync Families
       setCurrentSyncItem("Families");
-      
+
       localSyncStatuses.Families = "Syncing";
-      currentSyncStatusesRef.current = {...localSyncStatuses};
-      setSyncStatuses({...localSyncStatuses});
-      
+      currentSyncStatusesRef.current = { ...localSyncStatuses };
+      setSyncStatuses({ ...localSyncStatuses });
+
       try {
         console.log("Starting Families sync...");
         try {
@@ -345,128 +376,128 @@ const SyncPage = () => {
           // Verify families were stored by checking the realm
           const storedFamilies = realm.objects(Families);
           console.log("Families stored", storedFamilies.length);
-          
+
           localSyncStatuses.Families = "Success";
-          currentSyncStatusesRef.current = {...localSyncStatuses};
-          setSyncStatuses({...localSyncStatuses});
-          
+          currentSyncStatusesRef.current = { ...localSyncStatuses };
+          setSyncStatuses({ ...localSyncStatuses });
+
           successCount++;
         } catch (familyError: any) {
           console.log("Error syncing specific family:", familyError);
           // Mark families as failed but continue with other syncs
-          
+
           localSyncStatuses.Families = "Failed";
-          currentSyncStatusesRef.current = {...localSyncStatuses};
-          setSyncStatuses({...localSyncStatuses});
-          
+          currentSyncStatusesRef.current = { ...localSyncStatuses };
+          setSyncStatuses({ ...localSyncStatuses });
+
           hasErrors = true;
           // Don't increment successCount for families
         }
         setSyncProgress((successCount / totalItems) * 100);
       } catch (error) {
         console.log("Error in overall families sync process:", error);
-        
+
         localSyncStatuses.Families = "Failed";
-        currentSyncStatusesRef.current = {...localSyncStatuses};
-        setSyncStatuses({...localSyncStatuses});
-        
+        currentSyncStatusesRef.current = { ...localSyncStatuses };
+        setSyncStatuses({ ...localSyncStatuses });
+
         hasErrors = true;
       }
 
       // Sync Izus
       setCurrentSyncItem("Izus");
-      
+
       localSyncStatuses.Izus = "Syncing";
-      currentSyncStatusesRef.current = {...localSyncStatuses};
-      setSyncStatuses({...localSyncStatuses});
-      
+      currentSyncStatusesRef.current = { ...localSyncStatuses };
+      setSyncStatuses({ ...localSyncStatuses });
+
       try {
         console.log("Starting Izus sync...");
         // Use the syncTemporaryIzus function to sync Izus that need syncing
         await syncTemporaryIzus(realm, `/izucelldemography/create`);
         // Then refresh from the server
         await refreshIzus();
-        
+
         // Verify izus were stored by checking the realm
         const storedIzus = realm.objects(Izu);
         console.log("Izus stored", storedIzus.length);
         // Don't treat empty as failure
-        
+
         localSyncStatuses.Izus = "Success";
-        currentSyncStatusesRef.current = {...localSyncStatuses};
-        setSyncStatuses({...localSyncStatuses});
-        
+        currentSyncStatusesRef.current = { ...localSyncStatuses };
+        setSyncStatuses({ ...localSyncStatuses });
+
         successCount++;
         setSyncProgress((successCount / totalItems) * 100);
         console.log("Izus sync completed successfully");
       } catch (error) {
         console.log("Error syncing izus:", error);
-        
+
         localSyncStatuses.Izus = "Failed";
-        currentSyncStatusesRef.current = {...localSyncStatuses};
-        setSyncStatuses({...localSyncStatuses});
-        
+        currentSyncStatusesRef.current = { ...localSyncStatuses };
+        setSyncStatuses({ ...localSyncStatuses });
+
         hasErrors = true;
       }
 
       // Sync Monitoring Responses
       setCurrentSyncItem("MonitoringResponses");
-      
+
       localSyncStatuses.MonitoringResponses = "Syncing";
-      currentSyncStatusesRef.current = {...localSyncStatuses};
-      setSyncStatuses({...localSyncStatuses});
-      
+      currentSyncStatusesRef.current = { ...localSyncStatuses };
+      setSyncStatuses({ ...localSyncStatuses });
+
       try {
         console.log("Starting Monitoring Responses sync...");
         // Use the syncTemporaryMonitoringResponses function to sync responses that need syncing
         await syncTemporaryMonitoringResponses(realm, "/monitoring/responses");
-        
+
         // Verify responses were stored by checking the realm
         const storedResponses = realm.objects(MonitoringResponses);
         console.log("Monitoring Responses stored", storedResponses.length);
-        
+
         localSyncStatuses.MonitoringResponses = "Success";
-        currentSyncStatusesRef.current = {...localSyncStatuses};
-        setSyncStatuses({...localSyncStatuses});
-        
+        currentSyncStatusesRef.current = { ...localSyncStatuses };
+        setSyncStatuses({ ...localSyncStatuses });
+
         successCount++;
         setSyncProgress((successCount / totalItems) * 100);
         console.log("Monitoring Responses sync completed successfully");
       } catch (error) {
         console.error("Error during monitoring responses sync:", error);
         localSyncStatuses.MonitoringResponses = "Failed";
-        currentSyncStatusesRef.current = {...localSyncStatuses};
-        setSyncStatuses({...localSyncStatuses});
-        
+        currentSyncStatusesRef.current = { ...localSyncStatuses };
+        setSyncStatuses({ ...localSyncStatuses });
+
         hasErrors = true;
       }
 
       // Set last sync date regardless of errors
       setLastSyncDate(new Date());
-      
+
       // Check if any components failed
       const failedComponents = Object.entries(localSyncStatuses)
         .filter(([_, status]) => status === "Failed")
         .map(([component, _]) => component);
-      
+
       // Final sync status determination
       if (hasErrors || failedComponents.length > 0) {
         const failedComponentsList = failedComponents.join(", ");
-        
+
         // Show toast instead of alert
         showToast(
-          'error',
-          'Partial Success',
+          "error",
+          "Partial Success",
           `Some components failed to sync: ${failedComponentsList}. Please try again later.`
         );
       } else {
         // Show toast instead of alert
-        showToast('success', 'Success', 'All components synced successfully');
+        showToast("success", "Success", "All components synced successfully");
       }
     } catch (error) {
       console.error("Error during sync:", error);
       // Show toast instead of alert
-      showToast('error', 'Error', 'Failed to sync forms and surveys');
+      showToast("error", "Error", "Failed to sync forms and surveys");
     } finally {
       setIsSyncing(false);
       setSyncType(null);
@@ -485,73 +516,77 @@ const SyncPage = () => {
       // Use the syncPendingSubmissions service function to sync submissions
       await syncPendingSubmissions(realm);
       console.log("Completed syncPendingSubmissions");
-      
+
       // Force refresh submissions state
-      await refreshSubmissions();
-      
+      await refresh();
+
       // Force UI update by triggering the forceRefresh counter
-      setForceRefresh(prev => prev + 1);
-      
+      setForceRefresh((prev) => prev + 1);
+
       // Update counts directly from realm after all operations
       updateSubmissionCounts();
-      
+
       // Get the updated counts
-      const pendingCount = realm.objects(SurveySubmission).filtered(
-        'sync_data.sync_status == false && (sync_data.sync_reason == "pending" || sync_data.sync_reason == null || sync_data.sync_reason == "")'
-      ).length;
-      
-      const networkErrorCount = realm.objects(SurveySubmission).filtered(
-        'sync_data.sync_reason == "Network Error"'
-      ).length;
-      
-      const failedCount = realm.objects(SurveySubmission).filtered(
-        'sync_data.sync_reason == "failed" || sync_data.sync_reason == "Other error"'
-      ).length;
-      
-      const syncedCount = realm.objects(SurveySubmission).filtered(
-        'sync_data.sync_status == true'
-      ).length;
-      
+      const pendingCount = realm
+        .objects(SurveySubmission)
+        .filtered(
+          'sync_data.sync_status == false && (sync_data.sync_reason == "pending" || sync_data.sync_reason == null || sync_data.sync_reason == "")'
+        ).length;
+
+      const networkErrorCount = realm
+        .objects(SurveySubmission)
+        .filtered('sync_data.sync_reason == "Network Error"').length;
+
+      const failedCount = realm
+        .objects(SurveySubmission)
+        .filtered(
+          'sync_data.sync_reason == "failed" || sync_data.sync_reason == "Other error"'
+        ).length;
+
+      const syncedCount = realm
+        .objects(SurveySubmission)
+        .filtered("sync_data.sync_status == true").length;
+
       // Set last sync date
       setLastSyncDate(new Date());
-      
+
       // Display appropriate message based on results
       if (networkErrorCount > 0 && (failedCount > 0 || syncedCount > 0)) {
         showToast(
-          'info',
-          'Partial Sync',
+          "info",
+          "Partial Sync",
           `Synced: ${syncedCount}, Failed: ${failedCount}, Network Errors: ${networkErrorCount}. Network error submissions will be retried on next sync.`
         );
       } else if (networkErrorCount > 0) {
         showToast(
-          'error',
-          'Network Issues',
+          "error",
+          "Network Issues",
           `All ${networkErrorCount} submissions encountered network errors. Please check your connection and try again.`
         );
       } else if (failedCount > 0) {
         showToast(
-          'info',
-          'Partial Success',
+          "info",
+          "Partial Success",
           `Synced ${syncedCount} submissions, ${failedCount} failed`
         );
       } else if (syncedCount > 0) {
         showToast(
-          'success',
-          'Success',
+          "success",
+          "Success",
           `Successfully synced ${syncedCount} submissions`
         );
       } else {
-        showToast('info', 'Info', 'No pending submissions to sync');
+        showToast("info", "Info", "No pending submissions to sync");
       }
     } catch (error) {
       console.error("Error during data sync:", error);
-      showToast('error', 'Error', 'Failed to sync data');
+      showToast("error", "Error", "Failed to sync data");
     } finally {
       setIsSyncing(false);
       setSyncType(null);
-      
+
       // Force a UI refresh after completion
-      setForceRefresh(prev => prev + 1);
+      setForceRefresh((prev) => prev + 1);
     }
   };
 
@@ -565,32 +600,33 @@ const SyncPage = () => {
     try {
       console.log("Starting Families sync...");
       const storedFamilies = realm.objects(Families);
-      console.log("Families stored", 
-        storedFamilies.map(fam => fam.hh_head_fullname)
+      console.log(
+        "Families stored",
+        storedFamilies.map((fam) => fam.hh_head_fullname)
       );
       await syncTemporaryFamilies(realm, `/createFamily`);
-      
+
       // Verify families were stored by checking the realm
       console.log("Families stored", storedFamilies.length);
-      
+
       // Set last sync date
       setLastSyncDate(new Date());
-      
+
       // Show success message
       showToast(
-        'success',
-        'Success',
+        "success",
+        "Success",
         `Successfully synced ${storedFamilies.length} families`
       );
     } catch (error) {
       console.error("Error during families sync:", error);
-      showToast('error', 'Error', 'Failed to sync families');
+      showToast("error", "Error", "Failed to sync families");
     } finally {
       setIsSyncing(false);
       setSyncType(null);
-      
+
       // Force a UI refresh after completion
-      setForceRefresh(prev => prev + 1);
+      setForceRefresh((prev) => prev + 1);
     }
   };
 
@@ -607,29 +643,29 @@ const SyncPage = () => {
       await syncTemporaryIzus(realm, `/izucelldemography/create`);
       // Then refresh from the server
       await refreshIzus();
-      
+
       // Verify izus were stored by checking the realm
       const storedIzus = realm.objects(Izu);
       console.log("Izus stored", storedIzus.length);
-      
+
       // Set last sync date
       setLastSyncDate(new Date());
-      
+
       // Show success message
       showToast(
-        'success',
-        'Success',
+        "success",
+        "Success",
         `Successfully synced ${storedIzus.length} izus`
       );
     } catch (error) {
       console.error("Error during izus sync:", error);
-      showToast('error', 'Error', 'Failed to sync izus');
+      showToast("error", "Error", "Failed to sync izus");
     } finally {
       setIsSyncing(false);
       setSyncType(null);
-      
+
       // Force a UI refresh after completion
-      setForceRefresh(prev => prev + 1);
+      setForceRefresh((prev) => prev + 1);
     }
   };
 
@@ -638,12 +674,12 @@ const SyncPage = () => {
     const networkErrorSubmissions = getDirectSubmissions(
       'sync_data.sync_reason == "Network Error"'
     );
-    
+
     if (networkErrorSubmissions.length === 0) {
-      showToast('info', 'Info', 'No network error submissions to retry');
+      showToast("info", "Info", "No network error submissions to retry");
       return;
     }
-    
+
     // Set network error submissions to "pending" to retry them
     realm.write(() => {
       for (const submission of networkErrorSubmissions) {
@@ -652,7 +688,7 @@ const SyncPage = () => {
         }
       }
     });
-    
+
     // Then sync data normally
     syncData();
   };
@@ -660,14 +696,16 @@ const SyncPage = () => {
   // Update monitoring response counts
   const updateMonitoringResponseCounts = () => {
     try {
-      const pendingMonitoringResponses = realm.objects(MonitoringResponses).filtered(
-        'sync_data.sync_status == false'
-      );
+      const pendingMonitoringResponses = realm
+        .objects(MonitoringResponses)
+        .filtered("sync_data.sync_status == false");
       setPendingMonitoringResponsesCount(pendingMonitoringResponses.length);
-      
-      const failedMonitoringResponses = realm.objects(MonitoringResponses).filtered(
-        'sync_data.sync_status == false && sync_data.sync_attempts > 0'
-      );
+
+      const failedMonitoringResponses = realm
+        .objects(MonitoringResponses)
+        .filtered(
+          "sync_data.sync_status == false && sync_data.sync_attempts > 0"
+        );
       setFailedMonitoringResponsesCount(failedMonitoringResponses.length);
     } catch (error) {
       console.error("Error updating monitoring response counts:", error);
@@ -686,162 +724,166 @@ const SyncPage = () => {
       console.log("Starting Monitoring Responses sync...");
       // Use the syncTemporaryMonitoringResponses function to sync responses that need syncing
       await syncTemporaryMonitoringResponses(realm, "/monitoring/responses");
-      
+
       // Verify responses were stored by checking the realm
       const storedResponses = realm.objects(MonitoringResponses);
       console.log("Monitoring Responses stored", storedResponses.length);
-      
+
       // Set last sync date
       setLastSyncDate(new Date());
-      
+
       // Show success message
       showToast(
-        'success',
-        'Success',
+        "success",
+        "Success",
         `Successfully synced ${storedResponses.length} monitoring responses`
       );
     } catch (error) {
       console.error("Error during monitoring responses sync:", error);
-      showToast('error', 'Error', 'Failed to sync monitoring responses');
+      showToast("error", "Error", "Failed to sync monitoring responses");
     } finally {
       setIsSyncing(false);
       setSyncType(null);
-      
+
       // Force a UI refresh after completion
-      setForceRefresh(prev => prev + 1);
+      setForceRefresh((prev) => prev + 1);
     }
   };
 
   // Modify the services useMemo to include monitoring responses
-  const services = useMemo(
-    () => {
-      // Get the latest sync statuses - use the ref for accurate values
-      const currentStatuses = currentSyncStatusesRef.current;
-      
-      // Determine overall forms sync status
-      const formsOverallStatus: SyncStatusType = 
-        isSyncing && syncType === "Forms"
-          ? "Syncing"
-          : Object.values(currentStatuses).includes("Failed")
-            ? "Failed"
-            : lastSyncDate && syncType === "Forms"
-              ? "Success"
-              : "Not Synced";
-              
-      return [
-        {
-          key: "Forms",
-          name: "Sync Forms/Surveys",
-          status: formsOverallStatus,
-          progress: syncType === "Forms" ? syncProgress : undefined,
-          lastSyncDate: lastSyncDate,
-          items: [
-            {
-              name: "Projects",
-              status: currentStatuses.Projects,
-              lastSyncDate: lastSyncDate,
-            },
-            {
-              name: "Modules",
-              status: currentStatuses.Modules,
-              lastSyncDate: lastSyncDate,
-            },
-            {
-              name: "Forms",
-              status: currentStatuses.Forms,
-              lastSyncDate: lastSyncDate,
-            },
-            {
-              name: "Stakeholders",
-              status: currentStatuses.Stakeholders,
-              lastSyncDate: lastSyncDate,
-            },
-          ],
-        },
-        {
-          key: "data",
-          name: `Sync Data (${pendingCount + failedCount} pending)`,
-          status:
-            pendingCount + failedCount === 0
-              ? "No Pending Submissions"
-              : isSyncing && syncType === "Data"
-                ? "Syncing"
-                : lastSyncDate && syncType === "Data"
-                  ? "Success"
-                  : "Not Synced",
-          progress: syncType === "Data" ? syncProgress : undefined,
-          lastSyncDate: lastSyncDate,
-        },
-        {
-          key: "families",
-          name: `Sync Families (${pendingFamiliesCount + failedFamiliesCount} pending)`,
-          status: pendingFamiliesCount + failedFamiliesCount === 0
+  const services = useMemo(() => {
+    // Get the latest sync statuses - use the ref for accurate values
+    const currentStatuses = currentSyncStatusesRef.current;
+
+    // Determine overall forms sync status
+    const formsOverallStatus: SyncStatusType =
+      isSyncing && syncType === "Forms"
+        ? "Syncing"
+        : Object.values(currentStatuses).includes("Failed")
+        ? "Failed"
+        : lastSyncDate && syncType === "Forms"
+        ? "Success"
+        : "Not Synced";
+
+    return [
+      {
+        key: "Forms",
+        name: "Sync Forms/Surveys",
+        status: formsOverallStatus,
+        progress: syncType === "Forms" ? syncProgress : undefined,
+        lastSyncDate: lastSyncDate,
+        items: [
+          {
+            name: "Projects",
+            status: currentStatuses.Projects,
+            lastSyncDate: lastSyncDate,
+          },
+          {
+            name: "Modules",
+            status: currentStatuses.Modules,
+            lastSyncDate: lastSyncDate,
+          },
+          {
+            name: "Forms",
+            status: currentStatuses.Forms,
+            lastSyncDate: lastSyncDate,
+          },
+          {
+            name: "Stakeholders",
+            status: currentStatuses.Stakeholders,
+            lastSyncDate: lastSyncDate,
+          },
+        ],
+      },
+      {
+        key: "data",
+        name: `Sync Data (${pendingCount + failedCount} pending)`,
+        status:
+          pendingCount + failedCount === 0
+            ? "No Pending Submissions"
+            : isSyncing && syncType === "Data"
+            ? "Syncing"
+            : lastSyncDate && syncType === "Data"
+            ? "Success"
+            : "Not Synced",
+        progress: syncType === "Data" ? syncProgress : undefined,
+        lastSyncDate: lastSyncDate,
+      },
+      {
+        key: "families",
+        name: `Sync Families (${
+          pendingFamiliesCount + failedFamiliesCount
+        } pending)`,
+        status:
+          pendingFamiliesCount + failedFamiliesCount === 0
             ? "No Pending Families"
             : isSyncing && syncType === "Families"
-              ? "Syncing"
-              : lastSyncDate && syncType === "Families"
-                ? "Success"
-                : currentStatuses.Families,
-          progress: syncType === "Families" ? syncProgress : undefined,
-          lastSyncDate: lastSyncDate,
-        },
-        {
-          key: "izus",
-          name: `Sync Izus (${pendingIzusCount + failedIzusCount} pending)`,
-          status: pendingIzusCount + failedIzusCount === 0
+            ? "Syncing"
+            : lastSyncDate && syncType === "Families"
+            ? "Success"
+            : currentStatuses.Families,
+        progress: syncType === "Families" ? syncProgress : undefined,
+        lastSyncDate: lastSyncDate,
+      },
+      {
+        key: "izus",
+        name: `Sync Izus (${pendingIzusCount + failedIzusCount} pending)`,
+        status:
+          pendingIzusCount + failedIzusCount === 0
             ? "No Pending Izus"
             : isSyncing && syncType === "Izus"
-              ? "Syncing"
-              : lastSyncDate && syncType === "Izus"
-                ? "Success"
-                : currentStatuses.Izus,
-          progress: syncType === "Izus" ? syncProgress : undefined,
-          lastSyncDate: lastSyncDate,
-        },
-        {
-          key: "monitoringResponses",
-          name: `Sync Monitoring Responses (${pendingMonitoringResponsesCount + failedMonitoringResponsesCount} pending)`,
-          status: pendingMonitoringResponsesCount + failedMonitoringResponsesCount === 0
+            ? "Syncing"
+            : lastSyncDate && syncType === "Izus"
+            ? "Success"
+            : currentStatuses.Izus,
+        progress: syncType === "Izus" ? syncProgress : undefined,
+        lastSyncDate: lastSyncDate,
+      },
+      {
+        key: "monitoringResponses",
+        name: `Sync Monitoring Responses (${
+          pendingMonitoringResponsesCount + failedMonitoringResponsesCount
+        } pending)`,
+        status:
+          pendingMonitoringResponsesCount + failedMonitoringResponsesCount === 0
             ? "No Pending Responses"
             : isSyncing && syncType === "MonitoringResponses"
-              ? "Syncing"
-              : lastSyncDate && syncType === "MonitoringResponses"
-                ? "Success"
-                : currentStatuses.MonitoringResponses,
-          progress: syncType === "MonitoringResponses" ? syncProgress : undefined,
-          lastSyncDate: lastSyncDate,
-        },
-        ...(networkErrorCount > 0
-          ? [
-              {
-                key: "network",
-                name: `Retry Network Errors (${networkErrorCount})`,
-                status: "Network Errors" as SyncStatusType,
-                lastSyncDate: null,
-              },
-            ]
-          : []),
-      ];
-    },
-    [
-      isSyncing,
-      currentSyncItem,
-      syncProgress,
-      lastSyncDate,
-      syncType,
-      syncStatuses,
-      pendingCount,
-      failedCount,
-      pendingFamiliesCount,
-      failedFamiliesCount,
-      pendingIzusCount,
-      failedIzusCount,
-      pendingMonitoringResponsesCount,
-      failedMonitoringResponsesCount,
-      networkErrorCount,
-      forceRefresh,
-    ]
-  );
+            ? "Syncing"
+            : lastSyncDate && syncType === "MonitoringResponses"
+            ? "Success"
+            : currentStatuses.MonitoringResponses,
+        progress: syncType === "MonitoringResponses" ? syncProgress : undefined,
+        lastSyncDate: lastSyncDate,
+      },
+      ...(networkErrorCount > 0
+        ? [
+            {
+              key: "network",
+              name: `Retry Network Errors (${networkErrorCount})`,
+              status: "Network Errors" as SyncStatusType,
+              lastSyncDate: null,
+            },
+          ]
+        : []),
+    ];
+  }, [
+    isSyncing,
+    currentSyncItem,
+    syncProgress,
+    lastSyncDate,
+    syncType,
+    syncStatuses,
+    pendingCount,
+    failedCount,
+    pendingFamiliesCount,
+    failedFamiliesCount,
+    pendingIzusCount,
+    failedIzusCount,
+    pendingMonitoringResponsesCount,
+    failedMonitoringResponsesCount,
+    networkErrorCount,
+    forceRefresh,
+  ]);
 
   const renderItem = ({ item }: { item: SyncItem }) => (
     <View className="p-4 border-b bg-white flex flex-row justify-between border-gray-300">
@@ -857,12 +899,12 @@ const SyncPage = () => {
             item.status === "Success"
               ? "text-green-500"
               : item.status === "Failed"
-                ? "text-red-500"
-                : item.status === "Syncing"
-                  ? "text-blue-500"
-                  : item.status === "Network Errors"
-                    ? "text-orange-500"
-                    : "text-gray-500"
+              ? "text-red-500"
+              : item.status === "Syncing"
+              ? "text-blue-500"
+              : item.status === "Network Errors"
+              ? "text-orange-500"
+              : "text-gray-500"
           }
         >
           {item.status}
@@ -893,10 +935,10 @@ const SyncPage = () => {
                     subItem.status === "Success"
                       ? "text-green-500"
                       : subItem.status === "Failed"
-                        ? "text-red-500"
-                        : subItem.status === "Syncing"
-                          ? "text-blue-500"
-                          : "text-gray-500"
+                      ? "text-red-500"
+                      : subItem.status === "Syncing"
+                      ? "text-blue-500"
+                      : "text-gray-500"
                   }
                 >
                   {subItem.status}
@@ -916,10 +958,10 @@ const SyncPage = () => {
           isSyncing && syncType === item.key
             ? "bg-gray-700"
             : item.status === "Failed"
-              ? "bg-red-500"
-              : item.key === "network"
-                ? "bg-orange-500"
-                : "bg-primary"
+            ? "bg-red-500"
+            : item.key === "network"
+            ? "bg-orange-500"
+            : "bg-primary"
         }`}
         onPress={() => {
           if (item.key === "Forms") {
@@ -943,8 +985,8 @@ const SyncPage = () => {
             isSyncing && syncType === item.key
               ? "hourglass-empty"
               : item.key === "network"
-                ? "refresh"
-                : "sync"
+              ? "refresh"
+              : "sync"
           }
           family="MaterialIcons"
           size={24}

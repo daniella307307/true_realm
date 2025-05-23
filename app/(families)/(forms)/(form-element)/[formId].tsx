@@ -1,17 +1,14 @@
-import { SafeAreaView, View, FlatList } from "react-native";
-import React from "react";
+import { SafeAreaView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { useGetFormById } from "~/services/formElements";
 import FormFlowManager from "~/components/FormFlowManager";
-import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { IFormSubmissionDetail } from "~/types";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const FormElementIndexScreen = () => {
   const { formId, project_id, source_module_id, project_module_id } =
@@ -21,32 +18,36 @@ const FormElementIndexScreen = () => {
       source_module_id: string;
       project_module_id: string;
     }>();
-  const insets = useSafeAreaInsets();
   const formIdNumber = parseInt(formId);
   const projectIdNumber = parseInt(project_id);
   const sourceModuleId = parseInt(source_module_id);
   const projectModuleId = parseInt(project_module_id);
+  const { t } = useTranslation();
+  const { user } = useAuth({});
+  
+  const { form, isLoading } = useGetFormById(
+    formIdNumber || 0,
+    projectModuleId || 0,
+    sourceModuleId || 0,
+    projectIdNumber || 0
+  );
+  
   console.log("Form ID: ", formIdNumber);
   console.log("Project ID: ", projectIdNumber);
   console.log("Source Module ID: ", sourceModuleId);
   console.log("Project Module ID: ", projectModuleId);
-  const { user } = useAuth({});
 
   if (!formId || !project_id) {
     return (
       <View>
-        <Text>Missing form or form id or family ID</Text>
-        <Button onPress={() => router.replace("/(home)")}>Go to home</Button>
+        <Text>{t("FormElementPage.missing_form_data")}</Text>
+        <Button onPress={() => router.replace("/(home)")}>
+          {t("FormElementPage.go_to_home")}
+        </Button>
       </View>
     );
   }
 
-  const { form, isLoading } = useGetFormById(
-    parseInt(formId),
-    projectModuleId,
-    sourceModuleId,
-    projectIdNumber
-  );
   const parsedForm = form?.json2
     ? typeof form.json2 === "string"
       ? JSON.parse(form.json2)
@@ -73,8 +74,7 @@ const FormElementIndexScreen = () => {
     userId: user?.id ?? 0,
   };
 
-  console.log("Form structure:", formStructure);
-  const { t } = useTranslation();
+  // console.log("Form structure:", formStructure);
 
   return (
     <SafeAreaView className="flex-1 bg-background">

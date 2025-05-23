@@ -56,7 +56,7 @@ const ScoreDetailsScreen = () => {
           title={t("StatisticsPage.score_details")}
         />
         <View className="flex-1 p-4">
-          <Text>No score data available</Text>
+          <Text>{t("StatisticsPage.no_score_data")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -84,16 +84,16 @@ const ScoreDetailsScreen = () => {
       <HeaderNavigation
         showLeft={true}
         showRight={true}
-        title={t("StatisticsPage.score_details", "Score Details")}
+        title={t("StatisticsPage.score_details")}
       />
       <ScrollView className="flex-1 p-4 bg-white" contentContainerStyle={{ paddingBottom: 40 }}>
         <Text className="text-xl font-bold mb-4">
-          Score Details - {formatDate(date)}
+          {t("StatisticsPage.score_details_date", { date: formatDate(date) })}
         </Text>
 
         {/* Overall Score Card */}
         <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
-          <Text className="text-lg font-semibold mb-2">Overall Score</Text>
+          <Text className="text-lg font-semibold mb-2">{t("StatisticsPage.overall_score")}</Text>
           <View className="flex-row justify-between items-center">
             <Text
               className={`text-2xl font-bold ${getScoreColor(
@@ -113,12 +113,12 @@ const ScoreDetailsScreen = () => {
             </Text>
           </View>
           <Text className="text-gray-500 mt-2">
-            Fields scored: {parsedScoreData.fields_count}
+            {t("StatisticsPage.fields_scored")}: {parsedScoreData.fields_count}
           </Text>
         </Card>
 
         {/* Detailed Scores */}
-        <Text className="text-lg font-semibold mb-4">Detailed Scores</Text>
+        <Text className="text-lg font-semibold mb-4">{t("StatisticsPage.detailed_scores")}</Text>
         {Object.entries(parsedScoreData.details).map(([key, detail]) => (
           <Card key={key} className="p-4 mb-3 bg-white border border-[#E4E4E7]">
             <Text className="font-medium mb-2">{keyToLabelMap[key] || key}</Text>

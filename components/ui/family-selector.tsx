@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { View, FlatList, TouchableOpacity, TextInput } from "react-native";
+import React, { useState, useMemo, useCallback } from "react";
+import { View, FlatList, TouchableOpacity, TextInput, RefreshControl } from "react-native";
 import { Text } from "./text";
 import { useGetFamilies } from "~/services/families";
 import { IFamilies } from "~/types";
@@ -8,7 +8,7 @@ import i18n from "~/utils/i18n";
 import { getLocalizedTitle } from "~/utils/form-utils";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { Village } from "~/models/locations/village";
-import { useFocusEffect } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 
 interface FamilySelectorProps {
   onSelect: (value: IFamilies) => void;
@@ -26,9 +26,9 @@ const FamilyItem = ({
 }) => {
   const { useRealm } = RealmContext;
   const realm = useRealm();
-  
+
   let villageName = family.village_name;
-  
+
   // Try to get village name from location data if available
   if (family.location && family.location.village) {
     const village = realm.objectForPrimaryKey(
@@ -39,7 +39,7 @@ const FamilyItem = ({
       villageName = village.village_name;
     }
   }
-  
+
   return (
     <TouchableOpacity
       onPress={() => onSelect(family)}
@@ -70,7 +70,9 @@ const FamilyItem = ({
 
         {villageName && (
           <Text
-            className={`text-[12px] ${isSelected ? "text-primary" : "text-gray-600"}`}
+            className={`text-[12px] ${
+              isSelected ? "text-primary" : "text-gray-600"
+            }`}
           >
             Village: {villageName}
           </Text>
@@ -84,18 +86,12 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
   onSelect,
   initialValue,
 }) => {
-  const [selectedFamily, setSelectedFamily] = useState<IFamilies | null>(initialValue || null);
+  const [selectedFamily, setSelectedFamily] = useState<IFamilies | null>(
+    initialValue || null
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const { families, isLoading, refresh } = useGetFamilies();
-
-  // Add focus effect to refresh data when screen is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      // Refresh the data when the screen comes into focus
-      refresh && refresh();
-      return () => {};
-    }, [refresh])
-  );
+  const { t } = useTranslation();
 
   // console.log("Families: ", JSON.stringify(families, null, 2));
   const handleSelect = (family: IFamilies) => {
@@ -107,13 +103,15 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
   const filteredFamilies = useMemo(() => {
     if (!families) return [];
     return families
-      .filter(family => family.hh_id) // Filter out families with null/undefined hh_id
+      .filter((family) => family.hh_id) // Filter out families with null/undefined hh_id
       .filter(
         (family) =>
-          (family.hh_head_fullname?.toLowerCase() || "")
-            .includes(searchQuery.toLowerCase()) ||
-          (family.hh_id?.toLowerCase() || "")
-            .includes(searchQuery.toLowerCase())
+          (family.hh_head_fullname?.toLowerCase() || "").includes(
+            searchQuery.toLowerCase()
+          ) ||
+          (family.hh_id?.toLowerCase() || "").includes(
+            searchQuery.toLowerCase()
+          )
       );
   }, [families, searchQuery]);
 
@@ -131,7 +129,11 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
     <View className="flex-1 p-4">
       <Text className="mb-2 text-md font-medium text-[#050F2B]">
         {getLocalizedTitle(
-          { en: "Select Family", kn: "Hitamo Umuryango", default: "Select Family" },
+          {
+            en: "Select Family",
+            kn: "Hitamo Umuryango",
+            default: "Select Family",
+          },
           language
         )}
         <Text className="text-primary"> *</Text>
@@ -141,7 +143,7 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
         <Ionicons name="search" size={20} color="#A0A3BD" className="mr-2" />
         <TextInput
           className="w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white"
-          placeholder="Search families..."
+          placeholder={t("Common.search_families", "Search families...")}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -163,6 +165,9 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
           <View className="flex-1 justify-center items-center py-8">
             <Text className="text-gray-500">No families found</Text>
           </View>
+        }
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={refresh} />
         }
       />
     </View>

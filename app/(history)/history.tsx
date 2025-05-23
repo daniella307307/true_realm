@@ -24,11 +24,10 @@ import { useGetAllLocallyCreatedIzus } from "~/services/izus";
 const HistoryProjectScreen = () => {
   const storedProjects = useGetAllProjects();
 
-  const {
-    surveySubmissions,
-    isLoading: isLoadingSubmissions,
-    refresh: refetchSurveySubmissions,
-  } = useGetAllSurveySubmissions();
+  const { submissions: surveySubmissions, isLoading: isLoadingSubmissions } =
+    useGetAllSurveySubmissions();
+
+  // console.log("surveySubmissions", JSON.stringify(surveySubmissions, null, 2));
 
   const {
     locallyCreatedFamilies,
@@ -58,7 +57,6 @@ const HistoryProjectScreen = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     await storedProjects.refresh();
-    await refetchSurveySubmissions();
     await refreshFamilies();
     await refreshIzus();
     setRefreshing(false);
@@ -140,7 +138,6 @@ const HistoryProjectScreen = () => {
       locallyCreatedFamilySubmissions.length +
       locallyCreatedIzuSubmissions.length;
 
-    console.log("The item is:", JSON.stringify(item, null, 2));
     return (
       <TouchableOpacity
         onPress={() => router.push(`/(mods)/(projects)/${item.id}`)}
@@ -165,10 +162,10 @@ const HistoryProjectScreen = () => {
         </View>
         <View className="flex flex-col justify-between items-start mt-2">
           <Text className="text-sm text-gray-500">
-            {t("History.submissions", "Submissions")}: {totalSubmissions}
+            {t("History.submissions")}: {totalSubmissions}
           </Text>
           <Text className="text-sm text-gray-500">
-            {t("History.lastSubmission", "Last submission")}:{" "}
+            {t("History.lastSubmission")}:{" "}
             {projectSubmissions.length > 0 ||
             locallyCreatedFamilySubmissions.length > 0
               ? (() => {
@@ -176,38 +173,62 @@ const HistoryProjectScreen = () => {
                   let latestDate: Date | null = new Date();
 
                   // Check project submissions
-                  if (projectSubmissions.length > 0 &&
-                    projectSubmissions[projectSubmissions.length - 1]
-                      ?.sync_data?.submitted_at
+                  if (
+                    projectSubmissions.length > 0 &&
+                    projectSubmissions[projectSubmissions.length - 1]?.sync_data
+                      ?.submitted_at
                   ) {
-                    const submissionDate = projectSubmissions[projectSubmissions.length - 1].sync_data?.submitted_at
+                    const submissionDate =
+                      projectSubmissions[projectSubmissions.length - 1]
+                        .sync_data?.submitted_at;
                     // @ts-ignore
-                    if (submissionDate && (!latestDate || submissionDate > latestDate)) {
+                    if (
+                      submissionDate &&
+                      (!latestDate || submissionDate > latestDate)
+                    ) {
                       latestDate = new Date(submissionDate.toLocaleString());
                     }
                   }
 
                   // Check family submissions
-                  if (locallyCreatedFamilySubmissions.length > 0 && 
-                    locallyCreatedFamilySubmissions[locallyCreatedFamilySubmissions.length - 1]
-                      ?.sync_data?.submitted_at
+                  if (
+                    locallyCreatedFamilySubmissions.length > 0 &&
+                    locallyCreatedFamilySubmissions[
+                      locallyCreatedFamilySubmissions.length - 1
+                    ]?.sync_data?.submitted_at
                   ) {
-                    const submissionDate = locallyCreatedFamilySubmissions[locallyCreatedFamilySubmissions.length - 1].sync_data?.submitted_at;
+                    const submissionDate =
+                      locallyCreatedFamilySubmissions[
+                        locallyCreatedFamilySubmissions.length - 1
+                      ].sync_data?.submitted_at;
                     // @ts-ignore
-                    if (submissionDate && (!latestDate || submissionDate > latestDate)) {
+                    if (
+                      submissionDate &&
+                      // @ts-ignore
+                      (!latestDate || submissionDate > latestDate)
+                    ) {
                       // @ts-ignore
                       latestDate = submissionDate;
                     }
                   }
 
                   // Check izus submissions
-                  if (locallyCreatedIzuSubmissions.length > 0 &&
-                    locallyCreatedIzuSubmissions[locallyCreatedIzuSubmissions.length - 1]
-                      ?.sync_data?.submitted_at
+                  if (
+                    locallyCreatedIzuSubmissions.length > 0 &&
+                    locallyCreatedIzuSubmissions[
+                      locallyCreatedIzuSubmissions.length - 1
+                    ]?.sync_data?.submitted_at
                   ) {
-                    const submissionDate = locallyCreatedIzuSubmissions[locallyCreatedIzuSubmissions.length - 1].sync_data?.submitted_at;
+                    const submissionDate =
+                      locallyCreatedIzuSubmissions[
+                        locallyCreatedIzuSubmissions.length - 1
+                      ].sync_data?.submitted_at;
                     // @ts-ignore
-                    if (submissionDate && (!latestDate || submissionDate > latestDate)) {
+                    if (
+                      submissionDate &&
+                      // @ts-ignore
+                      (!latestDate || submissionDate > latestDate)
+                    ) {
                       // @ts-ignore
                       latestDate = submissionDate;
                     }
@@ -222,9 +243,9 @@ const HistoryProjectScreen = () => {
                         minute: "2-digit",
                         hour12: false,
                       })
-                    : t("History.noSubmissions", "No submissions");
+                    : t("History.noSubmissions");
                 })()
-              : t("History.noSubmissions", "No submissions")}
+              : t("History.noSubmissions")}
           </Text>
         </View>
       </TouchableOpacity>

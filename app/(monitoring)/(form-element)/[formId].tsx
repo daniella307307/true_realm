@@ -37,8 +37,8 @@ const MonitoringFormElementScreen = () => {
   if (!formId) {
     return (
       <NotFound
-        title="Form not found"
-        description="Please try again"
+        title={t("FormPage.not_found")}
+        description={t("Common.try_again")}
         redirectTo={() => router.back()}
       />
     );
@@ -80,8 +80,8 @@ const MonitoringFormElementScreen = () => {
   if (!formData || !formData.json2) {
     return (
       <NotFound
-        title="Form not found"
-        description="Please try again"
+        title={t("FormPage.not_found")}
+        description={t("Common.try_again")}
         redirectTo={() => router.back()}
       />
     );
@@ -113,7 +113,7 @@ const MonitoringFormElementScreen = () => {
       <HeaderNavigation
         showLeft={true}
         showRight={true}
-        title={t("FormElementPage.monitoring_title", "Monitoring Form")}
+        title={t("FormElementPage.monitoring_title")}
       />
       <View className="flex-1">
         <View className="px-4 pt-4">

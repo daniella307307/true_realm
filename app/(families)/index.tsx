@@ -193,7 +193,7 @@ const FamiliesPage = () => {
             <Text className="text-lg ml-2 font-semibold">{item.name}</Text>
           </View>
           <Text numberOfLines={3} className="py-2 text-xs/1 text-gray-600">
-            FORM
+            {t("ModulePage.form_type")}
           </Text>
         </TouchableOpacity>
       );

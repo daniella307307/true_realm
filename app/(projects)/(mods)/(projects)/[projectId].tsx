@@ -24,6 +24,7 @@ import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { NotFound } from "~/components/ui/not-found";
 
 const ProjectModuleScreens = () => {
+  const { t } = useTranslation();
   const { projectId } = useLocalSearchParams<{ 
     projectId: string;
   }>();
@@ -31,8 +32,8 @@ const ProjectModuleScreens = () => {
   if (!projectId) {
     return (
       <NotFound
-        title="No project ID"
-        description="Please go back to the home page and try again."
+        title={t("ProjectModulePage.no_project_id")}
+        description={t("ProjectModulePage.go_back_and_try_again")}
         redirectTo={() => router.back()}
       />
     );
@@ -42,7 +43,6 @@ const ProjectModuleScreens = () => {
     Number(projectId)
   );
   
-  const { t } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
       z.object({
@@ -190,7 +190,7 @@ const ProjectModuleScreens = () => {
             keyExtractor={(item, index) => `${item?.id}-${index}`}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={() => (
-              <EmptyDynamicComponent message={"No related modules"} />
+              <EmptyDynamicComponent message={t("ProjectModulePage.no_related_modules")} />
             )}
             renderItem={renderItem}
             refreshControl={

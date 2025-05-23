@@ -17,6 +17,7 @@ import { useAuth } from "~/lib/hooks/useAuth";
 import Slider from "@react-native-community/slider";
 import { useFontSize } from "~/providers/FontSizeContext";
 import { Text } from "./text";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const DRAWER_WIDTH = Dimensions.get("window").width * 0.7;
 
@@ -88,6 +89,7 @@ export const CustomDrawer: React.FC<CustomDrawerProps> = ({
 
   const changeLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
+    AsyncStorage.setItem("language", lang);
     setLanguageModalVisible(false);
   };
 
@@ -162,7 +164,7 @@ export const CustomDrawer: React.FC<CustomDrawerProps> = ({
             className="p-4 border-b border-gray-200"
             onPress={() => logout()}
           >
-            <Text className="text-lg text-red-500">{t("Logout")}</Text>
+            <Text className="text-lg text-red-500">{t("SettingsPage.logout")}</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>

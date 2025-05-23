@@ -114,30 +114,30 @@ const SettingsScreen = () => {
         {user && (
           <>
             <Text className="text-lg font-semibold mb-2 mt-4">
-              {t("SettingsPage.location", "Location")}
+              {t("SettingsPage.location")}
             </Text>
             <InfoItem
-              label={t("SettingsPage.province", "Province")}
+              label={t("SettingsPage.province")}
               value={locationNames?.location.province.province_name || ""}
               isLoading={isLoadingLocations}
             />
             <InfoItem
-              label={t("SettingsPage.district", "District")}
+              label={t("SettingsPage.district")}
               value={locationNames?.location.district.district_name || ""}
               isLoading={isLoadingLocations}
             />
             <InfoItem
-              label={t("SettingsPage.sector", "Sector")}
+              label={t("SettingsPage.sector")}
               value={locationNames?.location.sector.sector_name || ""}
               isLoading={isLoadingLocations}
             />
             <InfoItem
-              label={t("SettingsPage.cell", "Cell")}
+              label={t("SettingsPage.cell")}
               value={locationNames?.location.cell.cell_name || ""}
               isLoading={isLoadingLocations}
             />
             <InfoItem
-              label={t("SettingsPage.village", "Village")}
+              label={t("SettingsPage.village")}
               value={locationNames?.location.village.village_name || ""}
               isLoading={isLoadingLocations}
             />
@@ -149,7 +149,7 @@ const SettingsScreen = () => {
           value={
             parsedIncentives.length > 0
               ? parsedIncentives
-              : ["No incentives available"]
+              : [t("SettingsPage.no_incentives")]
           }
           className="flex-wrap gap-x-2 pb-4"
         />

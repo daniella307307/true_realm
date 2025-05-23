@@ -14,6 +14,7 @@ import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setAuthenticationStatus } from "~/utils/axios";
 import { Alert } from "react-native";
+import { RealmContext } from "~/providers/RealContextProvider";
 
 export type AuthOptions = {
   onLogin?: (data: User) => void;
@@ -29,6 +30,8 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const lastLoginIdentifier = useRef<string | null>(null);
+  const { useRealm } = RealmContext;
+  const realm = useRealm();
 
   const isLoggedIn = useMemo(async () => {
     const token = await AsyncStorage.getItem("tknToken");
@@ -85,7 +88,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   };
 
   const _userLogout = useMutation<{}, AxiosError<IResponseError>>({
-    mutationFn: userLogout,
+    mutationFn: () => userLogout(realm),
     onMutate: () => {
       logoutUser();
     },

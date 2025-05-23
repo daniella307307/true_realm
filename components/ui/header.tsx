@@ -63,7 +63,7 @@ const HeaderNavigation = ({
               width: size * 2,
               height: size * 2,
               borderRadius: 999,
-              backgroundColor: "rgba(0, 0, 0, 0.1)",
+              backgroundColor: "rgba(0, 0, 0, 0.05)",
               justifyContent: "center",
               alignItems: "center",
             }}
@@ -93,7 +93,7 @@ const HeaderNavigation = ({
               width: size * 2,
               height: size * 2,
               borderRadius: 999,
-              backgroundColor: "rgba(0, 0, 0, 0.1)",
+              backgroundColor: "rgba(0, 0, 0, 0.05)",
               justifyContent: "center",
               alignItems: "center",
               marginRight: showRight ? 8 : 0,
@@ -132,7 +132,7 @@ const HeaderNavigation = ({
               width: size * 2,
               height: size * 2,
               borderRadius: 999,
-              backgroundColor: "rgba(0, 0, 0, 0.1)",
+              backgroundColor: "rgba(0, 0, 0, 0.05)",
               justifyContent: "center",
               alignItems: "center",
             }}

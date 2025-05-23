@@ -108,6 +108,12 @@ function Layout() {
       try {
         const loginStatus = await isLoggedIn;
         console.log("Login status:", loginStatus);
+        
+        // Don't show any content until we know the auth status
+        if (!authChecked) {
+          return;
+        }
+
         if (loginStatus) {
           console.log("Login status down:", loginStatus);
           // Check the current route to avoid interrupting the password update flow
@@ -145,10 +151,10 @@ function Layout() {
     };
 
     handleNavigation();
-  }, [appReady, isLoggedIn]);
+  }, [appReady, isLoggedIn, authChecked]);
 
-  // Don't render anything until app is ready
-  if (!appReady) {
+  // Don't render anything until app is ready and auth check is complete
+  if (!appReady || !authChecked) {
     return null;
   }
 

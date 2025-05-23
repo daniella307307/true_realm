@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { useGetNotifications } from "~/services/notifications";
 import HeaderNavigation from "~/components/ui/header";
 import { INotifications } from "~/types";
+import EmptyDynamicComponent from "~/components/EmptyDynamic";
 
 const NotificationsScreen = () => {
   const { t } = useTranslation();
@@ -65,8 +66,8 @@ const NotificationsScreen = () => {
                   }`}
                 >
                   {item.status
-                    ? t(`Notifications.${item.status}`, item.status)
-                    : t("Notifications.pending", "Pending")}
+                    ? t(`Notifications.${item.status}`)
+                    : t("Notifications.pending")}
                 </Text>
               </View>
             </View>
@@ -78,14 +79,14 @@ const NotificationsScreen = () => {
             <View className="flex-row justify-between items-center mt-2">
               <Text className="text-gray-500 text-sm">{formattedDate}</Text>
               <Text className="text-gray-500 font-bold text-sm">
-                {t("Notifications.by", "By")}: {item.user?.name}
+                {t("Notifications.by")}: {item.user?.name}
               </Text>
             </View>
 
             {item.followup_date && (
               <View className="mt-2 bg-white p-2 rounded-md">
                 <Text className="text-blue-800 text-sm">
-                  {t("Notifications.followup_date", "Follow-up")}:{" "}
+                  {t("Notifications.followup_date")}:{" "}
                   {format(new Date(item.followup_date), "MMM dd, yyyy")}
                 </Text>
               </View>
@@ -101,7 +102,7 @@ const NotificationsScreen = () => {
       <HeaderNavigation
         showLeft={true}
         showRight={true}
-        title={t("Notifications.title", "Notifications")}
+        title={t("Notifications.title")}
       />
 
       {isLoading && !refreshing ? (
@@ -114,6 +115,11 @@ const NotificationsScreen = () => {
           renderItem={renderNotificationItem}
           keyExtractor={(item) => `${item.id}-${item.created_at}`}
           contentContainerClassName="p-4"
+          ListEmptyComponent={
+            <EmptyDynamicComponent
+              message={t("Notifications.no_notifications")}
+            />
+          }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

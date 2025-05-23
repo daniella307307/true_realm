@@ -46,6 +46,7 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
   language,
 }) => {
   const { user } = useAuth({});
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(true);
 
   const dependentFieldValue = useWatch({
@@ -62,18 +63,18 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
   }, [field.conditional, dependentFieldValue]);
 
   // Special logging for number fields
-  useEffect(() => {
-    if (field.type === "number") {
-      console.log("Number field details:", {
-        key: field.key,
-        title: field.title,
-        validation: field.validate,
-        errorLabel: (field as any).errorLabel,
-        min: field.validate?.min,
-        max: field.validate?.max,
-      });
-    }
-  }, [field]);
+  // useEffect(() => {
+  //   if (field.type === "number") {
+  //     console.log(t("FormElementPage.number_field_details"), {
+  //       key: field.key,
+  //       title: field.title,
+  //       validation: field.validate,
+  //       errorLabel: (field as any).errorLabel,
+  //       min: field.validate?.min,
+  //       max: field.validate?.max,
+  //     });
+  //   }
+  // }, [field, t]);
 
   if (field.type === "day") {
     return (
@@ -221,11 +222,13 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   timeSpent,
   onEditFlowState,
 }) => {
+  const { t, i18n: i18nInstance } = useTranslation();
+  
   if (!Array.isArray(fields)) {
     console.error("Fields prop is not an array:", fields);
     return (
       <View className="flex-1 justify-center items-center">
-        <Text className="text-red-500">Error: Invalid form fields</Text>
+        <Text className="text-red-500">{t("FormElementPage.invalid_form_fields")}</Text>
       </View>
     );
   }
@@ -240,7 +243,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       criteriaMode: "all",
       shouldFocusError: true,
     });
-  const { t, i18n: i18nInstance } = useTranslation();
   const [currentPage, setCurrentPage] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   const [formData, setFormData] = useState({});
@@ -283,7 +285,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
         // Special case for dateOfFollowUp field
         if (field.key === "dateOfFollowUp" && field.type === "day") {
-          console.log("Including dateOfFollowUp field due to special case");
+          console.log(t("FormElementPage.including_date_followup"));
           return true;
         }
 
@@ -296,7 +298,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           if (field.conditional.show === true && !field.conditional.when) {
             isVisible = true;
             console.log(
-              `Field ${field.key} is visible due to conditional.show=true`
+              `${t("FormElementPage.field_visible_conditional", { key: field.key })}`
             );
             return true;
           }
@@ -323,7 +325,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       setCurrentPage(0);
       setIsInitialLoad(false);
     }
-  }, [fields, formValues, isInitialLoad]);
+  }, [fields, formValues, isInitialLoad, t]);
 
   const fieldIndexMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -418,10 +420,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       setSubmitting(true);
 
       try {
-        const projectId = formSubmissionMandatoryFields.project_id || 0;
-        const sourceModuleId =
-          formSubmissionMandatoryFields.source_module_id || 0;
-        const surveyId = formSubmissionMandatoryFields.id || 0;
         const familyId = flowState?.selectedValues?.families?.hh_id || null;
 
         // Ensure all fields are included in the submission data
@@ -493,7 +491,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           "Final Data submitted:",
           JSON.stringify(dataWithTime, null, 2)
         );
-        console.log("API URL:", postData);
 
         if (postData === "/createFamily") {
           // Create a family instead of a survey submission
@@ -501,11 +498,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
           // Show success alert and navigate
           Alert.alert(
-            "Family Created Successfully",
-            "The family has been created successfully.",
+            t("FormElementPage.family_created_title"),
+            t("FormElementPage.family_created_message"),
             [
               {
-                text: "OK",
+                text: t("Common.ok"),
                 onPress: () => router.push("/(history)/history"),
               },
             ]
@@ -515,19 +512,16 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           await saveIzuToAPI(realm, dataWithTime, postData, fields);
 
           Alert.alert(
-            "Izu Created Successfully",
-            "The izu has been created successfully.",
+            t("FormElementPage.izu_created_title"),
+            t("FormElementPage.izu_created_message"),
             [
               {
-                text: "OK",
+                text: t("Common.ok"),
                 onPress: () => router.push("/(history)/history"),
               },
             ]
           );
-        } else if (
-          postData === "/sendMonitoringData" ||
-          postData.includes("sendMonitoringData")
-        ) {
+        } else if (postData === "/sendMonitoringData") {
           const moduleId =
             formSubmissionMandatoryFields.source_module_id?.toString() || "";
           const formId = formSubmissionMandatoryFields.id?.toString() || "";
@@ -574,9 +568,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 score: score,
                 possible: 4,
               };
-              console.log(
-                `Field ${key} with answer "${value}" scored ${score}`
-              );
+              console.log(`${t("FormElementPage.score_field", { key, value, score })}`);
             }
           });
 
@@ -587,7 +579,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               : 0;
 
           console.log(
-            `Total score: ${totalScore}/${totalPossibleScore} (${percentageScore}%)`
+            `${t("FormElementPage.total_score", { 
+                total: totalScore, 
+                possible: totalPossibleScore, 
+                percentage: percentageScore 
+              })}`
           );
 
           // Create score_data object with all scoring information
@@ -610,7 +606,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             cohort: cohort || "1",
             izucode: flowState?.selectedValues?.izus?.izucode || null,
             user_id: formSubmissionMandatoryFields.userId || null,
-            response: formattedData, // This includes all the form fields
+            response: formattedData,
             score_data: scoreData,
           };
 
@@ -626,11 +622,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           );
 
           Alert.alert(
-            "Monitoring Response Submitted Successfully",
-            "Your monitoring response has been submitted successfully.",
+            t("FormElementPage.monitoring_success_title"),
+            t("FormElementPage.monitoring_success_message"),
             [
               {
-                text: "OK",
+                text: t("Common.ok"),
                 onPress: () => router.push("/(statistics)/"),
               },
             ]
@@ -646,11 +642,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
           // Show success alert and navigate
           Alert.alert(
-            "Submission Successful",
-            "Your form has been submitted successfully.",
+            t("FormElementPage.submission_success_title"),
+            t("FormElementPage.submission_success_message"),
             [
               {
-                text: "OK",
+                text: t("Common.ok"),
                 onPress: () => router.push("/(history)/history"),
               },
             ]
@@ -660,24 +656,24 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         console.error("Error saving data:", error);
         // Show error message to user
         Alert.alert(
-          "Submission Error",
-          "There was an error submitting your form. Please try again.",
-          [{ text: "OK" }]
+          t("FormElementPage.submission_error_title"),
+          t("FormElementPage.submission_error_message"),
+          [{ text: t("Common.ok") }]
         );
       } finally {
         // Improved callback handling
-        console.log("Submission completed, resetting state");
+        console.log(t("FormElementPage.submission_completed_resetting_state"));
 
         // Reset our own submitting state
         setSubmitting(false);
-
+        
         // Call the callback from AnswerPreview if it exists
         if (resetSubmittingCallback) {
-          console.log("Calling reset submitting callback");
+          console.log(t("FormElementPage.calling_reset_callback"));
           resetSubmittingCallback();
           setResetSubmittingCallback(null);
         } else {
-          console.log("No reset submitting callback found");
+          console.log(t("FormElementPage.no_reset_callback"));
         }
       }
     } else {
@@ -711,10 +707,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       const isValid = await trigger(currentPageFieldKeys, {
         shouldFocus: true,
       });
-      console.log("Validation result:", isValid);
+      console.log(t("FormElementPage.validation_result"), isValid);
 
       // Log form state to see errors
-      console.log("Form state errors:", formState.errors);
+      console.log(t("FormElementPage.form_state_errors"), formState.errors);
 
       if (isValid) {
         setValidationError(false);
@@ -726,7 +722,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         setTimeout(() => setValidationError(false), 2000);
       }
     } catch (error) {
-      console.error("Validation error:", error);
+      // console.error("Validation error:", error);
       setValidationError(true);
       setTimeout(() => setValidationError(false), 2000);
     }
@@ -839,7 +835,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       onEditFlowState("locations");
     } else {
       // Find the page containing the field
-      const fieldIndex = visibleFields.findIndex(field => field.key === fieldKey);
+      const fieldIndex = visibleFields.findIndex(
+        (field) => field.key === fieldKey
+      );
       if (fieldIndex !== -1) {
         const pageIndex = Math.floor(fieldIndex / fieldsPerPage);
         setCurrentPage(pageIndex);
@@ -848,7 +846,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   };
 
   const handleResetSubmitting = (callback: () => void) => {
-    console.log("Registering reset submitting callback");
+    console.log(t("FormElementPage.registering_reset_callback"));
     // Store the callback directly rather than wrapping it
     setResetSubmittingCallback(() => callback);
   };
@@ -911,7 +909,6 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               <Text className="text-red-500 text-center">
                 {t(
                   "FormElementPage.validation",
-                  "Please complete all required fields before proceeding"
                 )}
               </Text>
             </View>
@@ -962,7 +959,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               ) : (
                 <Button onPress={handlePreview}>
                   <Text className="text-white font-semibold">
-                    {t("FormElementPage.preview", "Preview")}
+                    {t("FormElementPage.preview")}
                   </Text>
                 </Button>
               )}
@@ -972,7 +969,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           {wholeComponent && (
             <Button onPress={handlePreview} className="mt-4">
               <Text className="text-white font-semibold">
-                {t("FormElementPage.preview", "Preview")}
+                {t("FormElementPage.preview")}
               </Text>
             </Button>
           )}

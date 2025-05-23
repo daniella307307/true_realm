@@ -76,7 +76,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
 
     switch (field.type) {
       case "switch":
-        return value ? "Yes" : "No";
+        return value ? t("FormElementPage.yes") : t("FormElementPage.no");
 
       case "radio":
       case "select":
@@ -169,12 +169,12 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
   return (
     <ScrollView className="bg-background mt-4 px-4">
       <Text className="text-center text-xl font-bold mb-6 text-[#050F2B]">
-        {t("FormElementPage.previewTitle", "Review Your Answers")}
+        {t("FormElementPage.previewTitle")}
       </Text>
 
       <View className="mb-6 px-4 py-4 bg-white rounded-lg border border-[#E4E4E7]">
         <Text className="font-medium text-[#050F2B] mb-2">
-          {t("FormElementPage.timeSpent", "Time Spent")}
+          {t("FormElementPage.timeSpent")}
         </Text>
         <Text className="text-[#52525B]">{formatTime(timeSpent)}</Text>
       </View>
@@ -183,7 +183,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
       {flowState?.selectedValues && (
         <View className="mb-6 px-4 py-4 bg-white rounded-lg border border-[#E4E4E7]">
           <Text className="font-medium text-[#050F2B] mb-4">
-            {t("FormElementPage.flowStateValues", "Core Values")}
+            {t("FormElementPage.flowStateValues")}
           </Text>
 
           {/* IZU */}
@@ -191,7 +191,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
             <View className="mb-4">
               <View className="flex flex-row justify-between items-center mb-2">
                 <Text className="font-medium text-[#050F2B]">
-                  {t("FormElementPage.izu", "IZU")}
+                  {t("FormElementPage.izu")}
                 </Text>
                 <TouchableOpacity
                   onPress={() => onEditField && onEditField("izucode")}
@@ -211,7 +211,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
             <View className="mb-4">
               <View className="flex flex-row justify-between items-center mb-2">
                 <Text className="font-medium text-[#050F2B]">
-                  {t("FormElementPage.cohort", "Cohort")}
+                  {t("FormElementPage.cohort")}
                 </Text>
                 <TouchableOpacity
                   onPress={() => onEditField && onEditField("cohorts")}
@@ -231,7 +231,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
             <View className="mb-4">
               <View className="flex flex-row justify-between items-center mb-2">
                 <Text className="font-medium text-[#050F2B]">
-                  {t("FormElementPage.family", "Family")}
+                  {t("FormElementPage.family")}
                 </Text>
                 <TouchableOpacity
                   onPress={() => onEditField && onEditField("family")}
@@ -251,7 +251,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
             <View className="mb-4">
               <View className="flex flex-row justify-between items-center mb-2">
                 <Text className="font-medium text-[#050F2B]">
-                  {t("FormElementPage.location", "Location")}
+                  {t("FormElementPage.location")}
                 </Text>
                 <TouchableOpacity
                   onPress={() => onEditField && onEditField("province")}
@@ -315,7 +315,7 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
           disabled={isSubmitting}
         >
           <Text className="text-white font-semibold">
-            {t("FormElementPage.back", "Back")}
+            {t("FormElementPage.back")}
           </Text>
         </Button>
         <Button
@@ -327,11 +327,11 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
             <View className="flex-row items-center justify-center">
               <ActivityIndicator size="small" color="#ffffff" />
               <Text className="text-white font-semibold ml-2">
-                Submitting...
+                {t("FormElementPage.submitting")}
               </Text>
             </View>
           ) : (
-            <Text className="text-white font-semibold">Submit</Text>
+            <Text className="text-white font-semibold">{t("FormElementPage.submit")}</Text>
           )}
         </Button>
       </View>

@@ -4,6 +4,9 @@ import { useDataSync } from "./dataSync";
 import { FollowUps } from "~/models/followups/follow-up";
 import { isOnline } from "./network";
 import { useMainStore } from "~/lib/store/main";
+import { useAuth } from "~/lib/hooks/useAuth";
+import { useMemo } from "react";
+import { filterDataByUserId } from "./filterData";
 
 const { useQuery, useRealm } = RealmContext;
 
@@ -71,6 +74,13 @@ export async function fetchFollowUpsFromRemote() {
 
 export function useGetAllFollowUps(forceSync: boolean = false) {
   const storedFollowUps = useQuery(FollowUps);
+  const { user } = useAuth({});
+
+  // Filter followups by current user
+  const userFilteredFollowUps = useMemo(() => {
+    if (!user || !user.id) return storedFollowUps;
+    return filterDataByUserId(storedFollowUps, user.id);
+  }, [storedFollowUps, user]);
 
   const { syncStatus, refresh } = useDataSync([
     {
@@ -83,7 +93,7 @@ export function useGetAllFollowUps(forceSync: boolean = false) {
   ]);
 
   return {
-    followups: storedFollowUps,
+    followups: userFilteredFollowUps,
     isLoading: syncStatus.followups?.isLoading || false,
     error: syncStatus.followups?.error || null,
     lastSyncTime: syncStatus.followups?.lastSyncTime || null,

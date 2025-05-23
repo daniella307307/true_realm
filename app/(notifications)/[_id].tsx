@@ -57,7 +57,7 @@ const NotificationDetailScreen = () => {
   const { user } = useAuth({});
 
   const { notification } = useGetNotificationById(id || "");
-  const { surveySubmissions, isLoading: isLoadingSubmissions } =
+  const { submissions: surveySubmissions, isLoading: isLoadingSubmissions } =
     useGetAllSurveySubmissions();
   const { followups } = useGetFollowUpsBySurveyResultId(
     _id || "",

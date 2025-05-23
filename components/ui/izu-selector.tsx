@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { Text } from "./text";
 import { useGetIzus } from "~/services/izus";
@@ -12,8 +13,9 @@ import { AntDesign, Ionicons } from "@expo/vector-icons";
 import i18n from "~/utils/i18n";
 import { getLocalizedTitle } from "~/utils/form-utils";
 import { Izus } from "~/types";
-import { useFocusEffect } from "@react-navigation/native";
 import { useGetIzuStatisticsByMonitoringResponse } from "~/services/monitoring/monitoring-responses";
+import { useTranslation } from "react-i18next";
+import EmptyDynamicComponent from "../EmptyDynamic";
 
 interface IzuSelectorProps {
   onSelect: (value: Izus) => void;
@@ -29,7 +31,9 @@ const IzuCodeItem = ({
   onSelect: (code: string) => void;
   isSelected: boolean;
 }) => {
-  const { monitoringResponses } = useGetIzuStatisticsByMonitoringResponse(item.id);
+  const { monitoringResponses } = useGetIzuStatisticsByMonitoringResponse(
+    item.id
+  );
 
   // Calculate average percentage from monitoring responses
   const averagePercentage =
@@ -88,17 +92,10 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
     initialValue || null
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [modalVisible, setModalVisible] = useState(false);
 
   const { izus: izus, isLoading, refresh } = useGetIzus();
-
-  // Add focus effect to refresh data when screen is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      // Refresh the data when the screen comes into focus
-      refresh();
-      return () => {};
-    }, [refresh])
-  );
+  const { t } = useTranslation();
 
   const filteredIzus = izus?.filter((izu) => {
     if (!searchQuery) return true;
@@ -137,7 +134,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
       <TextInput
         className={`w-full px-4 py-4 border rounded-lg border-[#E4E4E7] bg-white mb-2`}
         value={selectedIzu?.izucode || ""}
-        placeholder="Select an IZU code"
+        placeholder={t("Izus.select_izu")}
         editable={false}
       />
 
@@ -146,7 +143,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
         <Ionicons name="search" size={20} color="#A0A3BD" className="mr-2" />
         <TextInput
           className="w-11/12 px-4 py-3 border rounded-lg border-[#E4E4E7] bg-white mb-2"
-          placeholder="Search IZU codes..."
+          placeholder={t("Izus.search_izu")}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -170,9 +167,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
           )}
           contentContainerStyle={{ padding: 8 }}
           ListEmptyComponent={
-            <View className="py-4 items-center">
-              <Text className="text-gray-500">No IZU codes found</Text>
-            </View>
+            <EmptyDynamicComponent message={t("Izus.no_izus")} />
           }
         />
       </View>

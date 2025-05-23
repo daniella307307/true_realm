@@ -1,4 +1,3 @@
-
 {
     "language": "en",
     "Login": {
@@ -10,6 +9,22 @@
       "login": "Login",
       "forgotPassword": "Forgot Password?",
       "Select Language": "Select Language",
+      "Show password": "Show password",
+      "Hide password": "Hide password",
+      "networkError": "Network Error",
+      "checkConnection": "Please check your internet connection",
+      "error": "Error",
+      "authFailed": "Authentication failed",
+      "syncingData": "Syncing data...",
+      "welcome": "Welcome",
+      "loginSuccess": "Login successful",
+      "syncFailed": "Sync Failed",
+      "tryAgain": "Please try again",
+      "languageChanged": "Language changed",
+      "networkRestored": "Network connection restored",
+      "offline": "You're offline",
+      "retry": "Retry",
+      "loggingIn": "Logging in...",
       "Validation": {
         "invalidEmail": "Invalid email address",
         "requiredEmail": "Email is required",
@@ -28,6 +43,7 @@
       "send": "Send",
       "rememberPassword": "Remember your password?",
       "backToLogin": "Back to Login",
+      "successMessage": "Password reset email sent",
       "Validation": {
         "invalidEmail": "Invalid email address",
         "requiredEmail": "Email is required"
@@ -40,7 +56,42 @@
       "verificationCode": "Verification Code",
       "verificationCodePlaceholder": "Enter verification code",
       "submit": "Submit",
-      "resend": "Resend Code"
+      "resend": "Resend Code",
+      "headerTitle": "Verify Code",
+      "invalidCodeLength": "Please enter a 4-digit code.",
+      "emailMissing": "Email address not found.",
+      "verify": "Verify"
+    },
+    "UpdatePassword": {
+      "title": "Update password",
+      "subtitle": "Please enter your new password below",
+      "newPassword": "New password",
+      "newPasswordPlaceholder": "New password",
+      "confirmPassword": "Confirm password",
+      "confirmPasswordPlaceholder": "Confirm password",
+      "hidePassword": "Hide",
+      "showPassword": "Show",
+      "networkError": "Network error",
+      "checkConnection": "Check your connection",
+      "error": "Error",
+      "missingIdentifier": "Missing identifier",
+      "updating": "Updating"
+    },
+    "Common": {
+      "ok": "OK",
+      "family": "Family",
+      "headName": "Head Name",
+      "village": "Village",
+      "type": "Submitted",
+      "submission": "a submission",
+      "izu": "an IZU",
+      "details": "Details",
+      "izu_code": "IZU Code",
+      "cohort": "Cohort",
+      "project_id": "Project ID",
+      "module_id": "Module ID",
+      "try_again": "Try Again",
+      "go_back": "Go Back"
     },
     "HomePage": {
       "title": "Hello, ",
@@ -56,7 +107,13 @@
       "settings": "Settings",
       "Izu_telephone_Supervision": "Izu telephone Supervision",
       "community": "Community",
-      "projects": "Projects"
+      "projects": "Projects",
+      "household_enrollment": "Household Enrollment",
+      "IZU_Sector_Coordinator_Demographics": "IZU Sector Coordinator Demographics",
+      "IZU_At_Village_Demographics": "IZU At Village Demographics",
+      "IZU_Sector_Telephone_Supervision": "IZU Sector Telephone Supervision",
+      "IZU_Cell_Telephone_Supervision": "IZU Cell Telephone Supervision",
+      "loading_data": "Loading data..."
     },
     "ProjectPage": {
       "title": "Projects",
@@ -75,7 +132,9 @@
       "title": "Saved Modules",
       "all_history_module": "All Saved Modules",
       "history_module": "Saved Module",
-      "search_history_module": "Search Saved Module"
+      "search_history_module": "Search Saved Module",
+      "risk_of_harm": "Risk of Harm",
+      "risk_of_harm_description": "This module is a high priority for your attention."
     },
     "History": {
       "submissions": "Submissions",
@@ -83,7 +142,30 @@
       "synced": "Synced",
       "pending": "Pending",
       "search_form": "Search Form",
-      "submission_detail": "Submission Detail"
+      "submission_detail": "Submission Detail",
+      "lastSubmission": "Last Submission Date",
+      "not_answered": "Not answered",
+      "family_submissions": "Family Submissions",
+      "createdAt": "Created At",
+      "lastSync": "Last Synced",
+      "noSubmissions": "No submissions",
+      "family_detail": "Family Detail",
+      "submitted_at": "Submitted At",
+      "time_spent": "Time Spent",
+      "status": "Status",
+      "type": "Type",
+      "family_data": "Family Data",
+      "answers": "Answers",
+      "additional_info": "Additional Information"
+    },
+    "Izus": {
+      "title": "Izus",
+      "all_izus": "All Izus",
+      "izu": "IZU",
+      "search_izu": "Search IZU",
+      "no_izus": "No izus available",
+      "no_izus_description": "No izus available",
+      "select_izu": "Select IZU"
     },
     "CohortPage": {
       "title": "Cohorts",
@@ -97,12 +179,14 @@
       "module": "Module",
       "search_module": "Search Modules",
       "risk_of_harm": "Risk of Harm",
-      "risk_of_harm_description": "This module is a high priority for your attention."
+      "risk_of_harm_description": "This module is a high priority for your attention.",
+      "monitoring_title": "IZU Monitoring"
     },
     "IzuCodeSelectionPage": {
       "title": "Select Izu Code",
       "description": "Select the Izu code you want to use",
       "izu_code": "Izu Code",
+      "izu_name": "Izu Name",
       "search_izu_code": "Search Izu Code",
       "empty_izu_codes": "No Izu codes available"
     },
@@ -110,7 +194,8 @@
       "title": "Forms",
       "form": "Form",
       "search_form": "Search Forms",
-      "empty_forms": "No forms available"
+      "empty_forms": "No forms available",
+      "monitoring_title": "Monitoring Forms"
     },
     "FormElementPage": {
       "title": "Form Questions",
@@ -118,7 +203,18 @@
       "next": "Next",
       "previous": "Previous",
       "page_of": "Page of",
-      "submit": "Submit"
+      "submit": "Submit",
+      "monitoring_title": "Monitoring Form",
+      "previewTitle": "Review Your Answers",
+      "timeSpent": "Time Spent",
+      "flowStateValues": "Core Values",
+      "izu": "IZU",
+      "cohort": "Cohort",
+      "family": "Family",
+      "location": "Location",
+      "back": "Back",
+      "noFields": "No fields to display",
+      "preview": "Preview"
     },
     "HistoryPage": {
       "title": "History",
@@ -151,7 +247,14 @@
       "change_font_size": "Change Font Size",
       "adjust_font_size": "Adjust Font Size",
       "preview_text": "Preview Text",
-      "close": "Close"
+      "close": "Close",
+      "location": "Location",
+      "province": "Province",
+      "district": "District",
+      "sector": "Sector",
+      "cell": "Cell",
+      "village": "Village",
+      "logout": "Logout"
     },
     "CommunityPage": {
       "title": "Community",
@@ -168,7 +271,20 @@
     "Videos": {
       "title": "Videos",
       "single_video": "Video",
-      "downloaded": "Downloaded"
+      "downloaded": "Downloaded",
+      "playVideo": "Play",
+      "pauseVideo": "Pause",
+      "error": "Error",
+      "fetchError": "Failed to fetch videos. Please try again later.",
+      "downloadError": "Invalid video URL.",
+      "permissionRequired": "Please grant storage permissions.",
+      "alreadyDownloaded": "This video is already saved.",
+      "downloadComplete": "Video saved successfully!",
+      "no_videos": "No videos available",
+      "no_downloaded": "No downloaded videos",
+      "not_found": "Video not found",
+      "loading": "Loading video...",
+      "loading_video": "Loading video..."
     },
     "PinPage": {
       "title": "Enter Pin",
@@ -185,8 +301,55 @@
       "visits": "Visits",
       "families": "Families",
       "risk_of_harms": "Risk of Harms",
-      "total_visits": "Total Visits"
-    }
+      "total_visits": "Total Visits",
+      "visits_done": "Visits Done",
+      "performance_score": "Performance Score",
+      "score_details": "Score Details"
+    },
+    "Notifications": {
+      "title": "Notifications",
+      "pending": "Pending",
+      "resolved": "Resolved",
+      "by": "By",
+      "followup_date": "Follow-up",
+      "notification_detail": "Notification Detail",
+      "item_details": "Item Details",
+      "followups": "Follow-ups",
+      "no_details": "No item details available",
+      "add_followup": "Add Follow-up",
+      "no_followups": "No follow-ups available",
+      "pending_sync": "Pending sync",
+      "success": "Success",
+      "notice": "Notice",
+      "error": "Error",
+      "followup_error": "Failed to create follow-up",
+      "saving": "Saving...",
+      "save_followup": "Save Follow-up",
+      "no_notifications": "No notifications available"
+    },
+    "Sync": {
+      "success": "Success",
+      "error": "Error",
+      "info": "Info",
+      "allSynced": "All components synced successfully",
+      "formSyncFailed": "Failed to sync forms and surveys",
+      "noPendingSubmissions": "No pending submissions to sync",
+      "syncDataFailed": "Failed to sync data",
+      "familySyncFailed": "Failed to sync families",
+      "izuSyncFailed": "Failed to sync izus",
+      "noNetworkErrors": "No network error submissions to retry",
+      "monitoringFailed": "Failed to sync monitoring responses"
+    },
+    "DateTimePicker": {
+      "selectDateTime": "Select a date/time"
+    },
+    "SubmissionExists": {
+      "title": "Submission Already Exists"
+    },
+    "OnPhone": {
+      "label": "On Phone"
+    },
+    "Close": "Close"
 }
   
   

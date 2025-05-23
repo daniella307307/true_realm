@@ -152,12 +152,12 @@ const VerificationCode: React.FC = () => {
     setLoading(true);
     try {
       if (code.length !== CELL_COUNT) {
-        setError("Please enter a 4-digit code.");
+        setError(t("PinPage.enter_digit_code"));
         return;
       }
       const last4Digits = user?.telephone?.slice(-4);
       if (code !== last4Digits) {
-        setError("Invalid code. Please enter the last 4 digits of your phone number.");
+        setError(t("PinPage.invalid_code"));
         throw new Error("Invalid code");
       }
       
@@ -170,8 +170,8 @@ const VerificationCode: React.FC = () => {
     } catch (error) {
       Toast.show({
         type: "error",
-        text1: "Error",
-        text2: "Invalid code. Please try again.",
+        text1: t("PinPage.error"),
+        text2: t("PinPage.invalid_try_again"),
       });
     } finally {
       setLoading(false);

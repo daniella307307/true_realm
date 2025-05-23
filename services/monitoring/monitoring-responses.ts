@@ -5,6 +5,8 @@ import { Realm } from "@realm/react";
 import { useDataSync } from "../dataSync";
 import { isOnline } from "../network";
 import { useAuth } from "~/lib/hooks/useAuth";
+import { useMemo } from "react";
+import { filterDataByUserId } from "../filterData";
 
 const { useQuery, useRealm } = RealmContext;
 
@@ -31,6 +33,12 @@ export function useGetMonitoringResponses(forceSync: boolean = false) {
   const realm = useRealm();
   const storedResponses = useQuery(MonitoringResponses);
   const { user } = useAuth({});
+
+  // Filter responses by the current user
+  const userFilteredResponses = useMemo(() => {
+    if (!user || !user.id) return storedResponses;
+    return filterDataByUserId(storedResponses, user.id);
+  }, [storedResponses, user]);
 
   const { syncStatus, refresh } = useDataSync([
     {
@@ -82,7 +90,7 @@ export function useGetMonitoringResponses(forceSync: boolean = false) {
   // console.log("stored Monitoring Responses: ", JSON.stringify(storedResponses, null, 2));
 
   return {
-    responses: storedResponses,
+    responses: userFilteredResponses,
     isLoading: syncStatus.monitoring_responses?.isLoading || false,
     error: syncStatus.monitoring_responses?.error || null,
     lastSyncTime: syncStatus.monitoring_responses?.lastSyncTime || null,

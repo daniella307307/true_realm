@@ -10,7 +10,6 @@ import { useState } from "react";
 import { useGetFamilies } from "~/services/families";
 import {
   useGetAllSurveySubmissions,
-  useGetRemoteSurveySubmissions,
 } from "~/services/survey-submission";
 import { useGetIzuStatisticsByMonitoringResponse } from "~/services/monitoring/monitoring-responses";
 
@@ -43,8 +42,8 @@ const IzuIndexStatisticsScreen = () => {
   if (!_id) {
     return (
       <NotFound
-        title="Statistics not found"
-        description="Please check the URL and try again."
+        title={t("StatisticsPage.not_found")}
+        description={t("StatisticsPage.check_url")}
         redirectTo={() => router.back()}
       />
     );
@@ -59,11 +58,9 @@ const IzuIndexStatisticsScreen = () => {
   //   JSON.stringify(monitoringResponses, null, 2)
   // );
 
-  // Get families and survey submissions
+  // Get families and survey submissions - now using unified hook with forceSync=true to ensure we get remote data
   const { families } = useGetFamilies();
-  const { surveySubmissions } = useGetAllSurveySubmissions();
-  const { surveySubmissions: remoteSurveySubmissions } =
-    useGetRemoteSurveySubmissions();
+  const { submissions: surveySubmissions } = useGetAllSurveySubmissions(true);
 
   // Calculate total families for this IZU
   const totalFamilies = families.filter(
@@ -87,8 +84,8 @@ const IzuIndexStatisticsScreen = () => {
         ) / monitoringResponses.length
       : 0;
 
-  // Calculate risk of harms
-  const riskOfHarms = [...surveySubmissions, ...remoteSurveySubmissions].filter(
+  // Calculate risk of harms - now just using the unified surveySubmissions
+  const riskOfHarms = surveySubmissions.filter(
     (submission) =>
       submission.form_data?.project_module_id === 177 &&
       submission.form_data?.project_id === 17 &&
@@ -122,20 +119,20 @@ const IzuIndexStatisticsScreen = () => {
         {/* Family Card */}
         <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
           <Text className="text-lg font-semibold mb-2">
-            {t("StatisticsPage.families", "Families")}
+            {t("StatisticsPage.families")}
           </Text>
           <Text className="text-2xl font-bold text-primary">
             {totalFamilies}
           </Text>
           <Text className="text-gray-500">
-            {t("StatisticsPage.total_families", "Total Families")}
+            {t("StatisticsPage.total_families")}
           </Text>
         </Card>
 
         {/* Visits Card */}
         <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
           <Text className="text-lg font-semibold mb-2">
-            {t("StatisticsPage.visits", "Visits")}
+            {t("StatisticsPage.visits")}
           </Text>
           <View className="flex-row justify-between">
             <View>
@@ -143,7 +140,7 @@ const IzuIndexStatisticsScreen = () => {
                 {visitsDone}
               </Text>
               <Text className="text-gray-500">
-                {t("StatisticsPage.visits_done", "Visits Done")}
+                {t("StatisticsPage.visits_done")}
               </Text>
             </View>
             <View>
@@ -151,7 +148,7 @@ const IzuIndexStatisticsScreen = () => {
                 {totalVisits}
               </Text>
               <Text className="text-gray-500">
-                {t("StatisticsPage.total_visits", "Total Visits")}
+                {t("StatisticsPage.total_visits")}
               </Text>
             </View>
           </View>
@@ -160,7 +157,7 @@ const IzuIndexStatisticsScreen = () => {
         {/* Performance Score Card */}
         <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
           <Text className="text-lg font-semibold mb-2">
-            {t("StatisticsPage.performance_score", "Performance Score")}
+            {t("StatisticsPage.performance_score")}
           </Text>
           <View className="flex-row justify-between items-center">
             {monitoringResponses && monitoringResponses.length > 0 ? (
@@ -179,12 +176,12 @@ const IzuIndexStatisticsScreen = () => {
                     100
                   )}`}
                 >
-                  Average Score
+                  {t("StatisticsPage.average_score")}
                 </Text>
               </>
             ) : (
               <Text className="text-2xl font-bold text-gray-500">
-                No monitoring data available
+                {t("StatisticsPage.no_monitoring_data")}
               </Text>
             )}
           </View>
@@ -194,7 +191,7 @@ const IzuIndexStatisticsScreen = () => {
             className="mt-2 py-2"
           >
             <Text className="text-primary font-medium">
-              {showScoreDetails ? "Hide details" : "Show details"}
+              {showScoreDetails ? t("StatisticsPage.hide_details") : t("StatisticsPage.show_details")}
             </Text>
           </TouchableOpacity>
 
@@ -202,7 +199,7 @@ const IzuIndexStatisticsScreen = () => {
             monitoringResponses &&
             monitoringResponses.length > 0 && (
               <View className="mt-2">
-                <Text className="font-semibold mb-2">Monitoring History</Text>
+                <Text className="font-semibold mb-2">{t("StatisticsPage.monitoring_history")}</Text>
                 {monitoringResponses.map(
                   (response: MonitoringResponseData, index: number) => (
                     <TouchableOpacity
@@ -240,7 +237,7 @@ const IzuIndexStatisticsScreen = () => {
                         {response.score_data?.possible || 0}
                       </Text>
                       <Text className="text-gray-500 text-sm">
-                        Fields scored: {response.score_data?.fields_count || 0}
+                        {t("StatisticsPage.fields_scored", "Fields scored")}: {response.score_data?.fields_count || 0}
                       </Text>
                     </TouchableOpacity>
                   )

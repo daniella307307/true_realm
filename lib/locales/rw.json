@@ -3,12 +3,28 @@
   "Login": {
     "title": "Injiramo",
     "emailOrPhone": "Imeli cyangwa telefone",
-    "password": "Ijambobanga",
-    "emailPlaceholder": "Andika imeli yawe",
-    "passwordPlaceholder": "Andika Ijambobanga ryawe",
+    "emailOrPhonePlaceholder": "Andika imeli yawe",
+    "password": "Ijambo ry'ibanga",
+    "passwordPlaceholder": "Andika Ijambo ry'ibanga ryawe",
     "login": "Injiramo",
-    "forgotPassword": "Wibagiwe ijambobanga?",
+    "forgotPassword": "Wibagiwe ijambo ry'ibanga?",
     "Select Language": "Hitamo Ururimi",
+    "Show password": "Erekana ijambo ry'ibanga",
+    "Hide password": "Hisha ijambo ry'ibanga",
+    "networkError": "Ikosa rya murandasi",
+    "checkConnection": "Reba ko murandasi ikora",
+    "error": "Ikosa",
+    "authFailed": "Kwemezwa kwanze",
+    "syncingData": "Guhuza amakuru...",
+    "welcome": "Murakaza neza",
+    "loginSuccess": "Kwinjira byagenze neza",
+    "syncFailed": "Guhuza amakuru byanze",
+    "tryAgain": "Mwongere mugerageze",
+    "languageChanged": "Ururimi rwarahinduwe",
+    "networkRestored": "Ihuriro rya murandasi ryasubiye gukora",
+    "offline": "Uri hanze ya murandasi",
+    "retry": "Ongera ugerageze",
+    "loggingIn": "Kwinjira...",
     "Validation": {
       "invalidEmail": "Imeri yanditswe nabi",
       "requiredEmail": "Imeri irakenewe",
@@ -20,42 +36,100 @@
     }
   },
   "ForgotPassword": {
-    "title": "Wibagiwe Ijambobanga",
+    "title": "Wibagiwe Ijambo ry'ibanga",
     "email": "Imeli",
-    "description": "Andika imeli yawe hano hanyuma tuzakuganiriza inkuru y'ukubahiriza ijambobanga ryawe.",
+    "description": "Andika imeli yawe hano hanyuma tuzakuganiriza inkuru y'ukubahiriza ijambo ry'ibanga ryawe.",
     "emailPlaceholder": "Andika imeli yawe",
     "send": "Emeza",
-    "rememberPassword": "Uracyibuka ijambobanga ryawe?",
+    "rememberPassword": "Uracyibuka ijambo ry'ibanga ryawe?",
     "backToLogin": "Subira kuri injiramo",
+    "successMessage": "Imeli yo gusubiza ijambo ry'ibanga yoherejwe",
     "Validation": {
       "invalidEmail": "Imeri yanditswe nabi",
       "requiredEmail": "Imeri irakenewe"
     }
   },
   "PasswordVerification": {
-    "title": "Ukubahiriza Ijambobanga",
-    "description": "Tuzakuganiriza inkuru y'ukubahiriza ijambobanga ryawe kuri imeli yawe",
+    "title": "Ukubahiriza Ijambo ry'ibanga",
+    "description": "Tuzakuganiriza inkuru y'ukubahiriza ijambo ry'ibanga ryawe kuri imeli yawe",
     "didNotReceive": "Ntagiye wabonye inkuru? Shyiramo kuri spam cyangwa usangire",
     "verificationCode": "Ijambo ry'ibanga ry'ukubahiriza",
     "verificationCodePlaceholder": "Shyiramo ijambo ry'ibanga ry'ukubahiriza",
-    "submit": "Emeza",
-    "resend": "Emeza indi ijambo ry'ibanga ry'ukubahiriza"
+    "submit": "Ohereza",
+    "resend": "Ohereza kandi",
+    "headerTitle": "Emeza kode",
+    "invalidCodeLength": "Andika kode igizwe n'imibare ine",
+    "emailMissing": "Imeli ntiyabonetse",
+    "verify": "Emeza"
+  },
+  "UpdatePassword": {
+    "title": "Hindura ijambo ry'ibanga",
+    "subtitle": "Andika ijambo ry'ibanga rishya hepfo",
+    "newPassword": "Ijambo ry'ibanga rishya",
+    "newPasswordPlaceholder": "Ijambo ry'ibanga rishya",
+    "confirmPassword": "Emeza ijambo ry'ibanga",
+    "confirmPasswordPlaceholder": "Emeza ijambo ry'ibanga",
+    "hidePassword": "Hisha",
+    "showPassword": "Erekana",
+    "networkError": "Ikosa rya murandasi",
+    "checkConnection": "Reba ihuriro ryawe",
+    "error": "Ikosa",
+    "missingIdentifier": "Umwirondoro ubuze",
+    "updating": "Guhindura..."
+  },
+  "Common": {
+    "ok": "OK",
+    "family": "Umuryango",
+    "headName": "Izina ry'umukuru w'urugo",
+    "village": "Umudugudu",
+    "type": "Byoherejwe",
+    "submission": "ibyoherejwe",
+    "izu": "IZU",
+    "details": "Ibisobanuro",
+    "izu_code": "Kode ya IZU",
+    "cohort": "Itsinda",
+    "project_id": "Nimero y'Umushinga",
+    "module_id": "Nimero y'Igice",
+    "try_again": "Mwongere mugerageze",
+    "go_back": "Gusubira Inyuma"
+  },
+  "Izus": {
+    "title": "Izu",
+    "all_izus": "Aba izu boase",
+    "izu": "IZU",
+    "search_izu": "Shakisha IZU",
+    "no_izus": "Nta izu uhari",
+    "no_izus_description": "Nta izu uhari",
+    "select_izu": "Hitamo IZU"
   },
   "HomePage": {
     "title": "Muraho, ",
-    "wait": "Tumva",
+    "wait": "Tegereza gato",
     "data_refreshing": "Amakuru ari mu nzira",
     "ok": "OK",
-    "description": "Igiki cyawe tuzakurikiraho",
+    "description": "Ni gute twagufasha uyu munsi?",
     "families": "Imiryango",
     "history": "Amateka",
-    "statistics": "Ibyo wabonye",
-    "IZU_Monitoring": "Genzura IZU",
+    "statistics": "Ibarurishamibare wabonye",
+    "IZU_Monitoring": "Kugenzura IZU",
     "videos": "Video",
     "settings": "Icungamimirere",
     "Izu_telephone_Supervision": "Genzura IZU kuri telefoni",
     "community": "Ibitekerezo",
-    "projects": "Imishinga"
+    "projects": "Imishinga",
+    "household_enrollment": "Kwandikisha Urugo",
+    "IZU_Sector_Coordinator_Demographics": "Amakuru ku Isano y'IZU Mukorera Umurenge",
+    "IZU_At_Village_Demographics": "Amakuru ku Isano y'IZU Mu Mudugudu",
+    "IZU_Sector_Telephone_Supervision": "Igenzura ry'Izu ku Murenge Kuri Telefoni",
+    "IZU_Cell_Telephone_Supervision": "Igenzura ry'Izu ku Kagali Kuri Telefoni",
+    "loading_data": "Gutunganya amakuru..."
+  },
+  "ProjectPage": {
+    "title": "Imishinga",
+    "all_projects": "Imishinga yose",
+    "project": "Umushinga",
+    "search_project": "Shakisha imishinga",
+    "empty_projects": "Nta mishinga irimo"
   },
   "CohortPage": {
     "title": "Amatsinda",
@@ -69,27 +143,42 @@
     "module": "Icyiciro",
     "search_module": "Shakisha ibyiciro",
     "risk_of_harm": "Iki cyiciro cyateza ibyago",
-    "risk_of_harm_description": "Iki cyiciro kiri mu bintu by'ingenzi bikwiye kwitabwaho."
+    "risk_of_harm_description": "Iki cyiciro kiri mu bintu by'ingenzi bikwiye kwitabwaho.",
+    "monitoring_title": "Kugenzura IZU"
   },
   "IzuCodeSelectionPage": {
     "title": "Hitamo Izu",
     "description": "Hitamo izu ushaka gukurikirana",
     "izu_code": "Izu Code",
     "izu_name": "Izina ry'izu",
-    "search_izu": "Shakisha izu"
+    "search_izu_code": "Shakisha izu",
+    "empty_izu_codes": "Nta kode ya izu ihari"
   },
   "FormPage": {
     "title": "Ifishi",
     "form": "Ifishi",
-    "search_form": "Shakisha amafishi"
+    "search_form": "Shakisha amafishi",
+    "empty_forms": "Nta fishi ihari",
+    "monitoring_title": "Amafishi yo kugenzura"
   },
   "FormElementPage": {
     "title": "Ibibazo by'Ibizamini",
     "form": "ibibazo",
-    "next": "Imbere",
-    "previous": "Bishize",
+    "next": "Ibikurikiyeho",
+    "previous": "Ibyo tuvuyeho",
     "page_of": "Igice cy'",
-    "submit": "Ohereza"
+    "submit": "Ohereza",
+    "monitoring_title": "Ifishi yo kugenzura",
+    "previewTitle": "Subiramo Ibisubizo Byawe",
+    "timeSpent": "Igihe byatwaye",
+    "flowStateValues": "Indangagaciro z'Ibanze",
+    "izu": "IZU",
+    "cohort": "Itsinda",
+    "family": "Umuryango",
+    "location": "Ahantu",
+    "back": "Gusubira",
+    "noFields": "Nta mbuga zo kwerekana",
+    "preview": "Igaragazambere"
   },
   "HistoryPage": {
     "title": "Amateka",
@@ -105,22 +194,37 @@
     "search_history_project": "Shakisha umushinga"
   },
   "HistoryModulePage": {
-    "title": "Ibyiciro ibaruye",
-    "all_history_module": "Ibyiciro ibaruye yose",
-    "history_module": "Ibyiciro ubaruye",
-    "search_history_module": "Shakisha ibyiciro"
+    "title": "Ibyiciro bibitswe",
+    "all_history_module": "Ibyiciro bibitswe byose",
+    "history_module": "Ikiciro kibitswe",
+    "search_history_module": "Shakisha ibyiciro",
+    "risk_of_harm": "Iki cyiciro cyateza ibyago",
+    "risk_of_harm_description": "Iki cyiciro kiri mu bintu by'ingenzi bikwiye kwitabwaho."
   },
   "History": {
-    "all": "All",
-    "synced": "Ibishya",
+    "all": "Byose",
+    "synced": "Ibyakunze",
     "pending": "Ibitaragenda",
     "submissions": "Ibyabaruwe",
     "lastSubmission": "Itariki y'ubarura",
     "search_form": "Shakisha amafishi",
-    "submission_detail": "Ibyabaruwe"
+    "submission_detail": "Ibyabaruwe",
+    "not_answered": "Ntabwo byasubijwe",
+    "family_submissions": "Ibyabaruwe by'Umuryango",
+    "createdAt": "Byakozwe ku",
+    "lastSync": "Biheruka guhurizwa ku",
+    "noSubmissions": "Nta byabaruwe",
+    "family_detail": "Ibisobanuro by'Umuryango",
+    "submitted_at": "Byoherejwe ku",
+    "time_spent": "Igihe byatwaye",
+    "status": "Imiterere",
+    "type": "Ubwoko",
+    "family_data": "Amakuru y'Umuryango",
+    "answers": "Ibisubizo",
+    "additional_info": "Amakuru y'inyongera"
   },
   "IzuMonitoringPage": {
-    "title": "Genzura IZU",
+    "title": "Kugenzura IZU",
     "all_izu": "IZU zose",
     "izu": "IZU",
     "search_izu": "Shakisha IZU"
@@ -131,11 +235,11 @@
     "sync": "Emeza ibishya",
     "account": "Konti",
     "home": "Itangiriro",
-    "account_details": "Amakuru ku Mudasobwa",
+    "account_details": "Amakuru ya konti",
     "name": "Izina",
     "email": "Imeli",
     "phone": "Telefone",
-    "user_code": "Kode y'Umukoresha",
+    "user_code": "Kode y'uri gukoresha sisitemu",
     "date_of_enrollment": "Itariki y'iyandikwa",
     "incentives": "Inyungu",
     "change_language": "Hindura Ururimi",
@@ -143,7 +247,14 @@
     "change_font_size": "Hindura Ingano y'inyuguti",
     "adjust_font_size": "Hindura Ingano y'inyuguti",
     "preview_text": "Reba ingano",
-    "close": "Funga"
+    "close": "Funga",
+    "location": "Ahantu",
+    "province": "Intara",
+    "district": "Akarere",
+    "sector": "Umurenge",
+    "cell": "Akagari",
+    "village": "Umudugudu",
+    "logout": "Sohoka"
   },
   "CommunityPage": {
     "title": "Ibitekerezo",
@@ -160,23 +271,83 @@
   "Videos": {
     "title": "Video",
     "single_video": "Video",
-    "downloaded": "Byatanzwe"
+    "downloaded": "Ibyakuruwe",
+    "playVideo": "Tangira",
+    "pauseVideo": "Hagarika",
+    "error": "Ikosa",
+    "fetchError": "Ntabashije kubona amavidewo. Mwongere mugerageze nyuma.",
+    "downloadError": "URL ya video irimo ikosa.",
+    "permissionRequired": "Mutange uburenganzira bwo kubika.",
+    "alreadyDownloaded": "Iyi video yamaze kubikwa.",
+    "downloadComplete": "Video yabitswe neza!",
+    "no_videos": "Nta video ihari",
+    "no_downloaded": "Nta video yakuruwe",
+    "not_found": "Video nta yiirimo",
+    "loading": "Tegereza video...",
+    "loading_video": "Video irimo gutegurwa..."
   },
   "PinPage": {
     "title": "Shyiramo Pin",
-    "description": "Shyiramo imibare ine (4), yanyuma ya telephone",
+    "description": "Shyiramo imibare ine (4)",
     "verify": "Emeza"
   },
   "StatisticsPage": {
-    "title": "Ibyo aba Izu babonye",
-    "izu_statistics": "Ibyo Izu yabonye",
-    "cohort_id": "ID y'itsinda",
-    "family_id": "ID y'imiryango",
+    "title": "Ibyo aba Izu babonye (ibarurishamibare)",
+    "izu_statistics": "Ibyo Izu yabonye (ibarurishamibare)",
+    "cohort_id": "Umubare uranga itsinda",
+    "family_id": "Umubare uranga imiryango",
     "family_name": "Izina ryawe",
     "total_families": "Imiryango yose",
     "visits": "Ibyo wabonye",
     "families": "Imiryango",
     "risk_of_harms": "Iki cyiciro cyateza ibyago",
-    "total_visits": "Ibyo wabonye byose"
-  }
+    "total_visits": "Ibyo wabonye byose",
+    "visits_done": "Gusura kwakozwe",
+    "performance_score": "Amanota y'imikorere",
+    "score_details": "Ibisobanuro ku manota"
+  },
+  "Notifications": {
+    "title": "Amatangazo",
+    "pending": "Biracyategereje",
+    "resolved": "Byakemuwe",
+    "by": "Na",
+    "followup_date": "Gukurikirana",
+    "notification_detail": "Ibisobanuro by'itangazo",
+    "item_details": "Ibisobanuro bindi",
+    "followups": "Ibikurikiranwa",
+    "no_details": "Nta bisobanuro bindi bihari",
+    "add_followup": "Ongeraho ko bizakurikiranwa",
+    "no_followups": "Nta gukurikirana bihari",
+    "pending_sync": "Guhuza biracyategereje",
+    "success": "Byagenze neza",
+    "notice": "Itangazo",
+    "error": "Ikosa",
+    "followup_error": "Ntibishoboye kongera gukurikirana",
+    "saving": "Kubika...",
+    "save_followup": "Bika ibizakurikiranwa",
+    "no_notifications": "Nta tangazo rihari"
+  },
+  "Sync": {
+    "success": "Byagenze neza",
+    "error": "Ikosa",
+    "info": "Amakuru",
+    "allSynced": "Ibice byose byahurijwe hamwe neza",
+    "formSyncFailed": "Kuhuza amafishi n'amasuzuma byanze",
+    "noPendingSubmissions": "Nta byabaruwe bitegereje kuhuza",
+    "syncDataFailed": "Kuhuza amakuru byanze",
+    "familySyncFailed": "Kuhuza imiryango byanze",
+    "izuSyncFailed": "Kuhuza IZU byanze",
+    "noNetworkErrors": "Nta makosa ya murandasi agomba kongera kugeragezwa",
+    "monitoringFailed": "Kuhuza ibisubizo byo kugenzura byanze"
+  },
+  "DateTimePicker": {
+    "selectDateTime": "Hitamo itariki/isaha"
+  },
+  "SubmissionExists": {
+    "title": "Ibyoherejwe Bimaze Kubaho"
+  },
+  "OnPhone": {
+    "label": "Kuri Telefoni"
+  },
+  "Close": "Funga"
 }

@@ -258,7 +258,7 @@ const CommunityScreen: React.FC = () => {
           <View className="flex-1 justify-center items-center bg-black/50">
             <View className="bg-white p-6 rounded-lg w-4/5">
               <View className="flex-row justify-between items-center mb-3">
-                <Text className="text-lg font-bold">Report Issue</Text>
+                <Text className="text-lg font-bold">{t("CommunityPage.report_issue")}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <Ionicons name="close" size={24} color="black" />
                 </TouchableOpacity>
@@ -266,14 +266,14 @@ const CommunityScreen: React.FC = () => {
 
               <TextInput
                 className="h-32 border px-2 border-[#E4E4E7] rounded-lg justify-start items-start flex-col"
-                placeholder="Add your post description here"
+                placeholder={t("CommunityPage.add_report_description")}
                 value={reportText}
                 onChangeText={setReportText}
                 multiline
                 numberOfLines={4}
               />
               <Button onPress={handleSendReport} className="mt-4">
-                <Text>Submit</Text>
+                <Text>{t("CommunityPage.submit")}</Text>
               </Button>
             </View>
           </View>

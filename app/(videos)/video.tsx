@@ -5,9 +5,8 @@ import {
   Pressable,
   Alert,
   FlatList,
-  Image,
-  RefreshControl,
   SafeAreaView,
+  ActivityIndicator,
 } from "react-native";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { router } from "expo-router";
@@ -18,16 +17,18 @@ import { PermissionStatus } from "expo-media-library";
 import Svg, { Circle } from "react-native-svg";
 import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
+import { IVideo } from "~/services/videos";
+import { useVideos } from "~/services/useVideo";
 
 const VideoScreen = () => {
   const { t } = useTranslation();
-  const baseUrl = "https://continuous.sugiramuryango.org.rw/public/videos/";
+  const baseUrl = "https://sugiramuryango.project.co.rw/videos/";
+  const { data: videos = [], isLoading, isError, error, refetch } = useVideos();
+  // console.log("videos", JSON.stringify(videos, null, 2));
   const [downloadProgress, setDownloadProgress] = useState<{
     [key: number]: number;
   }>({});
-  const [downloading, setDownloading] = useState<{ [key: number]: boolean }>(
-    {}
-  );
+  const [downloading, setDownloading] = useState<{ [key: number]: boolean }>({});
   const [downloaded, setDownloaded] = useState<{ [key: number]: boolean }>({});
   const [downloadResumables, setDownloadResumables] = useState<{
     [key: number]: FileSystem.DownloadResumable | null;
@@ -35,87 +36,48 @@ const VideoScreen = () => {
   const [currentTab, setCurrentTab] = useState<"All" | "Downloaded">("All");
   const [refreshing, setRefreshing] = useState(false);
 
-  const videos = [
-    {
-      id: 1,
-      title: "Language Development",
-      path: "1733815813_Language%20Development.mp4",
-      source: `${baseUrl}1733815813_Language%20Development.mp4`,
-      description:
-        "This video provides deep insights into how family dynamics influence individual well-being. It explores the importance of effective communication, mutual respect, and shared responsibilities in building a strong family unit. Through real-life examples and expert opinions, viewers will learn strategies for resolving conflicts, fostering emotional intelligence, and maintaining healthy relationships. The video also sheds light on the psychological impact of family conflicts and offers solutions to strengthen family bonds through meaningful conversations and active listening. Whether you're a parent, sibling, or relative, this resource serves as an essential guide to understanding and navigating family matters in a supportive and constructive manner.",
-    },
-    {
-      id: 2,
-      title: "Father Engagement",
-      path: "Father Engagement.mp4",
-      source: `${baseUrl}Father Engagement.mp4`,
-      description:
-        "Family unions are crucial for maintaining emotional and social connections among relatives. This video explores the significance of regular family gatherings, traditions, and shared activities in fostering unity and belonging. Experts discuss the psychological benefits of reconnecting with extended family members and how it contributes to mental well-being. Additionally, practical tips on organizing successful family reunions, managing conflicts, and ensuring inclusivity are provided. The video highlights cultural traditions that emphasize the importance of togetherness and offers actionable steps to create memorable and meaningful family experiences.",
-    },
-    {
-      id: 3,
-      title: "Observing Proper Nutritional Practices",
-      path: "Observing%20Proper%20Nutritional%20Practices.mp4",
-      source: `${baseUrl}Observing%20Proper%20Nutritional%20Practices.mp4`,
-      description:
-        "Family gatherings are special occasions that bring loved ones together to celebrate, share stories, and create lasting memories. This video showcases the joy and warmth of family reunions, highlighting the importance of bonding over food, music, and laughter. Viewers will learn about the cultural significance of family gatherings and the role they play in preserving traditions and strengthening relationships. Experts provide insights on the psychological benefits of socializing with family members and offer advice on overcoming common challenges during family events. Whether it's a holiday celebration or a casual get-together, this resource inspires viewers to cherish their family connections and create meaningful experiences together.",
-    },
-    {
-      id: 4,
-      title: "Positive Parenting",
-      path: "Positive%20Parenting%20-26%20July.mp4",
-      source: `${baseUrl}Positive%20Parenting%20-26%20July.mp4`,
-      description:
-        "Helping children navigate the complexities of family life is essential for their emotional and social development. This video offers practical tips and expert advice on supporting children through various life stages, from infancy to adolescence. Viewers will learn about effective parenting strategies, communication techniques, and conflict resolution skills to nurture healthy family relationships. The video addresses common challenges faced by children and parents, such as sibling rivalry, academic pressure, and emotional distress, and provides guidance on fostering resilience and empathy. By promoting open dialogue and understanding within the family, viewers can create a supportive environment that promotes children's well-being and growth.",
-    },
-    {
-      id: 5,
-      title: "Stress Management & Conflict Resolution Techniques",
-      path: "Stress%20Management%20Conflict%20Resolution%20Techniques.mp4",
-      source: `${baseUrl}Stress%20Management%20Conflict%20Resolution%20Techniques.mp4`,
-      description:
-        "Helping children navigate the complexities of family life is essential for their emotional and social development. This video offers practical tips and expert advice on supporting children through various life stages, from infancy to adolescence. Viewers will learn about effective parenting strategies, communication techniques, and conflict resolution skills to nurture healthy family relationships. The video addresses common challenges faced by children and parents, such as sibling rivalry, academic pressure, and emotional distress, and provides guidance on fostering resilience and empathy. By promoting open dialogue and understanding within the family, viewers can create a supportive environment that promotes children's well-being and growth.",
-    },
-  ];
-
   useEffect(() => {
     const checkDownloads = async () => {
       let downloadStatus: { [key: number]: boolean } = {};
       for (const video of videos) {
-        const filePath = `${FileSystem.documentDirectory}${video.title}.mp4`;
+        const filePath = `${FileSystem.documentDirectory}${video.name}.mp4`;
         const fileInfo = await FileSystem.getInfoAsync(filePath);
         downloadStatus[video.id] = fileInfo.exists;
       }
       setDownloaded(downloadStatus);
     };
-    checkDownloads();
-  }, []);
+    
+    if (videos.length > 0) {
+      checkDownloads();
+    }
+  }, [videos]);
 
-  const handleDownload = async (video: any) => {
-    if (!video.source) {
+  const handleDownload = async (video: IVideo) => {
+    const videoSource = `${baseUrl}${video.file_path}`;
+    if (!videoSource) {
       console.log("Video source not found", video);
-      Alert.alert("Download Error", "Invalid video URL.");
+      Alert.alert(t("Videos.error"), t("Videos.downloadError"));
       return;
     }
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== PermissionStatus.GRANTED) {
-        Alert.alert("Permission Required", "Please grant storage permissions.");
+        Alert.alert(t("Videos.permissionRequired"), t("Videos.permissionRequired"));
         return;
       }
 
-      const downloadPath = `${FileSystem.documentDirectory}${video.title}.mp4`;
+      const downloadPath = `${FileSystem.documentDirectory}${video.name}.mp4`;
 
       const fileInfo = await FileSystem.getInfoAsync(downloadPath);
       if (fileInfo.exists) {
-        Alert.alert("Already Downloaded", "This video is already saved.");
+        Alert.alert(t("Videos.alreadyDownloaded"), t("Videos.alreadyDownloaded"));
         return;
       }
 
       setDownloading((prev) => ({ ...prev, [video.id]: true }));
 
       const downloadResumable = FileSystem.createDownloadResumable(
-        video.source,
+        videoSource,
         downloadPath,
         {},
         (progress) => {
@@ -144,14 +106,14 @@ const VideoScreen = () => {
       setDownloadProgress((prev) => ({ ...prev, [video.id]: 0 }));
       setDownloaded((prev) => ({ ...prev, [video.id]: true }));
 
-      Alert.alert("Download Complete", `Video saved successfully!`);
+      Alert.alert(t("Videos.downloadComplete"), t("Videos.downloadComplete"));
     } catch (error) {
       console.error("Download failed:", error);
       setDownloading((prev) => ({ ...prev, [video.id]: false }));
       setDownloadProgress((prev) => ({ ...prev, [video.id]: 0 }));
       Alert.alert(
-        "Download Failed",
-        "An error occurred while downloading the video."
+        t("Videos.error"),
+        t("Videos.downloadError")
       );
     }
   };
@@ -168,18 +130,58 @@ const VideoScreen = () => {
     setCurrentTab(tab);
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
+
   // Filter videos based on the current tab
   const filteredVideos =
     currentTab === "All"
       ? videos
       : videos.filter((video) => downloaded[video.id]);
 
-  // const onRefresh = async () => {
-  //   setRefreshing(true);
-  //   // Check if the videos array has no new items
+  if (isLoading && videos.length === 0) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <HeaderNavigation
+          showLeft={true}
+          showRight={true}
+          title={t("Videos.title")}
+        />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#A23A91" />
+          <Text className="mt-4 text-gray-600">{t("Videos.loading_data", "Loading videos...")}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  //   setRefreshing(false);
-  // };
+  if (isError) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <HeaderNavigation
+          showLeft={true}
+          showRight={true}
+          title={t("Videos.title")}
+        />
+        <View className="flex-1 items-center justify-center p-4">
+          <Text className="text-xl text-red-500 mb-4">{t("Videos.error", "Error loading videos")}</Text>
+          <Text className="text-gray-600 text-center mb-8">
+            {error instanceof Error ? error.message : t("Videos.unknown_error", "An unknown error occurred")}
+          </Text>
+          <TouchableOpacity 
+            onPress={() => refetch()} 
+            className="bg-primary px-6 py-3 rounded-full"
+          >
+            <Text className="text-white font-semibold">{t("Common.try_again", "Try Again")}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation
@@ -200,7 +202,7 @@ const VideoScreen = () => {
                 currentTab === "All" ? "text-primary" : "text-gray-800"
               }`}
             >
-              All
+              {t("History.all")}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -214,13 +216,24 @@ const VideoScreen = () => {
                 currentTab === "Downloaded" ? "text-primary" : "text-gray-800"
               }`}
             >
-              Downloaded
+              {t("Videos.downloaded")}
             </Text>
           </TouchableOpacity>
         </View>
         <FlatList
           data={filteredVideos}
           keyExtractor={(item) => item.id.toString()}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          ListEmptyComponent={() => (
+            <View className="flex-1 items-center justify-center py-20">
+              <Text className="text-gray-500">
+                {currentTab === "All" 
+                  ? t("Videos.no_videos") 
+                  : t("Videos.no_downloaded")}
+              </Text>
+            </View>
+          )}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => router.push(`/(videos)/${item.id}`)}
@@ -230,7 +243,7 @@ const VideoScreen = () => {
                 <TabBarIcon name="video" family="Entypo" />
                 <View className="w-3/4">
                   <Text className="text-lg font-semibold flex-wrap w-full">
-                    {item.title}
+                    {item.name}
                   </Text>
                   <Text className="text-gray-500 text-xs/1 line-clamp-2 line py-2">
                     {item.description}
@@ -245,7 +258,7 @@ const VideoScreen = () => {
                           color="#4CAF50"
                         />
                         <Text className="text-green-600 font-semibold text-xs/1">
-                          {t("Video downloaded") || "Downloaded"}
+                          {t("Videos.downloaded")}
                         </Text>
                       </>
                     ) : null}

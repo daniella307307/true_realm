@@ -5,89 +5,62 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   SafeAreaView,
+  RefreshControl,
 } from "react-native";
-import { useState, useEffect } from "react";
-import { useLocalSearchParams } from "expo-router";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocalSearchParams, router } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
 import * as FileSystem from "expo-file-system";
+import { useVideo } from "~/services/useVideo";
 
 const VideoIndexScreen = () => {
   const { vidId } = useLocalSearchParams();
+  const videoId = typeof vidId === 'string' ? vidId : Array.isArray(vidId) ? vidId[0] : undefined;
+  const { t } = useTranslation();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [player, setPlayer] = useState<ReturnType<typeof useVideoPlayer> | null>(null);
+  const [playerLoading, setPlayerLoading] = useState(true);
   const [videoSource, setVideoSource] = useState<string>("");
   const [isLocal, setIsLocal] = useState(false);
-  const videos = [
-    {
-      id: 1,
-      title: "Language Development",
-      path: "1733815813_Language%20Development.mp4",
-      description:
-        "This video provides deep insights into how family dynamics influence individual well-being. It explores the importance of effective communication, mutual respect, and shared responsibilities in building a strong family unit. Through real-life examples and expert opinions, viewers will learn strategies for resolving conflicts, fostering emotional intelligence, and maintaining healthy relationships. The video also sheds light on the psychological impact of family conflicts and offers solutions to strengthen family bonds through meaningful conversations and active listening. Whether you're a parent, sibling, or relative, this resource serves as an essential guide to understanding and navigating family matters in a supportive and constructive manner.",
-    },
-    {
-      id: 2,
-      title: "Father Engagement.mp4",
-      path: "Father Engagement.mp4",
-      description:
-        "Family unions are crucial for maintaining emotional and social connections among relatives. This video explores the significance of regular family gatherings, traditions, and shared activities in fostering unity and belonging. Experts discuss the psychological benefits of reconnecting with extended family members and how it contributes to mental well-being. Additionally, practical tips on organizing successful family reunions, managing conflicts, and ensuring inclusivity are provided. The video highlights cultural traditions that emphasize the importance of togetherness and offers actionable steps to create memorable and meaningful family experiences.",
-    },
-    {
-      id: 3,
-      title: "Observing Proper Nutritional Practices",
-      path: "Observing%20Proper%20Nutritional%20Practices.mp4",
-      description:
-        "Family gatherings are special occasions that bring loved ones together to celebrate, share stories, and create lasting memories. This video showcases the joy and warmth of family reunions, highlighting the importance of bonding over food, music, and laughter. Viewers will learn about the cultural significance of family gatherings and the role they play in preserving traditions and strengthening relationships. Experts provide insights on the psychological benefits of socializing with family members and offer advice on overcoming common challenges during family events. Whether it's a holiday celebration or a casual get-together, this resource inspires viewers to cherish their family connections and create meaningful experiences together.",
-    },
-    {
-      id: 4,
-      title: "Positive Parenting",
-      path: "Positive%20Parenting%20-26%20July.mp4",
-      description:
-        "Helping children navigate the complexities of family life is essential for their emotional and social development. This video offers practical tips and expert advice on supporting children through various life stages, from infancy to adolescence. Viewers will learn about effective parenting strategies, communication techniques, and conflict resolution skills to nurture healthy family relationships. The video addresses common challenges faced by children and parents, such as sibling rivalry, academic pressure, and emotional distress, and provides guidance on fostering resilience and empathy. By promoting open dialogue and understanding within the family, viewers can create a supportive environment that promotes children's well-being and growth.",
-    },
-    {
-      id: 5,
-      title: "Stress Management & Conflict Resolution Techniques",
-      path: "Positive%20Parenting%20-26%20July.mp4",
-      description:
-        "Helping children navigate the complexities of family life is essential for their emotional and social development. This video offers practical tips and expert advice on supporting children through various life stages, from infancy to adolescence. Viewers will learn about effective parenting strategies, communication techniques, and conflict resolution skills to nurture healthy family relationships. The video addresses common challenges faced by children and parents, such as sibling rivalry, academic pressure, and emotional distress, and provides guidance on fostering resilience and empathy. By promoting open dialogue and understanding within the family, viewers can create a supportive environment that promotes children's well-being and growth.",
-    },
-  ];
+  
+  const { 
+    data: video, 
+    isLoading, 
+    isError, 
+    refetch
+  } = useVideo(Number(videoId));
 
-  const video = videos.find((v) => v.id === Number(vidId));
+  const player = useVideoPlayer(videoSource, (playerInstance) => {
+    if (playerInstance) {
+      playerInstance.loop = true;
+    }
+  });
+
+  useEffect(() => {
+    if (videoSource) {
+      setPlayerLoading(false);
+    }
+  }, [videoSource, player]);
 
   useEffect(() => {
     const checkLocalVideo = async () => {
       if (!video) return;
       
-      const localPath = `${FileSystem.documentDirectory}${video.title}.mp4`;
+      const localPath = `${FileSystem.documentDirectory}${video.name}.mp4`;
       const fileInfo = await FileSystem.getInfoAsync(localPath);
       
       if (fileInfo.exists) {
         setVideoSource(localPath);
         setIsLocal(true);
       } else {
-        setVideoSource(`https://continuous.sugiramuryango.org.rw/public/videos/${video.path}`);
+        setVideoSource(`https://sugiramuryango.project.co.rw/videos/${video.file_path}`);
         setIsLocal(false);
       }
     };
 
     checkLocalVideo();
   }, [video]);
-
-  useEffect(() => {
-    if (videoSource) {
-      const videoPlayer = useVideoPlayer(videoSource, (playerInstance) => {
-        playerInstance.loop = true;
-      });
-      setPlayer(videoPlayer);
-      setIsLoading(false);
-    }
-  }, [videoSource]);
 
   const togglePlayPause = () => {
     if (isPlaying) {
@@ -98,15 +71,75 @@ const VideoIndexScreen = () => {
     setIsPlaying(!isPlaying);
   };
 
-  if (!video) {
+  const onRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <Text className="text-xl text-red-500">Video not found!</Text>
-      </View>
+      <SafeAreaView className="flex-1 bg-background">
+        <HeaderNavigation
+          showLeft={true}
+          showRight={true}
+          title={t("Videos.single_video")}
+        />
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#A23A91" />
+          <Text className="mt-4 text-gray-600">{t("Videos.loading_video")}</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
-  const { t } = useTranslation();
+  if (isError) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <HeaderNavigation
+          showLeft={true}
+          showRight={true}
+          title={t("Videos.single_video")}
+        />
+        <View className="flex-1 items-center justify-center p-4">
+          <Text className="text-xl text-red-500 mb-4">{t("Videos.error")}</Text>
+          <Text className="text-gray-600 text-center mb-8">{t("Videos.fetchError")}</Text>
+          <TouchableOpacity 
+            onPress={() => refetch()} 
+            className="bg-primary px-6 py-3 rounded-full"
+          >
+            <Text className="text-white font-semibold">{t("Common.try_again")}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => router.back()} 
+            className="mt-4 px-6 py-3"
+          >
+            <Text className="text-primary font-semibold">{t("Common.go_back")}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!video) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <HeaderNavigation
+          showLeft={true}
+          showRight={true}
+          title={t("Videos.single_video")}
+        />
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-xl text-red-500">{t("Videos.not_found")}</Text>
+          <TouchableOpacity 
+            onPress={() => router.back()} 
+            className="mt-4 px-6 py-3"
+          >
+            <Text className="text-primary font-semibold">{t("Common.go_back")}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation
@@ -114,12 +147,18 @@ const VideoIndexScreen = () => {
         showRight={true}
         title={t("Videos.single_video")}
       />
-      <ScrollView showsVerticalScrollIndicator={false} className="p-4 px-6">
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        className="p-4 px-6"
+        refreshControl={
+          <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
+        }
+      >
         <View className="w-full h-56 rounded-lg overflow-hidden bg-gray-100">
-          {isLoading && (
+          {playerLoading && (
             <View className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-              <ActivityIndicator size="large" color="#0000ff" />
-              <Text className="mt-2 text-gray-600">Loading video...</Text>
+              <ActivityIndicator size="large" color="#A23A91" />
+              <Text className="mt-2 text-gray-600">{t("Videos.loading")}</Text>
             </View>
           )}
           {player && (
@@ -140,17 +179,17 @@ const VideoIndexScreen = () => {
             className="absolute top-4 right-4 bg-white/80 px-4 py-2 rounded-full z-20"
           >
             <Text className="font-semibold">
-              {isPlaying ? "Pause" : "Play"}
+              {isPlaying ? t("Videos.pauseVideo") : t("Videos.playVideo")}
             </Text>
           </TouchableOpacity>
           {isLocal && (
             <View className="absolute top-4 left-4 bg-green-500/80 px-4 py-2 rounded-full z-20">
-              <Text className="font-semibold text-white">Local</Text>
+              <Text className="font-semibold text-white">{t("Videos.downloaded")}</Text>
             </View>
           )}
         </View>
         <Text className="text-xl font-bold text-gray-800 mt-4">
-          {video.title}
+          {video.name}
         </Text>
         <Text className="text-gray-600 mt-2 text-base">
           {video.description}

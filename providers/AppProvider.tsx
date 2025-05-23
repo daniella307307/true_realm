@@ -8,7 +8,7 @@ import { useGetStakeholders } from "~/services/stakeholders";
 import { useGetCohorts } from "~/services/cohorts";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useGetNotifications } from '~/services/notifications';
-import { useGetAllSurveySubmissions, useGetRemoteSurveySubmissions } from '~/services/survey-submission';
+import { useGetAllSurveySubmissions } from '~/services/survey-submission';
 import { useGetMonitoringForms } from '~/services/monitoring/monitoring-forms';
 import { useGetMonitoringModules } from '~/services/monitoring/monitoring-module';
 import { useGetMonitoringResponses } from '~/services/monitoring/monitoring-responses';
@@ -44,9 +44,9 @@ export const AppDataProvider: React.FC<{children: React.ReactNode}> = ({ childre
   const { refresh: refreshNotifications } = useGetNotifications(true);
   const { refresh: refreshMonitoringModules } = useGetMonitoringModules(true);
   const { refresh: refreshMonitoringForms } = useGetMonitoringForms(true);
-  const { refresh: refreshRemoteSurveySubmissions } = useGetRemoteSurveySubmissions(true);
   const { refresh: refreshMonitoringResponses } = useGetMonitoringResponses(true);
   const { refresh: refreshFollowUps } = useGetAllFollowUps(true);
+  const { refresh: refreshSurveySubmissions } = useGetAllSurveySubmissions(true);
   const refreshAllData = async () => {
     try {
       setIsRefreshing(true);
@@ -63,7 +63,7 @@ export const AppDataProvider: React.FC<{children: React.ReactNode}> = ({ childre
         refreshNotifications(),
         refreshMonitoringModules(),
         refreshMonitoringForms(),
-        refreshRemoteSurveySubmissions(),
+        refreshSurveySubmissions(),
         refreshMonitoringResponses(),
         refreshFollowUps(),
       ]);

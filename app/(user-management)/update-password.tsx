@@ -121,7 +121,14 @@ export default function UpdatePasswordScreen() {
 
   return (
     <SafeAreaView className="flex-1 justify-center items-center flex-col gap-y-12 p-8 bg-background">
-      <Logo size={96} />
+      <View>
+        <Text className="text-2xl font-bold text-center">
+          {t("UpdatePassword.title", "Update password")}
+        </Text>
+        <Text className="text-sm text-center text-gray-500">
+          {t("UpdatePassword.subtitle", "Please enter your new password below")}
+        </Text>
+      </View>
       
       <KeyboardAvoidingView 
         className="w-full" 
@@ -134,7 +141,7 @@ export default function UpdatePasswordScreen() {
         >
           <View>
             <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-              {t("UpdatePassword.newPassword")}
+              {t("UpdatePassword.newPassword", "New password")}
             </Text>
             <Controller
               control={control}

@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { router, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 
 import CustomInput from "~/components/ui/input";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
@@ -20,7 +21,6 @@ import { Text } from "~/components/ui/text";
 import { useForm } from "react-hook-form";
 import { useGetAllModules } from "~/services/project";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
-import { useTranslation } from "react-i18next";
 import { useGetFormByProjectAndModule } from "~/services/formElements";
 import { Survey } from "~/models/surveys/survey";
 import { NotFound } from "~/components/ui/not-found";
@@ -28,14 +28,15 @@ import { useGetAllLocallyCreatedFamilies } from "~/services/families";
 import { useGetAllLocallyCreatedIzus } from "~/services/izus";
 
 const ProjectModuleScreens = () => {
+  const { t } = useTranslation();
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   console.log("Project ID: ", projectId);
 
   if (!projectId) {
     return (
       <NotFound
-        title="Project ID not found"
-        description="Please check the project ID and try again."
+        title={t("HistoryModulePage.project_id_not_found")}
+        description={t("HistoryModulePage.check_project_id")}
         redirectTo={() => router.back()}
       />
     );
@@ -48,9 +49,8 @@ const ProjectModuleScreens = () => {
   } = useGetAllModules();
 
   const {
-    surveySubmissions,
+    submissions: surveySubmissions,
     isLoading: surveySubmissionsLoading,
-    refresh: refreshSubmissions,
   } = useGetAllSurveySubmissions();
 
   const {
@@ -71,7 +71,6 @@ const ProjectModuleScreens = () => {
     isLoadingFamilies ||
     isLoadingIzus;
 
-  const { t } = useTranslation();
   const { control, watch } = useForm({
     defaultValues: {
       searchQuery: "",
@@ -186,7 +185,6 @@ const ProjectModuleScreens = () => {
     setRefreshing(true);
     await Promise.all([
       refreshModules(),
-      refreshSubmissions(),
       refreshFamilies(),
       refreshIzus(),
     ]);
@@ -271,11 +269,10 @@ const ProjectModuleScreens = () => {
           </View>
           <View className="flex flex-col justify-between items-start mt-2">
             <Text className="text-sm text-gray-500">
-              {t("History.submissions", "Submissions")}:{" "}
-              {sortedSubmissions.length}
+              {t("History.submissions")}: {sortedSubmissions.length}
             </Text>
             <Text className="text-sm text-gray-500">
-              Last Submission:
+              {t("History.lastSubmission")}:{" "}
               {lastSubmission !== null
                 ? new Date(lastSubmission).toLocaleDateString("en-GB", {
                     day: "2-digit",
@@ -285,7 +282,7 @@ const ProjectModuleScreens = () => {
                     minute: "2-digit",
                     hour12: false,
                   })
-                : t("History.noSubmissions", "No submissions")}
+                : t("History.noSubmissions")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -349,11 +346,10 @@ const ProjectModuleScreens = () => {
           </Text> */}
           <View className="flex flex-col justify-between items-start mt-2">
             <Text className="text-sm text-gray-500">
-              {t("History.submissions", "Submissions")}:{" "}
-              {sortedSubmissions.length}
+              {t("History.submissions")}: {sortedSubmissions.length}
             </Text>
             <Text className="text-sm text-gray-500">
-              Last Submission:{" "}
+              {t("History.lastSubmission")}:{" "}
               {lastSubmission !== null
                 ? new Date(lastSubmission).toLocaleDateString("en-GB", {
                     day: "2-digit",
@@ -363,7 +359,7 @@ const ProjectModuleScreens = () => {
                     minute: "2-digit",
                     hour12: false,
                   })
-                : t("History.noSubmissions", "No submissions")}
+                : t("History.noSubmissions")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -401,7 +397,7 @@ const ProjectModuleScreens = () => {
             keyExtractor={(item, index) => `${item?.id}-${index}`}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={() => (
-              <EmptyDynamicComponent message="No modules with submissions found" />
+              <EmptyDynamicComponent message={t("History.no_modules_found")} />
             )}
             ListHeaderComponent={() =>
               hasRiskOfHarmWithSubmissions ? (
@@ -425,8 +421,7 @@ const ProjectModuleScreens = () => {
                   </Text>
                   <View className="flex flex-row justify-between items-center mt-2">
                     <Text className="text-sm text-gray-500">
-                      {t("History.submissions", "Submissions")}:{" "}
-                      {
+                      {t("History.submissions")}: {
                         surveySubmissions.filter(
                           (submission) =>
                             submission.form_data?.project_id ===
@@ -436,7 +431,7 @@ const ProjectModuleScreens = () => {
                       }
                     </Text>
                     <Text className="text-sm text-gray-500">
-                      {t("History.lastSubmission", "Last submission")}:{" "}
+                      {t("History.lastSubmission")}:{" "}
                       {(() => {
                         const riskSubmissions = surveySubmissions
                           .filter(
@@ -466,7 +461,7 @@ const ProjectModuleScreens = () => {
                               minute: "2-digit",
                               hour12: false,
                             })
-                          : t("History.noSubmissions", "No submissions");
+                          : t("History.noSubmissions");
                       })()}
                     </Text>
                   </View>
@@ -479,7 +474,7 @@ const ProjectModuleScreens = () => {
                 refreshing={refreshing}
                 onRefresh={onRefresh}
                 tintColor="#A23A91"
-                title="Pull to refresh"
+                title={t("Common.pull_to_refresh")}
                 titleColor="#A23A91"
               />
             }

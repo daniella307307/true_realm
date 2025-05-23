@@ -33,8 +33,8 @@ const MonitoringFormsScreen = () => {
   if (!modId) {
     return (
       <NotFound 
-        title="Module not found"
-        description="Please try again"
+        title={t("ModulePage.not_found")}
+        description={t("Common.try_again")}
         redirectTo={() => router.back()}
       />
     );
@@ -139,7 +139,7 @@ const MonitoringFormsScreen = () => {
       <HeaderNavigation
         showLeft={true}
         showRight={true}
-        title={t("FormPage.monitoring_title", "Monitoring Forms")}
+        title={t("FormPage.monitoring_title")}
       />
 
       <FlatList
@@ -152,7 +152,7 @@ const MonitoringFormsScreen = () => {
           isLoading ? (
             renderContent()
           ) : (
-            <EmptyDynamicComponent message="No monitoring forms available" />
+            <EmptyDynamicComponent message={t("FormPage.empty_monitoring_forms")} />
           )
         }
         contentContainerStyle={{
