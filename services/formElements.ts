@@ -106,9 +106,28 @@ export function useGetFormByProjectAndModule(
 }
 
 export function useGetFormById(formId: number, project_module_id: number, source_module_id: number, project_id: number) {
-  const { forms, isLoading, error, lastSyncTime, refresh } = useGetForms();
+  const storedForms = useQuery(Survey);
+  
   const form = useMemo(() => {
-    return forms.find((form) => form.id === formId && form.project_module_id === project_module_id && form.source_module_id === source_module_id && form.project_id === project_id);
-  }, [forms, formId, project_module_id, source_module_id, project_id]);
-  return { form, isLoading, error, lastSyncTime, refresh };
+    try {
+      return storedForms.find(
+        (form) => 
+          form.id === formId && 
+          form.project_module_id === project_module_id && 
+          form.source_module_id === source_module_id && 
+          form.project_id === project_id
+      );
+    } catch (error) {
+      console.error("Error accessing form from Realm:", error);
+      return null;
+    }
+  }, [storedForms, formId, project_module_id, source_module_id, project_id]);
+
+  return {
+    form,
+    isLoading: false,
+    error: null,
+    lastSyncTime: null,
+    refresh: () => {}
+  };
 }

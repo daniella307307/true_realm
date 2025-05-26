@@ -75,6 +75,14 @@ const DetailScreen = () => {
     locallyCreatedIzus,
   ]);
 
+  // Get the village ID from dataItem
+  const villageId = useMemo(() => {
+    return (dataItem as any)?.location?.village;
+  }, [dataItem]);
+
+  // Get location data
+  const { data: locationData } = useGetLocationByVillageIdOffline(villageId);
+
   // Get family information
   const foundFamily = useMemo(() => {
     if (isFamilyDetail) {
@@ -145,20 +153,6 @@ const DetailScreen = () => {
     }
     try {
       const formDefinition = JSON.parse(form.json2);
-      // console.log(
-      //   "Parsed form definition:",
-      //   formDefinition
-      // );
-      
-      // // Log detailed structure of each component's title property
-      // if (formDefinition?.components && Array.isArray(formDefinition.components)) {
-      //   formDefinition.components.forEach((comp: any, index: number) => {
-      //     if (comp.title) {
-      //       console.log(`Title object for component ${index} (${comp.key}):`, JSON.stringify(comp.title));
-      //     }
-      //   });
-      // }
-      
       const map: { [key: string]: string } = {};
       const isKinyarwanda = i18n.language === "rw-RW";
 
@@ -280,10 +274,6 @@ const DetailScreen = () => {
   const izuCode = (dataItem as any)?.form_data?.izucode;
   const cohort = (dataItem as any)?.form_data?.cohort || foundFamily?.cohort;
 
-  const { data: locationData } = useGetLocationByVillageIdOffline(
-    (dataItem as any)?.location?.village
-  );
-
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation
@@ -311,7 +301,7 @@ const DetailScreen = () => {
               </Text>
               {(dataItem as any)?.location?.village && (
                 <Text className="text-gray-600">
-                  {t("Common.village")}: {locationData?.location.village.village_name}
+                  {t("Common.village")}: {locationData?.location?.village?.village_name}
                 </Text>
               )}
               {(dataItem as any)?.form_data?.izucode && (
