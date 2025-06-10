@@ -3,10 +3,14 @@ import { baseInstance } from "~/utils/axios";
 import { useDataSync } from "./dataSync";
 import { FollowUps } from "~/models/followups/follow-up";
 import { isOnline } from "./network";
-import { useMainStore } from "~/lib/store/main";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useMemo } from "react";
 import { filterDataByUserId } from "./filterData";
+import { SyncType } from "~/types";
+import Toast from "react-native-toast-message";
+import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { TFunction } from "i18next";
 
 const { useQuery, useRealm } = RealmContext;
 
@@ -75,8 +79,10 @@ export async function fetchFollowUpsFromRemote() {
       sync_status: true,
       sync_reason: "Synced from server",
       sync_attempts: 1,
+      sync_type: SyncType.follow_ups,
       last_sync_attempt: new Date().toISOString(),
       submitted_at: new Date().toISOString(),
+      created_by_user_id: followup.user.id,
     },
   }));
 }
@@ -111,6 +117,7 @@ export function useGetAllFollowUps(forceSync: boolean = false) {
             sync_status: true,
             sync_reason: "Fetched from server",
             sync_attempts: 0,
+            sync_type: SyncType.follow_ups,
             last_sync_attempt: new Date().toISOString(),
             submitted_at: new Date().toISOString(),
           },
@@ -146,22 +153,38 @@ function createTemporaryFollowup(
   realm: Realm,
   followupData: Record<string, any>
 ): FollowUps {
+  // We'll keep the same ID format but mark it as temporary
   const localId = getNextAvailableId(realm);
 
+  // Add sync data using values from sanitized data if available
   const syncData = {
-    sync_status: false,
+    sync_status: followupData.sync_data?.sync_status ?? false,
+    sync_type: followupData.sync_data?.sync_type ?? SyncType.follow_ups,
     sync_reason: "Created offline",
-    sync_attempts: 0,
-    last_sync_attempt: new Date().toISOString(),
-    submitted_at: new Date().toISOString(),
-    created_by_user_id: followupData.user.id,
+    sync_attempts: followupData.sync_data?.sync_attempts ?? 0,
+    last_sync_attempt: followupData.sync_data?.last_sync_attempt ?? new Date().toISOString(),
+    submitted_at: followupData.sync_data?.submitted_at ?? new Date().toISOString(),
+    created_by_user_id: followupData.sync_data?.created_by_user_id,
   };
 
-  return createFollowupWithMeta(realm, {
-    ...followupData,
-    id: localId,
-    sync_data: syncData,
-  });
+  let response: FollowUps;
+  
+  if (realm.isInTransaction) {
+    response = createFollowupWithMeta(realm, {
+      ...followupData,
+      id: localId,
+      sync_data: syncData,
+    });
+  } else {
+    realm.write(() => {
+      response = createFollowupWithMeta(realm, {
+        ...followupData,
+        id: localId,
+        sync_data: syncData,
+      });
+    });
+  }
+  return response!;
 }
 
 function createFollowupWithMeta(
@@ -187,55 +210,138 @@ function createFollowupWithMeta(
       last_sync_attempt: new Date().toISOString(),
       submitted_at: new Date().toISOString(),
       created_by_user_id: followupData.user.id,
+      sync_type: SyncType.follow_ups,
     };
 
-    let result: FollowUps | undefined;
-    realm.write(() => {
-      result = realm.create<FollowUps>(FollowUps, {
-        id,
-        followup_date: followupData.followup_date,
-        status: followupData.status,
-        comment: followupData.comment,
-        form_data: formData,
-        user: followupData.user,
-        survey: followupData.survey,
-        survey_result: followupData.survey_result,
-        created_at: followupData.created_at || new Date().toISOString(),
-        updated_at: followupData.updated_at || new Date().toISOString(),
-        sync_data: syncData,
-      });
-    });
+    const followup = {
+      id,
+      followup_date: followupData.followup_date,
+      status: followupData.status,
+      comment: followupData.comment,
+      form_data: formData,
+      user: followupData.user,
+      survey: followupData.survey,
+      survey_result: followupData.survey_result,
+      created_at: followupData.created_at || new Date().toISOString(),
+      updated_at: followupData.updated_at || new Date().toISOString(),
+      sync_data: syncData,
+    };
 
-    return result!;
+    let result;
+    
+    // Handle transaction
+    const createFollowupInRealm = () => {
+      return realm.create(FollowUps, followup, Realm.UpdateMode.Modified);
+    };
+
+    if (realm.isInTransaction) {
+      result = createFollowupInRealm();
+    } else {
+      realm.write(() => {
+        result = createFollowupInRealm();
+      });
+    }
+
+    if (!result) {
+      throw new Error("Failed to create followup object");
+    }
+    return result;
   } catch (error) {
-    console.log("Error creating Followup with meta:", error);
+    console.log("Error creating followup with meta:", error);
     throw error;
   }
 }
 
 export const saveFollowupToAPI = async (
   realm: Realm,
-  followupData: Record<string, any>
-): Promise<{ success: boolean; message: string; data?: any }> => {
+  followupData: Record<string, any>,
+  t: TFunction,
+  apiUrl: string = "/followups"
+): Promise<void> => {
   try {
+    console.log(
+      "saveFollowupToAPI received data:",
+      JSON.stringify(followupData, null, 2)
+    );
+
+    // Check for duplicates first
+    const existingFollowups = realm.objects<FollowUps>(FollowUps);
+    const isDuplicate = existingFollowups.some(
+      (followup) =>
+        followup.followup_date === followupData.followup_date &&
+        followup.survey_result?.id === followupData.survey_result_id &&
+        followup.survey?.id === followupData.survey_id
+    );
+
+    if (isDuplicate) {
+      Toast.show({
+        type: "error",
+        text1: t("Alerts.error.title"),
+        text2: t("Alerts.error.duplicate.followup"),
+        position: "top",
+        visibilityTime: 4000,
+      });
+      return;
+    }
+
+    // Format the date from object to yyyy-mm-dd
+    let formattedDate: string;
+    if (typeof followupData.followup_date === 'object' && followupData.followup_date !== null) {
+      const { year, month, day } = followupData.followup_date;
+      formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    } else if (typeof followupData.followup_date === 'string') {
+      formattedDate = followupData.followup_date.includes('T') 
+        ? followupData.followup_date.split('T')[0]
+        : followupData.followup_date;
+    } else {
+      throw new Error("Invalid followup_date format");
+    }
+
+    // Prepare form data
+    const formData = {
+      project_module_id: followupData.project_module_id,
+      project_id: followupData.project_id,
+      source_module_id: followupData.source_module_id,
+      survey_id: followupData.survey_id,
+      survey_result_id: followupData.survey_result_id,
+      user_id: followupData.user_id,
+    };
+
+    // Prepare sync data
+    const syncData = followupData.sync_data || {
+      sync_status: false,
+      sync_reason: "New record",
+      sync_attempts: 0,
+      last_sync_attempt: new Date().toISOString(),
+      submitted_at: new Date().toISOString(),
+      created_by_user_id: followupData.user_id,
+      sync_type: SyncType.follow_ups,
+    };
+
+    const sanitizedFollowupData = {
+      ...followupData,
+      followup_date: formattedDate,
+      form_data: formData,
+      sync_data: syncData,
+    };
+
     const isConnected = isOnline();
-    
+    console.log("Network connection status:", isConnected);
+
+    // If we're online, try to submit to API first
     if (isConnected) {
       try {
-        // Format the date from object to yyyy-mm-dd
-        let formattedDate: string;
-        if (typeof followupData.followup_date === 'object' && followupData.followup_date !== null) {
-          const { year, month, day } = followupData.followup_date;
-          formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        } else if (typeof followupData.followup_date === 'string') {
-          formattedDate = followupData.followup_date.includes('T') 
-            ? followupData.followup_date.split('T')[0]
-            : followupData.followup_date;
-        } else {
-          throw new Error("Invalid followup_date format");
-        }
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.saving.followup"),
+          text2: t("Alerts.submitting.server"),
+          position: "top",
+          visibilityTime: 2000,
+        });
 
-        const requestData = {
+        console.log("Attempting to send data to API");
+        
+        const apiData = {
           followup_date: formattedDate,
           status: followupData.status,
           comment: followupData.comment,
@@ -246,73 +352,204 @@ export const saveFollowupToAPI = async (
           survey_id: followupData.survey_id,
         };
 
-        const response = await baseInstance.post("/followups", requestData);
+        console.log(
+          "Data being sent to API:",
+          JSON.stringify(apiData, null, 2)
+        );
 
-        if (response.data?.data) {
-          const completeData = {
-            ...response.data.data,
-            user: followupData.user,
-            survey: followupData.survey,
-            survey_result: followupData.survey_result,
-            sync_data: {
-              sync_status: true,
-              sync_reason: "Successfully synced",
-              sync_attempts: 1,
-              last_sync_attempt: new Date().toISOString(),
-              submitted_at: new Date().toISOString(),
-              created_by_user_id: followupData.user.id,
-            },
-          };
+        // Send to API
+        baseInstance
+          .post(apiUrl, apiData)
+          .then((response) => {
+            if (response.data?.data) {
+              console.log("API returned data:", response.data.data);
 
-          realm.write(() => {
-            realm.create(FollowUps, completeData, Realm.UpdateMode.Modified);
+              const completeData = {
+                ...response.data.data,
+                user: followupData.user,
+                survey: followupData.survey,
+                survey_result: followupData.survey_result,
+                sync_data: {
+                  sync_status: true,
+                  sync_reason: "Successfully synced",
+                  sync_attempts: 1,
+                  last_sync_attempt: new Date().toISOString(),
+                  submitted_at: new Date().toISOString(),
+                  created_by_user_id: followupData.user.id,
+                  sync_type: SyncType.follow_ups,
+                },
+              };
+
+              console.log(
+                "Complete data for Realm:",
+                JSON.stringify(completeData, null, 2)
+              );
+
+              try {
+                realm.write(() => {
+                  realm.create(FollowUps, completeData, Realm.UpdateMode.Modified);
+                });
+                
+                Toast.show({
+                  type: "success",
+                  text1: t("Alerts.success.title"),
+                  text2: t("Alerts.success.followup"),
+                  position: "top",
+                  visibilityTime: 3000,
+                });
+                router.push("/(history)/history");
+              } catch (error: any) {
+                console.error("Error saving to Realm:", error);
+                Toast.show({
+                  type: "error",
+                  text1: t("Alerts.error.title"),
+                  text2: t("Alerts.error.save_failed.local"),
+                  position: "top",
+                  visibilityTime: 4000,
+                });
+              }
+            } else {
+              // If API didn't return data, save locally
+              console.log("API did not return data, saving locally");
+              try {
+                createTemporaryFollowup(realm, sanitizedFollowupData);
+                Toast.show({
+                  type: "info",
+                  text1: t("Alerts.info.saved_locally"),
+                  text2: t("Alerts.info.api_invalid"),
+                  position: "top",
+                  visibilityTime: 3000,
+                });
+                router.push("/(history)/history");
+              } catch (error: any) {
+                console.error("Error saving temporary follow-up:", error);
+                Toast.show({
+                  type: "error",
+                  text1: t("Alerts.error.title"),
+                  text2: t("Alerts.error.save_failed.local"),
+                  position: "top",
+                  visibilityTime: 4000,
+                });
+              }
+            }
+          })
+          .catch((error: any) => {
+            console.log("Error submitting follow-up to API:", error);
+            console.log("Error response:", error.response?.data);
+            console.log(
+              "Error details:",
+              JSON.stringify(error, Object.getOwnPropertyNames(error))
+            );
+
+            Toast.show({
+              type: "error",
+              text1: t("Alerts.error.title"),
+              text2: t("Alerts.error.save_failed.server"),
+              position: "top",
+              visibilityTime: 4000,
+            });
+
+            // Fall back to offline approach if API submission fails
+            try {
+              createTemporaryFollowup(realm, sanitizedFollowupData);
+              Toast.show({
+                type: "info",
+                text1: t("Alerts.info.saved_locally"),
+                text2: t("Alerts.submitting.offline"),
+                position: "top",
+                visibilityTime: 3000,
+              });
+              router.push("/(history)/history");
+            } catch (error: any) {
+              console.error("Error saving temporary follow-up:", error);
+              Toast.show({
+                type: "error",
+                text1: t("Alerts.error.title"),
+                text2: t("Alerts.error.save_failed.local"),
+                position: "top",
+                visibilityTime: 4000,
+              });
+            }
           });
-
-          return {
-            success: true,
-            message: "Follow-up created successfully",
-            data: completeData
-          };
-        } else {
-          throw new Error("Invalid response from server");
-        }
       } catch (error: any) {
-        console.error("Error submitting Followup to API:", error);
-        // Create temporary followup for offline storage
-        const tempFollowup = createTemporaryFollowup(realm, followupData);
-        return {
-          success: false,
-          message: error?.response?.data?.message || "Failed to create follow-up",
-          data: tempFollowup
-        };
+        console.error("Error in API submission block:", error);
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.submission.process"),
+          position: "top",
+          visibilityTime: 4000,
+        });
       }
     } else {
-      // Create temporary followup for offline storage
-      const tempFollowup = createTemporaryFollowup(realm, followupData);
-      return {
-        success: false,
-        message: "Created offline - will sync when online",
-        data: tempFollowup
-      };
+      // Offline mode - create with locally generated ID
+      try {
+        createTemporaryFollowup(realm, sanitizedFollowupData);
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.info.offline_mode"),
+          text2: t("Alerts.info.will_sync"),
+          position: "top",
+          visibilityTime: 3000,
+        });
+        router.push("/(history)/history");
+      } catch (error: any) {
+        console.error("Error saving temporary follow-up:", error);
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.save_failed.local"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+      }
     }
-  } catch (error) {
-    console.error("Error saving Followup:", error);
-    throw error;
+  } catch (error: any) {
+    console.log("Error in saveFollowupToAPI:", error);
+    console.log(
+      "Error details:",
+      JSON.stringify(error, Object.getOwnPropertyNames(error))
+    );
+
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.submission.unexpected"),
+      position: "top",
+      visibilityTime: 4000,
+    });
   }
 };
 
 export const syncTemporaryFollowups = async (
   realm: Realm,
   apiUrl: string,
+  t: TFunction,
   userId?: number
 ): Promise<void> => {
   if (!isOnline()) {
-    console.log("Cannot sync temporary followups - offline");
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.network.title"),
+      text2: t("Alerts.error.network.offline"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
     return;
   }
 
   if (!userId) {
-    console.log("No user ID provided, cannot sync");
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.sync.no_user"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
     return;
   }
 
@@ -325,6 +562,22 @@ export const syncTemporaryFollowups = async (
     );
 
   console.log(`Found ${followupsToSync.length} followups to sync for current user`);
+
+  if (followupsToSync.length === 0) {
+    Toast.show({
+      type: "info",
+      text1: t("Alerts.info.title"),
+      text2: t("Alerts.info.no_pending"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+    return;
+  }
+
+  let successCount = 0;
+  let failureCount = 0;
 
   for (const followup of followupsToSync) {
     try {
@@ -362,25 +615,64 @@ export const syncTemporaryFollowups = async (
             sync_attempts: (followup.sync_data?.sync_attempts ? Number(followup.sync_data.sync_attempts) : 0) + 1,
             last_sync_attempt: new Date().toISOString(),
             submitted_at: followup.sync_data?.submitted_at || new Date().toISOString(),
+            sync_type: SyncType.follow_ups,
           },
         };
 
         realm.write(() => {
           realm.create(FollowUps, updatedData, Realm.UpdateMode.Modified);
         });
+        successCount++;
       }
     } catch (error: any) {
+      failureCount++;
       console.error("Error syncing Followup to API:", error);
 
       realm.write(() => {
         if (followup.sync_data) {
           followup.sync_data.sync_status = false;
+          followup.sync_data.sync_type = SyncType.follow_ups;
           followup.sync_data.sync_reason = `Failed: ${error?.message || "Unknown error"}`;
           followup.sync_data.sync_attempts = (followup.sync_data.sync_attempts ? Number(followup.sync_data.sync_attempts) : 0) + 1;
           followup.sync_data.last_sync_attempt = new Date().toISOString();
         }
       });
     }
+  }
+
+  // Show final status toast
+  if (successCount > 0 && failureCount === 0) {
+    Toast.show({
+      type: "success",
+      text1: t("Alerts.success.title"),
+      text2: t("Alerts.success.sync").replace("{count}", successCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+  } else if (successCount > 0 && failureCount > 0) {
+    Toast.show({
+      type: "info",
+      text1: t("Alerts.info.title"),
+      text2: t("Alerts.info.partial_success")
+        .replace("{success}", successCount.toString())
+        .replace("{failed}", failureCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+  } else if (failureCount > 0) {
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.sync.failed").replace("{count}", failureCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
   }
 };
 

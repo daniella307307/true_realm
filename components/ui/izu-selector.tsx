@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   TextInput,
@@ -34,16 +34,22 @@ const IzuCodeItem = ({
   const { monitoringResponses } = useGetIzuStatisticsByMonitoringResponse(
     item.id
   );
-  // console.log("Monitoring responses:", monitoringResponses);
 
   // Calculate average percentage from monitoring responses
-  const averagePercentage =
-    monitoringResponses?.length > 0
-      ? monitoringResponses.reduce(
-          (acc, curr) => acc + (curr.score_data?.percentage || 0),
-          0
-        ) / monitoringResponses.length
-      : 0;
+  const averagePercentage = useMemo(() => {
+    if (!monitoringResponses || monitoringResponses.length === 0) return 0;
+
+    let validResponses = 0;
+    const totalPercentage = monitoringResponses.reduce((acc, curr) => {
+      if (curr.score_data && typeof curr.score_data.percentage === 'number') {
+        validResponses++;
+        return acc + curr.score_data.percentage;
+      }
+      return acc;
+    }, 0);
+
+    return validResponses > 0 ? totalPercentage / validResponses : 0;
+  }, [monitoringResponses]);
 
   // Determine arrow direction based on percentage
   const arrowIcon = averagePercentage >= 50 ? "arrowup" : "arrowdown";
@@ -98,13 +104,26 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
   const { izus: izus, isLoading, refresh } = useGetIzus();
   const { t } = useTranslation();
 
-  const filteredIzus = izus?.filter((izu) => {
-    if (!searchQuery) return true;
-    return (
-      izu?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      izu?.izucode?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  });
+  // Filter and deduplicate IZUs based on izucode
+  const filteredIzus = React.useMemo(() => {
+    if (!izus) return [];
+    
+    // Create a Map to store unique IZUs by izucode
+    const uniqueIzus = new Map();
+    
+    izus.forEach((izu) => {
+      if (izu?.izucode && !uniqueIzus.has(izu.izucode)) {
+        // Only add if it matches the search query
+        if (!searchQuery || 
+            izu.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            izu.izucode?.toLowerCase().includes(searchQuery.toLowerCase())) {
+          uniqueIzus.set(izu.izucode, izu);
+        }
+      }
+    });
+    
+    return Array.from(uniqueIzus.values());
+  }, [izus, searchQuery]);
 
   const language = i18n.language;
 
@@ -153,9 +172,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
       {/* Scrollable list of IZU codes */}
       <View className="flex-1 border rounded-lg border-[#E4E4E7] bg-gray-50">
         <FlatList
-          data={(filteredIzus as unknown as Izus[]).filter(
-            (izu) => izu.izucode && izu.izucode.trim() !== ""
-          )}
+          data={filteredIzus}
           keyExtractor={(item: Izus) =>
             `${item.izucode || ""}:${item.id || ""}`
           }

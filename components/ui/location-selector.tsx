@@ -181,8 +181,17 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     }
   }, [selectedCell]);
 
-  // Call onSelect whenever any selection changes
+  // Add useRef for tracking if this is the first render
+  const isFirstRender = React.useRef(true);
+
+  // Replace the problematic useEffect with this version
   useEffect(() => {
+    // Skip the first render to avoid unnecessary calls with initial null values
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
     const currentSelection = {
       province: selectedProvince,
       district: selectedDistrict,
@@ -198,7 +207,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     selectedSector,
     selectedCell,
     selectedVillage,
-    onSelect
+    // Remove onSelect from dependencies
   ]);
 
   const language = i18n.language;

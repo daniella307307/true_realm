@@ -88,6 +88,7 @@
     "headName": "Izina ry'umukuru w'urugo",
     "village": "Umudugudu",
     "type": "Byoherejwe",
+    "loading": "Tegereza...",
     "submission": "ibyoherejwe",
     "izu": "IZU",
     "details": "Ibisobanuro",
@@ -168,7 +169,8 @@
     "empty_forms": "Nta fishi ihari",
     "monitoring_title": "Amafishi yo kugenzura",
     "module_not_found": "Ibyiciro by'ingenzi nta yiirimo",
-    "module_not_found_description": "Ibyiciro by'ingenzi nta yiirimo"
+    "module_not_found_description": "Ibyiciro by'ingenzi nta birimo",
+    "available_forms": "Amafishi ari mu cyiciro kimwe"
   },
   "FormElementPage": {
     "title": "Ibibazo by'ifishi",
@@ -389,6 +391,7 @@
   "Sync": {
     "error": "Ikosa",
     "info": "Amakuru",
+    "unsent": "Byanze",
     "networkError": "Ikibazo cya murandasi",
     "offline": "Uri hanze ya murandasi. Guhuza ibikorwa bisaba ihuriro rya murandasi.",
     "offlineMessage": "Uri hanze ya murandasi. Ongera wihurize ku murandasi maze ugerageze nanone.",
@@ -508,5 +511,62 @@
     "minWords": "Ukenewe kuba ari amagambo {{count}}",
     "maxWords": "Ukenewe kuba ari amagambo {{count}}",
     "invalidTimeFormat": "Isaha yanditswe nabi (HH:MM)"
+  },
+  "Alerts": {
+    "saving": {
+      "izu": "Kubika IZU",
+      "family": "Kubika Umuryango",
+      "followup": "Kubika Gukurikirana",
+      "survey": "Kubika Ibibazwa",
+      "monitoring": "Kubika Igenzura"
+    },
+    "submitting": {
+      "server": "Kohereza kuri seriveri...",
+      "offline": "Kubika kugirango bihurizwe hamwe nyuma"
+    },
+    "success": {
+      "title": "Byagenze neza",
+      "izu": "IZU yakozwe neza",
+      "family": "Umuryango wakozwe neza",
+      "followup": "Gukurikirana byakozwe neza",
+      "survey": "Ibibazwa byabitswe neza",
+      "monitoring": "Igenzura ryabitswe neza",
+      "sync": "Ibyakozwe {count} byahurijwe hamwe neza"
+    },
+    "info": {
+      "title": "Amakuru",
+      "saved_locally": "Byabitswe aha",
+      "offline_mode": "Nta murandasi",
+      "will_sync": "Bizahurizwa hamwe murandasi igarutse",
+      "api_invalid": "Igisubizo cya seriveri nticyumvikana, byabitswe kugirango bihurizwe hamwe nyuma",
+      "no_pending": "Nta bintu bitegereje guhurizwa hamwe",
+      "partial_success": "Byahurijwe hamwe {success}, {failed} ntibyakunze"
+    },
+    "error": {
+      "title": "Ikibazo",
+      "duplicate": {
+        "izu": "IZU ifite aya makuru isanzwe iriho",
+        "family": "Umuryango ufite aya makuru usanzwe uriho",
+        "followup": "Gukurikirana bifite aya makuru bisanzwe biriho",
+        "survey": "Ibibazwa bifite aya makuru bisanzwe biriho"
+      },
+      "save_failed": {
+        "local": "Ntibyakunze kubika aha",
+        "server": "Ntibyakunze kubika kuri seriveri",
+        "after_success": "Ntibyakunze kubika aha nyuma yo gutsinda kuri seriveri"
+      },
+      "network": {
+        "title": "Ikibazo cya Murandasi",
+        "offline": "Ntabwo bishoboka guhuza igihe nta murandasi"
+      },
+      "sync": {
+        "failed": "Ntibyakunze guhuza {count}",
+        "no_user": "Nta nomero y'umukoresha, ntibishoboka guhuza"
+      },
+      "submission": {
+        "process": "Ntibyakunze gutunganya ibyoherejwe",
+        "unexpected": "Habaye ikibazo kitazwi mu gihe cyo kubika"
+      }
+    }
   }
 }

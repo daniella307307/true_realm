@@ -20,7 +20,7 @@ const SettingsScreen = () => {
   const realm = useRealm();
   const parsedIncentives = user?.incentives ? JSON.parse(user.incentives) : [];
 
-  console.log("Village", user?.village);
+  console.log("id:", user?.id);
 
   const { data: locationNamesOffline, isLoading: isLoadingLocationsOffline } =
     useGetLocationByVillageIdOffline(user?.village.toString() || "");

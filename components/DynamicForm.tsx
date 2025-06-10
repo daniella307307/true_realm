@@ -46,7 +46,6 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
   language,
 }) => {
   const { user } = useAuth({});
-  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(true);
 
   const dependentFieldValue = useWatch({
@@ -223,12 +222,14 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   onEditFlowState,
 }) => {
   const { t, i18n: i18nInstance } = useTranslation();
-  
+
   if (!Array.isArray(fields)) {
     console.error("Fields prop is not an array:", fields);
     return (
       <View className="flex-1 justify-center items-center">
-        <Text className="text-red-500">{t("FormElementPage.invalid_form_fields")}</Text>
+        <Text className="text-red-500">
+          {t("FormElementPage.invalid_form_fields")}
+        </Text>
       </View>
     );
   }
@@ -298,7 +299,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           if (field.conditional.show === true && !field.conditional.when) {
             isVisible = true;
             console.log(
-              `${t("FormElementPage.field_visible_conditional", { key: field.key })}`
+              `${t("FormElementPage.field_visible_conditional", {
+                key: field.key,
+              })}`
             );
             return true;
           }
@@ -461,7 +464,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           project_id: formSubmissionMandatoryFields.project_id || 0,
           survey_id: formSubmissionMandatoryFields.id || 0,
           post_data: formSubmissionMandatoryFields.post_data,
-          userId: formSubmissionMandatoryFields.userId || 0,
+          user_id: formSubmissionMandatoryFields.userId || 0,
           province: flowState?.selectedValues?.locations?.province?.id
             ? Number(flowState.selectedValues.locations.province.id)
             : 0,
@@ -483,7 +486,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             ? Number(flowState.selectedValues.cohorts.cohort)
             : 0,
           language: currentLanguage,
-          timeSpentFormatted: formatTime(timeSpent),
+          time_spent_filling_the_form: formatTime(timeSpent),
         };
 
         const postData = dataWithTime.post_data || "";
@@ -494,33 +497,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
         if (postData === "/createFamily") {
           // Create a family instead of a survey submission
-          await saveFamilyToAPI(realm, dataWithTime, postData, fields);
-
-          // Show success alert and navigate
-          Alert.alert(
-            t("FormElementPage.family_created_title"),
-            t("FormElementPage.family_created_message"),
-            [
-              {
-                text: t("Common.ok"),
-                onPress: () => router.push("/(history)/history"),
-              },
-            ]
-          );
+          saveFamilyToAPI(realm, dataWithTime, postData, t);
         } else if (postData === "/izucelldemography/create") {
           // Create an izu instead of a survey submission
-          await saveIzuToAPI(realm, dataWithTime, postData, fields);
-
-          Alert.alert(
-            t("FormElementPage.izu_created_title"),
-            t("FormElementPage.izu_created_message"),
-            [
-              {
-                text: t("Common.ok"),
-                onPress: () => router.push("/(history)/history"),
-              },
-            ]
-          );
+          saveIzuToAPI(realm, dataWithTime, postData, t);
         } else if (postData === "/sendMonitoringData") {
           const moduleId =
             formSubmissionMandatoryFields.source_module_id?.toString() || "";
@@ -568,7 +548,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
                 score: score,
                 possible: 4,
               };
-              console.log(`${t("FormElementPage.score_field", { key, value, score })}`);
+              console.log(
+                `${t("FormElementPage.score_field", { key, value, score })}`
+              );
             }
           });
 
@@ -579,11 +561,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
               : 0;
 
           console.log(
-            `${t("FormElementPage.total_score", { 
-                total: totalScore, 
-                possible: totalPossibleScore, 
-                percentage: percentageScore 
-              })}`
+            `${t("FormElementPage.total_score", {
+              total: totalScore,
+              possible: totalPossibleScore,
+              percentage: percentageScore,
+            })}`
           );
 
           // Create score_data object with all scoring information
@@ -605,7 +587,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             type: responseType,
             cohort: cohort || "1",
             izucode: flowState?.selectedValues?.izus?.izucode || null,
-            user_id: formSubmissionMandatoryFields.userId || null,
+            user_id: flowState?.selectedValues?.izus?.id || null,
+            created_by_user_id: formSubmissionMandatoryFields.userId || null,
             response: formattedData,
             score_data: scoreData,
           };
@@ -613,18 +596,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           await saveMonitoringResponseToAPI(
             realm,
             monitoringData,
-            "/sendMonitoringData"
-          );
-
-          Alert.alert(
-            t("FormElementPage.monitoring_success_title"),
-            t("FormElementPage.monitoring_success_message"),
-            [
-              {
-                text: t("Common.ok"),
-                onPress: () => router.push("/(statistics)/"),
-              },
-            ]
+            "/sendMonitoringData",
+            t
           );
         } else {
           // Regular survey submission
@@ -632,19 +605,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             realm,
             dataWithTime,
             postData,
-            fields
-          );
-
-          // Show success alert and navigate
-          Alert.alert(
-            t("FormElementPage.submission_success_title"),
-            t("FormElementPage.submission_success_message"),
-            [
-              {
-                text: t("Common.ok"),
-                onPress: () => router.push("/(history)/history"),
-              },
-            ]
+            t
           );
         }
       } catch (error) {
@@ -661,7 +622,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
         // Reset our own submitting state
         setSubmitting(false);
-        
+
         // Call the callback from AnswerPreview if it exists
         if (resetSubmittingCallback) {
           console.log(t("FormElementPage.calling_reset_callback"));
@@ -902,9 +863,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
           {validationError && (
             <View className="mb-4 p-3 bg-red-100 rounded-lg">
               <Text className="text-red-500 text-center">
-                {t(
-                  "FormElementPage.validation",
-                )}
+                {t("FormElementPage.validation")}
               </Text>
             </View>
           )}

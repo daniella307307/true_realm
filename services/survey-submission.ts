@@ -1,13 +1,17 @@
-import { FormField, ISurveySubmission } from "~/types";
+import { FormField, ISurveySubmission, SyncType } from "~/types";
 import { Realm } from "@realm/react";
 import { isOnline } from "./network";
 import { baseInstance } from "~/utils/axios";
 import { RealmContext } from "~/providers/RealContextProvider";
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useMemo } from "react";
 import { SurveySubmission } from "~/models/surveys/survey-submission";
 import { filterDataByUserId } from "./filterData";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useDataSync } from "./dataSync";
+import Toast from "react-native-toast-message";
+import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { TFunction } from "i18next";
 const { useRealm, useQuery } = RealmContext;
 
 export const createSurveySubmission = (
@@ -15,63 +19,87 @@ export const createSurveySubmission = (
   fields: FormField[],
   realm: Realm
 ) => {
-  const answers = Object.fromEntries(
-    fields
-      .filter((field) => field.key !== "submit")
-      .map((field) => {
-        const value = formData[field.key];
+  try {
+    const answers = Object.fromEntries(
+      fields
+        .filter((field) => field.key !== "submit")
+        .map((field) => {
+          const value = formData[field.key];
 
-        // Handle different field types
-        switch (field.type) {
-          case "switch":
-            return [field.key, value ? true : false];
-          case "number":
-            return [field.key, Number(value)];
-          case "date":
-          case "datetime":
-            return [field.key, value ? new Date(value) : null];
-          default:
-            return [field.key, value ?? null];
-        }
-      })
-  );
+          // Handle different field types
+          switch (field.type) {
+            case "switch":
+              return [field.key, value ? true : false];
+            case "number":
+              return [field.key, Number(value)];
+            case "date":
+            case "datetime":
+              return [field.key, value ? new Date(value) : null];
+            default:
+              return [field.key, value ?? null];
+          }
+        })
+    );
 
-  // Create structured submission according to new interface
-  const submission = {
-    id: getNextAvailableId(realm),
-    answers: answers as { [key: string]: string | number | boolean | null },
-    form_data: {
-      time_spent_filling_the_form: formData.timeSpentFormatted,
-      user_id: formData.userId,
-      table_name: formData.table_name,
-      project_module_id: formData.project_module_id,
-      source_module_id: formData.source_module_id,
-      project_id: formData.project_id,
-      survey_id: formData.survey_id,
-      post_data: formData.post_data,
-      izucode: formData.izucode,
-      family: formData.family,
-      form_status: "followup",
-      cohort: formData.cohort,
-    } as { [key: string]: string | number | boolean | null },
-    location: {
-      province: formData.province,
-      district: formData.district,
-      sector: formData.sector,
-      cell: formData.cell,
-      village: formData.village,
-    } as { [key: string]: string | number | boolean | null },
-    sync_data: {
-      sync_status: false,
-      sync_reason: "pending",
-      sync_attempts: 0,
-      last_sync_attempt: new Date(),
-      submitted_at: new Date(),
-      created_by_user_id: formData.userId || null,
-    } as { [key: string]: string | number | boolean | null | Date },
-  };
+    // Create structured submission according to new interface
+    const submission = {
+      id: formData.id || getNextAvailableId(realm),
+      answers: answers as { [key: string]: string | number | boolean | null },
+      form_data: {
+        time_spent_filling_the_form: formData.time_spent_filling_the_form,
+        user_id: formData.user_id,
+        table_name: formData.table_name,
+        project_module_id: formData.project_module_id,
+        source_module_id: formData.source_module_id,
+        project_id: formData.project_id,
+        survey_id: formData.survey_id,
+        post_data: formData.post_data,
+        izucode: formData.izucode,
+        family: formData.family,
+        form_status: "followup",
+        cohorts: formData.cohort,
+      } as { [key: string]: string | number | boolean | null },
+      location: {
+        province: formData.province,
+        district: formData.district,
+        sector: formData.sector,
+        cell: formData.cell,
+        village: formData.village,
+      } as { [key: string]: string | number | boolean | null },
+      sync_data: {
+        sync_status: false,
+        sync_reason: "New record",
+        sync_attempts: 0,
+        last_sync_attempt: new Date(),
+        submitted_at: new Date(),
+        created_by_user_id: formData.user_id || null,
+        sync_type: SyncType.survey_submissions,
+      } as { [key: string]: string | number | boolean | null | Date },
+    };
 
-  return realm.create<SurveySubmission>(SurveySubmission, submission);
+    let result;
+    
+    // Handle transaction
+    const createSubmissionInRealm = () => {
+      return realm.create(SurveySubmission, submission, Realm.UpdateMode.Modified);
+    };
+
+    if (realm.isInTransaction) {
+      result = createSubmissionInRealm();
+    } else {
+      realm.write(() => {
+        result = createSubmissionInRealm();
+      });
+    }
+
+    if (!result) {
+      throw new Error("Failed to create survey submission object");
+    }
+    return result;
+  } catch (error) {
+    console.log("Error creating survey submission:", error);
+    throw error;
+  }
 };
 
 // Transform API response survey submissions to the ISurveySubmission format
@@ -100,31 +128,76 @@ function createTemporarySurveySubmission(
   const localId = getNextAvailableId(realm);
 
   const syncData = {
-    sync_status: false,
+    sync_status: formData.sync_data?.sync_status ?? false,
     sync_reason: "Created offline",
-    sync_attempts: 0,
-    last_sync_attempt: new Date(),
-    submitted_at: new Date(),
+    sync_attempts: formData.sync_data?.sync_attempts ?? 0,
+    last_sync_attempt: formData.sync_data?.last_sync_attempt ?? new Date(),
+    submitted_at: formData.sync_data?.submitted_at ?? new Date(),
+    sync_type: SyncType.survey_submissions,
+    created_by_user_id: formData.sync_data?.created_by_user_id || null,
   } as { [key: string]: string | number | boolean | null | Date };
 
-  return createSurveySubmission(
-    {
-      ...formData,
-      id: localId,
-      sync_data: syncData,
-    },
-    fields,
-    realm
-  );
+  let submission: SurveySubmission;
+  
+  if (realm.isInTransaction) {
+    submission = createSurveySubmission(
+      {
+        ...formData,
+        id: localId,
+        sync_data: syncData,
+      },
+      fields,
+      realm
+    );
+  } else {
+    realm.write(() => {
+      submission = createSurveySubmission(
+        {
+          ...formData,
+          id: localId,
+          sync_data: syncData,
+        },
+        fields,
+        realm
+      );
+    });
+  }
+  return submission!;
 }
 
 export const saveSurveySubmissionToAPI = async (
   realm: Realm,
   formData: Record<string, any>,
   apiUrl: string,
+  t: TFunction,
   fields: FormField[] = []
-): Promise<SurveySubmission> => {
+): Promise<void> => {
   try {
+    console.log(
+      "saveSurveySubmissionToAPI received data:",
+      JSON.stringify(formData, null, 2)
+    );
+
+    // Check for duplicates first
+    const existingSubmissions = realm.objects<SurveySubmission>(SurveySubmission);
+    const isDuplicate = existingSubmissions.some(
+      (submission) =>
+        submission.form_data?.survey_id === formData.survey_id &&
+        submission.form_data?.izucode === formData.izucode &&
+        submission.form_data?.family === formData.family
+    );
+
+    if (isDuplicate) {
+      Toast.show({
+        type: "error",
+        text1: t("Alerts.error.title"),
+        text2: t("Alerts.error.duplicate.survey"),
+        position: "top",
+        visibilityTime: 4000,
+      });
+      return;
+    }
+
     // Prepare location data
     const location =
       typeof formData.location === "object"
@@ -139,8 +212,8 @@ export const saveSurveySubmissionToAPI = async (
 
     // Prepare form data
     const formDataObj = {
-      time_spent_filling_the_form: formData.timeSpentFormatted || null,
-      user_id: formData.userId || null,
+      time_spent_filling_the_form: formData.time_spent_filling_the_form || null,
+      user_id: formData.user_id || null,
       table_name: formData.table_name || null,
       project_module_id: formData.project_module_id || null,
       source_module_id: formData.source_module_id || null,
@@ -150,7 +223,7 @@ export const saveSurveySubmissionToAPI = async (
       izucode: formData.izucode || null,
       family: formData.family || null,
       form_status: "followup",
-      cohort: formData.cohort || null,
+      cohort: formData.cohorts || null,
     };
 
     // Prepare sync data
@@ -160,6 +233,8 @@ export const saveSurveySubmissionToAPI = async (
       sync_attempts: 0,
       last_sync_attempt: new Date(),
       submitted_at: new Date(),
+      sync_type: SyncType.survey_submissions,
+      created_by_user_id: formData.user_id || null,
     };
 
     const sanitizedFormData = {
@@ -170,25 +245,24 @@ export const saveSurveySubmissionToAPI = async (
       location,
     };
 
-    console.log(
-      "Sanitized form data:",
-      JSON.stringify(sanitizedFormData, null, 2)
-    );
-
     const isConnected = isOnline();
     console.log("Network connection status:", isConnected);
 
     // If we're online, try to submit to API first
     if (isConnected) {
       try {
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.saving.survey"),
+          text2: t("Alerts.submitting.server"),
+          position: "top",
+          visibilityTime: 2000,
+        });
+
         console.log("Attempting to send data to API");
-        // Prepare data for API - exclude the fields that should be standardized
-        const { userId, timeSpentFormatted, ...formDataWithoutDuplicates } =
-          formData;
 
         // Combine the form data without duplicates and the standardized form data
         const apiData = {
-          ...formDataWithoutDuplicates,
           ...sanitizedFormData.form_data,
           ...sanitizedFormData.location,
         };
@@ -199,101 +273,196 @@ export const saveSurveySubmissionToAPI = async (
         );
 
         // Send to API
-        const response = await baseInstance.post(apiUrl, apiData);
-        console.log(
-          "Survey submission API response:",
-          JSON.stringify(response.data, null, 2)
-        );
+        baseInstance
+          .post(apiUrl, apiData)
+          .then((response) => {
+            if (response.data?.result?.id) {
+              console.log("API returned data:", response.data.result);
 
-        let submission: SurveySubmission;
+              const completeData = {
+                ...sanitizedFormData,
+                id: response.data.result.id,
+                ...response.data.result,
+                sync_data: {
+                  sync_status: true,
+                  sync_reason: "Successfully synced",
+                  sync_attempts: 1,
+                  last_sync_attempt: new Date(),
+                  submitted_at: new Date(),
+                  sync_type: SyncType.survey_submissions,
+                  created_by_user_id: formData.user_id || null,
+                },
+              };
 
-        // Wrap all Realm operations in a write transaction
-        realm.write(() => {
-          if (response.data?.result?.id) {
-            console.log("API returned ID:", response.data.result.id);
+              console.log(
+                "Complete data for Realm:",
+                JSON.stringify(completeData, null, 2)
+              );
 
-            const completeData = {
-              ...sanitizedFormData,
-              id: response.data.result.id,
-              ...response.data.result,
-              sync_data: {
-                sync_status: true,
-                sync_reason: "Successfully synced",
-                sync_attempts: 1,
-                last_sync_attempt: new Date(),
-                submitted_at: new Date(),
-              },
-            };
+              try {
+                realm.write(() => {
+                  realm.create(SurveySubmission, completeData, Realm.UpdateMode.Modified);
+                });
 
+                Toast.show({
+                  type: "success",
+                  text1: t("Alerts.success.title"),
+                  text2: t("Alerts.success.survey"),
+                  position: "top",
+                  visibilityTime: 3000,
+                });
+                router.push("/(history)/history");
+              } catch (error: any) {
+                console.error("Error saving to Realm:", error);
+                Toast.show({
+                  type: "error",
+                  text1: t("Alerts.error.title"),
+                  text2: t("Alerts.error.save_failed.local"),
+                  position: "top",
+                  visibilityTime: 4000,
+                });
+              }
+            } else {
+              // If API didn't return data, save locally
+              console.log("API did not return data, saving locally");
+              try {
+                createTemporarySurveySubmission(realm, sanitizedFormData, fields);
+                Toast.show({
+                  type: "info",
+                  text1: t("Alerts.info.saved_locally"),
+                  text2: t("Alerts.info.api_invalid"),
+                  position: "top",
+                  visibilityTime: 3000,
+                });
+                router.push("/(history)/history");
+              } catch (error: any) {
+                console.error("Error saving temporary survey:", error);
+                Toast.show({
+                  type: "error",
+                  text1: t("Alerts.error.title"),
+                  text2: t("Alerts.error.save_failed.local"),
+                  position: "top",
+                  visibilityTime: 4000,
+                });
+              }
+            }
+          })
+          .catch((error: any) => {
+            console.log("Error submitting survey to API:", error);
+            console.log("Error response:", error.response?.data);
             console.log(
-              "Complete data for Realm:",
-              JSON.stringify(completeData, null, 2)
+              "Error details:",
+              JSON.stringify(error, Object.getOwnPropertyNames(error))
             );
 
-            submission = createSurveySubmission(completeData, fields, realm);
-          } else {
-            console.log("API did not return an ID, creating with local ID");
-            submission = createSurveySubmission(
-              sanitizedFormData,
-              fields,
-              realm
-            );
-          }
-        });
+            Toast.show({
+              type: "error",
+              text1: t("Alerts.error.title"),
+              text2: t("Alerts.error.save_failed.server"),
+              position: "top",
+              visibilityTime: 4000,
+            });
 
-        return submission!;
+            // Fall back to offline approach if API submission fails
+            try {
+              createTemporarySurveySubmission(realm, sanitizedFormData, fields);
+              Toast.show({
+                type: "info",
+                text1: t("Alerts.info.saved_locally"),
+                text2: t("Alerts.submitting.offline"),
+                position: "top",
+                visibilityTime: 3000,
+              });
+              router.push("/(history)/history");
+            } catch (error: any) {
+              console.error("Error saving temporary survey:", error);
+              Toast.show({
+                type: "error",
+                text1: t("Alerts.error.title"),
+                text2: t("Alerts.error.save_failed.local"),
+                position: "top",
+                visibilityTime: 4000,
+              });
+            }
+          });
       } catch (error: any) {
-        console.log("Error submitting survey to API:", error);
-        console.log("Error response:", error.response?.data);
-        console.log(
-          "Error details:",
-          JSON.stringify(error, Object.getOwnPropertyNames(error))
-        );
-        console.log("Falling back to offline mode due to API error");
-
-        let submission: SurveySubmission;
-        realm.write(() => {
-          submission = createTemporarySurveySubmission(
-            realm,
-            sanitizedFormData,
-            fields
-          );
+        console.error("Error in API submission block:", error);
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.submission.process"),
+          position: "top",
+          visibilityTime: 4000,
         });
-        return submission!;
       }
     } else {
-      console.log("Offline mode - creating temporary survey submission record");
-      let submission: SurveySubmission;
-      realm.write(() => {
-        submission = createTemporarySurveySubmission(
-          realm,
-          sanitizedFormData,
-          fields
-        );
-      });
-      return submission!;
+      // Offline mode - create with locally generated ID
+      try {
+        createTemporarySurveySubmission(realm, sanitizedFormData, fields);
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.info.offline_mode"),
+          text2: t("Alerts.info.will_sync"),
+          position: "top",
+          visibilityTime: 3000,
+        });
+        router.push("/(history)/history");
+      } catch (error: any) {
+        console.error("Error saving temporary survey:", error);
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.save_failed.local"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+      }
     }
-  } catch (error) {
-    console.log("Error saving survey submission to API:", error);
+  } catch (error: any) {
+    console.log("Error in saveSurveySubmissionToAPI:", error);
     console.log(
       "Error details:",
       JSON.stringify(error, Object.getOwnPropertyNames(error))
     );
-    throw error;
+
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.submission.unexpected"),
+      position: "top",
+      visibilityTime: 4000,
+    });
   }
 };
 
 export const syncPendingSubmissions = async (
   realm: Realm,
+  t: TFunction,
   userId?: number
 ): Promise<void> => {
   if (!isOnline()) {
-    console.log("Cannot sync pending submissions - offline");
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.network.title"),
+      text2: t("Alerts.error.network.offline"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
     return;
   }
 
   if (!userId) {
-    console.log("No user ID provided, cannot sync");
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.sync.no_user"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
     return;
   }
 
@@ -305,7 +474,25 @@ export const syncPendingSubmissions = async (
       userId
     );
 
-  console.log(`Found ${submissionsToSync.length} submissions to sync for current user`);
+  console.log(
+    `Found ${submissionsToSync.length} submissions to sync for current user`
+  );
+
+  if (submissionsToSync.length === 0) {
+    Toast.show({
+      type: "info",
+      text1: t("Alerts.info.title"),
+      text2: t("Alerts.info.no_pending"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+    return;
+  }
+
+  let successCount = 0;
+  let failureCount = 0;
 
   for (const submission of submissionsToSync) {
     try {
@@ -339,6 +526,7 @@ export const syncPendingSubmissions = async (
                 : 0) + 1,
             last_sync_attempt: new Date(),
             submitted_at: new Date(),
+            sync_type: SyncType.survey_submissions,
           },
         };
 
@@ -369,8 +557,10 @@ export const syncPendingSubmissions = async (
           `Successfully synced submission ${submission.id} to server, updated with server id: ${response.data.result.id}`,
           submission
         );
+        successCount++;
       }
     } catch (error: any) {
+      failureCount++;
       console.log("Advanced error", error.response?.data);
       console.log("Error syncing submission to API:", error);
 
@@ -382,6 +572,8 @@ export const syncPendingSubmissions = async (
           );
           if (existingSubmission && existingSubmission.sync_data) {
             existingSubmission.sync_data.sync_status = false;
+            existingSubmission.sync_data.sync_type =
+              SyncType.survey_submissions;
             existingSubmission.sync_data.sync_reason = `Failed: ${
               error?.message || "Unknown error"
             }`;
@@ -396,6 +588,41 @@ export const syncPendingSubmissions = async (
 
       console.log(`Failed to sync submission ${submission.id}:`, error);
     }
+  }
+
+  // Show final status toast
+  if (successCount > 0 && failureCount === 0) {
+    Toast.show({
+      type: "success",
+      text1: t("Alerts.success.title"),
+      text2: t("Alerts.success.sync").replace("{count}", successCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+  } else if (successCount > 0 && failureCount > 0) {
+    Toast.show({
+      type: "info",
+      text1: t("Alerts.info.title"),
+      text2: t("Alerts.info.partial_success")
+        .replace("{success}", successCount.toString())
+        .replace("{failed}", failureCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+  } else if (failureCount > 0) {
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.sync.failed").replace("{count}", failureCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
   }
 };
 
@@ -474,6 +701,8 @@ export const transformApiSurveySubmissions = (apiResponses: any[]) => {
         sync_attempts: 1,
         last_sync_attempt: new Date(response.updated_at || response.created_at),
         submitted_at: new Date(response.recorded_on || response.created_at),
+        sync_type: SyncType.survey_submissions,
+        created_by_user_id: response.user_id || null,
       },
     };
   });
@@ -497,7 +726,7 @@ export async function fetchSurveySubmissionsFromRemote() {
 export const useGetAllSurveySubmissions = (forceSync: boolean = false) => {
   const { user } = useAuth({});
   const allLocalSubmissions = useQuery<SurveySubmission>(SurveySubmission);
-  
+
   // Filter submissions by current user
   const userSubmissions = useMemo(() => {
     if (!user || !user.id) return allLocalSubmissions;

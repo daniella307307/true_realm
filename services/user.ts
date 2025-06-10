@@ -12,37 +12,6 @@ import Realm from "realm";
 const { useRealm } = RealmContext;
 
 export async function userLogout(realm: Realm | null) {
-  // Clean up local data from other users
-  try {
-    if (realm) {
-      // Clear all local data since we're logging out
-      // This ensures the next user who logs in won't see this user's data
-      realm.write(() => {
-        // Delete all local data that belongs to the current user
-        const families = realm.objects(Families);
-        const izus = realm.objects(Izu);
-        const surveySubmissions = realm.objects(SurveySubmission);
-        const followUps = realm.objects(FollowUps);
-        const monitoringResponses = realm.objects(MonitoringResponses);
-        
-        // Delete locally created data
-        const localFamilies = families.filtered("sync_data.sync_status == false");
-        const localIzus = izus.filtered("sync_data.sync_status == false");
-        const localSurveySubmissions = surveySubmissions.filtered("sync_data.sync_status == false");
-        const localFollowUps = followUps.filtered("sync_data.sync_status == false");
-        const localMonitoringResponses = monitoringResponses.filtered("sync_data.sync_status == false");
-        
-        realm.delete(localFamilies);
-        realm.delete(localIzus);
-        realm.delete(localSurveySubmissions);
-        realm.delete(localFollowUps);
-        realm.delete(localMonitoringResponses);
-      });
-    }
-  } catch (error) {
-    console.error("Error cleaning up local data on logout:", error);
-  }
-  
   // Proceed with the logout API call
   const res = await baseInstance.post<IResponse<{}>>(`/logout`);
   return res.data;

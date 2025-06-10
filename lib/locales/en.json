@@ -90,6 +90,7 @@
     "type": "Submitted",
     "submission": "a submission",
     "izu": "an IZU",
+    "loading": "Loading...",
     "details": "Details",
     "izu_code": "IZU Code",
     "cohort": "Cohort",
@@ -205,7 +206,8 @@
     "empty_forms": "No forms available",
     "monitoring_title": "Monitoring Forms",
     "module_not_found": "Module Not Found",
-    "module_not_found_description": "The module you are looking for does not exist"
+    "module_not_found_description": "The module you are looking for does not exist",
+    "available_forms": "Available Forms"
   },
   "FormElementPage": {
     "title": "Form Questions",
@@ -389,6 +391,7 @@
   "Sync": {
     "error": "Error",
     "info": "Info",
+    "unsent": "Unsent",
     "networkError": "Network Error",
     "offline": "You are offline. Sync operations require internet connection.",
     "offlineMessage": "You are offline. Please connect to the internet and try again.",
@@ -508,5 +511,62 @@
     "minWords": "Minimum {{count}} words required",
     "maxWords": "Maximum {{count}} words allowed",
     "invalidTimeFormat": "Invalid time format (HH:MM)"
+  },
+  "Alerts": {
+    "saving": {
+      "izu": "Saving IZU",
+      "family": "Saving Family",
+      "followup": "Saving Follow-up",
+      "survey": "Saving Survey",
+      "monitoring": "Saving Monitoring"
+    },
+    "submitting": {
+      "server": "Submitting to server...",
+      "offline": "Saving offline for later sync"
+    },
+    "success": {
+      "title": "Success",
+      "izu": "IZU created successfully",
+      "family": "Family created successfully",
+      "followup": "Follow-up created successfully",
+      "survey": "Survey saved successfully",
+      "monitoring": "Monitoring saved successfully",
+      "sync": "Successfully synced {count} items"
+    },
+    "info": {
+      "title": "Info",
+      "saved_locally": "Saved Locally",
+      "offline_mode": "Offline Mode",
+      "will_sync": "Will sync when online",
+      "api_invalid": "API response invalid, saved offline for later sync",
+      "no_pending": "No pending items to sync",
+      "partial_success": "Synced {success} items, {failed} failed"
+    },
+    "error": {
+      "title": "Error",
+      "duplicate": {
+        "izu": "An IZU with these details already exists",
+        "family": "A family with these details already exists",
+        "followup": "A follow-up with these details already exists",
+        "survey": "A survey submission with these details already exists"
+      },
+      "save_failed": {
+        "local": "Failed to save locally",
+        "server": "Failed to save to server",
+        "after_success": "Failed to save locally after server success"
+      },
+      "network": {
+        "title": "Network Error",
+        "offline": "Cannot sync while offline"
+      },
+      "sync": {
+        "failed": "Failed to sync {count} items",
+        "no_user": "No user ID provided, cannot sync"
+      },
+      "submission": {
+        "process": "Failed to process submission",
+        "unexpected": "An unexpected error occurred while saving"
+      }
+    }
   }
 }

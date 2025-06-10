@@ -9,14 +9,16 @@ import { useAuth } from "~/lib/hooks/useAuth";
 import { IFormSubmissionDetail } from "~/types";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
+import { useGetFamilies } from "~/services/families";
 
 const FormElementIndexScreen = () => {
-  const { formId, project_id, source_module_id, project_module_id } =
+  const { formId, project_id, source_module_id, project_module_id, family_id } =
     useLocalSearchParams<{
       formId: string;
       project_id: string;
       source_module_id: string;
       project_module_id: string;
+      family_id: string;
     }>();
   const formIdNumber = parseInt(formId);
   const projectIdNumber = parseInt(project_id);
@@ -24,6 +26,7 @@ const FormElementIndexScreen = () => {
   const projectModuleId = parseInt(project_module_id);
   const { t, i18n } = useTranslation();
   const { user } = useAuth({});
+  const { families } = useGetFamilies();
   
   const { form, isLoading } = useGetFormById(
     formIdNumber || 0,
@@ -36,6 +39,7 @@ const FormElementIndexScreen = () => {
   console.log("Project ID: ", projectIdNumber);
   console.log("Source Module ID: ", sourceModuleId);
   console.log("Project Module ID: ", projectModuleId);
+  console.log("Family ID: ", family_id);
 
   if (!formId || !project_id) {
     return (
@@ -74,7 +78,8 @@ const FormElementIndexScreen = () => {
     userId: user?.id ?? 0,
   };
 
-  // console.log("Form structure:", formStructure);
+  // Find the family if family_id is provided
+  const selectedFamily = family_id ? families?.find(f => f.hh_id === family_id) : null;
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -95,6 +100,7 @@ const FormElementIndexScreen = () => {
               form={form}
               formSubmissionMandatoryFields={formStructure}
               fields={parsedForm?.components || []}
+              initialFamily={selectedFamily}
             />
           )}
         </View>

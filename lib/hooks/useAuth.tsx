@@ -78,12 +78,10 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
 
   const logoutUser = async () => {
     // Ensure token is completely cleared
-    await AsyncStorage.removeItem("tknToken");
     queryClient.clear();
     queryClient.invalidateQueries();
     mainStore.logout();
     setAuthenticationStatus(false);
-    router.push("/(user-management)/login");
     onLogout?.();
     console.log("🚀 file: useAuth.tsx, fn: logout , line 14");
   };

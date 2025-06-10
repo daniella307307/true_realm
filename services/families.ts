@@ -1,5 +1,5 @@
 import { Families } from "~/models/family/families";
-import { FormField, IFamilies } from "~/types";
+import { FormField, IFamilies, SyncType } from "~/types";
 import { RealmContext } from "~/providers/RealContextProvider";
 import { baseInstance } from "~/utils/axios";
 import { Realm } from "@realm/react";
@@ -9,6 +9,10 @@ import { useAuth } from "~/lib/hooks/useAuth";
 import { useMemo } from "react";
 import { Izu } from "~/models/izus/izu";
 import { filterDataByUserId } from "./filterData";
+import Toast from "react-native-toast-message";
+import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { TFunction } from "i18next";
 
 const { useQuery, useRealm } = RealmContext;
 
@@ -200,7 +204,6 @@ export const createFamilyWithMeta = (
   try {
     // Prepare metadata
     const meta = familyData.meta || prepareMetaData(familyData, extraFields);
-    console.log("Formatted meta:", meta);
 
     // Generate or use provided ID
     const id =
@@ -232,7 +235,7 @@ export const createFamilyWithMeta = (
       survey_id: familyData.survey_id || null,
       post_data: familyData.post_data || null,
       izucode: familyData.izucode || null,
-      cohort: familyData.cohort || null,
+      cohorts: familyData.cohorts || null,
       form_status: familyData.form_status || null,
     };
 
@@ -241,6 +244,7 @@ export const createFamilyWithMeta = (
       sync_reason: "New record",
       sync_attempts: 0,
       last_sync_attempt: new Date(),
+      sync_type: SyncType.families,
       submitted_at: new Date(),
       created_by_user_id: familyData.user_id || null,
     };
@@ -258,12 +262,21 @@ export const createFamilyWithMeta = (
       sync_data: syncData,
     };
 
-    console.log("Creating family with data:", JSON.stringify(family, null, 2));
-
     let result;
-    realm.write(() => {
-      result = realm.create("Families", family, Realm.UpdateMode.Modified);
-    });
+    
+    // Handle transaction
+    const createFamilyInRealm = () => {
+      return realm.create(Families, family, Realm.UpdateMode.Modified);
+    };
+
+    if (realm.isInTransaction) {
+      result = createFamilyInRealm();
+    } else {
+      realm.write(() => {
+        result = createFamilyInRealm();
+      });
+    }
+
     if (!result) {
       throw new Error("Failed to create family object");
     }
@@ -284,23 +297,23 @@ function createTemporaryFamily(
 
   // Add sync data marking this as needing to be synced
   const syncData = {
-    sync_status: false,
+    sync_status: familyData.sync_data?.sync_status ?? false,
     sync_reason: "Created offline",
-    sync_attempts: 0,
-    last_sync_attempt: new Date(),
-    submitted_at: new Date(),
+    sync_attempts: familyData.sync_data?.sync_attempts ?? 0,
+    last_sync_attempt: familyData.sync_data?.last_sync_attempt ?? new Date(),
+    sync_type: SyncType.families,
+    submitted_at: familyData.sync_data?.submitted_at ?? new Date(),
+    created_by_user_id: familyData.sync_data?.created_by_user_id || null,
   };
 
-  return createFamilyWithMeta(
-    realm,
-    {
-      ...familyData,
-      id: localId,
-      hh_id: null,
-      sync_data: syncData,
-    },
-    extraFields
-  );
+  const tempFamilyData = {
+    ...familyData,
+    id: localId,
+    hh_id: null,
+    sync_data: syncData,
+  };
+
+  return createFamilyWithMeta(realm, tempFamilyData, extraFields);
 }
 
 // Function to replace a temporary family with the official one from API
@@ -318,6 +331,7 @@ function replaceTemporaryFamily(
     sync_data: {
       sync_status: true,
       sync_reason: "Synced with server",
+      sync_type: SyncType.families,
       sync_attempts:
         (tempFamily.sync_data?.sync_attempts
           ? Number(tempFamily.sync_data.sync_attempts)
@@ -331,17 +345,38 @@ function replaceTemporaryFamily(
   return createFamilyWithMeta(realm, updatedFamily, []);
 }
 
-export const saveFamilyToAPI = async (
+export const saveFamilyToAPI = (
   realm: Realm,
   familyData: Record<string, any>,
   apiUrl: string,
+  t: TFunction,
   extraFields: FormField[] = []
-): Promise<Families> => {
+): void => {
   try {
     console.log(
       "saveFamilyToAPI received data:",
       JSON.stringify(familyData, null, 2)
     );
+
+    // Check for duplicates first
+    const existingFamilies = realm.objects<Families>(Families);
+    const isDuplicate = existingFamilies.some(
+      (family) =>
+        family.hh_head_fullname === familyData.hh_head_fullname &&
+        family.village_id === familyData.village_id &&
+        family.izucode === familyData.izucode
+    );
+
+    if (isDuplicate) {
+      Toast.show({
+        type: "error",
+        text1: t("Alerts.error.title"),
+        text2: t("Alerts.error.duplicate.family"),
+        position: "top",
+        visibilityTime: 4000,
+      });
+      return;
+    }
 
     // Prepare location data
     const location =
@@ -355,9 +390,36 @@ export const saveFamilyToAPI = async (
             village: familyData.village,
           };
 
-    // Format family data
+    console.log("Prepared location data:", JSON.stringify(location, null, 2));
+
+    // Prepare form data
+    const formData = {
+      time_spent_filling_the_form: familyData.time_spent_filling_the_form || null,
+      user_id: familyData.user_id || null,
+      table_name: familyData.table_name || null,
+      project_module_id: familyData.project_module_id || null,
+      source_module_id: familyData.source_module_id || null,
+      project_id: familyData.project_id || null,
+      survey_id: familyData.survey_id || null,
+      post_data: familyData.post_data || null,
+      izucode: familyData.izucode || null,
+      cohorts: familyData.cohorts || null,
+    };
+
+    // Prepare sync data
+    const syncData = familyData.sync_data || {
+      sync_status: false,
+      sync_reason: "New record",
+      sync_attempts: 0,
+      last_sync_attempt: new Date(),
+      submitted_at: new Date(),
+      sync_type: SyncType.families,
+      created_by_user_id: familyData.user_id || null,
+    };
+
     const sanitizedFamilyData = {
       ...familyData,
+      id: familyData.id || null,
       hh_id: null, // Always set hh_id to null for local records
       hh_head_fullname:
         familyData.hh_head_fullname ||
@@ -365,92 +427,202 @@ export const saveFamilyToAPI = async (
         "Unknown",
       village_name: familyData.village_name || "Unknown",
       village_id: familyData.village_id || null,
-      meta: familyData.meta || prepareMetaData(familyData, extraFields),
+      sync_data: syncData,
+      form_data: formData,
+      meta: prepareMetaData(familyData, extraFields),
       location,
-      izucode: familyData.izucode || null,
-      form_data: {
-        time_spent_filling_the_form:
-          familyData.time_spent_filling_the_form || null,
-        user_id: familyData.user_id || null,
-        table_name: familyData.table_name || null,
-        project_module_id: familyData.project_module_id || null,
-        source_module_id: familyData.source_module_id || null,
-        project_id: familyData.project_id || null,
-        survey_id: familyData.survey_id || null,
-        post_data: familyData.post_data || null,
-        izucode: familyData.izucode || null,
-        cohort: familyData.cohort || null,
-      },
-      sync_data: {
-        sync_status: false,
-        sync_reason: "New record",
-        sync_attempts: 0,
-        last_sync_attempt: new Date(),
-        submitted_at: new Date(),
-      },
     };
 
     const isConnected = isOnline();
+    console.log("Network connection status:", isConnected);
 
     // If we're online, try to submit to API first
     if (isConnected) {
       try {
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.saving.family"),
+          text2: t("Alerts.submitting.server"),
+          position: "top",
+          visibilityTime: 2000,
+        });
+
+        console.log("Attempting to send data to API");
         // Prepare data for API - flatten meta fields at the top level
         const apiData = {
           ...familyData,
           ...(sanitizedFamilyData.meta || {}),
           ...(sanitizedFamilyData.form_data || {}),
+          meta: undefined // Add this to ensure we can delete it safely
         };
 
         // Remove the meta object itself from the API data
-        if (apiData.meta) {
-          delete apiData.meta;
-        }
+        delete apiData.meta;
 
-        // Send to API
-        const response = await baseInstance.post(apiUrl, apiData);
         console.log(
-          "Family API submission response:",
-          JSON.stringify(response.data, null, 2)
+          "Data being sent to API:",
+          JSON.stringify(apiData, null, 2)
         );
 
-        // Create the family object with the API data but keep local ID
-        if (response.data?.result?.id) {
-          const completeData = {
-            ...sanitizedFamilyData,
-            id: response.data.result.id, // Keep local ID if exists
-            hh_id: response.data.result.hh_id, // Update hh_id from API
-            izucode: response.data.result.izucode || null,
-            sync_data: {
-              sync_status: true,
-              sync_reason: "Successfully synced",
-              sync_attempts: 1,
-              last_sync_attempt: new Date(),
-              submitted_at: new Date(),
-            },
-            // Include any other fields returned from the API
-            ...response.data.result,
-          };
+        // Send to API
+        baseInstance
+          .post(apiUrl, apiData)
+          .then((response) => {
+            if (response.data?.result?.id) {
+              console.log("API returned ID:", response.data.result.id);
 
-          return createFamilyWithMeta(realm, completeData, []);
-        } else {
-          // If API didn't return an ID, create with locally generated ID
-          return createFamilyWithMeta(realm, sanitizedFamilyData, []);
-        }
-      } catch (apiError) {
-        console.log("Error submitting family to API:", apiError);
-        // Fall back to offline approach if API submission fails
-        return createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
+              const completeData = {
+                ...sanitizedFamilyData,
+                id: response.data.result.id,
+                hh_id: response.data.result.hh_id,
+                izucode: response.data.result.izucode || null,
+                ...response.data.result,
+                sync_data: {
+                  sync_status: true,
+                  sync_reason: "Successfully synced",
+                  sync_attempts: 1,
+                  last_sync_attempt: new Date(),
+                  submitted_at: new Date(),
+                  created_by_user_id: familyData.user_id || null,
+                  sync_type: SyncType.families,
+                },
+              };
+
+              console.log(
+                "Complete data for Realm:",
+                JSON.stringify(completeData, null, 2)
+              );
+
+              try {
+                createFamilyWithMeta(realm, completeData, extraFields);
+                Toast.show({
+                  type: "success",
+                  text1: t("Alerts.success.title"),
+                  text2: t("Alerts.success.family"),
+                  position: "top",
+                  visibilityTime: 3000,
+                });
+                router.push("/(history)/history");
+              } catch (error: any) {
+                console.error("Error saving to Realm:", error);
+                Toast.show({
+                  type: "error",
+                  text1: t("Alerts.error.title"),
+                  text2: t("Alerts.error.save_failed.local"),
+                  position: "top",
+                  visibilityTime: 4000,
+                });
+              }
+            } else {
+              // If API didn't return an ID, save locally
+              console.log("API did not return an ID, saving locally");
+              try {
+                createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
+                Toast.show({
+                  type: "info",
+                  text1: t("Alerts.info.saved_locally"),
+                  text2: t("Alerts.info.api_invalid"),
+                  position: "top",
+                  visibilityTime: 3000,
+                });
+                router.push("/(history)/history");
+              } catch (error: any) {
+                console.error("Error saving temporary family:", error);
+                Toast.show({
+                  type: "error",
+                  text1: t("Alerts.error.title"),
+                  text2: t("Alerts.error.save_failed.local"),
+                  position: "top",
+                  visibilityTime: 4000,
+                });
+              }
+            }
+          })
+          .catch((error) => {
+            console.log("Error submitting family to API:", error);
+            console.log("Error response:", error.response?.data);
+            console.log(
+              "Error details:",
+              JSON.stringify(error, Object.getOwnPropertyNames(error))
+            );
+
+            Toast.show({
+              type: "error",
+              text1: t("Alerts.error.title"),
+              text2: t("Alerts.error.save_failed.server"),
+              position: "top",
+              visibilityTime: 4000,
+            });
+
+            // Fall back to offline approach if API submission fails
+            try {
+              createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
+              Toast.show({
+                type: "info",
+                text1: t("Alerts.info.saved_locally"),
+                text2: t("Alerts.submitting.offline"),
+                position: "top",
+                visibilityTime: 3000,
+              });
+              router.push("/(history)/history");
+            } catch (error: any) {
+              console.error("Error saving temporary family:", error);
+              Toast.show({
+                type: "error",
+                text1: t("Alerts.error.title"),
+                text2: t("Alerts.error.save_failed.local"),
+                position: "top",
+                visibilityTime: 4000,
+              });
+            }
+          });
+      } catch (error: any) {
+        console.error("Error in API submission block:", error);
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.submission.process"),
+          position: "top",
+          visibilityTime: 4000,
+        });
       }
     } else {
       // Offline mode - create with locally generated ID
-      // These will be marked for sync later
-      console.log("Offline mode - creating temporary family record");
-      return createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
+      try {
+        createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.info.offline_mode"),
+          text2: t("Alerts.info.will_sync"),
+          position: "top",
+          visibilityTime: 3000,
+        });
+        router.push("/(history)/history");
+      } catch (error: any) {
+        console.error("Error saving temporary family:", error);
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.save_failed.local"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+      }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.log("Error in saveFamilyToAPI:", error);
-    throw error;
+    console.log(
+      "Error details:",
+      JSON.stringify(error, Object.getOwnPropertyNames(error))
+    );
+
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.submission.unexpected"),
+      position: "top",
+      visibilityTime: 4000,
+    });
   }
 };
 
@@ -458,15 +630,32 @@ export const saveFamilyToAPI = async (
 export const syncTemporaryFamilies = async (
   realm: Realm,
   apiUrl: string,
+  t: TFunction,
   userId?: number
 ): Promise<void> => {
   if (!isOnline()) {
-    console.log("Cannot sync temporary families - offline");
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.network.title"),
+      text2: t("Alerts.error.network.offline"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
     return;
   }
 
   if (!userId) {
-    console.log("No user ID provided, cannot sync");
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.sync.no_user"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
     return;
   }
 
@@ -478,7 +667,25 @@ export const syncTemporaryFamilies = async (
       userId
     );
 
-  console.log(`Found ${familiesToSync.length} families to sync for current user`);
+  console.log(
+    `Found ${familiesToSync.length} families to sync for current user`
+  );
+
+  if (familiesToSync.length === 0) {
+    Toast.show({
+      type: "info",
+      text1: t("Alerts.info.title"),
+      text2: t("Alerts.info.no_pending"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+    return;
+  }
+
+  let successCount = 0;
+  let failureCount = 0;
 
   for (const family of familiesToSync) {
     try {
@@ -516,6 +723,7 @@ export const syncTemporaryFamilies = async (
           sync_data: {
             sync_status: true,
             sync_reason: "Successfully synced",
+            sync_type: SyncType.families,
             sync_attempts: 1,
             last_sync_attempt: new Date(),
             submitted_at: new Date(),
@@ -524,12 +732,15 @@ export const syncTemporaryFamilies = async (
         console.log(
           `Successfully synced family ${family.id} to server, updated with hh_id: ${response.data.result.hh_id}`
         );
+        successCount++;
       }
     } catch (error: any) {
+      failureCount++;
       // Update sync data to record the failure
       realm.write(() => {
         if (family.sync_data) {
           family.sync_data.sync_status = false;
+          family.sync_data.sync_type = SyncType.families;
           family.sync_data.sync_reason = `Failed: ${
             error?.message || "Unknown error"
           }`;
@@ -542,5 +753,40 @@ export const syncTemporaryFamilies = async (
       console.log(`Failed to sync family ${family.id}:`, error);
       // Continue with other records - this one will be tried again next sync
     }
+  }
+
+  // Show final status toast
+  if (successCount > 0 && failureCount === 0) {
+    Toast.show({
+      type: "success",
+      text1: t("Alerts.success.title"),
+      text2: t("Alerts.success.sync").replace("{count}", successCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+  } else if (successCount > 0 && failureCount > 0) {
+    Toast.show({
+      type: "info",
+      text1: t("Alerts.info.title"),
+      text2: t("Alerts.info.partial_success")
+        .replace("{success}", successCount.toString())
+        .replace("{failed}", failureCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+  } else if (failureCount > 0) {
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.sync.failed").replace("{count}", failureCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
   }
 };

@@ -16,6 +16,14 @@ export interface IUsers {
   last_seen: Date;
 }
 
+export enum SyncType {
+  families,
+  izus,
+  survey_submissions,
+  follow_ups,
+  monitoring_responses,
+}
+
 const phoneRegex = /^[0-9]{10,}$/; // Numbers only, minimum 10 digits
 
 export const loginSchema = z.object({
@@ -31,7 +39,7 @@ export const loginSchema = z.object({
   password: z
     .string()
     .nonempty(t("Login.Validation.requiredPassword"))
-    .min(5, t("Login.Validation.passwordMin"))
+    .min(5, t("Login.Validation.passwordMin")),
 });
 
 export type ILoginDetails = z.infer<typeof loginSchema>;
@@ -766,6 +774,7 @@ export interface Generic {
     last_sync_attempt?: Date;
     submitted_at?: Date;
     created_by_user_id?: number;
+    sync_type?: SyncType;
   };
 }
 export interface IMonitoringModules extends Generic {

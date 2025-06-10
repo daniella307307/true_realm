@@ -325,7 +325,7 @@ const NotificationDetailScreen = () => {
                       "cohort",
                       "form_status",
                       "language",
-                      "timeSpentFormatted",
+                      "time_spent_filling_the_form",
                       "time_spent_filling_the_form",
                       "userId",
                       "user_id",

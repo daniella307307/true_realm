@@ -56,6 +56,10 @@ const ProjectFormElementScreen = () => {
     projectId
   );
 
+  // Id of regular form
+  // const regularFormId = regularForm?.id;
+  // console.log("Regular Form ID: ", regularFormId);
+
   if (regularFormLoading) {
     return (
       <View className="flex-1 p-4 bg-white">
@@ -89,8 +93,8 @@ const ProjectFormElementScreen = () => {
     source_module_id: parseInt(String(regularForm.source_module_id)) || 0,
     project_id: parseInt(String(regularForm.project_id)) || 0,
     post_data: regularForm.post_data?.toString() || "",
-    userId: user?.json?.id || 0,
-    position: parseInt(user?.json?.position || "0"),
+    userId: user?.id || user?.json?.id || 0,
+    position: parseInt(user?.json?.position || `${user?.position}` || "0"),
   };
 
   // Console the form without the json2 make it undefined

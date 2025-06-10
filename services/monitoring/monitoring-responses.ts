@@ -1,13 +1,17 @@
-import { MonitoringResponses } from "~/models/monitoring/monitoringresponses";
-import { RealmContext } from "~/providers/RealContextProvider";
-import { baseInstance } from "~/utils/axios";
+import { MonitoringResponses } from "../../models/monitoring/monitoringresponses";
+import { RealmContext } from "../../providers/RealContextProvider";
+import { baseInstance } from "../../utils/axios";
 import { Realm } from "@realm/react";
 import { useDataSync } from "../dataSync";
 import { isOnline } from "../network";
-import { useAuth } from "~/lib/hooks/useAuth";
+import { useAuth } from "../../lib/hooks/useAuth";
 import { useMemo } from "react";
 import { filterDataByUserId } from "../filterData";
 import { Izu } from "~/models/izus/izu";
+import { SyncType } from "../../types";
+import Toast from "react-native-toast-message";
+import { router } from "expo-router";
+import { TFunction } from "i18next";
 
 const { useQuery, useRealm } = RealmContext;
 
@@ -83,6 +87,7 @@ export function useGetMonitoringResponses(forceSync: boolean = false) {
               sync_status: true,
               sync_reason: "Fetched from server",
               sync_attempts: 0,
+              sync_type: SyncType.monitoring_responses,
               last_sync_attempt: new Date().toISOString(),
               submitted_at: new Date().toISOString(),
               created_by_user_id: user.id,
@@ -149,9 +154,10 @@ export const createMonitoringResponse = (
       sync_status: false,
       sync_reason: "New record",
       sync_attempts: 0,
-      last_sync_attempt: new Date().toISOString(),
-      submitted_at: new Date().toISOString(),
+      last_sync_attempt: new Date(),
+      submitted_at: new Date(),
       created_by_user_id: responseData.user_id || null,
+      sync_type: SyncType.monitoring_responses,
     };
 
     // Parse score_data if it's a string
@@ -185,19 +191,21 @@ export const createMonitoringResponse = (
       sync_data: syncData,
     };
 
-    console.log(
-      "Creating monitoring response with data:",
-      JSON.stringify(response, null, 2)
-    );
-
     let result;
-    realm.write(() => {
-      result = realm.create(
-        MonitoringResponses,
-        response,
-        Realm.UpdateMode.Modified
-      );
-    });
+    
+    // Handle transaction
+    const createResponseInRealm = () => {
+      return realm.create(MonitoringResponses, response, Realm.UpdateMode.Modified);
+    };
+
+    if (realm.isInTransaction) {
+      result = createResponseInRealm();
+    } else {
+      realm.write(() => {
+        result = createResponseInRealm();
+      });
+    }
+
     if (!result) {
       throw new Error("Failed to create monitoring response object");
     }
@@ -215,21 +223,35 @@ function createTemporaryMonitoringResponse(
   // We'll keep the same ID format but mark it as temporary
   const localId = getNextAvailableId(realm);
 
-  // Add sync data marking this as needing to be synced
+  // Add sync data using values from sanitized data if available
   const syncData = {
-    sync_status: false,
+    sync_status: responseData.sync_data?.sync_status ?? false,
+    sync_type: responseData.sync_data?.sync_type ?? SyncType.monitoring_responses,
     sync_reason: "Created offline",
-    sync_attempts: 0,
-    last_sync_attempt: new Date().toISOString(),
-    submitted_at: new Date().toISOString(),
-    created_by_user_id: responseData.user_id,
+    sync_attempts: responseData.sync_data?.sync_attempts ?? 0,
+    last_sync_attempt: responseData.sync_data?.last_sync_attempt ?? new Date().toISOString(),
+    submitted_at: responseData.sync_data?.submitted_at ?? new Date().toISOString(),
+    created_by_user_id: responseData.sync_data?.created_by_user_id,
   };
 
-  return createMonitoringResponse(realm, {
-    ...responseData,
-    id: localId,
-    sync_data: syncData,
-  });
+  let response: MonitoringResponses;
+  
+  if (realm.isInTransaction) {
+    response = createMonitoringResponse(realm, {
+      ...responseData,
+      id: localId,
+      sync_data: syncData,
+    });
+  } else {
+    realm.write(() => {
+      response = createMonitoringResponse(realm, {
+        ...responseData,
+        id: localId,
+        sync_data: syncData,
+      });
+    });
+  }
+  return response!;
 }
 
 // Function to replace a temporary response with the official one from API
@@ -245,6 +267,7 @@ function replaceTemporaryMonitoringResponse(
     sync_data: {
       sync_status: true,
       sync_reason: "Synced with server",
+      sync_type: SyncType.monitoring_responses,
       sync_attempts:
         (tempResponse.sync_data?.sync_attempts
           ? Number(tempResponse.sync_data.sync_attempts)
@@ -262,32 +285,46 @@ function replaceTemporaryMonitoringResponse(
 export const saveMonitoringResponseToAPI = async (
   realm: Realm,
   responseData: Record<string, any>,
-  apiUrl: string = "/sendMonitoringData"
-): Promise<MonitoringResponses> => {
+  apiUrl: string,
+  t: TFunction
+): Promise<void> => {
   try {
     console.log(
       "saveMonitoringResponseToAPI received data:",
       JSON.stringify(responseData, null, 2)
     );
-    const loggedInCreatorId = responseData.user_id;
 
-    // We have the responseData.izuCode, we need to get the id of the izus
-    const izus = realm.objects<Izu>(Izu);
-    console.log("All IZUs in database:", JSON.stringify(Array.from(izus), null, 2));
-    
-    const izusArray = Array.from(izus);
-    console.log("Looking for IZU with code:", responseData.izucode);
-    
-    const izusById = izusArray.find(
-      (izu) => {
-        console.log("Comparing IZU code:", izu.izucode, "with:", responseData.izucode);
-        return izu.izucode === responseData.izucode;
-      }
+    // Check for duplicates first
+    const existingResponses = realm.objects<MonitoringResponses>(MonitoringResponses);
+    console.log("Family ID", responseData.family_id);
+    console.log("Form ID", responseData.form_id);
+    const isDuplicate = existingResponses.some(
+      (response) =>
+        response.family_id === responseData.family_id &&
+        response.form_id === responseData.form_id
     );
-    console.log("Found IZU:", JSON.stringify(izusById, null, 2));
-    const izusId = izusById?.id;
 
-    console.log("Final resolved Izu ID:", izusId);
+    if (isDuplicate) {
+      Toast.show({
+        type: "error",
+        text1: t("Alerts.error.title"),
+        text2: t("Alerts.error.duplicate.monitoring"),
+        position: "top",
+        visibilityTime: 4000,
+      });
+      return;
+    }
+
+    // Get the logged in user's ID for created_by_user_id
+    const loggedInCreatorId = responseData.created_by_user_id;
+
+    // Get the selected IZU's ID for user_id
+    const izus = realm.objects<Izu>(Izu);
+    const izusArray = Array.from(izus);
+    const izusById = izusArray.find(
+      (izu) => izu.izucode === responseData.izucode
+    );
+    const izusId = izusById?.id;
 
     // Format response data
     const sanitizedResponseData = {
@@ -298,28 +335,38 @@ export const saveMonitoringResponseToAPI = async (
       date_recorded: responseData.date_recorded,
       type: responseData.type || "1",
       cohort: responseData.cohort,
-      user_id: izusId,
+      user_id: izusId, // This is the selected IZU's ID
       score_data: typeof responseData.score_data === 'string' 
         ? JSON.parse(responseData.score_data)
         : responseData.score_data || {},
       json: responseData.json,
       sync_data: {
         sync_status: false,
+        sync_type: SyncType.monitoring_responses,
         sync_reason: "New record",
         sync_attempts: 0,
         last_sync_attempt: new Date().toISOString(),
         submitted_at: new Date().toISOString(),
-        created_by_user_id: loggedInCreatorId,
+        created_by_user_id: loggedInCreatorId, // This is the logged in user's ID
       },
     };
 
-    console.log("Sanitized response data:", JSON.stringify(sanitizedResponseData, null, 2));
-
     const isConnected = isOnline();
+    console.log("Network connection status:", isConnected);
 
     // If we're online, try to submit to API first
     if (isConnected) {
       try {
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.saving.monitoring"),
+          text2: t("Alerts.submitting.server"),
+          position: "top",
+          visibilityTime: 2000,
+        });
+
+        console.log("Attempting to send data to API");
+
         // Prepare data for API
         const apiData = {
           family_id: sanitizedResponseData.family_id,
@@ -339,76 +386,206 @@ export const saveMonitoringResponseToAPI = async (
               : JSON.parse(sanitizedResponseData.json),
         };
 
-        console.log("API request data:", JSON.stringify(apiData, null, 2));
-
-        // Send to API
-        const response = await baseInstance.post(apiUrl, apiData);
         console.log(
-          "Monitoring response API submission response:",
-          JSON.stringify(response.data, null, 2)
+          "Data being sent to API:",
+          JSON.stringify(apiData, null, 2)
         );
 
-        // Create the monitoring response object with the API data but keep local ID
-        if (response.data?.result?.id) {
-          const completeData = {
-            ...sanitizedResponseData,
-            id: response.data.result.id,
-            family_id: response.data.result.family_id,
-            json: response.data.result.json || sanitizedResponseData.json,
-            score_data: typeof response.data.result.score_data === 'string' 
-              ? JSON.parse(response.data.result.score_data)
-              : response.data.result.score_data,
-            sync_data: {
-              sync_status: true,
-              sync_reason: "Successfully synced",
-              sync_attempts: 1,
-              last_sync_attempt: new Date().toISOString(),
-              submitted_at: new Date().toISOString(),
-              created_by_user_id: loggedInCreatorId,
-            },
-            // Include any other fields returned from the API
-            ...response.data.result,
-          };
+        // Send to API
+        baseInstance
+          .post(apiUrl, apiData)
+          .then((response) => {
+            if (response.data?.result?.id) {
+              console.log("API returned data:", response.data.result);
 
-          console.log("Complete Data:", JSON.stringify(completeData, null, 2));
+              const completeData = {
+                ...sanitizedResponseData,
+                id: response.data.result.id,
+                family_id: response.data.result.family_id,
+                json: response.data.result.json || sanitizedResponseData.json,
+                score_data: typeof response.data.result.score_data === 'string' 
+                  ? JSON.parse(response.data.result.score_data)
+                  : response.data.result.score_data,
+                sync_data: {
+                  sync_status: true,
+                  sync_reason: "Successfully synced",
+                  sync_type: SyncType.monitoring_responses,
+                  sync_attempts: 1,
+                  last_sync_attempt: new Date().toISOString(),
+                  submitted_at: new Date().toISOString(),
+                  created_by_user_id: loggedInCreatorId,
+                },
+                ...response.data.result,
+              };
 
-          return createMonitoringResponse(realm, completeData);
-        } else {
-          // If API didn't return an ID, create with locally generated ID
-          return createMonitoringResponse(realm, sanitizedResponseData);
-        }
-      } catch (apiError) {
-        console.log("Error submitting monitoring response to API:", apiError);
-        // Fall back to offline approach if API submission fails
-        return createTemporaryMonitoringResponse(realm, sanitizedResponseData);
+              console.log(
+                "Complete data for Realm:",
+                JSON.stringify(completeData, null, 2)
+              );
+
+              try {
+                createMonitoringResponse(realm, completeData);
+                Toast.show({
+                  type: "success",
+                  text1: t("Alerts.success.title"),
+                  text2: t("Alerts.success.monitoring"),
+                  position: "top",
+                  visibilityTime: 3000,
+                });
+                router.push("/(history)/history");
+              } catch (error: any) {
+                console.error("Error saving to Realm:", error);
+                Toast.show({
+                  type: "error",
+                  text1: t("Alerts.error.title"),
+                  text2: t("Alerts.error.save_failed.local"),
+                  position: "top",
+                  visibilityTime: 4000,
+                });
+              }
+            } else {
+              // If API didn't return data, save locally
+              console.log("API did not return data, saving locally");
+              try {
+                createTemporaryMonitoringResponse(realm, sanitizedResponseData);
+                Toast.show({
+                  type: "info",
+                  text1: t("Alerts.info.saved_locally"),
+                  text2: t("Alerts.info.api_invalid"),
+                  position: "top",
+                  visibilityTime: 3000,
+                });
+                router.push("/(history)/history");
+              } catch (error: any) {
+                console.error("Error saving temporary response:", error);
+                Toast.show({
+                  type: "error",
+                  text1: t("Alerts.error.title"),
+                  text2: t("Alerts.error.save_failed.local"),
+                  position: "top",
+                  visibilityTime: 4000,
+                });
+              }
+            }
+          })
+          .catch((error: any) => {
+            console.log("Error submitting monitoring response to API:", error);
+            console.log("Error response:", error.response?.data);
+            console.log(
+              "Error details:",
+              JSON.stringify(error, Object.getOwnPropertyNames(error))
+            );
+
+            Toast.show({
+              type: "error",
+              text1: t("Alerts.error.title"),
+              text2: t("Alerts.error.save_failed.server"),
+              position: "top",
+              visibilityTime: 4000,
+            });
+
+            // Fall back to offline approach if API submission fails
+            try {
+              createTemporaryMonitoringResponse(realm, sanitizedResponseData);
+              Toast.show({
+                type: "info",
+                text1: t("Alerts.info.saved_locally"),
+                text2: t("Alerts.submitting.offline"),
+                position: "top",
+                visibilityTime: 3000,
+              });
+              router.push("/(history)/history");
+            } catch (error: any) {
+              console.error("Error saving temporary response:", error);
+              Toast.show({
+                type: "error",
+                text1: t("Alerts.error.title"),
+                text2: t("Alerts.error.save_failed.local"),
+                position: "top",
+                visibilityTime: 4000,
+              });
+            }
+          });
+      } catch (error: any) {
+        console.error("Error in API submission block:", error);
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.submission.process"),
+          position: "top",
+          visibilityTime: 4000,
+        });
       }
     } else {
       // Offline mode - create with locally generated ID
-      // These will be marked for sync later
-      console.log(
-        "Offline mode - creating temporary monitoring response record"
-      );
-      return createTemporaryMonitoringResponse(realm, sanitizedResponseData);
+      try {
+        createTemporaryMonitoringResponse(realm, sanitizedResponseData);
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.info.offline_mode"),
+          text2: t("Alerts.info.will_sync"),
+          position: "top",
+          visibilityTime: 3000,
+        });
+        router.push("/(history)/history");
+      } catch (error: any) {
+        console.error("Error saving temporary response:", error);
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.save_failed.local"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+      }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.log("Error in saveMonitoringResponseToAPI:", error);
-    throw error;
+    console.log(
+      "Error details:",
+      JSON.stringify(error, Object.getOwnPropertyNames(error))
+    );
+
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.submission.unexpected"),
+      position: "top",
+      visibilityTime: 4000,
+    });
   }
 };
 
 // Function to sync temporary monitoring responses with the server
 export const syncTemporaryMonitoringResponses = async (
   realm: Realm,
-  apiUrl: string = "/monitoring/responses",
+  apiUrl: string,
+  t: TFunction,
   userId?: number
 ): Promise<void> => {
   if (!isOnline()) {
-    console.log("Cannot sync temporary monitoring responses - offline");
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.network.title"),
+      text2: t("Alerts.error.network.offline"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
     return;
   }
 
   if (!userId) {
-    console.log("No user ID provided, cannot sync");
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.sync.no_user"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
     return;
   }
 
@@ -423,6 +600,22 @@ export const syncTemporaryMonitoringResponses = async (
   console.log(
     `Found ${responsesToSync.length} monitoring responses to sync for current user`
   );
+
+  if (responsesToSync.length === 0) {
+    Toast.show({
+      type: "info",
+      text1: t("Alerts.info.title"),
+      text2: t("Alerts.info.no_pending"),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+    return;
+  }
+
+  let successCount = 0;
+  let failureCount = 0;
 
   for (const response of responsesToSync) {
     try {
@@ -462,6 +655,7 @@ export const syncTemporaryMonitoringResponses = async (
           sync_data: {
             sync_status: true,
             sync_reason: "Successfully synced",
+            sync_type: SyncType.monitoring_responses,
             sync_attempts: 1,
             last_sync_attempt: new Date().toISOString(),
             submitted_at: new Date().toISOString(),
@@ -471,23 +665,57 @@ export const syncTemporaryMonitoringResponses = async (
         console.log(
           `Successfully synced monitoring response ${response.id} to server, updated with id: ${apiResponse.data.result.id}`
         );
+        successCount++;
       }
     } catch (error: any) {
+      failureCount++;
+      console.error("Error syncing monitoring response to API:", error);
       // Update sync data to record the failure
       realm.write(() => {
         if (response.sync_data) {
           response.sync_data.sync_status = false;
-          response.sync_data.sync_reason = `Failed: ${
-            error?.message || "Unknown error"
-          }`;
-          response.sync_data.sync_attempts =
-            Number(response.sync_data.sync_attempts || 0) + 1;
+          response.sync_data.sync_type = SyncType.monitoring_responses;
+          response.sync_data.sync_reason = `Failed: ${error?.message || "Unknown error"}`;
+          response.sync_data.sync_attempts = (response.sync_data.sync_attempts ? Number(response.sync_data.sync_attempts) : 0) + 1;
           response.sync_data.last_sync_attempt = new Date().toISOString();
         }
       });
-      console.log(`Failed to sync monitoring response ${response.id}:`, error);
-      // Continue with other records - this one will be tried again next sync
     }
+  }
+
+  // Show final status toast
+  if (successCount > 0 && failureCount === 0) {
+    Toast.show({
+      type: "success",
+      text1: t("Alerts.success.title"),
+      text2: t("Alerts.success.sync").replace("{count}", successCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+  } else if (successCount > 0 && failureCount > 0) {
+    Toast.show({
+      type: "info",
+      text1: t("Alerts.info.title"),
+      text2: t("Alerts.info.partial_success")
+        .replace("{success}", successCount.toString())
+        .replace("{failed}", failureCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
+  } else if (failureCount > 0) {
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("Alerts.error.sync.failed").replace("{count}", failureCount.toString()),
+      position: "top",
+      visibilityTime: 4000,
+      autoHide: true,
+      topOffset: 50,
+    });
   }
 };
 

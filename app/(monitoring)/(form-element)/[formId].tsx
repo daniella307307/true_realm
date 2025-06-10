@@ -11,12 +11,14 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NotFound } from "~/components/ui/not-found";
 import { useGetMonitoringFormById } from "~/services/monitoring/monitoring-forms";
+import { useGetFamilies } from "~/services/families";
 
 const MonitoringFormElementScreen = () => {
-  const { formId, project_id, monitoring_module_id } = useLocalSearchParams<{
+  const { formId, project_id, monitoring_module_id, family_id } = useLocalSearchParams<{
     formId: string;
     project_id: string;
     monitoring_module_id: string;
+    family_id: string;
   }>();
 
   const insets = useSafeAreaInsets();
@@ -33,6 +35,7 @@ const MonitoringFormElementScreen = () => {
   console.log("Monitoring Module ID: ", monitoringId);
   const { user } = useAuth({});
   const { t, i18n } = useTranslation();
+  const { families } = useGetFamilies();
 
   if (!formId) {
     return (
@@ -47,6 +50,9 @@ const MonitoringFormElementScreen = () => {
   // Get monitoring form
   const { form: monitoringForm, isLoading: monitoringFormLoading } =
     useGetMonitoringFormById(formIdNumber);
+
+  // Find the family if family_id is provided
+  const selectedFamily = family_id ? families?.find(f => f.hh_id === family_id) : null;
 
   // Create a form object compatible with FormFlowManager
   const formData = useMemo(() => {
@@ -127,6 +133,7 @@ const MonitoringFormElementScreen = () => {
               formSubmissionMandatoryFields={formStructure}
               fields={parsedForm.components}
               isMonitoring={true}
+              initialFamily={selectedFamily}
             />
           )}
         </View>

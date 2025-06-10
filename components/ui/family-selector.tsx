@@ -93,26 +93,30 @@ const FamilySelector: React.FC<FamilySelectorProps> = ({
   const { families, isLoading, refresh } = useGetFamilies();
   const { t } = useTranslation();
 
-  // console.log("Families: ", JSON.stringify(families, null, 2));
   const handleSelect = (family: IFamilies) => {
     setSelectedFamily(family);
     onSelect(family);
   };
 
-  // Filter families based on search query
+  // Filter and deduplicate families based on hh_id
   const filteredFamilies = useMemo(() => {
     if (!families) return [];
-    return families
-      .filter((family) => family.hh_id) // Filter out families with null/undefined hh_id
-      .filter(
-        (family) =>
-          (family.hh_head_fullname?.toLowerCase() || "").includes(
-            searchQuery.toLowerCase()
-          ) ||
-          (family.hh_id?.toLowerCase() || "").includes(
-            searchQuery.toLowerCase()
-          )
-      );
+    
+    // Create a Map to store unique families by hh_id
+    const uniqueFamilies = new Map();
+    
+    families.forEach((family) => {
+      if (family?.hh_id && !uniqueFamilies.has(family.hh_id)) {
+        // Only add if it matches the search query
+        if (!searchQuery || 
+            (family.hh_head_fullname?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+            (family.hh_id?.toLowerCase() || "").includes(searchQuery.toLowerCase())) {
+          uniqueFamilies.set(family.hh_id, family);
+        }
+      }
+    });
+    
+    return Array.from(uniqueFamilies.values());
   }, [families, searchQuery]);
 
   if (isLoading) {

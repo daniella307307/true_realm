@@ -89,8 +89,9 @@ export function filterDataByUserId<T extends Realm.Object>(
       
     // For MonitoringResponses
     case 'MonitoringResponses':
+      // console.log("MonitoringResponses", JSON.stringify(objects, null, 2));
       return objects.filtered(
-        "user_id == $0",
+        "sync_data.created_by_user_id == $0",
         currentUserId
       );
       

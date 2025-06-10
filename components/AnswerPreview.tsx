@@ -152,18 +152,22 @@ export const AnswerPreview: React.FC<AnswerPreviewProps> = ({
 
     // Register the callback first to ensure it's available when needed
     if (resetSubmitting) {
-      resetSubmitting(() => setIsSubmitting(false));
+      resetSubmitting(() => {
+        setIsSubmitting(false);
+      });
     }
 
-    // Use setTimeout to ensure the callback registration happens before submission
-    setTimeout(() => {
-      onSubmit();
+    // Call onSubmit immediately
+    onSubmit();
 
-      // Fallback reset in case the callback isn't called
-      if (!resetSubmitting) {
-        setTimeout(() => setIsSubmitting(false), 10000); // 10-second timeout
-      }
-    }, 10);
+    // Safety timeout to reset submitting state if callback is never called
+    // This ensures the button won't stay disabled forever
+    const safetyTimeout = setTimeout(() => {
+      setIsSubmitting(false);
+    }, 10000); // 10-second timeout
+
+    // Clean up timeout if component unmounts
+    return () => clearTimeout(safetyTimeout);
   };
 
   return (
