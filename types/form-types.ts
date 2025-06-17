@@ -133,4 +133,23 @@ export interface FormField {
   dependsOn?: string;
   visibleIf?: string;
   minDate?: string;
+  maxDate?: string;
+  widget?: {
+    type?: string;
+    displayInTimezone?: string;
+    locale?: string;
+    useLocaleSettings?: boolean;
+    allowInput?: boolean;
+    mode?: string;
+    enableTime?: boolean;
+    noCalendar?: boolean;
+    format?: string;
+    hourIncrement?: number;
+    minuteIncrement?: number;
+    time_24hr?: boolean;
+    minDate?: string;
+    maxDate?: string;
+    disableWeekends?: boolean;
+    disableWeekdays?: boolean;
+  };
 }

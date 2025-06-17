@@ -27,6 +27,7 @@ interface DropdownProps {
   placeholder: string;
   disabled?: boolean;
   className?: string;
+  value?: string;
 }
 
 export default function Dropdown({
@@ -35,9 +36,15 @@ export default function Dropdown({
   placeholder,
   disabled = false,
   className,
+  value,
 }: DropdownProps) {
   const [expanded, setExpanded] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<OptionItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<OptionItem | null>(() => {
+    if (value) {
+      return data.find(item => item.value === value) || null;
+    }
+    return null;
+  });
   const [dropdownLayout, setDropdownLayout] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const dropdownRef = useRef(null);
   const { height: windowHeight } = Dimensions.get('window');

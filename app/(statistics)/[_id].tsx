@@ -93,12 +93,13 @@ const IzuIndexStatisticsScreen = () => {
       : 0;
 
   // Calculate risk of harms - now just using the unified surveySubmissions
-  const riskOfHarms = surveySubmissions.filter(
+  const riskOfHarmsSubmissions = surveySubmissions.filter(
     (submission) =>
       submission.form_data?.project_module_id === 177 &&
       submission.form_data?.project_id === 17 &&
       submission.form_data?.izucode === izucode
-  ).length;
+  );
+  const riskOfHarms = riskOfHarmsSubmissions.length;
 
   // Function to get score color based on percentage
   const getScoreColor = (scoreValue: number, maxValue: number) => {
@@ -112,6 +113,17 @@ const IzuIndexStatisticsScreen = () => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString();
+  };
+
+  // Function to navigate to monitoring responses detail
+  const navigateToMonitoringDetail = (type: 'visits' | 'risk', submissions: any[]) => {
+    router.push({
+      pathname: "/monitoring-detail" as any,
+      params: {
+        type,
+        submissions: JSON.stringify(submissions)
+      }
+    });
   };
 
   return (
@@ -138,44 +150,56 @@ const IzuIndexStatisticsScreen = () => {
         </Card>
 
         {/* Visits Card */}
-        <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
-          <Text className="text-lg font-semibold mb-2">
-            {t("StatisticsPage.visits")}
-          </Text>
-          <View className="flex-row justify-between mb-4">
-            <View>
-              <Text className="text-2xl font-bold text-primary">
-                {totalVisitsDone}
-              </Text>
-              <Text className="text-gray-500">
-                {t("StatisticsPage.visits_done")}
-              </Text>
-            </View>
-            <View>
-              <Text className="text-2xl font-bold text-black">
-                {totalVisits}
-              </Text>
-              <Text className="text-gray-500">
-                {t("StatisticsPage.total_visits")}
-              </Text>
-            </View>
-          </View>
-          
-          {/* Module-wise breakdown */}
-          <View className="mt-2">
-            <Text className="text-md font-semibold mb-2">
-              {t("StatisticsPage.visits_by_module", "Visits by Module")}
+        <TouchableOpacity 
+          onPress={() => {
+            const visitSubmissions = surveySubmissions.filter(
+              (submission) =>
+                submission.form_data?.izucode === izucode &&
+                submission.form_data?.project_id === 3 &&
+                submission.form_data?.source_module_id !== 22
+            );
+            navigateToMonitoringDetail('visits', visitSubmissions);
+          }}
+        >
+          <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
+            <Text className="text-lg font-semibold mb-2">
+              {t("StatisticsPage.visits")}
             </Text>
-            {Object.entries(visitsByModule).map(([moduleId, count]) => (
-              <View key={moduleId} className="flex-row justify-between py-1">
-                <Text className="text-gray-600">
-                  {t("StatisticsPage.module", "Module")} {moduleId}
+            <View className="flex-row justify-between mb-4">
+            <View className="w-[160px]">
+            <Text className="text-2xl font-bold text-primary">
+                  {totalVisitsDone}
                 </Text>
-                <Text className="font-medium">{count}</Text>
+                <Text className="text-gray-500">
+                  {t("StatisticsPage.visits_done")}
+                </Text>
               </View>
-            ))}
-          </View>
-        </Card>
+              <View className="w-[160px]">
+                <Text className="text-2xl font-bold text-black">
+                  {totalVisits}
+                </Text>
+                <Text className="text-gray-500">
+                  {t("StatisticsPage.total_visits")}
+                </Text>
+              </View>
+            </View>
+            
+            {/* Module-wise breakdown */}
+            <View className="mt-2">
+              <Text className="text-md font-semibold mb-2">
+                {t("StatisticsPage.visits_by_module", "Visits by Module")}
+              </Text>
+              {Object.entries(visitsByModule).map(([moduleId, count]) => (
+                <View key={moduleId} className="flex-row justify-between py-1">
+                  <Text className="text-gray-600">
+                    {t("StatisticsPage.module", "Module")} {moduleId}
+                  </Text>
+                  <Text className="font-medium">{count}</Text>
+                </View>
+              ))}
+            </View>
+          </Card>
+        </TouchableOpacity>
 
         {/* Performance Score Card */}
         <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
@@ -229,60 +253,63 @@ const IzuIndexStatisticsScreen = () => {
                 <Text className="font-semibold mb-2">
                   {t("StatisticsPage.monitoring_history", "Monitoring History")}
                 </Text>
-                {monitoringResponses.map(
-                  (response: MonitoringResponseData, index: number) => (
-                    <TouchableOpacity
-                      key={index}
-                      className="mb-3 p-2 bg-white rounded-md"
-                      onPress={() => {
-                        // Navigate to score details page
-                        router.push({
-                          pathname: "/score-details" as any,
-                          params: {
-                            score_data: JSON.stringify(response.score_data),
-                            date: response.date_recorded,
-                            form_id: response.form_id,
-                          },
-                        });
-                      }}
-                    >
-                      <View className="flex-row justify-between">
-                        <Text className="text-gray-700">
-                          {formatDate(response.date_recorded)}
+                {monitoringResponses.map((response: MonitoringResponseData, index: number) => (
+                  <TouchableOpacity
+                    key={index}
+                    className="mb-3 p-2 bg-white rounded-md"
+                    onPress={() => {
+                      // Navigate to score details page
+                      router.push({
+                        pathname: "/score-details" as any,
+                        params: {
+                          score_data: JSON.stringify(response.score_data),
+                          date: response.date_recorded,
+                          form_id: response.form_id,
+                        },
+                      });
+                    }}
+                  >
+                    <View className="flex-row justify-between">
+                      <Text className="text-gray-700">
+                        {formatDate(response.date_recorded)}
+                      </Text>
+                      <View className="flex-row">
+                        <Text
+                          className={`font-semibold ${getScoreColor(
+                            response.score_data?.total || 0,
+                            response.score_data?.possible || 1
+                          )}`}
+                        >
+                          {response.score_data?.percentage || 0}%
                         </Text>
-                        <View className="flex-row">
-                          <Text
-                            className={`font-semibold ${getScoreColor(
-                              response.score_data?.total || 0,
-                              response.score_data?.possible || 1
-                            )}`}
-                          >
-                            {response.score_data?.percentage || 0}%
-                          </Text>
-                        </View>
                       </View>
-                      <Text className="text-gray-500 text-sm">
-                        {t("StatisticsPage.score")}:{" "}
-                        {response.score_data?.total || 0}/
-                        {response.score_data?.possible || 0}
-                      </Text>
-                      <Text className="text-gray-500 text-sm">
-                        {t("StatisticsPage.fields_scored")}:{" "}
-                        {response.score_data?.fields_count || 0}
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                )}
+                    </View>
+                    <Text className="text-gray-500 text-sm">
+                      {t("StatisticsPage.score")}:{" "}
+                      {response.score_data?.total || 0}/
+                      {response.score_data?.possible || 0}
+                    </Text>
+                    <Text className="text-gray-500 text-sm">
+                      {t("StatisticsPage.fields_scored")}:{" "}
+                      {response.score_data?.fields_count || 0}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
         </Card>
 
-        <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
-          <Text className="text-lg font-semibold mb-2">
-            {t("StatisticsPage.risk_of_harms")}
-          </Text>
-          <Text className="text-2xl font-bold text-primary">{riskOfHarms}</Text>
-        </Card>
+        {/* Risk of Harms Card */}
+        <TouchableOpacity 
+          onPress={() => navigateToMonitoringDetail('risk', riskOfHarmsSubmissions)}
+        >
+          <Card className="p-4 mb-4 bg-[#A23A910D] border border-[#0000001A]">
+            <Text className="text-lg font-semibold mb-2">
+              {t("StatisticsPage.risk_of_harms")}
+            </Text>
+            <Text className="text-2xl font-bold text-primary">{riskOfHarms}</Text>
+          </Card>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

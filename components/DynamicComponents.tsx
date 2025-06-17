@@ -613,12 +613,22 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
     const monthValue = useWatch({ control, name: `${field.key}.month` });
     const yearValue = useWatch({ control, name: `${field.key}.year` });
 
-    // Generate year options (1999 to current year)
+    // Parse maxDate and minDate from field props
+    const maxDate = field.maxDate ? new Date(field.maxDate) : null;
+    const minDate = field.minDate ? new Date(field.minDate) : null;
+
+    // Generate year options based on min and max dates
     const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: currentYear - 1950 }, (_, i) => ({
-      value: (currentYear - i).toString(),
-      label: (currentYear - i).toString(),
-    }));
+    const minYear = minDate ? minDate.getFullYear() : 1950;
+    const maxYear = maxDate ? maxDate.getFullYear() : currentYear;
+    
+    const years = Array.from(
+      { length: maxYear - minYear + 1 }, 
+      (_, i) => ({
+        value: (minYear + i).toString(),
+        label: (minYear + i).toString(),
+      })
+    ).reverse(); // Reverse to show most recent years first
 
     // Month options
     const months = [
@@ -636,6 +646,23 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
       { value: "12", label: t("Months.december") },
     ];
 
+    // Filter months based on selected year and min/max dates
+    const filteredMonths = months.filter(month => {
+      if (!yearValue) return true;
+      const selectedYear = parseInt(yearValue);
+      const monthNum = parseInt(month.value);
+
+      if (minDate && selectedYear === minDate.getFullYear()) {
+        if (monthNum < minDate.getMonth() + 1) return false;
+      }
+
+      if (maxDate && selectedYear === maxDate.getFullYear()) {
+        if (monthNum > maxDate.getMonth() + 1) return false;
+      }
+
+      return true;
+    });
+
     // Calculate days based on selected month and year
     const daysInMonth = useMemo(() => {
       if (!monthValue || !yearValue) return 31;
@@ -644,32 +671,56 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
       );
     }, [monthValue, yearValue]);
 
-    const days = Array.from({ length: daysInMonth }, (_, i) => ({
-      value: (i + 1).toString().padStart(2, "0"),
-      label: (i + 1).toString(),
-    }));
+    // Generate and filter days based on min/max dates
+    const days = useMemo(() => {
+      const allDays = Array.from({ length: daysInMonth }, (_, i) => ({
+        value: (i + 1).toString().padStart(2, "0"),
+        label: (i + 1).toString(),
+      }));
 
-    // Format the final value as YYYY-MM-DD
-    const { setValue } = useForm();
-    useEffect(() => {
-      if (dayValue && monthValue && yearValue) {
-        const formattedDay = dayValue.padStart(2, "0");
-        const formattedMonth = monthValue.padStart(2, "0");
-        const formattedDate = `${yearValue}-${formattedMonth}-${formattedDay}`;
-        console.log("Formatted date in DayInputComponent:", {
-          fieldKey: field.key,
-          formattedDate: formattedDate,
-        });
-        // Set both the formatted date string and keep the individual parts for the UI
-        setValue(field.key, formattedDate);
+      if (!yearValue || !monthValue) return allDays;
+
+      // Ensure minDate is before maxDate
+      let effectiveMinDate = minDate;
+      let effectiveMaxDate = maxDate;
+      if (minDate && maxDate && minDate > maxDate) {
+        effectiveMinDate = maxDate;
+        effectiveMaxDate = minDate;
       }
-    }, [dayValue, monthValue, yearValue, field.key, setValue]);
+
+      return allDays.filter(day => {
+        const currentDate = new Date(
+          parseInt(yearValue),
+          parseInt(monthValue) - 1,
+          parseInt(day.value)
+        );
+
+        // Set time to noon to avoid timezone issues
+        currentDate.setHours(12, 0, 0, 0);
+        if (effectiveMinDate) effectiveMinDate.setHours(12, 0, 0, 0);
+        if (effectiveMaxDate) effectiveMaxDate.setHours(12, 0, 0, 0);
+
+        if (effectiveMinDate && currentDate < effectiveMinDate) return false;
+        if (effectiveMaxDate && currentDate > effectiveMaxDate) return false;
+
+        return true;
+      });
+    }, [daysInMonth, yearValue, monthValue, minDate, maxDate]);
+
+    const { setValue } = useForm();
+
+    useEffect(() => {
+      // Reset day value if it's no longer valid for the selected month/year
+      if (dayValue && days.every(d => d.value !== dayValue)) {
+        setValue(`${field.key}.day`, "");
+      }
+    }, [days, dayValue, field.key, setValue]);
 
     return (
       <View className="mb-4">
         <Text className="mb-2 text-md font-medium text-[#050F2B]">
           {getLocalizedTitle(field.title, language)}
-          {fields.day?.required && <Text className="text-primary"> *</Text>}
+          {field.validate?.required && <Text className="text-primary"> *</Text>}
         </Text>
 
         <View className="flex flex-row justify-between gap-2 mb-4">
@@ -700,6 +751,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
                       onChange={(item) => {
                         onChange(item.value);
                         setValue(`${field.key}.day`, "");
+                        setValue(`${field.key}.month`, "");
                       }}
                       placeholder="Select Year"
                       className="bg-white"
@@ -722,7 +774,9 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
               control={control}
               name={`${field.key}.month`}
               rules={{
-                required: fields.month?.required ? "Month is required" : false,
+                required: fields.month?.required
+                  ? getLocalizedError(field, "validation.fieldRequired")
+                  : false,
               }}
               render={({
                 field: { onChange, value },
@@ -731,12 +785,12 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
                 <View>
                   <View
                     className={cn(
-                      "border rounded-lg bg-white",
+                      "border rounded-lg",
                       error ? "border-primary" : "border-[#E4E4E7]"
                     )}
                   >
                     <Dropdown
-                      data={months}
+                      data={filteredMonths}
                       onChange={(item) => {
                         onChange(item.value);
                         setValue(`${field.key}.day`, "");

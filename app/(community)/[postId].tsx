@@ -24,6 +24,8 @@ import Toast from "react-native-toast-message";
 import { Post } from "~/models/posts/post";
 import { RealmContext } from "~/providers/RealContextProvider";
 import Realm from "realm";
+import { useNetworkStatus } from "~/services/network";
+import { Card } from "~/components/ui/card";
 
 const { useRealm } = RealmContext;
 
@@ -31,6 +33,7 @@ const PostScreen: React.FC = () => {
   const { t } = useTranslation();
   const realm = useRealm();
   const router = useRouter();
+  const { isConnected } = useNetworkStatus();
   
   const commentSchema = z.object({
     comment: z.string().min(1, t("CommunityPage.comment_required")),
@@ -81,6 +84,17 @@ const PostScreen: React.FC = () => {
   }, [post?.comments]);
 
   const handleAddComment = async (data: { comment: string }) => {
+    if (!isConnected) {
+      Toast.show({
+        type: 'error',
+        text1: t("Common.offline_title"),
+        text2: t("Common.offline_comment_message"),
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      return;
+    }
+
     if (isSubmitting) return;
     setIsSubmitting(true);
 

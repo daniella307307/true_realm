@@ -301,7 +301,8 @@ export const saveMonitoringResponseToAPI = async (
     const isDuplicate = existingResponses.some(
       (response) =>
         response.family_id === responseData.family_id &&
-        response.form_id === responseData.form_id
+        response.form_id === responseData.form_id && 
+        response.module_id === responseData.module_id
     );
 
     if (isDuplicate) {
@@ -315,17 +316,6 @@ export const saveMonitoringResponseToAPI = async (
       return;
     }
 
-    // Get the logged in user's ID for created_by_user_id
-    const loggedInCreatorId = responseData.created_by_user_id;
-
-    // Get the selected IZU's ID for user_id
-    const izus = realm.objects<Izu>(Izu);
-    const izusArray = Array.from(izus);
-    const izusById = izusArray.find(
-      (izu) => izu.izucode === responseData.izucode
-    );
-    const izusId = izusById?.id;
-
     // Format response data
     const sanitizedResponseData = {
       family_id: responseData.family || responseData.family_id,
@@ -335,7 +325,7 @@ export const saveMonitoringResponseToAPI = async (
       date_recorded: responseData.date_recorded,
       type: responseData.type || "1",
       cohort: responseData.cohort,
-      user_id: izusId, // This is the selected IZU's ID
+      user_id: responseData.user_id, // This is the selected IZU's ID
       score_data: typeof responseData.score_data === 'string' 
         ? JSON.parse(responseData.score_data)
         : responseData.score_data || {},
@@ -347,7 +337,7 @@ export const saveMonitoringResponseToAPI = async (
         sync_attempts: 0,
         last_sync_attempt: new Date().toISOString(),
         submitted_at: new Date().toISOString(),
-        created_by_user_id: loggedInCreatorId, // This is the logged in user's ID
+        created_by_user_id: responseData.created_by_user_id, // This is the logged in user's ID
       },
     };
 
@@ -413,7 +403,7 @@ export const saveMonitoringResponseToAPI = async (
                   sync_attempts: 1,
                   last_sync_attempt: new Date().toISOString(),
                   submitted_at: new Date().toISOString(),
-                  created_by_user_id: loggedInCreatorId,
+                  created_by_user_id: responseData.created_by_user_id,
                 },
                 ...response.data.result,
               };
@@ -455,7 +445,7 @@ export const saveMonitoringResponseToAPI = async (
                   position: "top",
                   visibilityTime: 3000,
                 });
-                router.push("/(history)/history");
+                router.push("/(statistics)/");
               } catch (error: any) {
                 console.error("Error saving temporary response:", error);
                 Toast.show({
@@ -723,12 +713,14 @@ export function useGetIzuStatisticsByMonitoringResponse(
   userId: number | null,
   forceSync: boolean = false
 ) {
+  console.log("User ID:", userId);
   // console.log("Izu ID:", izuId);
   // Find monitoring responses for this IZU
   const monitoringResponses = useQuery(MonitoringResponses).filtered(
     "user_id == $0",
     userId
   );
+  console.log("Monitoring responses:", monitoringResponses);
 
   // Convert to array for easier consumption and sort by date (most recent first)
   const monitoringResponsesArray = monitoringResponses

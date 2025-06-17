@@ -102,6 +102,7 @@ const IzuSelector: React.FC<IzuSelectorProps> = ({
   const [modalVisible, setModalVisible] = useState(false);
 
   const { izus: izus, isLoading, refresh } = useGetIzus();
+  // console.log("Izus:", JSON.stringify(izus, null, 2));
   const { t } = useTranslation();
 
   // Filter and deduplicate IZUs based on izucode

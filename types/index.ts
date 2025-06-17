@@ -675,7 +675,27 @@ export interface FormField {
   dependsOn?: string;
   visibleIf?: string;
   minDate?: string;
+  maxDate?: string;
+  widget?: {
+    type?: string;
+    displayInTimezone?: string;
+    locale?: string;
+    useLocaleSettings?: boolean;
+    allowInput?: boolean;
+    mode?: string;
+    enableTime?: boolean;
+    noCalendar?: boolean;
+    format?: string;
+    hourIncrement?: number;
+    minuteIncrement?: number;
+    time_24hr?: boolean;
+    minDate?: string;
+    maxDate?: string;
+    disableWeekends?: boolean;
+    disableWeekdays?: boolean;
+  };
 }
+
 export interface IExistingForm {
   id: number;
   parent_id?: number;
@@ -777,6 +797,7 @@ export interface Generic {
     sync_type?: SyncType;
   };
 }
+
 export interface IMonitoringModules extends Generic {
   id: number;
   monitoring_id: number;
@@ -785,6 +806,7 @@ export interface IMonitoringModules extends Generic {
   createdAt: string;
   updatedAt: string;
 }
+
 export interface IMonitoringForms extends Generic {
   id: number;
   name: string;
@@ -797,6 +819,7 @@ export interface IMonitoringForms extends Generic {
   single_page: string;
   status: string;
 }
+
 export interface ISurveySubmission extends Generic {
   id: number;
   answers: { [key: string]: string | number | boolean | null };

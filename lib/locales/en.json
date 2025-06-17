@@ -99,7 +99,10 @@
     "try_again": "Try Again",
     "go_back": "Go Back",
     "missing_item_id": "Missing item ID",
-    "please_try_again": "Please try again"
+    "please_try_again": "Please try again",
+    "missing_data": "Missing Data",
+    "form_answers": "Form Answers",
+    "family_info": "Family Information"
   },
   "HomePage": {
     "title": "Hello, ",
@@ -365,7 +368,9 @@
     "fields_scored": "Fields Scored",
     "score_details_date": "Score Details data for {{date}}",
     "overall_score": "Overall Score",
-    "detailed_scores": "Detailed Scores"
+    "detailed_scores": "Detailed Scores",
+    "visits_detail": "Visits Detail",
+    "risk_detail": "Risk Detail"
   },
   "Notifications": {
     "title": "Notifications",
@@ -510,7 +515,9 @@
     "maxLength": "Maximum length is {{count}} characters",
     "minWords": "Minimum {{count}} words required",
     "maxWords": "Maximum {{count}} words allowed",
-    "invalidTimeFormat": "Invalid time format (HH:MM)"
+    "invalidTimeFormat": "Invalid time format (HH:MM)",
+    "minDate": "Date must be after {{date}}",
+    "maxDate": "Date must be before {{date}}"
   },
   "Alerts": {
     "saving": {

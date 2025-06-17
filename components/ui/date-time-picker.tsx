@@ -36,16 +36,25 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
     if (!value) return "";
 
     if (field.type === "datetime") {
-      return value.toLocaleDateString(language);
+      return value.toLocaleString(language);
     } else if (field.type === "time") {
       return value.toLocaleTimeString(language, {
         hour: "2-digit",
         minute: "2-digit",
+        hour12: !field.widget?.time_24hr,
       });
     } else {
       return value.toLocaleString(language);
     }
   };
+
+  // Parse minDate and maxDate from widget configuration
+  const minDate = field.widget?.minDate ? new Date(field.widget.minDate) : undefined;
+  const maxDate = field.widget?.maxDate ? new Date(field.widget.maxDate) : undefined;
+
+  // Ensure minDate is before maxDate
+  const effectiveMinDate = minDate && maxDate && minDate > maxDate ? maxDate : minDate;
+  const effectiveMaxDate = minDate && maxDate && minDate > maxDate ? minDate : maxDate;
 
   // Custom styles for the date picker
   const customStyles = {
@@ -68,6 +77,26 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
         required: field.validate?.required
           ? field.validate.customMessage || "This field is required"
           : false,
+        validate: {
+          dateRange: (value) => {
+            if (!value) return true;
+            const date = new Date(value);
+            
+            if (effectiveMinDate && date < effectiveMinDate) {
+              return t("validation.minDate", "Date must be after {{date}}", {
+                date: effectiveMinDate.toLocaleDateString(language)
+              });
+            }
+            
+            if (effectiveMaxDate && date > effectiveMaxDate) {
+              return t("validation.maxDate", "Date must be before {{date}}", {
+                date: effectiveMaxDate.toLocaleDateString(language)
+              });
+            }
+            
+            return true;
+          }
+        }
       }}
       render={({ field: { onChange, value }, fieldState: { error } }) => {
         const dateValue = value ? new Date(value) : undefined;
@@ -108,22 +137,16 @@ const DateTimePickerComponent: React.FC<DateTimePickerProps> = ({
 
             {showPicker && (
               <View className="mt-2 border rounded-lg border-[#E4E4E7] overflow-hidden">
-                {field.type === "date" || field.type === "datetime" ? (
-                  <DateTimePicker
-                    mode="single"
-                    date={dateValue}
-                    onChange={({ date }) => onDateTimeChange(date)}
-                    styles={customStyles}
-                    maxDate={new Date()}
-                  />
-                ) : (
-                  <DateTimePicker
-                    mode="range"
-                    startDate={dateValue}
-                    onChange={({ startDate }) => onDateTimeChange(startDate)}
-                    styles={customStyles}
-                  />
-                )}
+                <DateTimePicker
+                  mode="single"
+                  date={dateValue}
+                  onChange={({ date }) => onDateTimeChange(date)}
+                  styles={customStyles}
+                  minDate={effectiveMinDate}
+                  maxDate={effectiveMaxDate}
+                  timePicker={field.type === "datetime"}
+                  use12Hours={!field.widget?.time_24hr}
+                />
               </View>
             )}
 

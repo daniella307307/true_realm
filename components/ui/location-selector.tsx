@@ -15,6 +15,7 @@ import { IDistrict } from "~/models/locations/district";
 import { IProvince } from "~/models/locations/province";
 import { ISector } from "~/models/locations/sector";
 import { IVillage } from "~/models/locations/village";
+import { useAuth } from "~/lib/hooks/useAuth";
 
 import Dropdown from "./select";
 import { Text } from "./text";
@@ -43,6 +44,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   initialValues,
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth({});
+
   const [selectedProvince, setSelectedProvince] = useState<IProvince | null>(
     initialValues?.province || null
   );
@@ -73,6 +76,21 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   const { data: villages, isLoading: villagesLoading } = useGetVillages(
     selectedCell?.id
   );
+
+  // Set user's province and district on mount
+  useEffect(() => {
+    if (user && provinces && districts && !initialValues?.province && !initialValues?.district) {
+      const userProvince = provinces.find((p: IProvince) => p.id === user.province.toString());
+      const userDistrict = districts.find((d: IDistrict) => d.id === user.district.toString());
+      
+      if (userProvince) {
+        setSelectedProvince(userProvince);
+      }
+      if (userDistrict) {
+        setSelectedDistrict(userDistrict);
+      }
+    }
+  }, [user, provinces, districts, initialValues]);
 
   // Memoize the province options
   const provinceOptions = useMemo(() => {
@@ -207,7 +225,6 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     selectedSector,
     selectedCell,
     selectedVillage,
-    // Remove onSelect from dependencies
   ]);
 
   const language = i18n.language;
@@ -242,7 +259,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           data={provinceOptions}
           onChange={handleProvinceChange}
           placeholder={selectedProvince?.province_name || t("location_selector.select_province")}
-          disabled={provincesLoading}
+          disabled={true}
+          value={selectedProvince?.id}
         />
       </View>
 
@@ -262,7 +280,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           data={districtOptions}
           onChange={handleDistrictChange}
           placeholder={selectedDistrict?.district_name || t("location_selector.select_district")}
-          disabled={!selectedProvince || districtsLoading}
+          disabled={true}
+          value={selectedDistrict?.id}
         />
       </View>
 

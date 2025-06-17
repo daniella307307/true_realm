@@ -99,7 +99,10 @@
     "try_again": "Mwongere mugerageze",
     "go_back": "Subira inyuma",
     "missing_item_id": "Umwirondoro ubuze",
-    "please_try_again": "Mwongere mugerageze"
+    "please_try_again": "Mwongere mugerageze",
+    "missing_data": "Amakuru Abuze",
+    "form_answers": "Ibisubizo by'Ifishi",
+    "family_info": "Amakuru y'Umuryango"
   },
   "Izus": {
     "title": "Izu",
@@ -365,7 +368,9 @@
     "fields_scored": "Ibisubizo by'imikorere",
     "score_details_data": "Ibisobanuro ku manota",
     "overall_score": "Amanota y'imikorere",
-    "detailed_scores": "Ibisobanuro ku manota"
+    "detailed_scores": "Ibisobanuro ku manota",
+    "visits_detail": "Imiryango yabaruwe",
+    "risk_detail": "Iki cyiciro cyateza ibyago"
   },
   "Notifications": {
     "title": "Amatangazo",
@@ -510,7 +515,9 @@
     "maxLength": "Ukenewe kuba ari inyuguti {{count}}",
     "minWords": "Ukenewe kuba ari amagambo {{count}}",
     "maxWords": "Ukenewe kuba ari amagambo {{count}}",
-    "invalidTimeFormat": "Isaha yanditswe nabi (HH:MM)"
+    "invalidTimeFormat": "Isaha yanditswe nabi (HH:MM)",
+    "minDate": "Itariki igomba kuba nyuma ya {{date}}",
+    "maxDate": "Itariki igomba kuba mbere ya {{date}}"
   },
   "Alerts": {
     "saving": {

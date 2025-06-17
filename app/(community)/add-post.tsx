@@ -9,11 +9,15 @@ import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
+import { useNetworkStatus } from "~/services/network";
+import { Card } from "~/components/ui/card";
+import { TabBarIcon } from "~/components/ui/tabbar-icon";
 
 const NewPostScreen: React.FC = () => {
   const router = useRouter();
   const { useCreatePost, isLoading } = usePostManipulate();
   const { t } = useTranslation();
+  const { isConnected } = useNetworkStatus();
 
   // Define validation schema using Zod
   const postSchema = z.object({
@@ -36,6 +40,10 @@ const NewPostScreen: React.FC = () => {
   });
 
   const onSubmit = async (data: PostFormData) => {
+    if (!isConnected) {
+      return;
+    }
+
     try {
       await useCreatePost(
         { title: data.title, body: data.description },
@@ -54,60 +62,69 @@ const NewPostScreen: React.FC = () => {
   // Memoize the submit handler to prevent unnecessary re-renders
   const memoizedSubmit = React.useCallback(handleSubmit(onSubmit), [handleSubmit, onSubmit]);
 
+  if (!isConnected) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <HeaderNavigation
+          showLeft={true}
+          showRight={true}
+          title={t("CommunityPage.new_post")}
+        />
+        <View className="flex-1 justify-center items-center p-4">
+          <Card className="p-6 items-center">
+            <TabBarIcon
+              name="wifi-off"
+              size={48}
+              color="#666"
+              family="Feather"
+            />
+            <Text className="text-lg font-semibold mt-4 text-center">
+              {t("Common.offline_title")}
+            </Text>
+            <Text className="text-gray-600 mt-2 text-center">
+              {t("Common.offline_post_message")}
+            </Text>
+          </Card>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation
         showLeft={true}
         showRight={true}
-        title={t("CommunityPage.create_post")}
+        title={t("CommunityPage.new_post")}
       />
-      {/* Title Input */}
-      <View className="p-4">
+      <View className="flex-1 p-4">
         <View className="mb-4">
-          <Text className="mb-2 text-lg font-medium text-[#050F2B]">
-            {t("CommunityPage.post_title")}
-          </Text>
           <TextInput
-            className="w-full px-2 h-14 border border-[#E4E4E7] rounded-lg bg-white"
-            placeholder={t("CommunityPage.post_title_placeholder")}
-            value={watch("title") || ""}
-            onChangeText={(text) =>
-              setValue("title", text, { shouldValidate: true })
-            }
-            {...register("title")}
+            className="bg-white p-4 rounded-lg border border-gray-200"
+            placeholder={t("CommunityPage.title_placeholder")}
+            onChangeText={(text) => setValue("title", text)}
+            style={{ height: 50 }}
           />
           {errors.title && (
-            <Text className="text-red-500 text-xs/1 mt-2">
-              {errors.title.message}
-            </Text>
+            <Text className="text-red-500 mt-1">{errors.title.message}</Text>
           )}
         </View>
 
-        {/* Description Input */}
-        <View className="mb-4">
-          <Text className="mb-2 text-md font-medium text-[#050F2B]">
-            {t("CommunityPage.post_description")}
-          </Text>
+        <View className="mb-4 flex-1">
           <TextInput
-            className="h-32 border p-4 border-[#E4E4E7] rounded-lg justify-start items-start flex-col"
-            placeholder={t("CommunityPage.post_description_placeholder")}
-            value={watch("description") || ""}
-            onChangeText={(text) =>
-              setValue("description", text, { shouldValidate: true })
-            }
+            className="bg-white p-4 rounded-lg border border-gray-200 flex-1"
+            placeholder={t("CommunityPage.description_placeholder")}
+            onChangeText={(text) => setValue("description", text)}
             multiline
-            numberOfLines={4}
-            {...register("description")}
-            textAlignVertical="top"
+            style={{ textAlignVertical: "top", minHeight: 200 }}
           />
           {errors.description && (
-            <Text className="text-red-500 text-xs/1 mt-2">
+            <Text className="text-red-500 mt-1">
               {errors.description.message}
             </Text>
           )}
         </View>
 
-        {/* Submit Button */}
         <Button
           onPress={memoizedSubmit}
           isLoading={isLoading}
