@@ -24,11 +24,13 @@ const DRAWER_WIDTH = Dimensions.get("window").width * 0.7;
 interface CustomDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  children: React.ReactNode;
 }
 
 export const CustomDrawer: React.FC<CustomDrawerProps> = ({
   isOpen,
   onClose,
+  children,
 }) => {
   const { t, i18n } = useTranslation();
   const { logout } = useAuth({});

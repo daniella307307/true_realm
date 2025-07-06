@@ -21,6 +21,7 @@ const NotificationsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { notifications, isLoading, refresh } = useGetNotifications();
 
+  console.log("Hello Notifications");
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refresh();

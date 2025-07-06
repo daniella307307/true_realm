@@ -166,39 +166,27 @@ const NotificationDetailScreen = () => {
         name: user?.name,
       };
 
-      const result = await saveFollowupToAPI(realm, {
-        followup_date: data.followup_date,
-        status: data.status,
-        comment: data.comment,
-        survey_result_id: Number(_id),
-        project_module_id: Number(project_module_id),
-        project_id: Number(projectId),
-        source_module_id: Number(sourceModuleId),
-        survey_id: Number(surveyIdNumber),
-        user: followupUser,
-        survey: notification?.survey,
-        survey_result: { id: Number(_id), _id },
-      });
+      await saveFollowupToAPI(
+        realm,
+        {
+          followup_date: data.followup_date,
+          status: data.status,
+          comment: data.comment,
+          survey_result_id: Number(_id),
+          project_module_id: Number(project_module_id),
+          project_id: Number(projectId),
+          source_module_id: Number(sourceModuleId),
+          survey_id: Number(surveyIdNumber),
+          user: followupUser,
+          survey: notification?.survey,
+          survey_result: { id: Number(_id), _id },
+        },
+        t
+      );
 
-      console.log("result", result);
+      setShowAddFollowup(false);
+      reset();
 
-      if (result.success) {
-        Toast.show({
-          type: "success",
-          text1: t("Notifications.success", "Success"),
-          text2: result.message,
-          position: "bottom",
-        });
-        setShowAddFollowup(false);
-        reset();
-      } else {
-        Toast.show({
-          type: "info",
-          text1: t("Notifications.notice", "Notice"),
-          text2: result.message,
-          position: "bottom",
-        });
-      }
     } catch (error) {
       console.error("Error creating followup:", error);
       Toast.show({
@@ -376,7 +364,7 @@ const NotificationDetailScreen = () => {
             <View className="mb-4 flex justify-center items-end">
               <Button
                 onPress={() => setShowAddFollowup(true)}
-                className="bg-primary w-1/2 justify-center items-center"
+                className="bg-primary justify-center items-center"
               >
                 <Text className="text-white">
                   {t("Notifications.add_followup", "Add Follow-up")}

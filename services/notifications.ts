@@ -2,6 +2,7 @@ import { RealmContext } from "~/providers/RealContextProvider";
 import { baseInstance } from "~/utils/axios";
 import { useDataSync } from "./dataSync";
 import { Notifications } from "~/models/notifications/notifications";
+import { showMultipleNotifications } from "./notificationService";
 
 const { useQuery, useRealm } = RealmContext;
 
@@ -42,7 +43,7 @@ export async function fetchNotificationsFromRemote() {
   );
   
   // Map the response data to match our Realm model
-  return res.data.data.map(notification => ({
+  const notifications = res.data.data.map(notification => ({
     id: notification.id,
     followup_date: notification.followup_date,
     status: notification.status,
@@ -61,6 +62,11 @@ export async function fetchNotificationsFromRemote() {
     created_at: notification.created_at,
     updated_at: notification.updated_at,
   }));
+
+  // Show notifications for unresolved items
+  await showMultipleNotifications(notifications);
+
+  return notifications;
 }
 
 export function useGetNotifications(forceSync: boolean = false) {

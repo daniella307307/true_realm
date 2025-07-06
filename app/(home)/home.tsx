@@ -20,9 +20,30 @@ import { useTranslation } from "react-i18next";
 import { useProtectedNavigation } from "~/utils/navigation";
 import { router } from "expo-router";
 import { useAppData } from "~/providers/AppProvider";
+import { RealmContext } from "~/providers/RealContextProvider";
+import { Families } from "~/models/family/families";
+import { FollowUps } from "~/models/followups/follow-up";
+import { MonitoringResponses } from "~/models/monitoring/monitoringresponses";
+import { SurveySubmission } from "~/models/surveys/survey-submission";
+import { Izu } from "~/models/izus/izu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
+
+const { useRealm } = RealmContext;
 
 const HomeScreen = () => {
   const [splashHidden, setSplashHidden] = useState(false);
+  const [showSyncWarning, setShowSyncWarning] = useState(false);
+  const [unsyncedCount, setUnsyncedCount] = useState(0);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const realm = useRealm();
   const { user } = useAuth({
     onLogout: () => {
       router.push("/(user-management)/login");
@@ -49,6 +70,50 @@ const HomeScreen = () => {
   const IZU_SECTOR_TELEPHONE_SUPERVISION_ID = 12;
 
   const IZU_MONITORING_ID = 10;
+
+  // Check for unsynced data
+  const checkUnsyncedData = () => {
+    if (!user?.id) return;
+
+    const unsyncedFamilies = realm
+      .objects(Families)
+      .filtered(
+        "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
+        user.id
+      ).length;
+
+    const unsyncedFollowups = realm
+      .objects(FollowUps)
+      .filtered(
+        "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
+        user.id
+      ).length;
+
+    const unsyncedResponses = realm
+      .objects(MonitoringResponses)
+      .filtered(
+        "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
+        user.id
+      ).length;
+
+    const unsyncedSubmissions = realm
+      .objects(SurveySubmission)
+      .filtered(
+        "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
+        user.id
+      ).length;
+
+    const unsyncedIzus = realm
+      .objects(Izu)
+      .filtered(
+        "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
+        user.id
+      ).length;
+
+    const total = unsyncedFamilies + unsyncedFollowups + unsyncedResponses + unsyncedSubmissions + unsyncedIzus;
+    setUnsyncedCount(total);
+    setShowSyncWarning(total > 0);
+  };
 
   // Dynamic links based on user role
   const getActiveLinks = () => {
@@ -159,6 +224,13 @@ const HomeScreen = () => {
     hideSplash();
   }, [isDataLoaded, splashHidden]);
 
+  // Check for unsynced data when the component mounts and when data is refreshed
+  useEffect(() => {
+    if (isDataLoaded && !isRefreshing) {
+      checkUnsyncedData();
+    }
+  }, [isDataLoaded, isRefreshing, user?.id]);
+
   // On demand refresh when user pulls to refresh
   const onRefresh = React.useCallback(() => {
     refreshAllData();
@@ -261,6 +333,18 @@ const HomeScreen = () => {
           </View>
         )}
 
+        {/* Sync Warning */}
+        {showSyncWarning && !isRefreshing && (
+          <TouchableOpacity
+            onPress={() => setShowSyncModal(true)}
+            className="mx-4 mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200"
+          >
+            <Text className="text-yellow-800 font-medium">
+              {t("HomePage.sync_warning")}
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Conditionally render list or grid view based on screen width */}
         {isDataLoaded ? (
           isSmallScreen ? renderListView() : renderGridView()
@@ -278,6 +362,38 @@ const HomeScreen = () => {
       {isRefreshing && (
         <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
       )}
+
+      {/* Sync Warning Modal */}
+      <AlertDialog open={showSyncModal} onOpenChange={setShowSyncModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("HomePage.sync_required")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("HomePage.sync_description")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onPress={() => {
+                setShowSyncModal(false);
+                navigateTo("/(settings)/sync");
+              }}
+            >
+              <Text className="text-white">
+                {t("HomePage.go_to_sync")}
+              </Text>
+            </AlertDialogAction>
+            <AlertDialogAction
+              className="bg-gray-100"
+              onPress={() => setShowSyncModal(false)}
+            >
+              <Text className="text-gray-900">
+                {t("HomePage.cancel")}
+              </Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SafeAreaView>
   );
 };

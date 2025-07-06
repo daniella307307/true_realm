@@ -124,7 +124,12 @@
     "IZU_At_Village_Demographics": "IZU At Village Demographics",
     "IZU_Sector_Telephone_Supervision": "IZU Sector Telephone Supervision",
     "IZU_Cell_Telephone_Supervision": "IZU Cell Telephone Supervision",
-    "loading_data": "Loading data..."
+    "loading_data": "Loading data...",
+    "sync_warning": "You have unsynced data that needs to be synced",
+    "sync_required": "Sync Required",
+    "sync_description": "You have unsynced data that needs to be synced. Please go to the sync page to sync your data.",
+    "go_to_sync": "Go to Sync Page",
+    "cancel": "Cancel"
   },
   "ProjectPage": {
     "title": "Projects",
