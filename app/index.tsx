@@ -11,6 +11,7 @@ import { useAuth } from '~/lib/hooks/useAuth';
  */
 export default function Index() {
   const { isLoggedIn, authChecked } = useAuth({});
+  console.log("Index", isLoggedIn, authChecked);
 
   // Handle redirection after auth check
   useEffect(() => {

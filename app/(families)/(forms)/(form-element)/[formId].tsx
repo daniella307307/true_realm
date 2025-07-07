@@ -39,7 +39,7 @@ const FormElementIndexScreen = () => {
   console.log("Project ID: ", projectIdNumber);
   console.log("Source Module ID: ", sourceModuleId);
   console.log("Project Module ID: ", projectModuleId);
-  console.log("Family ID: ", family_id);
+  console.log("Family ID: ", family_id);  
 
   if (!formId || !project_id) {
     return (

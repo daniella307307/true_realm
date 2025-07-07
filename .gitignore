@@ -40,3 +40,6 @@ yarn-error.*
 
 expo-env.d.ts
 # @end expo-cli
+
+# Firebase sensitive files
+Sugiramuryango-Firebase-Admin-SDK.json

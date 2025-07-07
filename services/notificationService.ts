@@ -48,7 +48,7 @@ export async function registerForPushNotificationsAsync() {
 export async function showNotification(notification: INotifications) {
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: notification.survey?.name || 'New Notification',
+      title: notification.survey?.name_kin || notification.survey?.name || 'New Notification',
       body: notification.comment || '',
       data: { 
         id: notification.id,

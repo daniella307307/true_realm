@@ -378,25 +378,25 @@
     "risk_detail": "Iki cyiciro cyateza ibyago"
   },
   "Notifications": {
-    "title": "Amatangazo",
-    "pending": "Biracyategereje",
-    "resolved": "Byakemuwe",
+    "title": "Ubutumwa",
+    "notification_detail": "Ibisobanuro by'ubutumwa",
+    "no_notifications": "Nta butumwa buhari",
     "by": "Na",
-    "followup_date": "Gukurikirana",
-    "notification_detail": "Ibisobanuro by'itangazo",
-    "item_details": "Ibisobanuro bindi",
-    "followups": "Ibikurikiranwa",
-    "no_details": "Nta bisobanuro bindi bihari",
-    "add_followup": "Ongeraho ko bizakurikiranwa",
-    "no_followups": "Nta gukurikirana bihari",
-    "pending_sync": "Guhuza biracyategereje",
-    "success": "Byagenze neza",
-    "notice": "Itangazo",
+    "pending": "Biracyategereje",
+    "active": "Biracyategereje",
+    "resolved": "Byarakemutse",
+    "followup_date": "Itariki y'ikurikirana",
+    "item_details": "Ibisobanuro",
+    "followups": "Gukurikirana",
+    "add_followup": "Ongeraho ikurikirana",
+    "save_followup": "Bika ikurikirana",
+    "saving": "Birabikwa...",
     "error": "Ikosa",
-    "followup_error": "Ntibishoboye kongera gukurikirana",
-    "saving": "Kubika...",
-    "save_followup": "Bika ibizakurikiranwa",
-    "no_notifications": "Nta tangazo rihari"
+    "followup_error": "Ikosa mu kubika ikurikirana",
+    "no_details": "Nta bisobanuro bihari",
+    "no_followups": "Nta bikurikirwa bihari",
+    "pending_sync": "Bitegereje guhuza",
+    "answers": "Ibisubizo"
   },
   "Sync": {
     "error": "Ikosa",
@@ -485,7 +485,10 @@
     "failed_to_store_user_data": "Kubika amakuru byanze",
     "error_loading_profile": "Ikosa mu gutunganya amakuru y'umwirondoro",
     "password_needs_change": "Ijambo ry'ibanga rikenewe guhindurwa",
-    "password_already_changed": "Ijambo ry'ibanga ryarahindutse"
+    "password_already_changed": "Ijambo ry'ibanga ryarahindutse",
+    "session_expired_title": "Igihe cyarangiye",
+    "session_expired_message": "Igihe cyawe cyarangiye cyangwa nticyemewe. Nyamuneka wongere winjire kugira ngo ukomeze.",
+    "go_to_login": "Jya ku Kwinjira"
   },
   "Months": {
     "january": "Mutarama",
@@ -580,5 +583,14 @@
         "unexpected": "Habaye ikibazo kitazwi mu gihe cyo kubika"
       }
     }
+  },
+  "DynamicComponents": {
+    "Year": "Umwaka",
+    "Month": "Ukwezi",
+    "Day": "Umunsi",
+    "SelectYear": "Hitamo umwaka",
+    "SelectMonth": "Hitamo ukwezi",
+    "SelectDay": "Hitamo umunsi",
+    "SelectOption": "Hitamo"
   }
 }

@@ -16,6 +16,7 @@ export function useGetCohorts(forceSync: boolean = false) {
   const storedCohorts = useQuery(Cohort);
   const realm = useRealm();
 
+  
   const { syncStatus, refresh } = useDataSync([
     {
       key: "cohorts",
@@ -30,11 +31,11 @@ export function useGetCohorts(forceSync: boolean = false) {
           realm.delete(storedCohorts);
         });
         
-        // Transform and return new data with proper _id, filtering out empty cohorts
+        // Transform and return new data with proper _id, filtering out empty cohorts and converting numbers to strings
         return data
           .filter((cohort: ICohort) => cohort.cohort !== "" && cohort.cohort !== null)
           .map((cohort: ICohort) => ({
-            cohort: cohort.cohort,
+            cohort: String(cohort.cohort), // Convert number to string
             _id: new Realm.BSON.ObjectId(),
           }));
       },

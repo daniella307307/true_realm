@@ -429,7 +429,7 @@ const SelectBoxComponent: React.FC<DynamicFieldProps> = ({
             })) || []
           }
           onChange={(item) => onChange(item.value)}
-          placeholder="Select an option"
+          placeholder={t("DynamicComponents.SelectOption", "Select an option")}
         />
         {error && (
           <Text className="text-red-500 mt-2">
@@ -726,7 +726,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
         <View className="flex flex-row justify-between gap-2 mb-4">
           {/* Year Dropdown */}
           <View className="flex-1 mb-2" style={{ zIndex: 3000 }}>
-            <Text className="text-sm text-gray-600 mb-1">Year</Text>
+            <Text className="text-sm text-gray-600 mb-1">{t("DynamicComponents.Year", "Year")}</Text>
             <Controller
               control={control}
               name={`${field.key}.year`}
@@ -753,7 +753,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
                         setValue(`${field.key}.day`, "");
                         setValue(`${field.key}.month`, "");
                       }}
-                      placeholder="Select Year"
+                      placeholder={t("DynamicComponents.SelectYear", "Select Year")}
                       className="bg-white"
                     />
                   </View>
@@ -769,7 +769,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
 
           {/* Month Dropdown */}
           <View className="flex-1 mb-2" style={{ zIndex: 2000 }}>
-            <Text className="text-sm text-gray-600 mb-1">Month</Text>
+            <Text className="text-sm text-gray-600 mb-1">{t("DynamicComponents.Month", "Month")}</Text>
             <Controller
               control={control}
               name={`${field.key}.month`}
@@ -795,7 +795,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
                         onChange(item.value);
                         setValue(`${field.key}.day`, "");
                       }}
-                      placeholder="Select Month"
+                      placeholder={t("DynamicComponents.SelectMonth", "Select Month")}
                       className="bg-white"
                     />
                   </View>
@@ -811,7 +811,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
 
           {/* Day Dropdown */}
           <View className="flex-1 mb-2" style={{ zIndex: 1000 }}>
-            <Text className="text-sm text-gray-600 mb-1">Day</Text>
+            <Text className="text-sm text-gray-600 mb-1">{t("DynamicComponents.Day", "Day")}</Text>
             <Controller
               control={control}
               name={`${field.key}.day`}
@@ -834,7 +834,7 @@ const DayInputComponent: React.FC<DynamicFieldProps> = ({
                     <Dropdown
                       data={days}
                       onChange={(item) => onChange(item.value)}
-                      placeholder="Select Day"
+                      placeholder={t("DynamicComponents.SelectDay", "Select Day")}
                       className="bg-white"
                     />
                   </View>

@@ -35,41 +35,60 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const realm = useRealm();
   const { t } = useTranslation();
   const isLoggedIn = useMemo(async () => {
-    const token = await AsyncStorage.getItem("tknToken");
-    const loggedIn = !!(user && token);
-    setAuthenticationStatus(loggedIn);
-    return loggedIn;
+    try {
+      const token = await AsyncStorage.getItem("tknToken");
+      const loggedIn = !!(user && token);
+      console.log("[Auth] Token exists:", !!token, "User exists:", !!user, "Is logged in:", loggedIn);
+      setAuthenticationStatus(loggedIn);
+      return loggedIn;
+    } catch (error) {
+      console.error("[Auth] Error checking login status:", error);
+      setAuthenticationStatus(false);
+      return false;
+    }
   }, [user]);
 
   useEffect(() => {
     const checkLoginStatus = async () => {
-      const loggedIn = await isLoggedIn;
-      console.log("is loggedIn: ", loggedIn);
-      setAuthChecked(true);
+      try {
+        const loggedIn = await isLoggedIn;
+        console.log("[Auth] Login status check completed:", loggedIn);
+        setAuthChecked(true);
+      } catch (error) {
+        console.error("[Auth] Error in checkLoginStatus:", error);
+        setAuthChecked(true); // Still mark as checked even on error
+      }
     };
 
     checkLoginStatus();
-    checkAuthStatus();
-  }, []);
+  }, [isLoggedIn]);
 
   const checkAuthStatus = async () => {
     try {
       const token = await AsyncStorage.getItem("tknToken");
-      setAuthenticationStatus(!!(token && user));
+      const hasValidAuth = !!(token && user);
+      console.log("[Auth] Checking auth status - Token:", !!token, "User:", !!user);
+      
+      setAuthenticationStatus(hasValidAuth);
 
       if (token && !user) {
+        console.log("[Auth] Token exists but no user - setting loading");
         setIsLoading(true);
       }
+      
       if (!token && user) {
-        mainStore.logout();
+        console.log("[Auth] No token but user exists - logging out");
+        await mainStore.logout();
         setAuthenticationStatus(false);
       }
+      
       if (user?.userstatus === 0) {
-        mainStore.logout();
+        console.log("[Auth] User status is 0 - logging out");
+        await mainStore.logout();
         setAuthenticationStatus(false);
       }
     } catch (error) {
-      console.error("Auth status check failed:", error);
+      console.error("[Auth] Auth status check failed:", error);
       setAuthenticationStatus(false);
     } finally {
       setIsLoading(false);
@@ -84,6 +103,12 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     setAuthenticationStatus(false);
     onLogout?.();
     console.log("🚀 file: useAuth.tsx, fn: logout , line 14");
+    
+    // Clear the stored token
+    await AsyncStorage.removeItem("tknToken");
+    
+    // Navigate to login screen
+    router.replace("/(user-management)/login");
   };
 
   const _userLogout = useMutation<{}, AxiosError<IResponseError>>({

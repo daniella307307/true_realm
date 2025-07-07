@@ -8,20 +8,28 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { useGetNotifications } from "~/services/notifications";
 import HeaderNavigation from "~/components/ui/header";
 import { INotifications } from "~/types";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
+import i18n from "~/utils/i18n";
 
 const NotificationsScreen = () => {
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const { notifications, isLoading, refresh } = useGetNotifications();
 
-  console.log("Hello Notifications");
+  const isKinyarwanda = i18n.language === "rw-RW";
+
+  // Sort notifications by ID in descending order
+  const sortedNotifications = useMemo(() => {
+    if (!notifications) return [];
+    return [...notifications].sort((a, b) => b.id - a.id);
+  }, [notifications]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refresh();
@@ -53,7 +61,7 @@ const NotificationsScreen = () => {
         <>
           <View className="flex-1 p-4">
             <View className="flex-row justify-between mb-2">
-              <Text className="text-lg font-semibold">{item.survey?.name}</Text>
+              <Text className="text-lg font-semibold">{isKinyarwanda ? item.survey?.name_kin : item.survey?.name}</Text>
               <View
                 className={`px-2 py-1 rounded-full ${
                   item.status === "resolved" ? "bg-green-100" : "bg-yellow-100"
@@ -112,7 +120,7 @@ const NotificationsScreen = () => {
         </View>
       ) : (
         <FlatList
-          data={notifications as unknown as INotifications[]}
+          data={sortedNotifications as unknown as INotifications[]}
           renderItem={renderNotificationItem}
           keyExtractor={(item) => `${item.id}-${item.created_at}`}
           contentContainerClassName="p-4"

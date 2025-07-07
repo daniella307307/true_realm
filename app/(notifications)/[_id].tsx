@@ -9,12 +9,11 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { Button } from "~/components/ui/button";
 import { Text } from "~/components/ui/text";
-import { useGetAllSurveySubmissions } from "~/services/survey-submission";
+import { useGetFormById } from "~/services/formElements";
 import { format } from "date-fns";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
-import { useGetFormById } from "~/services/formElements";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { NotFound } from "~/components/ui/not-found";
 import { useGetNotificationById } from "~/services/notifications";
@@ -31,6 +30,7 @@ import { useForm } from "react-hook-form";
 import { RealmContext } from "~/providers/RealContextProvider";
 import Toast from "react-native-toast-message";
 import { useAuth } from "~/lib/hooks/useAuth";
+import i18n from "~/utils/i18n";
 
 const { useRealm } = RealmContext;
 
@@ -47,9 +47,7 @@ const NotificationDetailScreen = () => {
   console.log("survey_id", survey_id);
 
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"details" | "followups">(
-    "details"
-  );
+  const [activeTab, setActiveTab] = useState<"details" | "followups">("details");
   const [showAddFollowup, setShowAddFollowup] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { control, handleSubmit, reset } = useForm();
@@ -57,32 +55,25 @@ const NotificationDetailScreen = () => {
   const { user } = useAuth({});
 
   const { notification } = useGetNotificationById(id || "");
-  const { submissions: surveySubmissions, isLoading: isLoadingSubmissions } =
-    useGetAllSurveySubmissions();
-  const { followups } = useGetFollowUpsBySurveyResultId(
-    _id || "",
-    survey_id || ""
-  );
+  console.log("notification", notification);
+  const { followups } = useGetFollowUpsBySurveyResultId(_id || "", survey_id || "");
 
-  // Find the submission that matches this notification
-  const submission = useMemo(() => {
-    if (!_id) return null;
-    return surveySubmissions.find((sub) => sub.id.toString() === _id);
-  }, [_id, surveySubmissions]);
-
-  // console.log("Survey Submissions", JSON.stringify(surveySubmissions, null, 2));
+  // Parse the submission data from notification json
+  const submissionData = useMemo(() => {
+    if (!notification?.survey_result?.json) return null;
+    try {
+      return JSON.parse(notification.survey_result.json as string);
+    } catch (error) {
+      console.error("Error parsing submission json:", error);
+      return null;
+    }
+  }, [notification?.survey_result?.json]);
 
   // Get form data for field labels
-  const projectId =
-    submission?.form_data?.project_id || notification?.form_data?.project_id;
-  const moduleId =
-    submission?.form_data?.project_module_id ||
-    notification?.form_data?.project_module_id;
-  const sourceModuleId =
-    submission?.form_data?.source_module_id ||
-    notification?.form_data?.source_module_id;
-  const surveyIdNumber =
-    submission?.form_data?.survey_id || notification?.form_data?.survey_id;
+  const projectId = notification?.form_data?.project_id;
+  const moduleId = notification?.form_data?.project_module_id;
+  const sourceModuleId = notification?.form_data?.source_module_id;
+  const surveyIdNumber = notification?.form_data?.survey_id;
 
   const { form, isLoading: isLoadingSurvey } = useGetFormById(
     surveyIdNumber as number,
@@ -91,8 +82,24 @@ const NotificationDetailScreen = () => {
     projectId as number
   );
 
-  // console.log("Form", JSON.stringify(form, null, 2));
+  // System fields to exclude from display
+  const systemFields = [
+    'table_name',
+    'project_module_id',
+    'source_module_id',
+    'project_id',
+    'survey_id',
+    'post_data',
+    'province',
+    'district',
+    'sector',
+    'cell',
+    'village',
+    'izu_name',
+    'familyID'
+  ];
 
+  const isKinyarwanda = i18n.language === "rw-RW";
   const fieldLabelMap = useMemo(() => {
     if (!form?.json2) return {};
     try {
@@ -106,7 +113,20 @@ const NotificationDetailScreen = () => {
         components.forEach((field: any) => {
           // Store field label if it has a key
           if (field?.key) {
-            map[field.key] = field.label || field.title?.default || field.key;
+            // Check for language-specific title first
+            if (field.title) {
+              if (isKinyarwanda && field.title.kn) {
+                map[field.key] = field.title.kn;
+              } else if (field.title.en) {
+                map[field.key] = field.title.en;
+              } else if (field.title.default) {
+                map[field.key] = field.title.default;
+              } else {
+                map[field.key] = field.key;
+              }
+            } else {
+              map[field.key] = field.key;
+            }
           }
 
           // Process child components recursively
@@ -138,11 +158,7 @@ const NotificationDetailScreen = () => {
           }
         });
       };
-
-      if (
-        formDefinition?.components &&
-        Array.isArray(formDefinition.components)
-      ) {
+      if (formDefinition?.components && Array.isArray(formDefinition.components)) {
         processComponents(formDefinition.components);
       }
 
@@ -154,7 +170,7 @@ const NotificationDetailScreen = () => {
   }, [form?.json2]);
 
   // Combined loading state
-  const isLoading = isLoadingSubmissions || isLoadingSurvey;
+  const isLoading = isLoadingSurvey;
 
   const onSubmitFollowup = async (data: any) => {
     try {
@@ -220,9 +236,8 @@ const NotificationDetailScreen = () => {
     );
   }
 
-  const answers = submission?.answers || {};
+  const answers = notification?.survey_result?.json ? JSON.parse(notification.survey_result.json as string) : {};
 
-  // console.log("Followups", JSON.stringify(followups, null, 2));
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation
@@ -234,7 +249,7 @@ const NotificationDetailScreen = () => {
       {/* Notification header */}
       <View className="px-4 py-3 bg-white border-b border-gray-200">
         <Text className="text-lg font-semibold">
-          {notification.survey?.name}
+          {isKinyarwanda ? notification.survey?.name_kin : notification.survey?.name}
         </Text>
         <View className="flex-row justify-between items-center mt-1">
           <Text className="text-gray-600 text-sm">
@@ -243,10 +258,8 @@ const NotificationDetailScreen = () => {
               : ""}
           </Text>
           <View
-            className={`p-3 rounded-full ${
-              notification.status === "resolved"
-                ? "bg-green-100"
-                : "bg-yellow-100"
+            className={`px-2 py-1 rounded-full ${
+              notification.status === "resolved" ? "bg-green-100" : "bg-yellow-100"
             }`}
           >
             <Text
@@ -257,8 +270,8 @@ const NotificationDetailScreen = () => {
               }`}
             >
               {notification.status
-                ? t(`Notifications.${notification.status}`, notification.status)
-                : t("Notifications.pending", "Pending")}
+                ? t(`Notifications.${notification.status}`)
+                : t("Notifications.pending")}
             </Text>
           </View>
         </View>
@@ -301,25 +314,13 @@ const NotificationDetailScreen = () => {
         {activeTab === "details" ? (
           <View>
             {/* Item details tab content */}
-            {Object.keys(answers).length > 0 ? (
+            {submissionData ? (
               <View className="mb-6">
                 <Text className="font-medium text-gray-700 mb-4">
                   {t("History.answers", "Answers")}
                 </Text>
-                {Object.entries(answers)
-                  .filter(([key]) => {
-                    // Filter out system fields and only show fields that have a valid label in the form
-                    const systemFields = [
-                      "cohort",
-                      "form_status",
-                      "language",
-                      "time_spent_filling_the_form",
-                      "time_spent_filling_the_form",
-                      "userId",
-                      "user_id",
-                    ];
-                    return !systemFields.includes(key) && fieldLabelMap[key];
-                  })
+                {Object.entries(submissionData)
+                  .filter(([key]) => !systemFields.includes(key))
                   .map(([key, value]) => {
                     // Format the value based on its type
                     let displayValue: string = "";
@@ -338,13 +339,16 @@ const NotificationDetailScreen = () => {
                       displayValue = String(value);
                     }
 
+                    // Use fieldLabelMap if available, otherwise use the key itself
+                    const label = fieldLabelMap[key] || key;
+
                     return (
                       <View
                         key={key}
                         className="mb-4 p-4 bg-white rounded-lg border border-gray-200"
                       >
-                        <Text className="font-medium text-gray-700 mb-1">
-                          {fieldLabelMap[key]}
+                        <Text className="font-medium capitalize text-gray-700 mb-1">
+                          {label.replace(/_/g, ' ')}
                         </Text>
                         <Text className="text-gray-600">{displayValue}</Text>
                       </View>
@@ -396,7 +400,7 @@ const NotificationDetailScreen = () => {
                             : "text-yellow-800"
                         }`}
                       >
-                        {followup.status}
+                        {t(`Notifications.${followup.status}`)}
                       </Text>
                     </View>
                   </View>
@@ -456,16 +460,17 @@ const NotificationDetailScreen = () => {
                   key: "followup_date",
                   type: "day",
                   input: true,
-                  label: "Follow-up Date",
+                  label: isKinyarwanda ? "Itariki y'ikurikirana" : "Follow-up Date",
                   tableView: true,
                   title: {
                     en: "Follow-up Date",
-                    kn: "Follow-up Date",
+                    kn: "Itariki y'ikurikirana",
                     default: "Follow-up Date",
                   },
                   validate: { required: true },
                 }}
                 control={control}
+                language={isKinyarwanda ? "rw-RW" : "en-US"}
               />
 
               <SelectBoxComponent
@@ -473,18 +478,29 @@ const NotificationDetailScreen = () => {
                   key: "status",
                   type: "select",
                   input: true,
-                  label: "Status",
+                  label: isKinyarwanda ? "Imiterere" : "Status",
                   tableView: true,
-                  title: { en: "Status", kn: "Status", default: "Status" },
+                  title: { 
+                    en: "Status", 
+                    kn: "Imiterere", 
+                    default: "Status" 
+                  },
                   validate: { required: true },
                   data: {
                     values: [
-                      { value: "active", label: "Active" },
-                      { value: "resolved", label: "Resolved" },
+                      { 
+                        value: "active", 
+                        label: isKinyarwanda ? "Biracyategereje" : "Active" 
+                      },
+                      { 
+                        value: "resolved", 
+                        label: isKinyarwanda ? "Byakemutse" : "Resolved" 
+                      },
                     ],
                   },
                 }}
                 control={control}
+                language={isKinyarwanda ? "rw-RW" : "en-US"}
               />
 
               <TextAreaComponent
@@ -492,12 +508,17 @@ const NotificationDetailScreen = () => {
                   key: "comment",
                   type: "textarea",
                   input: true,
-                  label: "Comment",
+                  label: isKinyarwanda ? "Icyo wavuze" : "Comment",
                   tableView: true,
-                  title: { en: "Comment", kn: "Comment", default: "Comment" },
+                  title: { 
+                    en: "Comment", 
+                    kn: "Icyo wavuze", 
+                    default: "Comment" 
+                  },
                   validate: { required: true },
                 }}
                 control={control}
+                language={isKinyarwanda ? "rw-RW" : "en-US"}
               />
 
               <Button

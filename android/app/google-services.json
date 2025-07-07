@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "353841836334",
+    "project_id": "sugiramuryango-2fc8a",
+    "storage_bucket": "sugiramuryango-2fc8a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:353841836334:android:4592f824a90fbe9ea8cabf",
+        "android_client_info": {
+          "package_name": "com.sugiramuryango.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBK_3gp1vKyvcifgbaSUHdMT6qU4TYKGeg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

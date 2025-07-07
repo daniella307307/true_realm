@@ -33,6 +33,7 @@ interface INotificationResponse {
     survey_result: {
       id: number;
       _id: string;
+      json: string;
     };
   }>;
 }
@@ -41,6 +42,8 @@ export async function fetchNotificationsFromRemote() {
   const res = await baseInstance.get<INotificationResponse>(
     "/get-user-notifications"
   );
+
+  // console.log("The notifications are", JSON.stringify(res.data, null, 2));
   
   // Map the response data to match our Realm model
   const notifications = res.data.data.map(notification => ({
@@ -97,7 +100,7 @@ export function useGetNotificationById(id: string | number) {
   const notifications = useQuery(Notifications);
   
   const notification = notifications.find(notification => 
-    notification.id.toString() === id.toString()
+    notification.id.toString() === (typeof id === 'number' ? id : parseInt(id)).toString()
   );
   
   return { notification };

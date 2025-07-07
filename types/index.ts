@@ -866,17 +866,27 @@ export interface INotifications extends Generic {
   followup_date: string;
   status: string;
   comment: string;
-  user?: {
+  form_data: {
+    project_module_id?: number | null;
+    project_id?: number | null;
+    source_module_id?: number | null;
+    survey_id?: number | null;
+    survey_result_id?: number | null;
+    user_id?: number | null;
+  };
+  user: {
     id: number;
     name: string;
   };
-  survey?: {
-    id: number;
+  survey: {
     name: string;
+    id: number;
+    name_kin: string;
   };
   survey_result?: {
     id: number;
     _id: string;
+    json: string;
   };
   created_at: string;
   updated_at: string;

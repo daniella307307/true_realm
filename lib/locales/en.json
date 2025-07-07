@@ -485,7 +485,10 @@
     "failed_to_store_user_data": "Failed to store user data",
     "error_loading_profile": "Error loading profile data",
     "password_needs_change": "Password needs to be changed",
-    "password_already_changed": "Password already changed"
+    "password_already_changed": "Password already changed",
+    "session_expired_title": "Session Expired",
+    "session_expired_message": "Your session has expired or is invalid. Please log in again to continue.",
+    "go_to_login": "Go to Login"
   },
   "Months": {
     "january": "January",
@@ -580,5 +583,14 @@
         "unexpected": "An unexpected error occurred while saving"
       }
     }
+  },
+  "DynamicComponents": {
+    "Year": "Year",
+    "Month": "Month",
+    "Day": "Day",
+    "SelectYear": "Select Year",
+    "SelectMonth": "Select Month",
+    "SelectDay": "Select Day",
+    "SelectOption": "Select an option"
   }
 }
