@@ -20,7 +20,6 @@ const ProjectFormElementScreen = () => {
       source_module_id: string;
       project_id: string;
     }>();
-
   const insets = useSafeAreaInsets();
   const formIdNumber = parseInt(formId);
   console.log("Form ID: ", formIdNumber);

@@ -108,7 +108,7 @@ export async function verifyPasswordReset(identifier: string, verification_code:
 export async function updatePassword(password: string, identifier: string): Promise<{ message: string }> {
   try {
     const res = await fetchWithRetry(() => 
-      baseInstance.put<IResponse<{ message: string }>>(`/user/update-password`, { 
+      baseInstance.post<IResponse<{ message: string }>>(`/user/update-password`, { 
         password,
         identifier 
       })

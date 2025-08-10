@@ -79,7 +79,7 @@ export async function updatePost(values: {
   body: string;
   id: number;
 }) {
-  const res = await baseInstance.put<IResponse<IPost>>(`/posts/${values.id}`, {
+  const res = await baseInstance.post<IResponse<IPost>>(`/posts/${values.id}`, {
     title: values.title,
     body: values.body,
   });
@@ -133,7 +133,7 @@ export async function updateComment({
   commentId: number;
   comment: string;
 }) {
-  const res = await baseInstance.put<IResponse<IComment>>(
+  const res = await baseInstance.post<IResponse<IComment>>(
     `/comments/${commentId}`,
     { comment }
   );

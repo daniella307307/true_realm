@@ -151,7 +151,7 @@ export const usePostManipulate = () => {
   const reportPostMutation = useMutation<
     IResponse<{ message: string }>,
     AxiosError<IResponseError>,
-    { id: number; report: string }
+    { id: number; reason: string }
   >({
     mutationFn: reportPost,
     onMutate: () => setIsLoading(true),

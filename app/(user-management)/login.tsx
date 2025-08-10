@@ -207,7 +207,7 @@ export default function LoginScreen() {
       
       {/* Show offline warning if network is not available */}
       {!isNetworkAvailable && (
-        <View className="bg-red-100 p-4 rounded-lg w-full flex-row items-center justify-between">
+        <View className="bg-red-100 p-4 rounded-lg w-full flex-col items-center justify-between">
           <View className="flex-row items-center">
             <WifiOff width={24} height={24} stroke="#EF4444" />
             <Text className="ml-2 text-red-600 font-medium">

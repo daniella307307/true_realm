@@ -37,6 +37,7 @@ export function useGetAllProjects(forceSync: boolean = false) {
       forceSync,
     },
   ]);
+  
 
   return {
     projects: storedProjects,

@@ -72,25 +72,37 @@ const ProjectModuleScreens = () => {
 
   const filteredModules = useMemo(() => {
     // For regular projects
-    return modules
+    const filtered = modules
       .filter(
-        (module: IModule | null) =>
-          module !== null &&
-          module.module_status !== 0 &&
-          module.module_name.toLowerCase() !== 'uncategorize' &&
-          (!searchQuery ||
-            module.module_name
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()) ||
-            module.module_description
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()))
+        (module: IModule | null) => {
+          if (!module) {
+            console.log("Skipping null module");
+            return false;
+          }
+          console.log("Checking module:", module.module_name, {
+            status: module.module_status,
+            isUncategorized: module.module_name.toLowerCase() === 'uncategorize'
+          });
+          // Exclude modules with status 0 and any module containing 'uncategorize'
+          if (module.module_status === 0 || module.module_name.toLowerCase().includes('uncategorize')) {
+            return false;
+          }
+          
+          // Only include modules that match the search query if one exists
+          if (searchQuery) {
+            return module.module_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                   module.module_description.toLowerCase().includes(searchQuery.toLowerCase());
+          }
+          
+          return true;
+        }
       )
       .filter((module): module is IModule => module !== null)
       .sort(
         (a: IModule, b: IModule) =>
           (a?.order_list || 0) - (b?.order_list || 0)
       );
+    return filtered;
   }, [modules, searchQuery]);
 
   const onRefresh = async () => {
@@ -105,7 +117,6 @@ const ProjectModuleScreens = () => {
   const renderItem = ({ item }: { item: IModule | Survey }) => {
     if ('module_name' in item) {
       // This is a module
-      // console.log("Item: ", JSON.stringify(item, null, 2));
       return (
         <TouchableOpacity
           onPress={() => {
@@ -188,11 +199,11 @@ const ProjectModuleScreens = () => {
           </View>
         ) : (
           <FlatList<IModule | Survey>
-            data={uncategorizedModule ? uncategorizedForms || [] : filteredModules}
+            data={uncategorizedModule && uncategorizedForms?.length > 0 ? uncategorizedForms : filteredModules}
             keyExtractor={(item, index) => `${item?.id}-${index}`}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={() => (
-              <EmptyDynamicComponent message={t("ProductModulePage.no_related_modules")} />
+                <EmptyDynamicComponent message={t("ProductModulePage.no_related_modules")} />
             )}
             renderItem={renderItem}
             refreshControl={

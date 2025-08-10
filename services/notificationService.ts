@@ -4,6 +4,7 @@ import { INotifications } from '~/types';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
+  // @ts-ignore
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,

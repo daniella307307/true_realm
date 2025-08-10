@@ -5,7 +5,7 @@ import { Alert } from 'react-native';
 import { useReactQueryDevTools } from "@dev-plugins/react-query";
 
 // Create a client
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 2,
