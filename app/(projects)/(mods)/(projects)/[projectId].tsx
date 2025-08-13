@@ -25,10 +25,10 @@ import { NotFound } from "~/components/ui/not-found";
 
 const ProjectModuleScreens = () => {
   const { t, i18n } = useTranslation();
-  const { projectId } = useLocalSearchParams<{ 
+  const { projectId } = useLocalSearchParams<{
     projectId: string;
   }>();
-  
+
   if (!projectId) {
     return (
       <NotFound
@@ -42,7 +42,7 @@ const ProjectModuleScreens = () => {
   const { modules, isLoading, refresh } = useGetModulesByProjectId(
     Number(projectId)
   );
-  
+
   const { control, watch } = useForm({
     resolver: zodResolver(
       z.object({
@@ -59,12 +59,15 @@ const ProjectModuleScreens = () => {
   const uncategorizedModule = modules.find(
     (module: IModule | null) =>
       module !== null &&
-      module.module_name.toLowerCase().includes('uncategorize') &&
+      module.module_name.toLowerCase().includes("uncategorize") &&
       module.project_id === Number(projectId)
   );
 
   // Get forms for the uncategorized module if it exists
-  const { filteredForms: uncategorizedForms, isLoading: isUncategorizedFormsLoading } = useGetFormByProjectAndModule(
+  const {
+    filteredForms: uncategorizedForms,
+    isLoading: isUncategorizedFormsLoading,
+  } = useGetFormByProjectAndModule(
     uncategorizedModule?.project_id || 0,
     uncategorizedModule?.source_module_id || 0,
     uncategorizedModule?.id || 0
@@ -73,37 +76,44 @@ const ProjectModuleScreens = () => {
   const filteredModules = useMemo(() => {
     // For regular projects
     const filtered = modules
-      .filter(
-        (module: IModule | null) => {
-          if (!module) {
-            console.log("Skipping null module");
-            return false;
-          }
-          console.log("Checking module:", module.module_name, {
-            status: module.module_status,
-            isUncategorized: module.module_name.toLowerCase() === 'uncategorize'
-          });
-          // Exclude modules with status 0 and any module containing 'uncategorize'
-          if (module.module_status === 0 || module.module_name.toLowerCase().includes('uncategorize')) {
-            return false;
-          }
-          
-          // Only include modules that match the search query if one exists
-          if (searchQuery) {
-            return module.module_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                   module.module_description.toLowerCase().includes(searchQuery.toLowerCase());
-          }
-          
-          return true;
+      .filter((module: IModule | null) => {
+        if (!module) {
+          console.log("Skipping null module");
+          return false;
         }
-      )
+        console.log("Checking module:", module.module_name, {
+          status: module.module_status,
+          isUncategorized: module.module_name.toLowerCase() === "uncategorize",
+        });
+        // Exclude modules with status 0 and any module containing 'uncategorize'
+        if (
+          module.module_status === 0 ||
+          module.module_name.toLowerCase().includes("uncategorize")
+        ) {
+          return false;
+        }
+
+        // Only include modules that match the search query if one exists
+        if (searchQuery) {
+          return (
+            module.module_name
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()) ||
+            module.module_description
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())
+          );
+        }
+
+        return true;
+      })
       .filter((module): module is IModule => module !== null)
       .sort(
-        (a: IModule, b: IModule) =>
-          (a?.order_list || 0) - (b?.order_list || 0)
+        (a: IModule, b: IModule) => (a?.order_list || 0) - (b?.order_list || 0)
       );
     return filtered;
   }, [modules, searchQuery]);
+
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -115,7 +125,7 @@ const ProjectModuleScreens = () => {
   };
 
   const renderItem = ({ item }: { item: IModule | Survey }) => {
-    if ('module_name' in item) {
+    if ("module_name" in item) {
       // This is a module
       return (
         <TouchableOpacity
@@ -124,8 +134,8 @@ const ProjectModuleScreens = () => {
               pathname: "/(projects)/(mods)/(projects)/(forms)/[modId]",
               params: {
                 modId: item.source_module_id.toString(),
-                project_id: projectId
-              }
+                project_id: projectId,
+              },
             });
           }}
           className="p-4 border mb-4 border-gray-200 rounded-xl"
@@ -138,7 +148,9 @@ const ProjectModuleScreens = () => {
               color="#71717A"
             />
             <Text className="text-lg ml-2 font-semibold">
-              {i18n.language === "rw-RW" ? item.kin_title || item.module_name : item.module_name}
+              {i18n.language === "rw-RW"
+                ? item.kin_title || item.module_name
+                : item.module_name}
             </Text>
           </View>
         </TouchableOpacity>
@@ -148,15 +160,18 @@ const ProjectModuleScreens = () => {
       // This is a form
       return (
         <TouchableOpacity
-          onPress={() => router.push({
-            pathname: "/(projects)/(mods)/(projects)/(form-element)/[formId]",
-            params: {
-              formId: item.id.toString(),
-              project_id: uncategorizedModule?.project_id.toString() || "",
-              source_module_id: uncategorizedModule?.source_module_id.toString() || "",
-              project_module_id: uncategorizedModule?.id.toString() || ""
-            }
-          })}
+          onPress={() =>
+            router.push({
+              pathname: "/(projects)/(mods)/(projects)/(form-element)/[formId]",
+              params: {
+                formId: item.id.toString(),
+                project_id: uncategorizedModule?.project_id.toString() || "",
+                source_module_id:
+                  uncategorizedModule?.source_module_id.toString() || "",
+                project_module_id: uncategorizedModule?.id.toString() || "",
+              },
+            })
+          }
           className="p-4 border mb-4 border-gray-200 rounded-xl"
         >
           <View className="flex-row items-center pr-4 justify-start">
@@ -167,7 +182,9 @@ const ProjectModuleScreens = () => {
               color="#71717A"
             />
             <Text className="text-lg ml-2 font-semibold">
-              {i18n.language === "rw-RW" ? item.name_kin || item.name : item.name}
+              {i18n.language === "rw-RW"
+                ? item.name_kin || item.name
+                : item.name}
             </Text>
           </View>
         </TouchableOpacity>
@@ -199,11 +216,17 @@ const ProjectModuleScreens = () => {
           </View>
         ) : (
           <FlatList<IModule | Survey>
-            data={uncategorizedModule && uncategorizedForms?.length > 0 ? uncategorizedForms : filteredModules}
+            data={
+              uncategorizedModule && uncategorizedForms?.length > 0
+                ? uncategorizedForms
+                : filteredModules
+            }
             keyExtractor={(item, index) => `${item?.id}-${index}`}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={() => (
-                <EmptyDynamicComponent message={t("ProductModulePage.no_related_modules")} />
+              <EmptyDynamicComponent
+                message={t("ProductModulePage.no_related_modules")}
+              />
             )}
             renderItem={renderItem}
             refreshControl={

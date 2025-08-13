@@ -287,7 +287,9 @@ function Layout() {
 
   debug.log('Layout', 'Rendering main app layout');
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView
+      // style={{ flex: 1 }}
+    >
       <StatusBar style="dark" />
       <CustomDrawer isOpen={isDrawerOpen} onClose={closeDrawer} />
       <Slot />

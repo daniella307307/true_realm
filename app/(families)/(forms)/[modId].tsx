@@ -77,7 +77,7 @@ const ProjectFormsScreen = () => {
         if (moduleId === 22) {
           return (
             module.source_module_id === 22 &&
-            module.id === 177 &&
+            module.id === 177 && // Project_module_id -> id: 177 is the uncategorized module
             module.project_id === 17
           );
         }

@@ -282,7 +282,7 @@ const HomeScreen = () => {
           disabled={!isDataLoaded || isRefreshing}
         >
           <>{link.icon}</>
-          <Text className="text-sm font-semibold text-gray-600 px-1 pt-4">
+          <Text className="text-sm font-semibold flex-1 w-full flex-row flex text-center text-gray-600 px-1 pt-4">
             {link.title}
           </Text>
         </TouchableOpacity>

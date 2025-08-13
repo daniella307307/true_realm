@@ -19,6 +19,9 @@ import { useGetAllProjects } from "~/services/project";
 import { SimpleSkeletonItem, Skeleton } from "~/components/ui/skeleton";
 import HeaderNavigation from "~/components/ui/header";
 
+// Projects to exclude from this screen (they are shown on Home)
+const EXCLUDED_PROJECT_IDS = new Set<number>([5, 3, 6, 7, 8, 11, 12, 13]);
+
 const ProjectScreen = () => {
   const { projects: storedProjects, isLoading, refresh } = useGetAllProjects();
   const { t, i18n } = useTranslation();
@@ -44,6 +47,7 @@ const ProjectScreen = () => {
 
     const activeProjects = storedProjects.filter(
       (project) => project.status != 0
+      //  && !EXCLUDED_PROJECT_IDS.has(project.id)
     );
 
     if (!searchQuery) {

@@ -23,7 +23,7 @@ const VideoIndexScreen = () => {
   const [playerLoading, setPlayerLoading] = useState(true);
   const [videoSource, setVideoSource] = useState<string>("");
   const [isLocal, setIsLocal] = useState(false);
-  
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL + "/videos/";
   const { 
     data: video, 
     isLoading, 
@@ -54,7 +54,7 @@ const VideoIndexScreen = () => {
         setVideoSource(localPath);
         setIsLocal(true);
       } else {
-        setVideoSource(`https://sugiramuryango.project.co.rw/videos/${video.file_path}`);
+        setVideoSource(`${baseUrl}${video.file_path}`);
         setIsLocal(false);
       }
     };

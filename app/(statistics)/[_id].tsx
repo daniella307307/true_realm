@@ -78,7 +78,7 @@ const IzuIndexStatisticsScreen = () => {
   }, [surveySubmissions, izucode]);
 
   // Calculate total visits done
-  const totalVisitsDone = Object.values(visitsByModule).reduce((sum, count) => sum + count, 0);
+  const totalVisitsDone = Object.values(visitsByModule).reduce((sum: number, count: number) => sum + count, 0);
 
   // Calculate total visits (families * 16 modules)
   const totalVisits = totalFamilies * 16;

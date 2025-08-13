@@ -62,6 +62,7 @@ const FamiliesPage = () => {
       (module: IModule | null) =>
         module?.project_id === 3 &&
         module?.module_status !== 0 &&
+        !module?.module_name.toLowerCase().includes("uncategorize") &&
         (!searchQuery ||
           module?.module_name.toLowerCase().includes(searchQuery))
     )
@@ -74,6 +75,8 @@ const FamiliesPage = () => {
   const uncategorizedModule = filteredModules?.find((module) =>
     module.module_name.toLowerCase().includes("uncategorize")
   );
+
+  
 
   // Get forms for the uncategorized module if it exists
   const {
@@ -144,6 +147,7 @@ const FamiliesPage = () => {
     return null;
   };
 
+  // console.log("Filtered Modules: ", JSON.stringify(filteredModules, null, 2));
   const renderItem = ({ item }: { item: IModule | Survey }) => {
     if ("module_name" in item) {
       // This is a module
@@ -211,7 +215,9 @@ const FamiliesPage = () => {
       />
       <FlatList
         data={
-          uncategorizedModule ? uncategorizedForms || [] : filteredModules || []
+          uncategorizedModule && uncategorizedForms?.length > 0
+                ? uncategorizedForms
+                : filteredModules
         }
         keyExtractor={(item, index) => `${item.id}-${index}`}
         showsVerticalScrollIndicator={false}

@@ -3,6 +3,7 @@ import * as SplashScreen from "expo-splash-screen";
 import * as NavigationBar from 'expo-navigation-bar';
 import { Platform, StatusBar } from "react-native";
 import CustomSplashScreen from "../components/CustomSplashScreen";
+import React from "react";
 
 // Keep the splash screen visible while the app initializes
 SplashScreen.preventAutoHideAsync();

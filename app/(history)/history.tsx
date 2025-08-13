@@ -159,9 +159,9 @@ const HistoryProjectScreen = () => {
           </Text>
         </View>
         <View className="flex flex-col justify-between items-start mt-2">
-          <Text className="text-sm text-gray-500">
+          {/* <Text className="text-sm text-gray-500">
             {t("History.submissions")}: {totalSubmissions}
-          </Text>
+          </Text> */}
           <Text className="text-sm text-gray-500">
             {t("History.lastSubmission")}:{" "}
             {projectSubmissions.length > 0 ||

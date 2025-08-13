@@ -190,8 +190,6 @@ export default function LoginScreen() {
     }
   };
 
-  console.log("On login page");
-
   // Display loading state if splash hasn't been hidden yet
   if (!splashHidden) {
     return (

@@ -22,7 +22,7 @@ import { useVideos } from "~/services/useVideo";
 
 const VideoScreen = () => {
   const { t } = useTranslation();
-  const baseUrl = "https://sugiramuryango.project.co.rw/videos/";
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL + "/videos/";
   const { data: videos = [], isLoading, isError, error, refetch } = useVideos();
   // console.log("videos", JSON.stringify(videos, null, 2));
   const [downloadProgress, setDownloadProgress] = useState<{
