@@ -178,24 +178,28 @@ export const saveSurveySubmissionToAPI = async (
       JSON.stringify(formData, null, 2)
     );
 
-    // Check for duplicates first
-    const existingSubmissions = realm.objects<SurveySubmission>(SurveySubmission);
-    const isDuplicate = existingSubmissions.some(
-      (submission) =>
-        submission.form_data?.survey_id === formData.survey_id &&
-        submission.form_data?.izucode === formData.izucode &&
-        submission.form_data?.family === formData.family
-    );
+    // Only check for duplicates if the form is under a module (has source_module_id) 
+    // AND source_module_id is not 22 (direct forms that can have multiple submissions)
+    if (formData.source_module_id && formData.source_module_id !== 22) {
+      const existingSubmissions = realm.objects<SurveySubmission>(SurveySubmission);
+      const isDuplicate = existingSubmissions.some(
+        (submission) =>
+          submission.form_data?.survey_id === formData.survey_id &&
+          submission.form_data?.source_module_id === formData.source_module_id &&
+          submission.form_data?.izucode === formData.izucode &&
+          submission.form_data?.family === formData.family
+      );
 
-    if (isDuplicate) {
-      Toast.show({
-        type: "error",
-        text1: t("Alerts.error.title"),
-        text2: t("Alerts.error.duplicate.survey"),
-        position: "top",
-        visibilityTime: 4000,
-      });
-      return;
+      if (isDuplicate) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.duplicate.survey"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+        return;
+      }
     }
 
     // Prepare location data
@@ -261,10 +265,11 @@ export const saveSurveySubmissionToAPI = async (
 
         console.log("Attempting to send data to API");
 
-        // Combine the form data without duplicates and the standardized form data
+        // Combine all form data including the original fields and standardized data
         const apiData = {
-          ...sanitizedFormData.form_data,
-          ...sanitizedFormData.location,
+          ...formData, // Include all original form fields
+          ...sanitizedFormData.form_data, // Include standardized form data
+          ...sanitizedFormData.location, // Include location data
         };
 
         console.log(

@@ -263,7 +263,7 @@ export const createFamilyWithMeta = (
     };
 
     let result;
-    
+
     // Handle transaction
     const createFamilyInRealm = () => {
       return realm.create(Families, family, Realm.UpdateMode.Modified);
@@ -358,24 +358,27 @@ export const saveFamilyToAPI = (
       JSON.stringify(familyData, null, 2)
     );
 
-    // Check for duplicates first
-    const existingFamilies = realm.objects<Families>(Families);
-    const isDuplicate = existingFamilies.some(
-      (family) =>
-        family.hh_head_fullname === familyData.hh_head_fullname &&
-        family.village_id === familyData.village_id &&
-        family.izucode === familyData.izucode
-    );
+    // Only check for duplicates if the form is under a module (has source_module_id)
+    // AND source_module_id is not 22 (direct forms that can have multiple submissions)
+    if (familyData.source_module_id && familyData.source_module_id !== 22) {
+      const existingFamilies = realm.objects<Families>(Families);
+      const isDuplicate = existingFamilies.some(
+        (family) =>
+          family.hh_head_fullname === familyData.hh_head_fullname &&
+          family.village_id === familyData.village_id &&
+          family.izucode === familyData.izucode
+      );
 
-    if (isDuplicate) {
-      Toast.show({
-        type: "error",
-        text1: t("Alerts.error.title"),
-        text2: t("Alerts.error.duplicate.family"),
-        position: "top",
-        visibilityTime: 4000,
-      });
-      return;
+      if (isDuplicate) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.duplicate.family"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+        return;
+      }
     }
 
     // Prepare location data
@@ -394,7 +397,8 @@ export const saveFamilyToAPI = (
 
     // Prepare form data
     const formData = {
-      time_spent_filling_the_form: familyData.time_spent_filling_the_form || null,
+      time_spent_filling_the_form:
+        familyData.time_spent_filling_the_form || null,
       user_id: familyData.user_id || null,
       table_name: familyData.table_name || null,
       project_module_id: familyData.project_module_id || null,
@@ -453,7 +457,7 @@ export const saveFamilyToAPI = (
           ...familyData,
           ...(sanitizedFamilyData.meta || {}),
           ...(sanitizedFamilyData.form_data || {}),
-          meta: undefined // Add this to ensure we can delete it safely
+          meta: undefined, // Add this to ensure we can delete it safely
         };
 
         // Remove the meta object itself from the API data
@@ -760,7 +764,10 @@ export const syncTemporaryFamilies = async (
     Toast.show({
       type: "success",
       text1: t("Alerts.success.title"),
-      text2: t("Alerts.success.sync").replace("{count}", successCount.toString()),
+      text2: t("Alerts.success.sync").replace(
+        "{count}",
+        successCount.toString()
+      ),
       position: "top",
       visibilityTime: 4000,
       autoHide: true,
@@ -782,7 +789,10 @@ export const syncTemporaryFamilies = async (
     Toast.show({
       type: "error",
       text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.sync.failed").replace("{count}", failureCount.toString()),
+      text2: t("Alerts.error.sync.failed").replace(
+        "{count}",
+        failureCount.toString()
+      ),
       position: "top",
       visibilityTime: 4000,
       autoHide: true,

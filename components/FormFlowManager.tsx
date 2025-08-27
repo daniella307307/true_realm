@@ -69,6 +69,7 @@ const FormFlowManager = ({
 
   useEffect(() => {
     startTimeRef.current = Date.now();
+    // @ts-ignore
     timerRef.current = setInterval(() => {
       const elapsedSeconds = Math.floor(
         (Date.now() - startTimeRef.current) / 1000

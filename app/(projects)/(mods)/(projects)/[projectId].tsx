@@ -81,10 +81,10 @@ const ProjectModuleScreens = () => {
           console.log("Skipping null module");
           return false;
         }
-        console.log("Checking module:", module.module_name, {
-          status: module.module_status,
-          isUncategorized: module.module_name.toLowerCase() === "uncategorize",
-        });
+        // console.log("Checking module:", module.module_name, {
+        //   status: module.module_status,
+        //   isUncategorized: module.module_name.toLowerCase() === "uncategorize",
+        // });
         // Exclude modules with status 0 and any module containing 'uncategorize'
         if (
           module.module_status === 0 ||
@@ -113,7 +113,6 @@ const ProjectModuleScreens = () => {
       );
     return filtered;
   }, [modules, searchQuery]);
-
 
   const onRefresh = async () => {
     setRefreshing(true);

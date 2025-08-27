@@ -47,7 +47,7 @@ interface IFollowUpsResponse {
 
 export async function fetchFollowUpsFromRemote() {
   const res = await baseInstance.get<IFollowUpsResponse>("/get-all-followups");
-  
+
   // Create a map of existing IDs from the response to prevent duplicates
   const uniqueFollowUps = res.data.data.reduce((acc, followup) => {
     // Only add if we haven't seen this ID before
@@ -57,18 +57,18 @@ export async function fetchFollowUpsFromRemote() {
     return acc;
   }, new Map());
 
-  return Array.from(uniqueFollowUps.values()).map(followup => ({
+  return Array.from(uniqueFollowUps.values()).map((followup) => ({
     id: followup.id,
     followup_date: followup.followup_date,
     status: followup.status,
     comment: followup.comment,
     form_data: {
-        project_module_id: followup.project_module_id,
-        project_id: followup.project_id,
-        source_module_id: followup.source_module_id,
-        survey_id: followup.survey_id,
-        survey_result_id: followup.survey_result_id,
-        user_id: followup.user_id,
+      project_module_id: followup.project_module_id,
+      project_id: followup.project_id,
+      source_module_id: followup.source_module_id,
+      survey_id: followup.survey_id,
+      survey_result_id: followup.survey_result_id,
+      user_id: followup.user_id,
     },
     user: followup.user,
     survey: followup.survey,
@@ -162,13 +162,15 @@ function createTemporaryFollowup(
     sync_type: followupData.sync_data?.sync_type ?? SyncType.follow_ups,
     sync_reason: "Created offline",
     sync_attempts: followupData.sync_data?.sync_attempts ?? 0,
-    last_sync_attempt: followupData.sync_data?.last_sync_attempt ?? new Date().toISOString(),
-    submitted_at: followupData.sync_data?.submitted_at ?? new Date().toISOString(),
+    last_sync_attempt:
+      followupData.sync_data?.last_sync_attempt ?? new Date().toISOString(),
+    submitted_at:
+      followupData.sync_data?.submitted_at ?? new Date().toISOString(),
     created_by_user_id: followupData.sync_data?.created_by_user_id,
   };
 
   let response: FollowUps;
-  
+
   if (realm.isInTransaction) {
     response = createFollowupWithMeta(realm, {
       ...followupData,
@@ -228,7 +230,7 @@ function createFollowupWithMeta(
     };
 
     let result;
-    
+
     // Handle transaction
     const createFollowupInRealm = () => {
       return realm.create(FollowUps, followup, Realm.UpdateMode.Modified);
@@ -264,34 +266,43 @@ export const saveFollowupToAPI = async (
       JSON.stringify(followupData, null, 2)
     );
 
-    // Check for duplicates first
-    const existingFollowups = realm.objects<FollowUps>(FollowUps);
-    const isDuplicate = existingFollowups.some(
-      (followup) =>
-        followup.followup_date === followupData.followup_date &&
-        followup.survey_result?.id === followupData.survey_result_id &&
-        followup.survey?.id === followupData.survey_id
-    );
+    // Only check for duplicates if the form is under a module (has source_module_id) 
+    // AND source_module_id is not 22 (direct forms that can have multiple submissions)
+    if (followupData.source_module_id && followupData.source_module_id !== 22) {
+      const existingFollowups = realm.objects<FollowUps>(FollowUps);
+      const isDuplicate = existingFollowups.some(
+        (followup) =>
+          followup.followup_date === followupData.followup_date &&
+          followup.survey_result?.id === followupData.survey_result_id &&
+          followup.survey?.id === followupData.survey_id
+      );
 
-    if (isDuplicate) {
-      Toast.show({
-        type: "error",
-        text1: t("Alerts.error.title"),
-        text2: t("Alerts.error.duplicate.followup"),
-        position: "top",
-        visibilityTime: 4000,
-      });
-      return;
+      if (isDuplicate) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.duplicate.followup"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+        return;
+      }
     }
 
     // Format the date from object to yyyy-mm-dd
     let formattedDate: string;
-    if (typeof followupData.followup_date === 'object' && followupData.followup_date !== null) {
+    if (
+      typeof followupData.followup_date === "object" &&
+      followupData.followup_date !== null
+    ) {
       const { year, month, day } = followupData.followup_date;
-      formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    } else if (typeof followupData.followup_date === 'string') {
-      formattedDate = followupData.followup_date.includes('T') 
-        ? followupData.followup_date.split('T')[0]
+      formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(
+        2,
+        "0"
+      )}`;
+    } else if (typeof followupData.followup_date === "string") {
+      formattedDate = followupData.followup_date.includes("T")
+        ? followupData.followup_date.split("T")[0]
         : followupData.followup_date;
     } else {
       throw new Error("Invalid followup_date format");
@@ -340,7 +351,7 @@ export const saveFollowupToAPI = async (
         });
 
         console.log("Attempting to send data to API");
-        
+
         const apiData = {
           followup_date: formattedDate,
           status: followupData.status,
@@ -387,9 +398,13 @@ export const saveFollowupToAPI = async (
 
               try {
                 realm.write(() => {
-                  realm.create(FollowUps, completeData, Realm.UpdateMode.Modified);
+                  realm.create(
+                    FollowUps,
+                    completeData,
+                    Realm.UpdateMode.Modified
+                  );
                 });
-                
+
                 Toast.show({
                   type: "success",
                   text1: t("Alerts.success.title"),
@@ -561,7 +576,9 @@ export const syncTemporaryFollowups = async (
       userId
     );
 
-  console.log(`Found ${followupsToSync.length} followups to sync for current user`);
+  console.log(
+    `Found ${followupsToSync.length} followups to sync for current user`
+  );
 
   if (followupsToSync.length === 0) {
     Toast.show({
@@ -583,11 +600,20 @@ export const syncTemporaryFollowups = async (
     try {
       // Format the date
       let formattedDate = followup.followup_date;
-      if (typeof followup.followup_date === 'object' && followup.followup_date !== null) {
+      if (
+        typeof followup.followup_date === "object" &&
+        followup.followup_date !== null
+      ) {
         const { year, month, day } = followup.followup_date as any;
-        formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      } else if (typeof followup.followup_date === 'string' && followup.followup_date.includes('T')) {
-        formattedDate = followup.followup_date.split('T')[0];
+        formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(
+          2,
+          "0"
+        )}`;
+      } else if (
+        typeof followup.followup_date === "string" &&
+        followup.followup_date.includes("T")
+      ) {
+        formattedDate = followup.followup_date.split("T")[0];
       }
 
       const apiData = {
@@ -612,9 +638,13 @@ export const syncTemporaryFollowups = async (
           sync_data: {
             sync_status: true,
             sync_reason: "Successfully synced",
-            sync_attempts: (followup.sync_data?.sync_attempts ? Number(followup.sync_data.sync_attempts) : 0) + 1,
+            sync_attempts:
+              (followup.sync_data?.sync_attempts
+                ? Number(followup.sync_data.sync_attempts)
+                : 0) + 1,
             last_sync_attempt: new Date().toISOString(),
-            submitted_at: followup.sync_data?.submitted_at || new Date().toISOString(),
+            submitted_at:
+              followup.sync_data?.submitted_at || new Date().toISOString(),
             sync_type: SyncType.follow_ups,
           },
         };
@@ -632,8 +662,13 @@ export const syncTemporaryFollowups = async (
         if (followup.sync_data) {
           followup.sync_data.sync_status = false;
           followup.sync_data.sync_type = SyncType.follow_ups;
-          followup.sync_data.sync_reason = `Failed: ${error?.message || "Unknown error"}`;
-          followup.sync_data.sync_attempts = (followup.sync_data.sync_attempts ? Number(followup.sync_data.sync_attempts) : 0) + 1;
+          followup.sync_data.sync_reason = `Failed: ${
+            error?.message || "Unknown error"
+          }`;
+          followup.sync_data.sync_attempts =
+            (followup.sync_data.sync_attempts
+              ? Number(followup.sync_data.sync_attempts)
+              : 0) + 1;
           followup.sync_data.last_sync_attempt = new Date().toISOString();
         }
       });
@@ -645,7 +680,10 @@ export const syncTemporaryFollowups = async (
     Toast.show({
       type: "success",
       text1: t("Alerts.success.title"),
-      text2: t("Alerts.success.sync").replace("{count}", successCount.toString()),
+      text2: t("Alerts.success.sync").replace(
+        "{count}",
+        successCount.toString()
+      ),
       position: "top",
       visibilityTime: 4000,
       autoHide: true,
@@ -667,7 +705,10 @@ export const syncTemporaryFollowups = async (
     Toast.show({
       type: "error",
       text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.sync.failed").replace("{count}", failureCount.toString()),
+      text2: t("Alerts.error.sync.failed").replace(
+        "{count}",
+        failureCount.toString()
+      ),
       position: "top",
       visibilityTime: 4000,
       autoHide: true,
@@ -677,22 +718,25 @@ export const syncTemporaryFollowups = async (
 };
 
 // Function to get followups by survey result ID
-export function useGetFollowUpsBySurveyResultId(surveyResultId: string, surveyId: string) {
+export function useGetFollowUpsBySurveyResultId(
+  surveyResultId: string,
+  surveyId: string
+) {
   const followups = useQuery(FollowUps);
-  const filteredFollowups = followups.filter(followup => 
-    followup.survey_result?.id === Number(surveyResultId) && followup.survey?.id === Number(surveyId)
+  const filteredFollowups = followups.filter(
+    (followup) =>
+      followup.survey_result?.id === Number(surveyResultId) &&
+      followup.survey?.id === Number(surveyId)
   );
-  
+
   return { followups: filteredFollowups };
 }
 
 // Function to get notification by ID
 export function useGetFollowUpById(id: number) {
   const followups = useQuery(FollowUps);
-  
-  const followup = followups.find(followup => 
-    followup.id === id
-  );
-  
+
+  const followup = followups.find((followup) => followup.id === id);
+
   return { followup };
-} 
+}

@@ -240,7 +240,7 @@ export const createIzuWithMeta = (
     };
 
     let result;
-    
+
     // Handle transaction
     const createIzuInRealm = () => {
       return realm.create(Izu, izu, Realm.UpdateMode.Modified);
@@ -287,7 +287,7 @@ function createTemporaryIzu(
   };
 
   let izu: Izu;
-  
+
   if (realm.isInTransaction) {
     izu = createIzuWithMeta(
       realm,
@@ -327,26 +327,26 @@ export const saveIzuToAPI = (
       JSON.stringify(izuData, null, 2)
     );
 
-    // Check for duplicates first
-    const existingIzus = realm.objects<Izu>(Izu);
-    const isDuplicate = existingIzus.some(
-      (izu) =>
-        izu.name === izuData.name &&
-        izu.izucode === izuData.izucode &&
-        izu.villages_id === izuData.villages_id
-    );
+    if (izuData.source_module_id && izuData.source_module_id !== 22) {
+      const existingIzus = realm.objects<Izu>(Izu);
+      const isDuplicate = existingIzus.some(
+        (izu) =>
+          izu.name === izuData.name &&
+          izu.izucode === izuData.izucode &&
+          izu.villages_id === izuData.villages_id
+      );
 
-    if (isDuplicate) {
-      Toast.show({
-        type: "error",
-        text1: t("Alerts.error.title"),
-        text2: t("Alerts.error.duplicate.izu"),
-        position: "top",
-        visibilityTime: 4000,
-      });
-      return;
+      if (isDuplicate) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.duplicate.izu"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+        return;
+      }
     }
-
     // Prepare location data
     const location =
       typeof izuData.location === "object"
@@ -785,7 +785,10 @@ export const syncTemporaryIzus = async (
     Toast.show({
       type: "success",
       text1: t("Alerts.success.title"),
-      text2: t("Alerts.success.sync").replace("{count}", successCount.toString()),
+      text2: t("Alerts.success.sync").replace(
+        "{count}",
+        successCount.toString()
+      ),
       position: "top",
       visibilityTime: 4000,
       autoHide: true,
@@ -807,7 +810,10 @@ export const syncTemporaryIzus = async (
     Toast.show({
       type: "error",
       text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.sync.failed").replace("{count}", failureCount.toString()),
+      text2: t("Alerts.error.sync.failed").replace(
+        "{count}",
+        failureCount.toString()
+      ),
       position: "top",
       visibilityTime: 4000,
       autoHide: true,
