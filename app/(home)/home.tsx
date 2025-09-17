@@ -323,7 +323,6 @@ const HomeScreen = () => {
             {t("HomePage.description")}
           </Text>
         </View>
-
         {/* Show loading indicator if data is being refreshed */}
         {isRefreshing && (
           <View className="p-4">

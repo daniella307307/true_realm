@@ -89,7 +89,6 @@ export function useGetIzus(forceSync: boolean = false) {
     },
   ]);
 
-  // console.log("Filtered Izus:", JSON.stringify(filteredIzus?.length, null, 2));
   return {
     izus: filteredIzus,
     isLoading: syncStatus.izus?.isLoading || false,
@@ -156,37 +155,38 @@ function prepareMetaData(
   izuData: Record<string, any>,
   extraFields: FormField[] = []
 ) {
-  if (extraFields.length === 0) {
-    console.log("No extra fields provided, returning empty object");
-    return {};
+  // If field definitions are provided, use them to extract specific fields
+  if (extraFields.length > 0) {
+    return Object.fromEntries(
+      extraFields
+        .filter(
+          (field) =>
+            field.key &&
+            izuData[field.key] !== undefined &&
+            field.key !== "submit"
+        )
+        .map((field) => {
+          const value = izuData[field.key];
+
+          // Handle different field types
+          switch (field.type) {
+            case "switch":
+              return [field.key, value ? true : false];
+            case "number":
+              return [field.key, Number(value)];
+            case "date":
+            case "datetime":
+              return [field.key, value ? new Date(value).toISOString() : null];
+            default:
+              return [field.key, value ?? null];
+          }
+        })
+    );
   }
 
-  const result = Object.fromEntries(
-    extraFields
-      .filter(
-        (field) =>
-          field.key &&
-          izuData[field.key] !== undefined &&
-          field.key !== "submit"
-      )
-      .map((field) => {
-        const value = izuData[field.key];
-
-        // Handle different field types
-        switch (field.type) {
-          case "switch":
-            return [field.key, value ? true : false];
-          case "number":
-            return [field.key, Number(value)];
-          case "date":
-            return [field.key, value ? new Date(value).toISOString() : null];
-          default:
-            return [field.key, value ?? null];
-        }
-      })
-      .filter(([_, value]) => value !== null)
-  );
-  return result;
+  // If no field definitions are provided, return the izuData as-is for meta
+  // This preserves all form field answers just like families and survey submissions
+  return izuData;
 }
 
 export const createIzuWithMeta = (
@@ -232,17 +232,19 @@ export const createIzuWithMeta = (
       name: izuData.name,
       izucode: izuData.izucode,
       villages_id: izuData.villages_id,
-      position,
-      meta,
+      position: position,
+      meta: meta,
       form_data: formData,
       location: izuData.location,
       sync_data: syncData,
     };
 
-    let result;
+    let result: any;
+
 
     // Handle transaction
     const createIzuInRealm = () => {
+      console.log("Creating Izu in realm:", JSON.stringify(izu, null, 2));
       return realm.create(Izu, izu, Realm.UpdateMode.Modified);
     };
 
@@ -414,14 +416,9 @@ export const saveIzuToAPI = (
         // Prepare data for API - flatten meta fields at the top level
         const apiData = {
           ...izuData,
-          ...(sanitizedIzuData.meta || {}),
-          ...(sanitizedIzuData.form_data || {}),
+          ...sanitizedIzuData.meta,
+          ...sanitizedIzuData.form_data,
         };
-
-        // Remove the meta object itself from the API data
-        if (apiData.meta) {
-          delete apiData.meta;
-        }
 
         console.log(
           "Data being sent to API:",
@@ -478,7 +475,9 @@ export const saveIzuToAPI = (
               );
 
               try {
-                createIzuWithMeta(realm, completeData, extraFields);
+                realm.write(() => {
+                  realm.create(Izu, completeData, Realm.UpdateMode.Modified);
+                });
                 Toast.show({
                   type: "success",
                   text1: t("Alerts.success.title"),
@@ -572,6 +571,7 @@ export const saveIzuToAPI = (
       }
     } else {
       // Offline mode - create with locally generated ID
+      console.log("Sanitized Izu Data:", JSON.stringify(sanitizedIzuData, null, 2));
       try {
         createTemporaryIzu(realm, sanitizedIzuData, extraFields);
         Toast.show({
@@ -679,8 +679,8 @@ export const syncTemporaryIzus = async (
         name: izu.name,
         villages_id: izu.villages_id,
         ...locationData,
-        ...(izu.meta || {}),
-        ...(izu.form_data || {}),
+        ...izu.meta,
+        ...izu.form_data,
       };
 
       console.log("Syncing Izu to API:", JSON.stringify(apiData, null, 2));

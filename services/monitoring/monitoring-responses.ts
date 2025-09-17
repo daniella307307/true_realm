@@ -187,6 +187,8 @@ export const createMonitoringResponse = (
       json:
         typeof responseData.json === "string"
           ? responseData.json
+          : responseData.json
+          ? JSON.stringify(responseData.json)
           : JSON.stringify(responseData.response || {}),
       sync_data: syncData,
     };
@@ -329,7 +331,7 @@ export const saveMonitoringResponseToAPI = async (
       score_data: typeof responseData.score_data === 'string' 
         ? JSON.parse(responseData.score_data)
         : responseData.score_data || {},
-      json: responseData.json,
+      json: responseData.response,
       sync_data: {
         sync_status: false,
         sync_type: SyncType.monitoring_responses,

@@ -23,7 +23,7 @@ export const checkNetworkConnection = async (): Promise<boolean> => {
   try {
     const networkState = await NetInfo.fetch();
     const isConnected = !!(networkState.isConnected && networkState.isInternetReachable);
-    console.log("[Network] Connection status:", isConnected ? "Connected" : "Offline");
+    // console.log("[Network] Connection status:", isConnected ? "Connected" : "Offline");
     return isConnected;
   } catch (error) {
     console.error("[Network] Error checking connection:", error);

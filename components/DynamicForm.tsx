@@ -497,10 +497,10 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
         if (postData === "/createFamily") {
           // Create a family instead of a survey submission
-          saveFamilyToAPI(realm, dataWithTime, postData, t);
+          saveFamilyToAPI(realm, dataWithTime, postData, t, visibleFields);
         } else if (postData === "/izucelldemography/create") {
           // Create an izu instead of a survey submission
-          saveIzuToAPI(realm, dataWithTime, postData, t);
+          saveIzuToAPI(realm, dataWithTime, postData, t, visibleFields);
         } else if (postData === "/sendMonitoringData") {
           const moduleId =
             formSubmissionMandatoryFields.source_module_id?.toString() || "";
@@ -593,11 +593,12 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             score_data: scoreData,
           };
 
+          console.log("Monitoring data:", JSON.stringify(monitoringData, null, 2));
           await saveMonitoringResponseToAPI(
             realm,
             monitoringData,
             "/sendMonitoringData",
-            t
+            t,
           );
         } else {
           // Regular survey submission
@@ -605,7 +606,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             realm,
             dataWithTime,
             postData,
-            t
+            t,
+            visibleFields
           );
         }
       } catch (error) {

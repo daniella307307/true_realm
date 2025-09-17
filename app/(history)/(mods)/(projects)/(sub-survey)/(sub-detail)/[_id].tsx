@@ -334,6 +334,14 @@ const DetailScreen = () => {
                   {t("Common.family", "Family")}: {foundFamily.hh_id}
                 </Text>
               )}
+              {(foundFamily?.hh_head_fullname ||
+                foundFamily?.head_of_household) && (
+                <Text className="text-gray-600">
+                  {t("Common.family_head", "Family Head")}:{" "}
+                  {foundFamily?.hh_head_fullname ||
+                    foundFamily?.head_of_household}
+                </Text>
+              )}
             </View>
           )}
 

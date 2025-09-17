@@ -11,7 +11,6 @@ import { Izu } from "~/models/izus/izu";
 import { filterDataByUserId } from "./filterData";
 import Toast from "react-native-toast-message";
 import { router } from "expo-router";
-import { useTranslation } from "react-i18next";
 import { TFunction } from "i18next";
 
 const { useQuery, useRealm } = RealmContext;
@@ -167,33 +166,38 @@ function prepareMetaData(
   familyData: Record<string, any>,
   extraFields: FormField[] = []
 ) {
-  if (extraFields.length === 0) return {};
+  // If field definitions are provided, use them to extract specific fields
+  if (extraFields.length > 0) {
+    return Object.fromEntries(
+      extraFields
+        .filter(
+          (field) =>
+            field.key &&
+            familyData[field.key] !== undefined &&
+            field.key !== "submit"
+        )
+        .map((field) => {
+          const value = familyData[field.key];
 
-  return Object.fromEntries(
-    extraFields
-      .filter(
-        (field) =>
-          field.key &&
-          familyData[field.key] !== undefined &&
-          field.key !== "submit"
-      )
-      .map((field) => {
-        const value = familyData[field.key];
+          // Handle different field types
+          switch (field.type) {
+            case "switch":
+              return [field.key, value ? true : false];
+            case "number":
+              return [field.key, Number(value)];
+            case "date":
+            case "datetime":
+              return [field.key, value ? new Date(value).toISOString() : null];
+            default:
+              return [field.key, value ?? null];
+          }
+        })
+    );
+  }
 
-        // Handle different field types
-        switch (field.type) {
-          case "switch":
-            return [field.key, value ? true : false];
-          case "number":
-            return [field.key, Number(value)];
-          case "date":
-          case "datetime":
-            return [field.key, value ? new Date(value).toISOString() : null];
-          default:
-            return [field.key, value ?? null];
-        }
-      })
-  );
+  // If no field definitions are provided, return the familyData as-is for meta
+  // This preserves all form field answers just like survey submissions
+  return familyData;
 }
 
 export const createFamilyWithMeta = (
@@ -204,13 +208,12 @@ export const createFamilyWithMeta = (
   try {
     // Prepare metadata
     const meta = familyData.meta || prepareMetaData(familyData, extraFields);
-
     // Generate or use provided ID
     const id =
       typeof familyData.id === "number"
         ? familyData.id
         : getNextAvailableId(realm);
-    console.log("Using ID:", id);
+    // console.log("Using ID:", id);
 
     // Prepare location object
     const location =
@@ -251,6 +254,7 @@ export const createFamilyWithMeta = (
 
     const family = {
       id,
+      ...familyData,
       hh_id: familyData.hh_id,
       hh_head_fullname: familyData.hh_head_fullname || "Unknown",
       village_name: familyData.village_name || "Unknown",
@@ -266,6 +270,7 @@ export const createFamilyWithMeta = (
 
     // Handle transaction
     const createFamilyInRealm = () => {
+      console.log("Creating family in realm:", JSON.stringify(family, null, 2));
       return realm.create(Families, family, Realm.UpdateMode.Modified);
     };
 
@@ -305,7 +310,7 @@ function createTemporaryFamily(
     submitted_at: familyData.sync_data?.submitted_at ?? new Date(),
     created_by_user_id: familyData.sync_data?.created_by_user_id || null,
   };
-
+  // Create temporary family data with all fields
   const tempFamilyData = {
     ...familyData,
     id: localId,
@@ -392,8 +397,6 @@ export const saveFamilyToAPI = (
             cell: familyData.cell,
             village: familyData.village,
           };
-
-    console.log("Prepared location data:", JSON.stringify(location, null, 2));
 
     // Prepare form data
     const formData = {
@@ -591,6 +594,7 @@ export const saveFamilyToAPI = (
         });
       }
     } else {
+      console.log("Offline mode - creating temporary family");
       // Offline mode - create with locally generated ID
       try {
         createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
@@ -671,10 +675,6 @@ export const syncTemporaryFamilies = async (
       userId
     );
 
-  console.log(
-    `Found ${familiesToSync.length} families to sync for current user`
-  );
-
   if (familiesToSync.length === 0) {
     Toast.show({
       type: "info",
@@ -687,7 +687,7 @@ export const syncTemporaryFamilies = async (
     });
     return;
   }
-
+  ``;
   let successCount = 0;
   let failureCount = 0;
 
@@ -696,6 +696,7 @@ export const syncTemporaryFamilies = async (
       // Extract data to send to API
       const locationData = family.location || {};
 
+      // Prepare API data exactly like survey submissions and online submission
       const apiData = {
         hh_id: family.hh_id, // Will be null for unsynced records
         hh_head_fullname: family.hh_head_fullname,

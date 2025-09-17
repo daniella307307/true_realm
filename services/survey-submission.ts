@@ -20,26 +20,35 @@ export const createSurveySubmission = (
   realm: Realm
 ) => {
   try {
-    const answers = Object.fromEntries(
-      fields
-        .filter((field) => field.key !== "submit")
-        .map((field) => {
-          const value = formData[field.key];
+    let answers;
+    
+    // If field definitions are provided, use them to extract specific fields
+    if (fields.length > 0) {
+      answers = Object.fromEntries(
+        fields
+          .filter((field) => field.key !== "submit")
+          .map((field) => {
+            const value = formData[field.key];
 
-          // Handle different field types
-          switch (field.type) {
-            case "switch":
-              return [field.key, value ? true : false];
-            case "number":
-              return [field.key, Number(value)];
-            case "date":
-            case "datetime":
-              return [field.key, value ? new Date(value) : null];
-            default:
-              return [field.key, value ?? null];
-          }
-        })
-    );
+            // Handle different field types
+            switch (field.type) {
+              case "switch":
+                return [field.key, value ? true : false];
+              case "number":
+                return [field.key, Number(value)];
+              case "date":
+              case "datetime":
+                return [field.key, value ? new Date(value) : null];
+              default:
+                return [field.key, value ?? null];
+            }
+          })
+      );
+    } else {
+      // If no field definitions are provided, return the formData as-is for answers
+      // This preserves all form field answers just like families
+      answers = formData;
+    }
 
     // Create structured submission according to new interface
     const submission = {
@@ -504,10 +513,10 @@ export const syncPendingSubmissions = async (
       const locationData = submission.location || {};
 
       const apiData = {
+        ...submission.answers, // Include all form field answers (this is the key part!)
+        ...submission.form_data, // Include form metadata
+        ...locationData, // Include location data at top level
         id: submission.id,
-        ...submission.answers,
-        ...locationData,
-        ...(submission.form_data || {}),
       };
 
       console.log(

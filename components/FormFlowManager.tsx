@@ -237,7 +237,6 @@ const FormFlowManager = ({
             console.log("Source Module ID", sourceModuleId);
             console.log("Survey ID", surveyId);
             console.log("Family ID", familyId);
-            console.log("Monitoring Responses: ", JSON.stringify(monitoringResponses, null, 2));
             const existingMonitoringResponse = monitoringResponses.filter(
               (response) =>
                 response.module_id.toString() === sourceModuleId.toString() &&

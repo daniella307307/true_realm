@@ -146,8 +146,6 @@ const SyncPage = () => {
       // Direct realm query for maximum accuracy
       const allSubmissions = realm.objects(SurveySubmission);
       console.log('\n=== SYNC DATA COUNTS ===');
-      // console.log('Total submissions:', allSubmissions.length);
-      // console.log("All Submissions", JSON.stringify(allSubmissions, null, 2));
 
       // Count unsent submissions - using sync_data.sync_status
       const pendingCount = allSubmissions.filtered(
@@ -162,13 +160,10 @@ const SyncPage = () => {
       // Count unsent families
       const allFamilies = realm.objects(Families);
       console.log('\n=== FAMILIES COUNTS ===');
-      // console.log('All Families', JSON.stringify(allFamilies, null, 2));
-
       const pendingFamilies = allFamilies.filtered(
         'sync_data.sync_status == false AND sync_data.created_by_user_id == $0',
         user?.id
       ).length;
-
       console.log('Unsent families:', pendingFamilies);
 
       setPendingFamiliesCount(pendingFamilies);
@@ -176,7 +171,6 @@ const SyncPage = () => {
       // Count unsent izus
       const allIzus = realm.objects(Izu);
       console.log('\n=== IZUS COUNTS ===');
-      console.log('Total Izus:', allIzus.length);
       
       const pendingIzus = allIzus.filtered(
         'sync_data.sync_status == false AND sync_data.created_by_user_id == $0',
@@ -189,9 +183,7 @@ const SyncPage = () => {
 
       // Count unsent monitoring responses
       const allMonitoringResponses = realm.objects(MonitoringResponses);
-      console.log('\n=== MONITORING RESPONSES COUNTS ===');
-      // console.log('Total monitoring responses:', allMonitoringResponses.length);
-      console.log('All Monitoring Responses', JSON.stringify(allMonitoringResponses, null, 2));
+      console.log('\n=== MONITORING RESPONSES COUNTS ===')
       
       const pendingMonitoringResponses = allMonitoringResponses.filtered(
         'sync_data.sync_status == false AND sync_data.created_by_user_id == $0',
@@ -205,7 +197,6 @@ const SyncPage = () => {
       // Count unsent followups
       const allFollowups = realm.objects(FollowUps);
       console.log('\n=== FOLLOWUPS COUNTS ===');
-      console.log('Total followups:', allFollowups.length);
       
       const pendingFollowups = allFollowups.filtered(
         'sync_data.sync_status == false AND sync_data.created_by_user_id == $0',
@@ -510,7 +501,7 @@ const SyncPage = () => {
         if (!networkAvailable) {
           throw new Error("Network unavailable");
         }
-        await syncTemporaryMonitoringResponses(realm, "/monitoring/responses", t, user?.id);
+        await syncTemporaryMonitoringResponses(realm, "/sendMonitoringData", t, user?.id);
 
         // Verify responses were stored by checking the realm
         const storedResponses = realm.objects(MonitoringResponses);
@@ -776,7 +767,7 @@ const SyncPage = () => {
     setSyncProgress(0);
 
     try {
-      await syncTemporaryMonitoringResponses(realm, "/monitoring/responses", t, user?.id);
+      await syncTemporaryMonitoringResponses(realm, "/sendMonitoringData", t, user?.id);
 
       // Set last sync date
       setLastSyncDate(new Date());
