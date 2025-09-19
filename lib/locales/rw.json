@@ -90,9 +90,9 @@
     "type": "Byoherejwe",
     "loading": "Tegereza...",
     "submission": "ibyoherejwe",
-    "izu": "IZU",
+    "izu": "Umukoresha",
     "details": "Ibisobanuro birambuye",
-    "izu_code": "Kode ya IZU",
+    "izu_code": "Kode y' Ubarura",
     "cohort": "Icyiciro cy'ibarura",
     "project_id": "Ikirango y'igice cya porogaramu",
     "module_id": "Ikirango y'Ikiganiro",
@@ -105,13 +105,13 @@
     "family_info": "Amakuru y'Umuryango"
   },
   "Izus": {
-    "title": "IZU",
-    "all_izus": "Aba IZU bose",
-    "izu": "IZU",
-    "search_izu": "Shakisha IZU",
-    "no_izus": "Nta IZU uhari",
-    "no_izus_description": "Nta IZU uhari",
-    "select_izu": "Hitamo IZU"
+    "title": "Umubarura",
+    "all_izus": "Ababaruzi bose",
+    "izu": "Ubarura",
+    "search_izu": "Shakisha ubarura",
+    "no_izus": "Nta Mubaruzi uhari",
+    "no_izus_description": "Nta Mubaruzi uhari",
+    "select_izu": "Hitamo Ubarura"
   },
   "HomePage": {
     "title": "Muraho, ",
@@ -122,14 +122,14 @@
     "families": "Imiryango",
     "history": "Ibyakozwe",
     "statistics": "Imibare ku byakozwe",
-    "IZU_Monitoring": "Ikurikiranabikorwa rya  IZU",
+    "IZU_Monitoring": "Ikurikiranabikorwa rya  ababaruzi",
     "videos": "videwo",
     "settings": "Igenamiterere",
     "Izu_telephone_Supervision": "Igenzura ryo kuri telefone rya IZU",
     "community": "Guhana ibitekerezo",
-    "projects": "Ibice bya porogaramu",
+    "projects": "Amafishi yo Kuzuza",
     "household_enrollment": "Kubarura umuryango",
-    "IZU_Sector_Coordinator_Demographics": "Imyirondoro y'abahuzabikorwa ba IZU ku Murenge",
+    "IZU_Sector_Coordinator_Demographics": "Abakoresha Serivisi",
     "IZU_At_Village_Demographics": "Imyirondoro ya ba IZU bo ku mududgudu",
     "IZU_Sector_Telephone_Supervision": "Igenzura ryo kuri telefone ry'abahuzabikorwa ba IZU ku Murenge",
     "IZU_Cell_Telephone_Supervision": "Igenzura ryo kuri telefone ry'abahuzabikorwa ba IZU ku kagali",
@@ -138,10 +138,11 @@
     "sync_required": "Guhuza Birakenewe",
     "sync_description": "Ufite amakuru akeneye guhuza. Nyabuneka jya kuri page yo guhuza kugira ngo uhuze amakuru yawe.",
     "go_to_sync": "Guhuza",
-    "cancel": "Reka"
+    "cancel": "Reka",
+    "sync_title": "Imishinga"
   },
   "ProjectPage": {
-    "title": "Ibice bya porogaramu",
+    "title": "Africollect",
     "all_projects": "Ibice bya porogaramu byose",
     "project": "Igice cya porogaramu",
     "search_project": "Shakisha igice cya porogaramu",
@@ -160,14 +161,14 @@
     "search_module": "Shakisha ibiganiro",
     "risk_of_harm": "Ubuzima buri mu kaga",
     "risk_of_harm_description": "Iki kiganiro ni ingenzi cyane ukwiriye kukitaho",
-    "monitoring_title": "Ikurikiranabikorwa rya  IZU"
+    "monitoring_title": "Ikurikiranabikorwa ry' Ubarura"
   },
   "IzuCodeSelectionPage": {
-    "title": "Hitamo kode ya IZU",
-    "description": "Hitamo izu ushaka gukurikirana",
-    "izu_code": "Kode ya IZU",
-    "izu_name": "Izina rya IZU",
-    "search_izu_code": "Shakisha Kode Ya IZU",
+    "title": "Hitamo kode y' Ubarura",
+    "description": "Hitamo ubarura ushaka gukurikirana",
+    "izu_code": "Kode y' Ubarura",
+    "izu_name": "Izina ry' Ubarura",
+    "search_izu_code": "Shakisha Kode Y' Ubarura",
     "empty_izu_codes": "Nta kode ya izu ihari"
   },
   "FormPage": {
@@ -191,7 +192,7 @@
     "previewTitle": "Subiramo Ibisubizo Byawe",
     "timeSpent": "Igihe byatwaye",
     "flowStateValues": "Indangagaciro z'Ibanze",
-    "izu": "IZU",
+    "izu": "Ubarura",
     "cohort": "Icyiciro cy'ibarura",
     "family": "Umuryango",
     "location": "Ahantu",
@@ -202,9 +203,9 @@
     "submission_success_message": "Ibyoherejwe byagenze neza",
     "family_created_title": "Umuryango wabaruwe",
     "family_created_message": "Kubarura Umuryango wawe byagenze neza",
-    "izu_created_title": "IZU yabaruwe ",
-    "izu_created_message": "IZU wawe yabaruwe",
-    "monitoring_success_title": "Kugenzura IZU Byagenze neza",
+    "izu_created_title": "Umukoresha yabaruwe ",
+    "izu_created_message": "Umukoresha wawe yabaruwe",
+    "monitoring_success_title": "Kugenzura Ubarura Byagenze neza",
     "monitoring_success_message": "Amanota y'ubugenzuzi yoherejejwe neza",
     "submission_error_title": "Ikibazo mu kohereza",
     "submission_error_message": "Kohereza byanze",
@@ -219,7 +220,7 @@
     "search_family": "Shakisha Imiryango"
   },
   "HistoryProjectPage": {
-    "title": "Ibice bya porogaramu bibitswe",
+    "title": "Africollect",
     "all_history_project": "Ibice byose bya porogaramu bibitswe",
     "history_project": "Igice cya porogaramu bibitswe",
     "search_history_project": "Shakisha Igice cya porogaramu bibitswe"
@@ -250,16 +251,16 @@
     "status": "Imiterere",
     "type": "Ubwoko",
     "additional_info": "Amakuru y'inyongera",
-    "izu_data": "Amakuru y'IZU",
+    "izu_data": "Amakuru y' Ubarura",
     "family_data": "Amakuru y'Umuryango",
     "answers": "Ibisubizo",
     "not_answered": "Ntabwo byasubijwe"
   },
   "IzuMonitoringPage": {
-    "title": "Ikurikiranabikorwa rya  IZU",
-    "all_izu": "IZU bose",
-    "izu": "IZU",
-    "search_izu": "Shakisha IZU"
+    "title": "Ikurikiranabikorwa ry' Ubarura",
+    "all_izu": "Abakoresha bose",
+    "izu": "Umukoresha",
+    "search_izu": "Shakisha Ubarura"
   },
   "SettingsPage": {
     "title": "Igenamiterere",
@@ -352,8 +353,8 @@
     "invalid_try_again": "Kode irimo ikosa, mwongere mugerageze"
   },
   "StatisticsPage": {
-    "title": "Imibare ku byakozwe kuba IZU",
-    "izu_statistics": "Imibare ku byakozwe kuba IZU",
+    "title": "Imibare ku byakozwe kuba abakoresha ba serivisi",
+    "izu_statistics": "Imibare ku byakozwe kuba abakoresha ba serivisi",
     "cohort_id": "Umubare uranga ikiciro cy'ibarura",
     "family_id": "Umubare uranga imiryango",
     "family_name": "Izina ryawe",
@@ -411,8 +412,8 @@
     "syncDataNetworkError": "Kuhuza amakuru byanze. Genzura ko uri kuri murandasi maze wongere ugerageze.",
     "familySyncFailed": "Guhuza imiryango byanze",
     "familySyncNetworkError": "Guhuza imiryango byanze. Genzura ko uri kuri murandasi maze wongere ugerageze.",
-    "izuSyncFailed": "Kuhuza IZU byanze",
-    "izuSyncNetworkError": "Kuhuza IZU byanze. Genzura ko uri kuri murandasi maze wongere ugerageze.",
+    "izuSyncFailed": "Kuhuza abakoreshwa byanze",
+    "izuSyncNetworkError": "Kuhuza abakoreshwa byanze. Genzura ko uri kuri murandasi maze wongere ugerageze.",
     "noNetworkErrors": "Nta kosa rya murandasi ongera ugerageze kohereza",
     "retryNetworkFailed": "",
     "retryNetworkNetworkError": "Kongera kohereza byanze.Genzura murandasi yawe maze ugerageze nanone.",
@@ -423,14 +424,14 @@
     "syncFormsText": "Guhuza amafishi/amasuzuma",
     "syncData": "Guhuza amakuru ({{imibare}} bitegereje)",
     "syncFamilies": "Guhuza imiryango ({{imibare}} birategereje)",
-    "syncIzus": "Guhuza IZU ({{imibare}} birategereje)",
+    "syncIzus": "Guhuza abakoresha ({{imibare}} birategereje)",
     "syncResponses": "Guhuza ibisubizo byo kugenzura ({{imibare}} bitegereje)",
     "retryNetwork": "Kugerageza ubugira kabiri amakosa ya murandasi ({{imibare}})",
     "lastSynced": "biheruka guhuzwa: {{italiki}}",
     "complete": "{{ijanisha}}% byarangiye",
     "successfullySynced": "Byagenze neza guhuza {{imibare}} byoherejwe",
     "successfullySyncedFamilies": "Guhuza imiryango Byagenze neza guhuza {{imibare}} ",
-    "successfullySyncedIzus": "Guhuza IZU Byagenze neza guhuza {{imibare}}",
+    "successfullySyncedIzus": "Guhuza abakoresha ba serivisi Byagenze neza guhuza {{imibare}}",
     "successfullySyncedResponses": "Guhuza ibisubizo byo kugenzura Byagenze neza {{imibare}} ",
     "partialNetworkError": "Byahujwe: {{byahujwe}}, Byanze: {{byanze}}, Amakosa ya murandasi:\n {{amakosaya murandasi}}. Amakosa ya murandasi, Koherezwa bizongera kugeragezwa ku ihuza rikurikira.",
     "allNetworkError": "{{count}}ibyoherejwe byose byahuye n'amakosa ya murandasi. \nGenzura murandasi yawe maze ugerageze nanone.",
@@ -446,13 +447,13 @@
     "networkErrors": "Amakosa ya murandasi",
     "noPendingSubmissions": "Nta bitaroherezwa",
     "noPendingFamilies": "Nta miryango itarahuzwa",
-    "noPendingIzus": "Nta IZU batarahuzwa",
+    "noPendingIzus": "Nta Bakoresha batarahuzwa",
     "noPendingResponses": "Nta bisubizo bitarahuzwa",
     "noPendingFollowups": "Nta gukurikirana bitaroherezwa",
     "pending": "Biracyategereje",
     "data": "Huza ibisubizo by' amafishi",
     "families": "Huza imiryango",
-    "izus": "Huza IZU",
+    "Users": "Huza Abakoresha",
     "responses": "Huza ibisubizo byo kugenzura",
     "followups": "Huza amafishi ku gukurikirana"
   },
@@ -529,7 +530,7 @@
   },
   "Alerts": {
     "saving": {
-      "izu": "Kubika IZU",
+      "izu": "Kubika Umukoresha wa serivisi...",
       "family": "Kubika Umuryango",
       "followup": "Kubika Gukurikirana",
       "survey": "Kubika Ibibazwa",
@@ -541,7 +542,7 @@
     },
     "success": {
       "title": "Byagenze neza",
-      "izu": "IZU yakozwe neza",
+      "izu": "Umukoresha wa serivisi yakozwe neza",
       "family": "Umuryango wakozwe neza",
       "followup": "Gukurikirana byakozwe neza",
       "survey": "Ibibazwa byabitswe neza",
@@ -560,7 +561,7 @@
     "error": {
       "title": "Ikibazo",
       "duplicate": {
-        "izu": "IZU ifite aya makuru isanzwe iriho",
+        "izu": "Umukoresha ufite aya makuru asanzwe ariho",
         "family": "Umuryango ufite aya makuru usanzwe uriho",
         "followup": "Gukurikirana bifite aya makuru bisanzwe biriho",
         "survey": "Ibibazwa bifite aya makuru bisanzwe biriho"

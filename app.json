@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "sugiramuryango",
-    "slug": "SugiraMuryango",
+    "name": "Africollect",
+    "slug": "Africollect",
     "runtimeVersion": "1.0.0",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "sugiramuryango",
+    "icon": "./assets/images/africollectLogo.jpg",
+    "scheme": "africollect",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#ffffff",
     "splash": {
-      "image": "./assets/images/logo.png",
+      "image": "./assets/images/africollectLogo.jpg",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -24,22 +24,22 @@
         }
       },
       "supportsTablet": true,
-      "icon": "./assets/images/icon.png",
+      "icon": "./assets/images/africollectLogo.jpg",
       "bundleIdentifier": "com.sugiramuryango.mobile",
       "splash": {
-        "image": "./assets/images/logo.png",
+        "image": "./assets/images/afri-splash.png",
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/africollectLogo.jpg",
         "backgroundColor": "#ffffff"
       },
       "package": "com.sugiramuryango.mobile",
       "splash": {
-        "image": "./assets/images/logo.png",
+        "image": "./assets/images/afri-splash.png",
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       },
@@ -48,7 +48,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/africollectLogo.jpg"
     },
     "plugins": [
       "expo-router",

@@ -201,7 +201,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView className="flex-1 justify-center items-center flex-col gap-y-12 p-8 bg-background">
-      <Logo size={96} />
+      <Logo size={100}/> 
       
       {/* Show offline warning if network is not available */}
       {!isNetworkAvailable && (

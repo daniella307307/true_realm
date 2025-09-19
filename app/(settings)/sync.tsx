@@ -142,7 +142,7 @@ const SyncPage = () => {
     try {
       console.log('\n=== UPDATE SUBMISSION COUNTS CALLED ===');
       console.log('User ID:', user?.id);
-      
+
       // Direct realm query for maximum accuracy
       const allSubmissions = realm.objects(SurveySubmission);
       console.log('\n=== SYNC DATA COUNTS ===');
@@ -171,7 +171,7 @@ const SyncPage = () => {
       // Count unsent izus
       const allIzus = realm.objects(Izu);
       console.log('\n=== IZUS COUNTS ===');
-      
+
       const pendingIzus = allIzus.filtered(
         'sync_data.sync_status == false AND sync_data.created_by_user_id == $0',
         user?.id
@@ -184,7 +184,7 @@ const SyncPage = () => {
       // Count unsent monitoring responses
       const allMonitoringResponses = realm.objects(MonitoringResponses);
       console.log('\n=== MONITORING RESPONSES COUNTS ===')
-      
+
       const pendingMonitoringResponses = allMonitoringResponses.filtered(
         'sync_data.sync_status == false AND sync_data.created_by_user_id == $0',
         user?.id
@@ -197,7 +197,7 @@ const SyncPage = () => {
       // Count unsent followups
       const allFollowups = realm.objects(FollowUps);
       console.log('\n=== FOLLOWUPS COUNTS ===');
-      
+
       const pendingFollowups = allFollowups.filtered(
         'sync_data.sync_status == false AND sync_data.created_by_user_id == $0',
         user?.id
@@ -273,7 +273,7 @@ const SyncPage = () => {
       if (!networkAvailable) {
         throw new Error("Network unavailable");
       }
-      
+
       // Sync Projects and Modules together
       setCurrentSyncItem("Projects");
 
@@ -426,12 +426,12 @@ const SyncPage = () => {
         setSyncProgress((successCount / totalItems) * 100);
       } catch (error: any) {
         console.error("Error during families sync:", error);
-        if (error.message === "Network unavailable" || 
-            error.message?.includes?.("Network") || 
-            !isConnected) {
+        if (error.message === "Network unavailable" ||
+          error.message?.includes?.("Network") ||
+          !isConnected) {
           showToast(
-            "error", 
-            t("Sync.networkError"), 
+            "error",
+            t("Sync.networkError"),
             t("Sync.familySyncNetworkError")
           );
         } else {
@@ -471,12 +471,12 @@ const SyncPage = () => {
         setSyncProgress((successCount / totalItems) * 100);
       } catch (error: any) {
         console.error("Error during izus sync:", error);
-        if (error.message === "Network unavailable" || 
-            error.message?.includes?.("Network") || 
-            !isConnected) {
+        if (error.message === "Network unavailable" ||
+          error.message?.includes?.("Network") ||
+          !isConnected) {
           showToast(
-            "error", 
-            t("Sync.networkError"), 
+            "error",
+            t("Sync.networkError"),
             t("Sync.izuSyncNetworkError")
           );
         } else {
@@ -515,12 +515,12 @@ const SyncPage = () => {
         setSyncProgress((successCount / totalItems) * 100);
       } catch (error: any) {
         console.error("Error during monitoring responses sync:", error);
-        if (error.message === "Network unavailable" || 
-            error.message?.includes?.("Network") || 
-            !isConnected) {
+        if (error.message === "Network unavailable" ||
+          error.message?.includes?.("Network") ||
+          !isConnected) {
           showToast(
-            "error", 
-            t("Sync.networkError"), 
+            "error",
+            t("Sync.networkError"),
             t("Sync.monitoringNetworkError")
           );
         } else {
@@ -559,12 +559,12 @@ const SyncPage = () => {
         setSyncProgress((successCount / totalItems) * 100);
       } catch (error: any) {
         console.error("Error during followups sync:", error);
-        if (error.message === "Network unavailable" || 
-            error.message?.includes?.("Network") || 
-            !isConnected) {
+        if (error.message === "Network unavailable" ||
+          error.message?.includes?.("Network") ||
+          !isConnected) {
           showToast(
-            "error", 
-            t("Sync.networkError"), 
+            "error",
+            t("Sync.networkError"),
             t("Sync.followupSyncNetworkError")
           );
         } else {
@@ -600,13 +600,13 @@ const SyncPage = () => {
       }
     } catch (error: any) {
       console.error("Error during sync:", error);
-      
-      if (error.message === "Network unavailable" || 
-          (error.message && error.message.includes("Network")) || 
-          !isConnected) {
+
+      if (error.message === "Network unavailable" ||
+        (error.message && error.message.includes("Network")) ||
+        !isConnected) {
         showToast(
-          "error", 
-          t("Sync.networkError"), 
+          "error",
+          t("Sync.networkError"),
           t("Sync.offlineMessage")
         );
       } else {
@@ -645,7 +645,7 @@ const SyncPage = () => {
       }
 
       // Use the syncPendingSubmissions service function to sync submissions
-      await syncPendingSubmissions(realm, t,user?.id);
+      await syncPendingSubmissions(realm, t, user?.id);
       console.log("Completed syncPendingSubmissions");
 
       // Force refresh submissions state
@@ -690,13 +690,13 @@ const SyncPage = () => {
 
     try {
       await syncTemporaryFamilies(realm, `/createFamily`, t, user?.id);
-      
+
       // Set last sync date
       setLastSyncDate(new Date());
-      
+
       // Force a UI refresh after completion
       setForceRefresh((prev) => prev + 1);
-      
+
     } catch (error) {
       console.error("Error during families sync:", error);
     } finally {
@@ -728,10 +728,10 @@ const SyncPage = () => {
 
       // Set last sync date
       setLastSyncDate(new Date());
-      
+
       // Force a UI refresh after completion
       setForceRefresh((prev) => prev + 1);
-      
+
     } catch (error) {
       console.error("Error during izus sync:", error);
     } finally {
@@ -771,10 +771,10 @@ const SyncPage = () => {
 
       // Set last sync date
       setLastSyncDate(new Date());
-      
+
       // Force a UI refresh after completion
       setForceRefresh((prev) => prev + 1);
-      
+
     } catch (error) {
       console.error("Error during monitoring responses sync:", error);
     } finally {
@@ -805,10 +805,10 @@ const SyncPage = () => {
 
       // Set last sync date
       setLastSyncDate(new Date());
-      
+
       // Force a UI refresh after completion
       setForceRefresh((prev) => prev + 1);
-      
+
     } catch (error) {
       console.error("Error during followups sync:", error);
     } finally {
@@ -818,6 +818,137 @@ const SyncPage = () => {
   };
 
   // Modify the services useMemo to use correct status types
+  // const services = useMemo(() => {
+  //   const currentStatuses = currentSyncStatusesRef.current;
+
+  //   const formsOverallStatus: SyncStatusType =
+  //     isSyncing && syncType === "Forms"
+  //       ? "syncing"
+  //       : Object.values(currentStatuses).includes("failed")
+  //       ? "failed"
+  //       : lastSyncDate && syncType === "Forms"
+  //       ? "success"
+  //       : "notsynced";
+
+  //   return [
+  //     {
+  //       key: "Forms",
+  //       name: "Forms/Surveys",
+  //       status: formsOverallStatus,
+  //       progress: syncType === "Forms" ? syncProgress : undefined,
+  //       lastSyncDate: lastSyncDate,
+  //       items: [
+  //         {
+  //           name: "Projects",
+  //           status: currentStatuses.Projects.toLowerCase() as SyncStatusType,
+  //           lastSyncDate: lastSyncDate,
+  //         },
+  //         {
+  //           name: "Modules",
+  //           status: currentStatuses.Modules.toLowerCase() as SyncStatusType,
+  //           lastSyncDate: lastSyncDate,
+  //         },
+  //         {
+  //           name: "Forms",
+  //           status: currentStatuses.Forms.toLowerCase() as SyncStatusType,
+  //           lastSyncDate: lastSyncDate,
+  //         },
+  //         {
+  //           name: "Stakeholders",
+  //           status: currentStatuses.Stakeholders.toLowerCase() as SyncStatusType,
+  //           lastSyncDate: lastSyncDate,
+  //         },
+  //       ],
+  //     },
+  //     {
+  //       key: "Sync.data",
+  //       name: `${t("Sync.data")} (${pendingCount} ${t("Sync.unsent")})`,
+  //       status:
+  //         pendingCount === 0
+  //           ? "nopendingsubmissions"
+  //           : isSyncing && syncType === "Data"
+  //           ? "syncing"
+  //           : lastSyncDate && syncType === "Data"
+  //           ? "success"
+  //           : "notsynced",
+  //       progress: syncType === "Data" ? syncProgress : undefined,
+  //       lastSyncDate: lastSyncDate,
+  //     },
+  //     {
+  //       key: "Sync.families",
+  //       name: `${t("Sync.families")} (${pendingFamiliesCount} ${t("Sync.unsent")})`,
+  //       status:
+  //         pendingFamiliesCount === 0
+  //           ? "nopendingfamilies"
+  //           : isSyncing && syncType === "Families"
+  //           ? "syncing"
+  //           : lastSyncDate && syncType === "Families"
+  //           ? "success"
+  //           : currentStatuses.Families.toLowerCase() as SyncStatusType,
+  //       progress: syncType === "Families" ? syncProgress : undefined,
+  //       lastSyncDate: lastSyncDate,
+  //     },
+  //     {
+  //       key: "Sync.izus",
+  //       name: `${t("Sync.izus")} (${pendingIzusCount} ${t("Sync.unsent")})`,
+  //       status:
+  //         pendingIzusCount === 0
+  //           ? "nopendingizus"
+  //           : isSyncing && syncType === "Izus"
+  //           ? "syncing"
+  //           : lastSyncDate && syncType === "Izus"
+  //           ? "success"
+  //           : currentStatuses.Izus.toLowerCase() as SyncStatusType,
+  //       progress: syncType === "Izus" ? syncProgress : undefined,
+  //       lastSyncDate: lastSyncDate,
+  //     },
+  //     {
+  //       key: "Sync.responses",
+  //       name: `${t("Sync.responses")} (${pendingMonitoringResponsesCount} ${t("Sync.unsent")})`,
+  //       status:
+  //         pendingMonitoringResponsesCount === 0
+  //           ? "nopendingresponses"
+  //           : isSyncing && syncType === "MonitoringResponses"
+  //           ? "syncing"
+  //           : lastSyncDate && syncType === "MonitoringResponses"
+  //           ? "success"
+  //           : currentStatuses.MonitoringResponses.toLowerCase() as SyncStatusType,
+  //       progress: syncType === "MonitoringResponses" ? syncProgress : undefined,
+  //       lastSyncDate: lastSyncDate,
+  //     },
+  //     {
+  //       key: "Sync.followups",
+  //       name: `${t("Sync.followups")} (${pendingFollowupsCount} ${t("Sync.unsent")})`,
+  //       status:
+  //         pendingFollowupsCount === 0
+  //           ? "nopendingfollowups"
+  //           : isSyncing && syncType === "Followups"
+  //           ? "syncing"
+  //           : lastSyncDate && syncType === "Followups"
+  //           ? "success"
+  //           : currentStatuses.Followups.toLowerCase() as SyncStatusType,
+  //       progress: syncType === "Followups" ? syncProgress : undefined,
+  //       lastSyncDate: lastSyncDate,
+  //     }
+  //   ];
+  // }, [
+  //   isSyncing,
+  //   currentSyncItem,
+  //   syncProgress,
+  //   lastSyncDate,
+  //   syncType,
+  //   syncStatuses,
+  //   pendingCount,
+  //   pendingFamiliesCount,
+  //   pendingIzusCount,
+  //   pendingMonitoringResponsesCount,
+  //   forceRefresh,
+  //   isConnected,
+  //   t,
+  //   pendingFollowupsCount,
+  // ]);
+
+  // Modify the services useMemo to use correct status types
   const services = useMemo(() => {
     const currentStatuses = currentSyncStatusesRef.current;
 
@@ -825,15 +956,15 @@ const SyncPage = () => {
       isSyncing && syncType === "Forms"
         ? "syncing"
         : Object.values(currentStatuses).includes("failed")
-        ? "failed"
-        : lastSyncDate && syncType === "Forms"
-        ? "success"
-        : "notsynced";
+          ? "failed"
+          : lastSyncDate && syncType === "Forms"
+            ? "success"
+            : "notsynced";
 
     return [
       {
         key: "Forms",
-        name: "Forms/Surveys",
+        name: "Projects",
         status: formsOverallStatus,
         progress: syncType === "Forms" ? syncProgress : undefined,
         lastSyncDate: lastSyncDate,
@@ -853,11 +984,11 @@ const SyncPage = () => {
             status: currentStatuses.Forms.toLowerCase() as SyncStatusType,
             lastSyncDate: lastSyncDate,
           },
-          {
-            name: "Stakeholders",
-            status: currentStatuses.Stakeholders.toLowerCase() as SyncStatusType,
-            lastSyncDate: lastSyncDate,
-          },
+          // {
+          //   name: "Stakeholders",
+          //   status: currentStatuses.Stakeholders.toLowerCase() as SyncStatusType,
+          //   lastSyncDate: lastSyncDate,
+          // },
         ],
       },
       {
@@ -867,69 +998,56 @@ const SyncPage = () => {
           pendingCount === 0
             ? "nopendingsubmissions"
             : isSyncing && syncType === "Data"
-            ? "syncing"
-            : lastSyncDate && syncType === "Data"
-            ? "success"
-            : "notsynced",
+              ? "syncing"
+              : lastSyncDate && syncType === "Data"
+                ? "success"
+                : "notsynced",
         progress: syncType === "Data" ? syncProgress : undefined,
         lastSyncDate: lastSyncDate,
       },
-      {
-        key: "Sync.families",
-        name: `${t("Sync.families")} (${pendingFamiliesCount} ${t("Sync.unsent")})`,
-        status:
-          pendingFamiliesCount === 0
-            ? "nopendingfamilies"
-            : isSyncing && syncType === "Families"
-            ? "syncing"
-            : lastSyncDate && syncType === "Families"
-            ? "success"
-            : currentStatuses.Families.toLowerCase() as SyncStatusType,
-        progress: syncType === "Families" ? syncProgress : undefined,
-        lastSyncDate: lastSyncDate,
-      },
+      // 👇 Families removed from the list
       {
         key: "Sync.izus",
-        name: `${t("Sync.izus")} (${pendingIzusCount} ${t("Sync.unsent")})`,
+        name: `${t("Sync.Users")} (${pendingIzusCount} ${t("Sync.unsent")})`,
         status:
           pendingIzusCount === 0
             ? "nopendingizus"
             : isSyncing && syncType === "Izus"
-            ? "syncing"
-            : lastSyncDate && syncType === "Izus"
-            ? "success"
-            : currentStatuses.Izus.toLowerCase() as SyncStatusType,
+              ? "syncing"
+              : lastSyncDate && syncType === "Izus"
+                ? "success"
+                : currentStatuses.Izus.toLowerCase() as SyncStatusType,
         progress: syncType === "Izus" ? syncProgress : undefined,
         lastSyncDate: lastSyncDate,
       },
-      {
-        key: "Sync.responses",
-        name: `${t("Sync.responses")} (${pendingMonitoringResponsesCount} ${t("Sync.unsent")})`,
-        status:
-          pendingMonitoringResponsesCount === 0
-            ? "nopendingresponses"
-            : isSyncing && syncType === "MonitoringResponses"
-            ? "syncing"
-            : lastSyncDate && syncType === "MonitoringResponses"
-            ? "success"
-            : currentStatuses.MonitoringResponses.toLowerCase() as SyncStatusType,
-        progress: syncType === "MonitoringResponses" ? syncProgress : undefined,
-        lastSyncDate: lastSyncDate,
-      },
-      {
-        key: "Sync.followups",
-        name: `${t("Sync.followups")} (${pendingFollowupsCount} ${t("Sync.unsent")})`,
-        status:
-          pendingFollowupsCount === 0
-            ? "nopendingfollowups"
-            : isSyncing && syncType === "Followups"
-            ? "syncing"
-            : lastSyncDate && syncType === "Followups"
-            ? "success"
-            : currentStatuses.Followups.toLowerCase() as SyncStatusType,
-        progress: syncType === "Followups" ? syncProgress : undefined,
-        lastSyncDate: lastSyncDate,
-      }
+      // {
+      //   key: "Sync.responses",
+      //   name: `${t("Sync.responses")} (${pendingMonitoringResponsesCount} ${t("Sync.unsent")})`,
+      //   status:
+      //     pendingMonitoringResponsesCount === 0
+      //       ? "nopendingresponses"
+      //       : isSyncing && syncType === "MonitoringResponses"
+      //         ? "syncing"
+      //         : lastSyncDate && syncType === "MonitoringResponses"
+      //           ? "success"
+      //           : currentStatuses.MonitoringResponses.toLowerCase() as SyncStatusType,
+      //   progress: syncType === "MonitoringResponses" ? syncProgress : undefined,
+      //   lastSyncDate: lastSyncDate,
+      // },
+      // {
+      //   key: "Sync.followups",
+      //   name: `${t("Sync.followups")} (${pendingFollowupsCount} ${t("Sync.unsent")})`,
+      //   status:
+      //     pendingFollowupsCount === 0
+      //       ? "nopendingfollowups"
+      //       : isSyncing && syncType === "Followups"
+      //         ? "syncing"
+      //         : lastSyncDate && syncType === "Followups"
+      //           ? "success"
+      //           : currentStatuses.Followups.toLowerCase() as SyncStatusType,
+      //   progress: syncType === "Followups" ? syncProgress : undefined,
+      //   lastSyncDate: lastSyncDate,
+      // }
     ];
   }, [
     isSyncing,
@@ -939,7 +1057,6 @@ const SyncPage = () => {
     syncType,
     syncStatuses,
     pendingCount,
-    pendingFamiliesCount,
     pendingIzusCount,
     pendingMonitoringResponsesCount,
     forceRefresh,
@@ -981,16 +1098,17 @@ const SyncPage = () => {
           {isSyncing && syncType === item.key && (
             <ActivityIndicator size="small" color="#0000ff" />
           )}
+
         </View>
         <Text
           className={
             item.status === "success"
               ? "text-green-500"
               : item.status === "failed"
-              ? "text-red-500"
-              : item.status === "syncing"
-              ? "text-blue-500"
-              : "text-gray-500"
+                ? "text-red-500"
+                : item.status === "syncing"
+                  ? "text-blue-500"
+                  : "text-gray-500"
           }
         >
           {getStatusText(item.status)}
@@ -1021,10 +1139,10 @@ const SyncPage = () => {
                     subItem.status === "success"
                       ? "text-green-500"
                       : subItem.status === "failed"
-                      ? "text-red-500"
-                      : subItem.status === "syncing"
-                      ? "text-blue-500"
-                      : "text-gray-500"
+                        ? "text-red-500"
+                        : subItem.status === "syncing"
+                          ? "text-blue-500"
+                          : "text-gray-500"
                   }
                 >
                   {getStatusText(subItem.status)}
@@ -1040,13 +1158,12 @@ const SyncPage = () => {
         )}
       </View>
       <TouchableOpacity
-        className={`flex items-center justify-center h-12 w-12 flex-col rounded-full ml-4 ${
-          isSyncing && syncType === item.key
+        className={`flex items-center justify-center h-12 w-12 flex-col rounded-full ml-4 ${isSyncing && syncType === item.key
             ? "bg-gray-700"
             : item.status === "failed"
-            ? "bg-red-500"
-            : "bg-primary"
-        }`}
+              ? "bg-red-500"
+              : "bg-primary"
+          }`}
         onPress={() => {
           if (item.key === "Forms") {
             syncFormsAndSurveys();
@@ -1085,7 +1202,7 @@ const SyncPage = () => {
         showRight={true}
         title={t("SettingsPage.sync")}
       />
-      
+
       {/* Network status indicator */}
       {!isConnected && (
         <View className="bg-red-500 py-2 px-4">
@@ -1094,12 +1211,12 @@ const SyncPage = () => {
           </Text>
         </View>
       )}
-      
+
       <FlatList
         data={services as SyncItem[]}
         renderItem={renderItem}
         keyExtractor={(item) => item.key}
-        extraData={forceRefresh} // Ensure the FlatList updates when forceRefresh changes
+        extraData={forceRefresh} // Ensure re-render on forceRefresh change
       />
       <Toast />
     </SafeAreaView>

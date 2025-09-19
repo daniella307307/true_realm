@@ -89,10 +89,10 @@
     "village": "Village",
     "type": "Submitted",
     "submission": "a submission",
-    "izu": "an IZU",
+    "izu": "a User",
     "loading": "Loading...",
     "details": "Details",
-    "izu_code": "IZU Code",
+    "izu_code": "User Code",
     "cohort": "Cohort",
     "project_id": "Project ID",
     "module_id": "Module ID",
@@ -113,33 +113,34 @@
     "families": "Families",
     "history": "History",
     "statistics": "Statistics",
-    "IZU_Monitoring": "IZU Monitoring",
+    "IZU_Monitoring": "User Monitoring",
     "videos": "Videos",
     "settings": "Settings",
-    "Izu_telephone_Supervision": "Izu telephone Supervision",
+    "IZU_telephone_Supervision": "User telephone Supervision",
     "community": "Community",
     "projects": "Projects",
     "household_enrollment": "Household Enrollment",
-    "IZU_Sector_Coordinator_Demographics": "IZU Sector Coordinator Demographics",
-    "IZU_At_Village_Demographics": "IZU At Village Demographics",
-    "IZU_Sector_Telephone_Supervision": "IZU Sector Telephone Supervision",
-    "IZU_Cell_Telephone_Supervision": "IZU Cell Telephone Supervision",
+    "IZU_Sector_Coordinator_Demographics": "Users",
+    "IZU_At_Village_Demographics": "User At Village Demographics",
+    "IZU_Sector_Telephone_Supervision": "User Sector Telephone Supervision",
+    "IZU_Cell_Telephone_Supervision": "User Cell Telephone Supervision",
     "loading_data": "Loading data...",
     "sync_warning": "You have unsynced data that needs to be synced",
     "sync_required": "Sync Required",
     "sync_description": "You have unsynced data that needs to be synced. Please go to the sync page to sync your data.",
     "go_to_sync": "Go to Sync Page",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "sync_title": "Projects"
   },
   "ProjectPage": {
-    "title": "Projects",
+    "title": "Forms",
     "all_projects": "All Projects",
     "project": "Project",
     "search_project": "Search Projects",
     "empty_projects": "No projects available"
   },
   "HistoryProjectPage": {
-    "title": "Saved Projects",
+    "title": "Africollect",
     "all_history_project": "All Saved Project",
     "history_project": "Saved Project",
     "search_history_project": "Search Saved Project"
@@ -170,19 +171,19 @@
     "status": "Status",
     "type": "Type",
     "additional_info": "Additional Information",
-    "izu_data": "IZU Data",
+    "izu_data": "User Data",
     "family_data": "Family Data",
     "answers": "Answers",
     "not_answered": "Not answered"
   },
-  "Izus": {
-    "title": "Izus",
-    "all_izus": "All Izus",
-    "izu": "IZU",
-    "search_izu": "Search IZU",
-    "no_izus": "No izus available",
-    "no_izus_description": "No izus available",
-    "select_izu": "Select IZU"
+  "Users": {
+    "title": "Users",
+    "all_Users": "All Users",
+    "izu": "User",
+    "search_izu": "Search User",
+    "no_Users": "No Users available",
+    "no_Users_description": "No Users available",
+    "select_izu": "Select User"
   },
   "CohortPage": {
     "title": "Cohorts",
@@ -197,15 +198,15 @@
     "search_module": "Search Modules",
     "risk_of_harm": "Risk of Harm",
     "risk_of_harm_description": "This module is a high priority for your attention.",
-    "monitoring_title": "IZU Monitoring"
+    "monitoring_title": "User Monitoring"
   },
-  "IzuCodeSelectionPage": {
-    "title": "Select Izu Code",
-    "description": "Select the Izu code you want to use",
-    "izu_code": "Izu Code",
-    "izu_name": "Izu Name",
-    "search_izu_code": "Search Izu Code",
-    "empty_izu_codes": "No Izu codes available"
+  "UserCodeSelectionPage": {
+    "title": "Select User Code",
+    "description": "Select the User code you want to use",
+    "izu_code": "User Code",
+    "izu_name": "User Name",
+    "search_izu_code": "Search User Code",
+    "empty_izu_codes": "No User codes available"
   },
   "FormPage": {
     "title": "Forms",
@@ -228,7 +229,7 @@
     "previewTitle": "Review Your Answers",
     "timeSpent": "Time Spent",
     "flowStateValues": "Core Values",
-    "izu": "IZU",
+    "izu": "User",
     "cohort": "Cohort",
     "family": "Family",
     "location": "Location",
@@ -239,8 +240,8 @@
     "submission_success_description": "Your submission has been successfully submitted",
     "family_created_title": "Family Created",
     "family_created_message": "Your family has been successfully created",
-    "izu_created_title": "IZU Created",
-    "izu_created_message": "Your IZU has been successfully created",
+    "izu_created_title": "User Created",
+    "izu_created_message": "Your User has been successfully created",
     "monitoring_success_title": "Monitoring Success",
     "monitoring_success_message": "Your monitoring has been successfully submitted",
     "submission_error_title": "Submission Error",
@@ -255,11 +256,11 @@
     "assigned_Family": "Assigned Family",
     "search_family": "Search Family"
   },
-  "IzuMonitoringPage": {
-    "title": "IZU Monitoring",
-    "all_izu": "All IZU",
-    "izu": "IZU",
-    "search_izu": "Search IZU"
+  "UserMonitoringPage": {
+    "title": "User Monitoring",
+    "all_izu": "All Users",
+    "izu": "User",
+    "search_izu": "Search User"
   },
   "SettingsPage": {
     "title": "Settings",
@@ -352,8 +353,8 @@
     "invalid_try_again": "Invalid code, try again"
   },
   "StatisticsPage": {
-    "title": "Izus Statistics",
-    "izu_statistics": "Izu Statistics",
+    "title": "Users Statistics",
+    "izu_statistics": "Users Statistics",
     "cohort_id": "Cohort ID",
     "family_id": "Family ID",
     "family_name": "Family Name",
@@ -411,8 +412,8 @@
     "syncDataNetworkError": "Failed to sync data. Please check your internet connection and try again.",
     "familySyncFailed": "Failed to sync families",
     "familySyncNetworkError": "Failed to sync families. Please check your internet connection and try again.",
-    "izuSyncFailed": "Failed to sync izus",
-    "izuSyncNetworkError": "Failed to sync izus. Please check your internet connection and try again.",
+    "UsersyncFailed": "Failed to sync Users",
+    "UsersyncNetworkError": "Failed to sync Users. Please check your internet connection and try again.",
     "noNetworkErrors": "No network error submissions to retry",
     "retryNetworkFailed": "Failed to retry network error submissions",
     "retryNetworkNetworkError": "Failed to retry submissions. Please check your internet connection and try again.",
@@ -423,14 +424,14 @@
     "syncFormsText": "Sync Forms/Surveys",
     "syncData": "Sync Data ({{count}} pending)",
     "syncFamilies": "Sync Families ({{count}} pending)",
-    "syncIzus": "Sync Izus ({{count}} pending)",
+    "syncUsers": "Sync Users ({{count}} pending)",
     "syncResponses": "Sync Monitoring Responses ({{count}} pending)",
     "retryNetwork": "Retry Network Errors ({{count}})",
     "lastSynced": "Last synced: {{date}}",
     "complete": "{{percent}}% Complete",
     "successfullySynced": "Successfully synced {{count}} submissions",
     "successfullySyncedFamilies": "Successfully synced {{count}} families",
-    "successfullySyncedIzus": "Successfully synced {{count}} izus",
+    "successfullySyncedUsers": "Successfully synced {{count}} Users",
     "successfullySyncedResponses": "Successfully synced {{count}} monitoring responses",
     "partialNetworkError": "Synced: {{synced}}, Failed: {{failed}}, Network Errors: {{networkError}}. Network error submissions will be retried on next sync.",
     "allNetworkError": "All {{count}} submissions encountered network errors. Please check your connection and try again.",
@@ -446,12 +447,12 @@
     "networkErrors": "Network Errors",
     "noPendingSubmissions": "No Pending Submissions",
     "noPendingFamilies": "No Pending Families",
-    "noPendingIzus": "No Pending Izus",
+    "noPendingUsers": "No Pending Users",
     "noPendingResponses": "No Pending Responses",
     "nopendingfollowups": "No Pending Follow-ups",
     "data": "Data",
     "families": "Families",
-    "izus": "Izus",
+    "Users": "Users",
     "responses": "Monitoring Responses",
     "followups": "Follow-ups",
     "pending": "Pending"
@@ -529,7 +530,7 @@
   },
   "Alerts": {
     "saving": {
-      "izu": "Saving IZU",
+      "izu": "Saving User",
       "family": "Saving Family",
       "followup": "Saving Follow-up",
       "survey": "Saving Survey",
@@ -541,7 +542,7 @@
     },
     "success": {
       "title": "Success",
-      "izu": "IZU created successfully",
+      "izu": "User created successfully",
       "family": "Family created successfully",
       "followup": "Follow-up created successfully",
       "survey": "Survey saved successfully",
@@ -560,7 +561,7 @@
     "error": {
       "title": "Error",
       "duplicate": {
-        "izu": "An IZU with these details already exists",
+        "izu": "A User with these details already exists",
         "family": "A family with these details already exists",
         "followup": "A follow-up with these details already exists",
         "survey": "A survey submission with these details already exists"

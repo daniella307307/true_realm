@@ -178,25 +178,25 @@ const SubmissionListByModuleScreen = () => {
         if (item?.project_module_id !== parseInt(submodId)) return false;
 
         // If family parameter is provided, filter by family ID
-        if (family && item.family !== family) return false;
+        // if (family && item.family !== family) return false;
 
         // Search filter
-        if (searchQuery) {
-          const searchLower = searchQuery.toLowerCase();
-          const foundFamily =
-            item.itemType === "family"
-              ? item.familyData
-              : families?.find((fam: IFamilies) => fam.hh_id === item.family);
+        // if (searchQuery) {
+        //   const searchLower = searchQuery.toLowerCase();
+        //   const foundFamily =
+        //     item.itemType === "family"
+        //       ? item.familyData
+        //       : families?.find((fam: IFamilies) => fam.hh_id === item.family);
 
-          return (
-            foundFamily?.hh_head_fullname
-              ?.toLowerCase()
-              .includes(searchLower) ||
-            foundFamily?.village_name?.toLowerCase().includes(searchLower) ||
-            item.family?.toLowerCase().includes(searchLower) ||
-            false
-          );
-        }
+        //   return (
+        //     foundFamily?.hh_head_fullname
+        //       ?.toLowerCase()
+        //       .includes(searchLower) ||
+        //     foundFamily?.village_name?.toLowerCase().includes(searchLower) ||
+        //     item.family?.toLowerCase().includes(searchLower) ||
+        //     false
+        //   );
+        // }
 
         // Tab filter
         switch (activeTab) {

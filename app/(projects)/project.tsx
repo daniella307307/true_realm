@@ -72,6 +72,11 @@ const ProjectScreen = () => {
     const isRiskManagement = item.name
       .toLowerCase()
       .includes("risk of harm management");
+    //   const isRiskManagement = item.name .toLowerCase() .includes("risk of harm management"); const isFirstItem = index === 0;
+    if (isRiskManagement) {
+      // ❌ Skip risky projects
+      return null;
+    }
     const isFirstItem = index === 0;
 
     return (
@@ -89,9 +94,8 @@ const ProjectScreen = () => {
             color={isRiskManagement ? "#EF4444" : "#71717A"}
           />
           <Text
-            className={`text-lg ml-4 font-semibold ${
-              isRiskManagement ? "text-red-500" : ""
-            }`}
+            className={`text-lg ml-4 font-semibold ${isRiskManagement ? "text-red-500" : ""
+              }`}
           >
             {i18n.language === "rw-RW" ? item.kin_name || item.name : item.name}
           </Text>

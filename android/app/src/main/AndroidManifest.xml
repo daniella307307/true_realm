@@ -27,6 +27,8 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="sugiramuryango"/>
         <data android:scheme="exp+sugiramuryango"/>
+        <data android:scheme="africollect"/>
+        <data android:scheme="exp+africollect"/>
       </intent-filter>
     </activity>
   </application>

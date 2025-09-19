@@ -1,12 +1,11 @@
 import React from "react";
-
-import { View, Image } from "react-native";
+import { View, Image, StyleSheet } from "react-native";
 
 import { Text } from "./ui/text";
 
 const Logo = ({
   className = "",
-  size = 32,
+  size = 48, // bigger by default
   horizontal = false,
 }: {
   className?: string;
@@ -20,17 +19,32 @@ const Logo = ({
       } ${className}`}
     >
       <Image
-        source={require("../assets/images/logo.png")}
-        style={{ height: size, width: size }}
-        className="object-cover"
+        source={require("../assets/images/logo-header.jpg")}
+        style={
+          horizontal
+            ? [styles.horizontalLogo, { height: size * 1.5 }] // slightly taller for banners
+            : [styles.squareLogo, { width: size, height: size }]
+        }
+        resizeMode={horizontal ? "cover" : "contain"}
       />
-      {!horizontal && (
+
+      {/* Optional text under vertical logo */}
+      {/* {!horizontal && (
         <Text className="font-semibold text-black text-xl mt-2">
           Sugira Muryango
         </Text>
-      )}
+      )} */}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  squareLogo: {
+    aspectRatio: 1, // keeps logo proportional
+  },
+  horizontalLogo: {
+    width: "100%", // stretches across container
+  },
+});
 
 export default Logo;

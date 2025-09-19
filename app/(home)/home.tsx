@@ -118,17 +118,39 @@ const HomeScreen = () => {
   // Dynamic links based on user role
   const getActiveLinks = () => {
     const baseLinks = [
+      // {
+      //   icon: <TabBarIcon name="family-restroom" family="MaterialIcons" />,
+      //   title: t("HomePage.families"),
+      //   route: "/(families)/",
+      // },
+      // {
+      //   icon: <TabBarIcon name="home" family="Entypo" />,
+      //   title: t("HomePage.household_enrollment"),
+      //   route: `/(projects)/(mods)/(projects)/${HOUSEHOLD_ENROLLMENT_ID}`,
+      // },
+     
+      // {
+      //   icon: <TabBarIcon name="chart-simple" family="FontAwesome6" />,
+      //   title: t("HomePage.statistics"),
+      //   route: "/(statistics)/",
+      // },
+      // {
+      //   icon: <TabBarIcon name="account-star" family="MaterialCommunityIcons" />,
+      //   title: t("HomePage.IZU_Monitoring"),
+      //   route: `/(monitoring)/`,
+      // },
+      // {
+      //   icon: <TabBarIcon name="video" family="Entypo" />,
+      //   title: t("HomePage.videos"),
+      //   route: "/(videos)/video",
+      // },
+      
       {
-        icon: <TabBarIcon name="family-restroom" family="MaterialIcons" />,
-        title: t("HomePage.families"),
-        route: "/(families)/",
+        icon: <TabBarIcon name="project" family="Octicons" />,
+        title: t("HomePage.projects"),
+        route: "/(projects)/project",
       },
-      {
-        icon: <TabBarIcon name="home" family="Entypo" />,
-        title: t("HomePage.household_enrollment"),
-        route: `/(projects)/(mods)/(projects)/${HOUSEHOLD_ENROLLMENT_ID}`,
-      },
-      {
+       {
         icon: (
           <TabBarIcon name="calendar-month" family="MaterialCommunityIcons" />
         ),
@@ -136,72 +158,58 @@ const HomeScreen = () => {
         route: "/(history)/history",
       },
       {
-        icon: <TabBarIcon name="chart-simple" family="FontAwesome6" />,
-        title: t("HomePage.statistics"),
-        route: "/(statistics)/",
-      },
-      {
-        icon: <TabBarIcon name="account-star" family="MaterialCommunityIcons" />,
-        title: t("HomePage.IZU_Monitoring"),
-        route: `/(monitoring)/`,
-      },
-      {
-        icon: <TabBarIcon name="video" family="Entypo" />,
-        title: t("HomePage.videos"),
-        route: "/(videos)/video",
-      },
-      {
-        icon: <TabBarIcon name="settings" family="Ionicons" />,
-        title: t("HomePage.settings"),
-        route: "/(settings)/",
-      },
-      {
-        icon: <TabBarIcon name="project" family="Octicons" />,
-        title: t("HomePage.projects"),
-        route: "/(projects)/project",
+        icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
+        title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
+        route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
       },
       {
         icon: <TabBarIcon name="chat" family="Entypo" />,
         title: t("HomePage.community"),
         route: "/(community)/community",
       },
+      
+      {
+        icon: <TabBarIcon name="settings" family="Ionicons" />,
+        title: t("HomePage.settings"),
+        route: "/(settings)/",
+      },
     ];
 
     // Add Sector Coordinator Demographics for users with position 13
-    if (user?.position === 13) {
-      baseLinks.push({
-        icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
-        title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
-        route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
-      });
-    }
+    // if (user?.position === 13) {
+      // baseLinks.push({
+      //   icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
+      //   title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
+      //   route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
+      // });
+    // }
 
     // Add Village Demographics for users with position 7
-    if (user?.position === 7) {
-      baseLinks.push({
-        icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
-        title: t("HomePage.IZU_At_Village_Demographics"),
-        route: `/(projects)/(mods)/(projects)/${IZU_AT_VILLAGE_DEMOGRAPHICS_ID}`,
-      });
-    }
+    // if (user?.position === 7) {
+    //   baseLinks.push({
+    //     icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
+    //     title: t("HomePage.IZU_At_Village_Demographics"),
+    //     route: `/(projects)/(mods)/(projects)/${IZU_AT_VILLAGE_DEMOGRAPHICS_ID}`,
+    //   });
+    // }
 
     // Add IZU Sector Telephone Supervision for users with position 13
-    if (user?.position === 14) {
-      baseLinks.push({
-        icon: <TabBarIcon name="phone" family="FontAwesome6" />,
-        title: t("HomePage.IZU_Sector_Telephone_Supervision"),
-        route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_TELEPHONE_SUPERVISION_ID}`,
-      });
-    }
+    // if (user?.position === 14) {
+    //   baseLinks.push({
+    //     icon: <TabBarIcon name="phone" family="FontAwesome6" />,
+    //     title: t("HomePage.IZU_Sector_Telephone_Supervision"),
+    //     route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_TELEPHONE_SUPERVISION_ID}`,
+    //   });
+    // }
 
     // Add IZU Cell Telephone Supervision for users with position 7 0791774091
-    if (user?.position === 13) {
-      baseLinks.push({
-        icon: <TabBarIcon name="phone" family="FontAwesome6" />,
-        title: t("HomePage.IZU_Cell_Telephone_Supervision"),
-        route: `/(projects)/(mods)/(projects)/${IZU_CELL_TELEPHONE_SUPERVISION_ID}`,
-      });
-    }
+    // if (user?.position === 13) {
+      // baseLinks.push({
+      //   icon: <TabBarIcon name="phone" family="FontAwesome6" />,
+      //   title: t("HomePage.IZU_Cell_Telephone_Supervision"),
+      //   route: `/(projects)/(mods)/(projects)/${IZU_CELL_TELEPHONE_SUPERVISION_ID}`,
+      // });
+    // }
     return baseLinks;
   };
 
@@ -307,8 +315,8 @@ const HomeScreen = () => {
       <HeaderNavigation
         showLeft={false}
         showRight={true}
-        showLogo={true}
-        logoSize={32}
+        // showLogo={true}
+        // logoSize={32}
       />
       <ScrollView
         refreshControl={
@@ -319,9 +327,9 @@ const HomeScreen = () => {
           <Text className="text-2xl font-bold">
             {t("HomePage.title") + user?.name}
           </Text>
-          <Text className="text-lg text-[#71717A]">
+          {/* <Text className="text-lg text-[#71717A]">
             {t("HomePage.description")}
-          </Text>
+          </Text> */}
         </View>
         {/* Show loading indicator if data is being refreshed */}
         {isRefreshing && (
@@ -345,9 +353,18 @@ const HomeScreen = () => {
         )}
 
         {/* Conditionally render list or grid view based on screen width */}
-        {isDataLoaded ? (
+        {/* {isDataLoaded ? (
           isSmallScreen ? renderListView() : renderGridView()
         ) : (
+          <View className="flex-1 justify-center items-center p-8">
+            <ActivityIndicator size="large" color="#A23A91" />
+            <Text className="text-center mt-4 text-gray-600">
+              {t("HomePage.loading_data")}
+            </Text>
+          </View>
+        )} */}
+
+         {isDataLoaded ? renderGridView() : (
           <View className="flex-1 justify-center items-center p-8">
             <ActivityIndicator size="large" color="#A23A91" />
             <Text className="text-center mt-4 text-gray-600">
