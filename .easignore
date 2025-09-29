@@ -1,0 +1,42 @@
+# === Node modules (EAS installs them automatically) ===
+node_modules/
+
+# === Expo caches & local files ===
+.expo/
+.expo-shared/
+web-build/
+dist/
+build/
+.cache/
+
+# === Logs ===
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+expo-debug.log
+*.log
+
+# === Git & version control ===
+.git/
+.gitignore
+.gitattributes
+
+# === IDE / Editor settings ===
+.vscode/
+.idea/
+*.iml
+
+# === OS specific files ===
+.DS_Store
+Thumbs.db
+
+# === Test & documentation files (not needed in build) ===
+__tests__/
+coverage/
+docs/
+*.md
+
+# === Optional: ignore raw or unused large assets ===
+assets/raw_videos/
+assets/raw_images/
+assets/samples/

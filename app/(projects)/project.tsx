@@ -46,7 +46,7 @@ const ProjectScreen = () => {
     if (!storedProjects) return [];
 
     const activeProjects = storedProjects.filter(
-      (project) => project.status != 0
+      (project) => project.status !== 0 && !EXCLUDED_PROJECT_IDS.has(project.id) // <-- exclude IDs here
       //  && !EXCLUDED_PROJECT_IDS.has(project.id)
     );
 
@@ -72,7 +72,7 @@ const ProjectScreen = () => {
     const isRiskManagement = item.name
       .toLowerCase()
       .includes("risk of harm management");
-    //   const isRiskManagement = item.name .toLowerCase() .includes("risk of harm management"); const isFirstItem = index === 0;
+    //const isRiskManagement = item.name .toLowerCase() .includes("risk of harm management"); const isFirstItem = index === 0;
     if (isRiskManagement) {
       // ❌ Skip risky projects
       return null;
@@ -100,7 +100,7 @@ const ProjectScreen = () => {
             {i18n.language === "rw-RW" ? item.kin_name || item.name : item.name}
           </Text>
         </View>
-        {/* <Text className="text-sm py-2 text-gray-600">{item.description}</Text> */}
+         {/* <Text className="text-sm py-2 text-gray-600">{item.description}</Text>  */}
       </TouchableOpacity>
     );
   };

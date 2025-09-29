@@ -155,7 +155,7 @@ const HomeScreen = () => {
           <TabBarIcon name="calendar-month" family="MaterialCommunityIcons" />
         ),
         title: t("HomePage.history"),
-        route: "/(history)/history",
+        route: "/(history)/realmDbViewer",
       },
       {
         icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,

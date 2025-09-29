@@ -421,11 +421,11 @@ const DetailScreen = () => {
                 const displayLabel =
                   fieldLabelMap[key] || t(`Form.${key}`, formattedKey);
 
-                // console.log(
-                //   `Field: ${key}, Label: ${displayLabel}, Has mapping: ${!!fieldLabelMap[
-                //     key
-                //   ]}`
-                // );
+                console.log(
+                  `Field: ${key}, Label: ${displayLabel}, Has mapping: ${!!fieldLabelMap[
+                    key
+                  ]}`
+                );
 
                 return (
                   <View

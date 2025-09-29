@@ -128,7 +128,7 @@ const ProjectFormsScreen = () => {
   );
 
   const renderItem = ({ item }: { item: Survey }) => {
-    // console.log("item", item);
+     console.log("item", item);
     // Render regular form item
     return (
       <TouchableOpacity

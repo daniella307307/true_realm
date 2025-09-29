@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Africollect",
-    "slug": "Africollect",
+    "slug": "africollect",
     "runtimeVersion": "1.0.0",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,7 +15,8 @@
       "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
-      "**/*"
+      "**/*",
+      "assets/formio/**/*"
     ],
     "ios": {
       "infoPlist": {
@@ -66,9 +67,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "ce099e16-b0a2-4b2d-b5a2-964d143df968"
-      }
+        "projectId": "a7a207c0-4b11-47f7-a8e8-09c5fa56e479"
+      },
+      "router": {}
     },
-    "owner": "manzi_cedrick"
+    "owner": "mitcheelariette"
   }
 }

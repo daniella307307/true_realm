@@ -754,14 +754,14 @@ export interface IFormSubmissionDetail {
 }
 
 export const protectedBasePaths = [
-  "/(families)",
+  // "/(families)",
   "/(history)",
-  "/(statistics)",
-  "/(monitoring)",
-  "/(videos)",
-  "/(settings)",
-  "/(projects)",
-  "/(community)",
+  // "/(statistics)",
+  // "/(monitoring)",
+  // "/(videos)",
+  // "/(settings)",
+  // "/(projects)",
+  // "/(community)",
 ];
 
 export interface Generic {

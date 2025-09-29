@@ -64,7 +64,7 @@ const FormFlowManager = ({
   const startTimeRef = useRef<number>(Date.now());
   const realm = useRealm();
   const { t } = useTranslation();
-  const { submissions } = useGetAllSurveySubmissions();
+  const  submissions  = useGetAllSurveySubmissions();
   const { responses: monitoringResponses } = useGetMonitoringResponses();
 
   useEffect(() => {
@@ -249,19 +249,19 @@ const FormFlowManager = ({
               return;
             }
           } else {
-            const existingSubmission = submissions.filter(
-              (submission) =>
-                submission.form_data.project_id === projectId &&
-                submission.form_data.source_module_id === sourceModuleId &&
-                submission.form_data.survey_id === surveyId &&
-                submission.form_data.family === familyId &&
-                submission.form_data.izucode === izuCode
-            );
+            // const existingSubmission = submissions.filter(
+            //   (submission) =>
+            //     submission.form_data.project_id === projectId &&
+            //     submission.form_data.source_module_id === sourceModuleId &&
+            //     submission.form_data.survey_id === surveyId &&
+            //     submission.form_data.family === familyId &&
+            //     submission.form_data.izucode === izuCode
+            // );
 
-            if (existingSubmission.length > 0) {
-              setShowSiblingForms(true);
-              return;
-            }
+            // if (existingSubmission.length > 0) {
+            //   setShowSiblingForms(true);
+            //   return;
+            // }
           }
         }
       }

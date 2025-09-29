@@ -744,7 +744,6 @@ export const useGetAllSurveySubmissions = (forceSync: boolean = false) => {
   // Filter submissions by current user
   const userSubmissions = useMemo(() => {
     if (!user || !user.id) return allLocalSubmissions;
-    return filterDataByUserId(allLocalSubmissions, user.id);
   }, [allLocalSubmissions, user]);
 
   const { syncStatus, refresh } = useDataSync([
