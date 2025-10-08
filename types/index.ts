@@ -91,7 +91,15 @@ export interface ICategories {
   created_at: string;
   updated_at?: string;
 }
-
+export interface IForm {
+  _id: number;
+  name: string;
+  name_kin?: string;
+  project_id: number;
+  source_module_id: number;
+  project_module_id: number;
+  json2?: string; // optional
+}
 export interface IForms {
   id: number;
   name: string;
@@ -697,6 +705,8 @@ export interface FormField {
 }
 
 export interface IExistingForm {
+  project_id: number;
+  source_module_id: number;
   id: number;
   parent_id?: number;
   name: string;
@@ -720,7 +730,9 @@ export interface IExistingForm {
 }
 
 export interface ICohort {
-  _id: Realm.BSON.ObjectId;
+  created_at: string;
+  updated_at: string;
+  _id: string
   cohort: string;
 }
 
@@ -821,6 +833,12 @@ export interface IMonitoringForms extends Generic {
 }
 
 export interface ISurveySubmission extends Generic {
+  survey_id: any;
+  user_id: any;
+  responses: {};
+  status: number;
+  created_at: string;
+  updated_at: string;
   id: number;
   answers: { [key: string]: string | number | boolean | null };
   form_data: { [key: string]: string | number | boolean | null };
@@ -829,6 +847,10 @@ export interface ISurveySubmission extends Generic {
 }
 
 export interface IFamilies extends Generic {
+  _id: string;
+  izucode: any;
+  created_at: string;
+  updated_at: string;
   id: number | null;
   hh_id: string | null;
   hh_head_fullname: string | null;
@@ -838,6 +860,8 @@ export interface IFamilies extends Generic {
 }
 
 export interface Izus extends Generic {
+  meta: any;
+  position(position: any): unknown;
   id: number | null;
   name: string;
   name_kin?: string;

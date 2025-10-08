@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import {
   updatePassword,
-  useGetCurrentLoggedInProfile,
+  getCurrentLoggedInProfile,
   userLogin,
   userLogout,
 } from "~/services/user";
@@ -14,7 +14,7 @@ import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setAuthenticationStatus } from "~/utils/axios";
 import { Alert } from "react-native";
-import { RealmContext } from "~/providers/RealContextProvider";
+import { useSQLite } from "~/providers/RealContextProvider";
 import { useTranslation } from "react-i18next";
 
 export type AuthOptions = {
@@ -31,8 +31,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const lastLoginIdentifier = useRef<string | null>(null);
-  const { useRealm } = RealmContext;
-  const realm = useRealm();
+  const sqlite = useSQLite();
   const { t } = useTranslation();
   const isLoggedIn = useMemo(async () => {
     try {
@@ -112,7 +111,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   };
 
   const _userLogout = useMutation<{}, AxiosError<IResponseError>>({
-    mutationFn: () => userLogout(realm),
+    mutationFn: () => userLogout(sqlite),
     onMutate: () => {
       logoutUser();
     },
@@ -290,7 +289,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
 
         try {
           console.log("Fetching user profile with token...");
-          const profileData = await useGetCurrentLoggedInProfile();
+          const profileData = await getCurrentLoggedInProfile();
 
           if (!profileData) {
             Toast.show({ text1: t("Auth.profile_fetch_failed"), type: "error" });

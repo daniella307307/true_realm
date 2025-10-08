@@ -1,40 +1,19 @@
-import { Realm } from "@realm/react";
-
-export class Izu extends Realm.Object {
-  id!: number;
-  name!: string;
-  izucode!: string;
-  villages_id!: number;
-  position!: number | null;
-
-  meta!: { [key: string]: string | number | boolean | null; };
-  form_data!: { [key: string]: string | number | boolean | null };
-  location!: { [key: string]: string | number | boolean | null };
-  sync_data!: { [key: string]: string | number | boolean | null };
-
-  // Helper method to get the user ID consistently
-  getUserId(): number | null {
-    if (this.form_data && this.form_data.user_id !== undefined) {
-      return typeof this.form_data.user_id === 'string' 
-        ? parseInt(this.form_data.user_id, 10) 
-        : this.form_data.user_id as number;
-    }
-    return null;
-  }
-
-  static schema = {
-    name: "Izu",
-    primaryKey: "id",
-    properties: {
-      id: "int",
-      name: "string?",
-      izucode: "string?",
-      villages_id: "int?",
-      position: "int?",
-      meta: 'mixed{}',
-      form_data: 'mixed{}',
-      location: 'mixed{}',
-      sync_data: 'mixed{}',
-    },
-  };
-} 
+export const CREATE_IZU_TABLE = `
+  CREATE TABLE IF NOT EXISTS Users (
+    _id TEXT PRIMARY KEY,
+    id INTEGER,
+    name TEXT,
+    izucode TEXT,
+    villages_id INTEGER,
+    position INTEGER,
+    meta TEXT,      
+    form_data TEXT,  
+    location TEXT,   
+    sync_data TEXT,
+    sync_status BOOLEAN,
+    sync_reason TEXT,
+    sync_attempts INTEGER,
+    sync_type TEXT,
+    created_by_user_id TEXT
+  );
+`;

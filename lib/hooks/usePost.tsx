@@ -4,13 +4,13 @@ import { IComment, ILikes, IPost, IResponse, IResponseError } from "~/types";
 import { AxiosError } from "axios";
 import {
   createPost,
-  updatePost,
+  // updatePost,
   deletePost,
   likePost,
   unlikePost,
   postComment,
   deleteComment,
-  updateComment,
+  // updateComment,
   reportPost,
 } from "~/services/posts";
 import Toast from "react-native-toast-message";
@@ -69,7 +69,7 @@ export const usePostManipulate = () => {
     AxiosError<IResponseError>,
     { title: string; body: string; id: number }
   >({
-    mutationFn: updatePost,
+    // mutationFn: updatePost,
     onMutate: () => setIsLoading(true),
     onError: handleError,
     onSuccess: () => handleSuccess("Post updated successfully"),
@@ -141,7 +141,7 @@ export const usePostManipulate = () => {
     AxiosError<IResponseError>,
     { commentId: number; comment: string }
   >({
-    mutationFn: updateComment,
+    // mutationFn: updateComment,
     onMutate: () => setIsLoading(true),
     onError: handleError,
     onSuccess: () => handleSuccess("Comment updated successfully"),

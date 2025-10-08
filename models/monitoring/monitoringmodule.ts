@@ -1,22 +1,10 @@
-import { Realm } from "@realm/react";
-
-export class MonitoringModules extends Realm.Object {
-  id!: number;
-  monitoring_id!: number;
-
-  form_data!: { [key: string]: string | number | boolean | null };
-  createdAt!: Date;
-  updatedAt!: Date;
-
-  static schema = {
-    name: "MonitoringModules",
-    primaryKey: "id",
-    properties: {
-      id: "int",
-      monitoring_id: "int",
-      form_data: 'mixed{}',
-      createdAt: 'date',
-      updatedAt: 'date',
-    },
-  };
-} 
+export const CREATE_MONITORING_MODULES_TABLE = `
+  CREATE TABLE IF NOT EXISTS MonitoringModules (
+    _id INTEGER,
+    id INTEGER, 
+    monitoring_id INTEGER,
+    form_data TEXT,     
+    createdAt TEXT, 
+    updatedAt TEXT  
+  );
+`;

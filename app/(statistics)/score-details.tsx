@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 import { Card } from "~/components/ui/card";
 import { useGetMonitoringForms } from "~/services/monitoring/monitoring-forms";
+import type { FormField } from "~/types";
 
 interface ScoreData {
   total: number;
@@ -44,9 +45,10 @@ const ScoreDetailsScreen = () => {
   const form = monitoringForms.find((form) => form.id === parseInt(form_id));
 
   // Parse form components to get labels
-  const formComponents: FormComponent[] = form
+  const formComponents: FormField[] = form ? typeof form.json2 === "string"
     ? JSON.parse(form.json2).components
-    : [];
+    : form.json2.components
+  : []; 
   const keyToLabelMap = formComponents.reduce((acc, component) => {
     if (component.type !== "button") {
       // Skip submit button

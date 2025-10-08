@@ -7,15 +7,11 @@ import { NotFound } from "~/components/ui/not-found";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
 import { checkNetworkConnection } from "~/utils/networkHelpers"; 
-import { RealmContext } from "~/providers/RealContextProvider";
-import { createSurveySubmission } from "~/services/survey-submission";
-import { SurveySubmission } from "~/models/surveys/survey-submission";
-import { BSON } from "realm";
 import { useAuth } from "~/lib/hooks/useAuth";
 import type { FormField, SyncType } from "~/types";
 import Toast from "react-native-toast-message";
-
-const { useRealm } = RealmContext;
+import { useSQLite } from "~/providers/RealContextProvider";
+import { SurveySubmission } from "~/models/surveys/survey-submission";
 
 function cleanObject(obj: Record<string, any>): Record<string, any> {
   const cleaned: Record<string, any> = {};
@@ -29,29 +25,35 @@ function cleanObject(obj: Record<string, any>): Record<string, any> {
   return cleaned;
 }
 
-export const saveFormSubmissionLocally = async (
-  realm: any,
+export const saveFormSubmissionLocallySQLite = async (
   formData: Record<string, any>,
   regularForm: any,
   user: any,
-  fields: FormField[] = [],
+  fields: any[] = [],
   timeSpent: number = 0
 ) => {
-  try {
-    const submissionId = getNextAvailableId(realm);
+  const { create } = useSQLite();
 
-    // Ensure no undefined values
-    const completeFormData = cleanObject({
+  try {
+    const submissionId = Date.now(); // Or generateId()
+
+    // Clean undefined values
+    const clean = (obj: Record<string, any>) =>
+      Object.fromEntries(
+        Object.entries(obj).map(([k, v]) => [k, v === undefined ? null : v])
+      );
+
+    const completeFormData = clean({
       ...formData,
       id: submissionId,
       user_id: user?.id ?? user?.json?.id ?? null,
       table_name: regularForm?.table_name ?? null,
-      project_module_id: regularForm?.project_module_id || 0,
-      source_module_id: regularForm?.source_module_id || 0,
-      project_id: regularForm?.project_id || 0,
-      survey_id: regularForm?.id || 0,
+      project_module_id: regularForm?.project_module_id ?? 0,
+      source_module_id: regularForm?.source_module_id ?? 0,
+      project_id: regularForm?.project_id ?? 0,
+      survey_id: regularForm?.id ?? 0,
       post_data: regularForm?.post_data ?? null,
-      time_spent_filling_the_form: timeSpent, // Use actual time spent
+      time_spent_filling_the_form: timeSpent,
       form_status: "completed",
       province: formData.province ?? null,
       district: formData.district ?? null,
@@ -62,55 +64,36 @@ export const saveFormSubmissionLocally = async (
       submitted_at: new Date().toISOString(),
     });
 
-    const submission = realm.write(() => {
-      return realm.create("SurveySubmission", {
-        id: submissionId,
-        answers: cleanObject(formData), // store raw form answers
-        form_data: completeFormData,    // store enriched metadata + form
-        location: cleanObject({
-          province: formData.province ?? null,
-          district: formData.district ?? null,
-          sector: formData.sector ?? null,
-          cell: formData.cell ?? null,
-          village: formData.village ?? null,
-        }),
-        sync_data: cleanObject({
-          synced_at: null,
-          sync_type: null,
-          sync_status: false,
-          created_by_user_id: user?.id ?? user?.json?.id ?? null,
-        }),
-      });
+    const submission = await create("SurveySubmissions", {
+      _id: submissionId.toString(),
+      id: submissionId,
+      answers: JSON.stringify(clean(formData)),
+      form_data: JSON.stringify(completeFormData),
+      location: JSON.stringify({
+        province: formData.province ?? null,
+        district: formData.district ?? null,
+        sector: formData.sector ?? null,
+        cell: formData.cell ?? null,
+        village: formData.village ?? null,
+      }),
+      sync_data: JSON.stringify({
+        synced_at: null,
+        sync_type: null,
+        sync_status: false,
+        created_by_user_id: user?.id ?? user?.json?.id ?? null,
+      }),
     });
 
-    console.log("Form submission saved locally with ID:", submissionId);
+    console.log("Form submission saved in SQLite with _id:", submission._id);
     return submission;
   } catch (error) {
-    console.error("Error saving form submission locally:", error);
+    console.error("Error saving submission in SQLite:", error);
     throw error;
   }
 };
 
-// Helper function to get next available integer ID
-function getNextAvailableId(realm: any): number {
-  try {
-    const surveySubmissions = realm.objects(SurveySubmission);
-    if (surveySubmissions.length > 0) {
-      const ids = surveySubmissions.map((i: any) => {
-        const id = i.form_data?.id || i.id || 0;
-        return typeof id === 'number' ? id : parseInt(String(id), 10) || 0;
-      });
-      const maxId = Math.max(...ids);
-      return maxId + 1;
-    }
-    return 1;
-  } catch (error) {
-    console.log("Error getting next ID, using default:", error);
-    return 1;
-  }
-}
 
-const ProjectFormElementScreen = () => {
+function ProjectFormElementScreen (): React.JSX.Element {
   const params = useLocalSearchParams<{
     formId: string;
     project_module_id: string;
@@ -148,8 +131,6 @@ const ProjectFormElementScreen = () => {
   const [formStartTime, setFormStartTime] = useState<number>(Date.now());
   const [timeSpent, setTimeSpent] = useState<number>(0);
   const [isOnline, setIsOnline] = useState<boolean>(true);
-
-  const realm = useRealm();
 
   // Timer to track time spent
   useEffect(() => {
@@ -284,7 +265,7 @@ const ProjectFormElementScreen = () => {
       console.log("Form submission data:", formData);
       console.log("Time spent filling form:", formatTime(finalTimeSpent));
 
-      await saveFormSubmissionLocally(realm, formData, regularForm, user, fields, finalTimeSpent);
+      await saveFormSubmissionLocallySQLite(formData, regularForm, user, fields,finalTimeSpent);
 
       Toast.show({
         type: "success",
@@ -294,7 +275,7 @@ const ProjectFormElementScreen = () => {
         visibilityTime: 3000,
       });
 
-      // Navigate back or to history
+      // Navigate to history
       router.push("/(history)/realmDbViewer");
 
     } catch (error) {
@@ -310,7 +291,7 @@ const ProjectFormElementScreen = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [realm, regularForm, user, fields, t, isSubmitting, formStartTime, formatTime]);
+  }, [regularForm, user, fields, t, isSubmitting, formStartTime, formatTime]);
 
   // Stable WebView message handler
   const handleWebViewMessage = useCallback((event: any) => {

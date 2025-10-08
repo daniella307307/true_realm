@@ -20,12 +20,8 @@ import { useTranslation } from "react-i18next";
 import { useProtectedNavigation } from "~/utils/navigation";
 import { router } from "expo-router";
 import { useAppData } from "~/providers/AppProvider";
-import { RealmContext } from "~/providers/RealContextProvider";
-import { Families } from "~/models/family/families";
-import { FollowUps } from "~/models/followups/follow-up";
-import { MonitoringResponses } from "~/models/monitoring/monitoringresponses";
-import { SurveySubmission } from "~/models/surveys/survey-submission";
-import { Izu } from "~/models/izus/izu";
+import { useSQLite } from "~/providers/RealContextProvider";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,19 +32,19 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 
-const { useRealm } = RealmContext;
 
-const HomeScreen = () => {
+
+function HomeScreen(): React.JSX.Element{
   const [splashHidden, setSplashHidden] = useState(false);
   const [showSyncWarning, setShowSyncWarning] = useState(false);
   const [unsyncedCount, setUnsyncedCount] = useState(0);
   const [showSyncModal, setShowSyncModal] = useState(false);
-  const realm = useRealm();
   const { user } = useAuth({
     onLogout: () => {
       router.push("/(user-management)/login");
     },
   });
+  const { getAll } = useSQLite();
   const { t } = useTranslation();
   const { navigateTo } = useProtectedNavigation();
   const { isDataLoaded, isRefreshing, refreshAllData } = useAppData();
@@ -72,45 +68,24 @@ const HomeScreen = () => {
   const IZU_MONITORING_ID = 10;
 
   // Check for unsynced data
-  const checkUnsyncedData = () => {
+  const checkUnsyncedData = async () => {
     if (!user?.id) return;
 
-    const unsyncedFamilies = realm
-      .objects(Families)
-      .filtered(
-        "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
-        user.id
-      ).length;
+    const unsyncedFamilies = await getAll('Families', 'sync_status == false AND created_by_user_id == ?', [user.id]);
+    const unsyncedFamiliesCount = unsyncedFamilies.length;
+    const unsyncedFollowups = await getAll('FollowUps','sync_status == false AND created_by_user_id == ?', [user.id]);
+    const unsyncedFollowupsCount = unsyncedFollowups.length;
 
-    const unsyncedFollowups = realm
-      .objects(FollowUps)
-      .filtered(
-        "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
-        user.id
-      ).length;
+    const unsyncedResponses = await getAll('MonitoringResponses', 'sync_status == false AND created_by_user_id == ?', [user.id]);
+    const unsyncedResponsesCount = unsyncedResponses.length;
 
-    const unsyncedResponses = realm
-      .objects(MonitoringResponses)
-      .filtered(
-        "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
-        user.id
-      ).length;
+    const unsyncedSubmissions = await getAll('SurveySubmissions', 'sync_status == false AND created_by_user_id == ?', [user.id]);
+    const unsyncedSubmissionsCount = unsyncedSubmissions.length;
 
-    const unsyncedSubmissions = realm
-      .objects(SurveySubmission)
-      .filtered(
-        "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
-        user.id
-      ).length;
+    const unsyncedIzus = await getAll('Users', 'sync_status == false AND created_by_user_id == ?', [user.id]);
+    const unsyncedIzusCount = unsyncedIzus.length;
 
-    const unsyncedIzus = realm
-      .objects(Izu)
-      .filtered(
-        "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
-        user.id
-      ).length;
-
-    const total = unsyncedFamilies + unsyncedFollowups + unsyncedResponses + unsyncedSubmissions + unsyncedIzus;
+    const total = unsyncedFamiliesCount + unsyncedFollowupsCount + unsyncedResponsesCount + unsyncedSubmissionsCount + unsyncedIzusCount;
     setUnsyncedCount(total);
     setShowSyncWarning(total > 0);
   };
@@ -162,12 +137,11 @@ const HomeScreen = () => {
         title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
         route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
       },
-      {
-        icon: <TabBarIcon name="chat" family="Entypo" />,
-        title: t("HomePage.community"),
-        route: "/(community)/community",
-      },
-      
+      // {
+      //   icon: <TabBarIcon name="chat" family="Entypo" />,
+      //   title: t("HomePage.community"),
+      //   route: "/(community)/community",
+      // },
       {
         icon: <TabBarIcon name="settings" family="Ionicons" />,
         title: t("HomePage.settings"),
@@ -235,7 +209,9 @@ const HomeScreen = () => {
   // Check for unsynced data when the component mounts and when data is refreshed
   useEffect(() => {
     if (isDataLoaded && !isRefreshing) {
-      checkUnsyncedData();
+      (async () => {
+        await checkUnsyncedData();
+      })();
     }
   }, [isDataLoaded, isRefreshing, user?.id]);
 

@@ -53,7 +53,7 @@ const DetailScreen = () => {
   const { families, isLoading: familiesLoading } = useGetFamilies();
   const { locallyCreatedFamilies, isLoading: locallyCreatedFamiliesLoading } =
     useGetAllLocallyCreatedFamilies();
-  const { locallyCreatedIzus, isLoading: locallyCreatedIzusLoading } =
+  const { localIzus, loading, refresh } =
     useGetAllLocallyCreatedIzus();
 
   // Determine which data to display based on the itemType parameter
@@ -63,7 +63,7 @@ const DetailScreen = () => {
         (fam: any) => fam.id?.toString() === _id || fam.hh_id === _id
       );
     } else if (itemType === "izu") {
-      return locallyCreatedIzus.find((izu: any) => izu.id?.toString() === _id);
+      return localIzus.find((izu: any) => izu.id?.toString() === _id);
     } else if (itemType === "submission") {
       return surveySubmissions.find((sub) => sub.id?.toString() === _id);
     }
@@ -72,7 +72,7 @@ const DetailScreen = () => {
     itemType,
     surveySubmissions,
     locallyCreatedFamilies,
-    locallyCreatedIzus,
+    localIzus,
   ]);
 
   // Get the village ID from dataItem
@@ -138,7 +138,7 @@ const DetailScreen = () => {
   const {
     form,
     isLoading: isLoadingSurvey,
-    refresh: refreshForm,
+    // refresh: refreshForm,
   } = useGetFormById(
     surveyId ?? 0,
     moduleId ?? 0,
@@ -239,7 +239,7 @@ const DetailScreen = () => {
     isLoadingSubmissions ||
     locallyCreatedFamiliesLoading ||
     familiesLoading ||
-    locallyCreatedIzusLoading ||
+    loading ||
     isLoadingSurvey;
 
   if (isLoading) {

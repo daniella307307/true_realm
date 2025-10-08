@@ -1,33 +1,15 @@
-import { Realm } from "@realm/react";
-
-export class Post extends Realm.Object<Post> {
-    id!: number;
-    user_id!: number;
-    status!: number;
-    title!: string;
-    body!: string;
-    flagged!: number;
-    created_at!: string;
-    updated_at!: string;
-    user!: string;
-    comments!: string;
-    likes!: string;
-
-    static schema = {
-        name: 'Post',
-        properties: {
-            id: 'int',
-            user_id: 'int',
-            status: 'int',
-            title: 'string',
-            body: 'string',
-            flagged: 'int',
-            created_at: 'string',
-            updated_at: 'string?',
-            user: 'string',
-            comments: 'string',
-            likes: 'string',
-        },
-        primaryKey: 'id',
-    };
-} 
+export const CREATE_POST_TABLE = `
+  CREATE TABLE IF NOT EXISTS Posts (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    status INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    flagged INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT,
+    user TEXT NOT NULL,
+    comments TEXT NOT NULL,
+    likes TEXT NOT NULL
+  );
+`;

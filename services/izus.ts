@@ -1,823 +1,559 @@
-import { useMemo } from "react";
-import { RealmContext } from "~/providers/RealContextProvider";
-import { baseInstance } from "~/utils/axios";
-
-import { useDataSync } from "./dataSync";
-import { FormField, Izus, SyncType } from "~/types";
-import { Izu } from "~/models/izus/izu";
-import { isOnline } from "./network";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useSQLite } from "~/providers/RealContextProvider";
 import { useAuth } from "~/lib/hooks/useAuth";
-import { filterDataByUserId } from "./filterData";
+import { baseInstance } from "~/utils/axios";
 import Toast from "react-native-toast-message";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { TFunction } from "i18next";
+import { Izus, SyncType, FormField } from "~/types";
+import { isOnline } from "./network";
 
-const { useQuery } = RealmContext;
+// Helper to generate unique IDs
+const generateId = (): number => Date.now();
 
-interface IIzuResponse {
-  izus: Izus[];
+/**
+ * Pure utility function to filter Izus by user ID
+ */
+async function filterIzusByUserId(
+  userId: number,
+  getByQuery: (table: string, query: string, params: any[]) => Promise<any[]>,
+  getAll: (table: string) => Promise<any[]>
+): Promise<Izus[]> {
+  if (!userId) {
+    return [];
+  }
+
+  try {
+    return await getByQuery("Izu", "user_id = ?", [userId]);
+  } catch {
+    try {
+      return await getByQuery("Izu", "form_data_user_id = ?", [userId]);
+    } catch (error: any) {
+      console.error("Could not filter Izus by user ID:", error.message);
+      return await getAll("Izu");
+    }
+  }
 }
 
-export async function fetchIzusFromRemote() {
-  const res = await baseInstance.get<IIzuResponse>("/izus");
+// ---------------- FETCH FROM API ----------------
+export async function fetchIzusFromRemote(): Promise<Izus[]> {
+  const res = await baseInstance.get<{ izus: Izus[] }>("/izus");
   return res.data.izus;
 }
 
-export function useGetIzus(forceSync: boolean = false) {
-  const storedIzus = useQuery(Izu);
+// ---------------- TRANSFORM IZU FOR STORAGE ----------------
+function transformIzuForStorage(izu: any, userId?: number): any {
+  return {
+    _id: izu.id?.toString() || generateId().toString(),
+    id: izu.id || generateId(),
+    ...izu,
+    form_data: typeof izu.form_data === 'string' 
+      ? izu.form_data 
+      : JSON.stringify({
+          ...izu.form_data,
+          user_id: userId || izu.form_data?.user_id || null,
+        }),
+    location: typeof izu.location === 'string'
+      ? izu.location
+      : JSON.stringify(izu.location || {}),
+    meta: typeof izu.meta === 'string'
+      ? izu.meta
+      : JSON.stringify(izu.meta || {}),
+    sync_data: typeof izu.sync_data === 'string'
+      ? izu.sync_data
+      : JSON.stringify({
+          sync_status: izu.sync_data?.sync_status ?? true,
+          sync_reason: izu.sync_data?.sync_reason ?? "Synced from API",
+          sync_attempts: izu.sync_data?.sync_attempts ?? 0,
+          last_sync_attempt: new Date().toISOString(),
+        }),
+    sync_type: SyncType.izus,
+    created_by_user_id: userId || izu.created_by_user_id || null,
+  };
+}
+
+// ---------------- USE GET IZUS ----------------
+export function useGetIzus(forceSync: boolean = false, loggedInIzu?: Izus) {
+  const { getAll, batchCreate, getByQuery, isReady } = useSQLite();
   const { user } = useAuth({});
+  const [izus, setIzus] = useState<Izus[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  
+  const initialLoadDone = useRef(false);
+
+  const load = useCallback(async () => {
+    if (!isReady) return;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      let localIzus = await getAll<Izus>("Izu");
+
+      // Sync from remote if needed
+      if ((!localIzus.length || forceSync) && isOnline()) {
+        try {
+          const remoteIzus = await fetchIzusFromRemote();
+          
+          // Transform all Izus for storage
+          const transformedIzus = remoteIzus.map(izu => 
+            transformIzuForStorage(izu, user?.id)
+          );
+          
+          // Batch create all at once
+          if (transformedIzus.length > 0) {
+            await batchCreate("Izu", transformedIzus);
+            localIzus = transformedIzus;
+          }
+        } catch (syncError) {
+          console.error("Failed to sync Izus from remote:", syncError);
+        }
+      }
+
+      // Filter by user if logged in
+      if (user?.id && localIzus.length > 0) {
+        localIzus = await filterIzusByUserId(user.id, getByQuery, getAll);
+      }
+
+      // Parse JSON fields for display
+      const parsedIzus = localIzus.map(izu => ({
+        ...izu,
+        form_data: typeof izu.form_data === 'string' 
+          ? JSON.parse(izu.form_data) 
+          : izu.form_data,
+        location: typeof izu.location === 'string'
+          ? JSON.parse(izu.location)
+          : izu.location,
+        meta: typeof izu.meta === 'string'
+          ? JSON.parse(izu.meta)
+          : izu.meta,
+        sync_data: typeof izu.sync_data === 'string'
+          ? JSON.parse(izu.sync_data)
+          : izu.sync_data,
+      }));
+
+      setIzus(parsedIzus);
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Error loading Izus:", err);
+      setError(err as Error);
+      setIsLoading(false);
+    }
+  }, [isReady, getAll, batchCreate, getByQuery, user?.id, forceSync]);
+
+  useEffect(() => {
+    if (!initialLoadDone.current || forceSync) {
+      load();
+      initialLoadDone.current = true;
+    }
+  }, [load, forceSync]);
+
+  const refresh = useCallback(async () => {
+    await load();
+  }, [load]);
+
+  const filteredIzus = useMemo(() => {
+    if (!loggedInIzu) return izus;
+
+    const position = Number(loggedInIzu.position);
+    if (isNaN(position)) return izus;
+
+    return izus.filter((izu) => {
+      const izuPos = Number(izu.position);
+      if (isNaN(izuPos)) return false;
+
+      if (position === 7 && loggedInIzu.location?.cell) {
+        return (
+          (izuPos === 7 || izuPos === 8) &&
+          izu.location?.cell === loggedInIzu.location.cell
+        );
+      }
+
+      if (position === 13 && loggedInIzu.location?.sector) {
+        return (
+          (izuPos === 7 || izuPos === 8) &&
+          izu.location?.sector === loggedInIzu.location.sector
+        );
+      }
+
+      if (
+        position === 8 &&
+        loggedInIzu.location?.village &&
+        loggedInIzu.izucode
+      ) {
+        return (
+          izuPos === 8 &&
+          izu.location?.village === loggedInIzu.location.village &&
+          izu.izucode === loggedInIzu.izucode
+        );
+      }
+
+      return true;
+    });
+  }, [izus, loggedInIzu]);
+
+  return { izus: filteredIzus, isLoading, error, refresh };
+}
+
+// ---------------- HELPER: EXTRACT META ----------------
+function extractMeta(izuData: Record<string, any>, extraFields: FormField[]) {
+  return Object.fromEntries(
+    extraFields
+      .filter((f) => f.key && f.key !== "submit")
+      .map((f) => [f.key, izuData[f.key] ?? null])
+  );
+}
+
+// ---------------- SAVE IZU TO API ----------------
+export function useSaveIzu() {
+  const { user } = useAuth({});
+  const { batchCreate } = useSQLite();
   const { t } = useTranslation();
 
-  // Filter IZUs by current user first
-  const userFilteredIzus = useMemo(() => {
-    if (!user || !user.id) return storedIzus;
-    return filterDataByUserId(storedIzus, user.id);
-  }, [storedIzus, user]);
-
-  // console.log("storedIzus", JSON.stringify(storedIzus, null, 2));
-  const loggedInIzu = useMemo(() => {
-    return userFilteredIzus.find((izu) => izu.id === user?.json?.id);
-  }, [userFilteredIzus, user]);
-
-  // console.log("loggedInIzu", JSON.stringify(loggedInIzu, null, 2));
-  // Filter izus based on logged in user's position
-  const filteredIzus = useMemo(() => {
-    // If no logged in Izu or no position, return all izus
-    if (!loggedInIzu) return userFilteredIzus;
-
-    const position = loggedInIzu.position;
-
-    if (position === undefined) return userFilteredIzus;
-
-    if (position === 7 && loggedInIzu.location?.cell) {
-      return userFilteredIzus.filtered(
-        "position IN {7, 8} AND location.cell = $0",
-        loggedInIzu.location.cell
-      );
-    }
-
-    if (position === 13 && loggedInIzu.location?.sector) {
-      return userFilteredIzus.filtered(
-        "position IN {7, 8} AND location.sector = $0",
-        loggedInIzu.location.sector
-      );
-    }
-
-    // if position is 8 means village, return that the izu that has that position equals and that village is the logged in izu's village
-    if (
-      position === 8 &&
-      loggedInIzu.location?.village &&
-      loggedInIzu.izucode
-    ) {
-      return userFilteredIzus.filtered(
-        "position = $0 AND location.village = $1 AND izucode = $2",
-        position,
-        loggedInIzu.location.village,
-        loggedInIzu.izucode
-      );
-    }
-  }, [userFilteredIzus, loggedInIzu]);
-
-  const { syncStatus, refresh } = useDataSync([
-    {
-      key: "izus",
-      fetchFn: fetchIzusFromRemote,
-      model: Izu,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      forceSync,
-    },
-  ]);
-
-  return {
-    izus: filteredIzus,
-    isLoading: syncStatus.izus?.isLoading || false,
-    error: syncStatus.izus?.error || null,
-    lastSyncTime: syncStatus.izus?.lastSyncTime || null,
-    refresh: () => refresh("izus", forceSync),
-  };
-}
-
-/**
- * Hook for getting a specific Izu by ID
- * @param id The ID of the Izu to retrieve
- */
-export function useGetIzuById(id: number, forceSync: boolean = false) {
-  const { izus, isLoading, error, lastSyncTime, refresh } =
-    useGetIzus(forceSync);
-  const izu = useMemo(() => {
-    return izus?.find((izu) => izu.id === id);
-  }, [izus, id]);
-
-  return {
-    izu,
-    isLoading,
-    error,
-    lastSyncTime,
-    refresh,
-  };
-}
-
-// Function to useGetAllLocallyCreatedIzus
-export function useGetAllLocallyCreatedIzus() {
-  const storedIzus = useQuery(Izu);
-
-  return {
-    locallyCreatedIzus: storedIzus.filter(
-      (izu) =>
-        izu.sync_data?.sync_status === true ||
-        izu.sync_data?.sync_status === false
-    ),
-    isLoading: false,
-    error: null,
-    lastSyncTime: null,
-    refresh: () => {},
-  };
-}
-
-function getNextAvailableId(realm: Realm): number {
-  try {
-    const izus = realm.objects<Izu>(Izu);
-    if (izus.length > 0) {
-      const maxId = Math.max(...izus.map((i) => i.id));
-      console.log("Generated next ID:", maxId + 1);
-      return maxId + 1;
-    }
-    console.log("No existing Izus, starting with ID 1");
-    return 1; // Start with 1 if no records exist
-  } catch (error) {
-    console.log("Error getting next ID, using default:", error);
-    return 1;
-  }
-}
-
-function prepareMetaData(
-  izuData: Record<string, any>,
-  extraFields: FormField[] = []
-) {
-  // If field definitions are provided, use them to extract specific fields
-  if (extraFields.length > 0) {
-    return Object.fromEntries(
-      extraFields
-        .filter(
-          (field) =>
-            field.key &&
-            izuData[field.key] !== undefined &&
-            field.key !== "submit"
-        )
-        .map((field) => {
-          const value = izuData[field.key];
-
-          // Handle different field types
-          switch (field.type) {
-            case "switch":
-              return [field.key, value ? true : false];
-            case "number":
-              return [field.key, Number(value)];
-            case "date":
-            case "datetime":
-              return [field.key, value ? new Date(value).toISOString() : null];
-            default:
-              return [field.key, value ?? null];
-          }
-        })
-    );
-  }
-
-  // If no field definitions are provided, return the izuData as-is for meta
-  // This preserves all form field answers just like families and survey submissions
-  return izuData;
-}
-
-export const createIzuWithMeta = (
-  realm: Realm,
-  izuData: Record<string, any>,
-  extraFields: FormField[] = []
-): Izu => {
-  try {
-    const id = getNextAvailableId(realm);
-    const meta = prepareMetaData(izuData, extraFields);
-
-    // Ensure position is a number
-    const position =
-      typeof izuData.position === "string"
-        ? parseInt(izuData.position, 10)
-        : izuData.position || 0;
-
-    const formData = {
-      time_spent_filling_the_form: izuData.time_spent_filling_the_form || null,
-      user_id: izuData.user_id || null,
-      table_name: izuData.table_name || null,
-      project_module_id: izuData.project_module_id || null,
-      source_module_id: izuData.source_module_id || null,
-      project_id: izuData.project_id || null,
-      survey_id: izuData.survey_id || null,
-      post_data: izuData.post_data || null,
-      izucode: izuData.izucode || null,
-      cohorts: izuData.cohorts || null,
-    };
-
-    const syncData = izuData.sync_data || {
-      sync_status: false,
-      sync_reason: "New record",
-      sync_attempts: 0,
-      last_sync_attempt: new Date(),
-      submitted_at: new Date(),
-      created_by_user_id: izuData.user_id || null,
-      sync_type: SyncType.izus,
-    };
-
-    const izu = {
-      id,
-      name: izuData.name,
-      izucode: izuData.izucode,
-      villages_id: izuData.villages_id,
-      position: position,
-      meta: meta,
-      form_data: formData,
-      location: izuData.location,
-      sync_data: syncData,
-    };
-
-    let result: any;
-
-
-    // Handle transaction
-    const createIzuInRealm = () => {
-      console.log("Creating Izu in realm:", JSON.stringify(izu, null, 2));
-      return realm.create(Izu, izu, Realm.UpdateMode.Modified);
-    };
-
-    if (realm.isInTransaction) {
-      result = createIzuInRealm();
-    } else {
-      realm.write(() => {
-        result = createIzuInRealm();
-      });
-    }
-
-    if (!result) {
-      throw new Error("Failed to create IZU object");
-    }
-
-    return result;
-  } catch (error) {
-    console.log("Error creating IZU with meta:", error);
-    console.log(
-      "Error details:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error))
-    );
-    throw error;
-  }
-};
-
-function createTemporaryIzu(
-  realm: Realm,
-  izuData: Record<string, any>,
-  extraFields: FormField[] = []
-): Izu {
-  const localId = getNextAvailableId(realm);
-
-  const syncData = {
-    sync_status: izuData.sync_data?.sync_status ?? false,
-    sync_reason: "Created offline",
-    sync_attempts: izuData.sync_data?.sync_attempts ?? 0,
-    last_sync_attempt: izuData.sync_data?.last_sync_attempt ?? new Date(),
-    submitted_at: izuData.sync_data?.submitted_at ?? new Date(),
-    sync_type: SyncType.izus,
-    created_by_user_id: izuData.sync_data?.created_by_user_id || null,
-  };
-
-  let izu: Izu;
-
-  if (realm.isInTransaction) {
-    izu = createIzuWithMeta(
-      realm,
-      {
-        ...izuData,
-        id: localId,
-        sync_data: syncData,
-      },
-      extraFields
-    );
-  } else {
-    realm.write(() => {
-      izu = createIzuWithMeta(
-        realm,
-        {
-          ...izuData,
-          id: localId,
-          sync_data: syncData,
-        },
-        extraFields
-      );
-    });
-  }
-  return izu!;
-}
-
-export const saveIzuToAPI = (
-  realm: Realm,
-  izuData: Record<string, any>,
-  apiUrl: string,
-  t: TFunction,
-  extraFields: FormField[] = []
-): void => {
-  try {
-    console.log(
-      "saveIzuToAPI received data:",
-      JSON.stringify(izuData, null, 2)
-    );
-
-    if (izuData.source_module_id && izuData.source_module_id !== 22) {
-      const existingIzus = realm.objects<Izu>(Izu);
-      const isDuplicate = existingIzus.some(
-        (izu) =>
-          izu.name === izuData.name &&
-          izu.izucode === izuData.izucode &&
-          izu.villages_id === izuData.villages_id
-      );
-
-      if (isDuplicate) {
+  const saveIzu = useCallback(
+    async (
+      izuData: Record<string, any>,
+      apiUrl: string,
+      extraFields: FormField[] = []
+    ) => {
+      if (!user?.id) {
         Toast.show({
           type: "error",
           text1: t("Alerts.error.title"),
-          text2: t("Alerts.error.duplicate.izu"),
-          position: "top",
-          visibilityTime: 4000,
+          text2: t("Alerts.error.sync.no_user"),
         });
         return;
       }
-    }
-    // Prepare location data
-    const location =
-      typeof izuData.location === "object"
-        ? izuData.location
-        : {
-            province: izuData.province,
-            district: izuData.district,
-            sector: izuData.sector,
-            cell: izuData.cell,
-            village: izuData.village,
+
+      const meta = extraFields.length ? extractMeta(izuData, extraFields) : izuData;
+      const formData = { ...izuData.form_data, user_id: user.id };
+
+      try {
+        if (isOnline()) {
+          Toast.show({
+            type: "info",
+            text1: t("Alerts.saving.izu"),
+            text2: t("Alerts.submitting.server"),
+            position: "top",
+            visibilityTime: 2000,
+          });
+
+          const apiPayload = {
+            ...formData,
+            ...meta,
           };
 
-    console.log("Prepared location data:", JSON.stringify(location, null, 2));
+          const res = await baseInstance.post(apiUrl, apiPayload);
+          
+          if (res.data?.result?.id) {
+            // Server accepted - save with server ID
+            const savedIzu = transformIzuForStorage({
+              ...izuData,
+              id: res.data.result.id,
+              form_data: formData,
+              meta,
+              sync_data: {
+                sync_status: true,
+                sync_reason: "Successfully synced",
+                sync_attempts: 1,
+                last_sync_attempt: new Date().toISOString(),
+              },
+            }, user.id);
 
-    // Prepare form data
-    const formData = {
-      time_spent_filling_the_form: izuData.time_spent_filling_the_form || null,
-      user_id: izuData.user_id || null,
-      table_name: izuData.table_name || null,
-      project_module_id: izuData.project_module_id || null,
-      source_module_id: izuData.source_module_id || null,
-      project_id: izuData.project_id || null,
-      survey_id: izuData.survey_id || null,
-      post_data: izuData.post_data || null,
-      izucode: izuData.izucode || null,
-      cohort: izuData.cohort || null,
-    };
-
-    // Prepare sync data
-    const syncData = izuData.sync_data || {
-      sync_status: false,
-      sync_reason: "New record",
-      sync_attempts: 0,
-      last_sync_attempt: new Date(),
-      submitted_at: new Date(),
-      created_by_user_id: izuData.user_id || null,
-      sync_type: SyncType.izus,
-    };
-
-    const sanitizedIzuData = {
-      ...izuData,
-      id: izuData.id || null,
-      position: izuData.position || 0,
-      sync_data: syncData,
-      form_data: formData,
-      meta: prepareMetaData(izuData, extraFields),
-      location,
-    };
-
-    const isConnected = isOnline();
-    console.log("Network connection status:", isConnected);
-
-    // If we're online, try to submit to API first
-    if (isConnected) {
-      try {
-        Toast.show({
-          type: "info",
-          text1: t("Alerts.saving.izu"),
-          text2: t("Alerts.submitting.server"),
-          position: "top",
-          visibilityTime: 2000,
-        });
-
-        console.log("Attempting to send data to API");
-        // Prepare data for API - flatten meta fields at the top level
-        const apiData = {
-          ...izuData,
-          ...sanitizedIzuData.meta,
-          ...sanitizedIzuData.form_data,
-        };
-
-        console.log(
-          "Data being sent to API:",
-          JSON.stringify(apiData, null, 2)
-        );
-
-        // Send to API
-        baseInstance
-          .post(apiUrl, apiData)
-          .then((response) => {
-            if (response.data?.result?.id) {
-              console.log("API returned ID:", response.data.result.id);
-              console.log(
-                "API returned position:",
-                response.data.result.position,
-                "Type:",
-                typeof response.data.result.position
-              );
-
-              // Ensure position is handled correctly
-              const apiPosition = response.data.result.position;
-              const parsedPosition =
-                typeof apiPosition === "string"
-                  ? parseInt(apiPosition, 10)
-                  : apiPosition;
-
-              console.log(
-                "Parsed position:",
-                parsedPosition,
-                "Type:",
-                typeof parsedPosition
-              );
-
-              const completeData = {
-                ...sanitizedIzuData,
-                id: response.data.result.id,
-                izucode: response.data.result.izucode,
-                position: parsedPosition,
-                ...response.data.result,
-                sync_data: {
-                  sync_status: true,
-                  sync_reason: "Successfully synced",
-                  sync_attempts: 1,
-                  last_sync_attempt: new Date(),
-                  submitted_at: new Date(),
-                  created_by_user_id: izuData.user_id || null,
-                  sync_type: SyncType.izus,
-                },
-              };
-
-              console.log(
-                "Complete data for Realm:",
-                JSON.stringify(completeData, null, 2)
-              );
-
-              try {
-                realm.write(() => {
-                  realm.create(Izu, completeData, Realm.UpdateMode.Modified);
-                });
-                Toast.show({
-                  type: "success",
-                  text1: t("Alerts.success.title"),
-                  text2: t("Alerts.success.izu"),
-                  position: "top",
-                  visibilityTime: 3000,
-                });
-                router.push("/(history)/history");
-              } catch (error: any) {
-                console.error("Error saving to Realm:", error);
-                Toast.show({
-                  type: "error",
-                  text1: t("Alerts.error.title"),
-                  text2: t("Alerts.error.save_failed.after_success"),
-                  position: "top",
-                  visibilityTime: 4000,
-                });
-              }
-            } else {
-              // If API didn't return an ID, save locally
-              console.log("API did not return an ID, saving locally");
-              try {
-                createTemporaryIzu(realm, sanitizedIzuData, extraFields);
-                Toast.show({
-                  type: "info",
-                  text1: t("Alerts.info.saved_locally"),
-                  text2: t("Alerts.info.api_invalid"),
-                  position: "top",
-                  visibilityTime: 3000,
-                });
-                router.push("/(history)/history");
-              } catch (error: any) {
-                console.error("Error saving temporary IZU:", error);
-                Toast.show({
-                  type: "error",
-                  text1: t("Alerts.error.title"),
-                  text2: t("Alerts.error.save_failed.local"),
-                  position: "top",
-                  visibilityTime: 4000,
-                });
-              }
-            }
-          })
-          .catch((error) => {
-            console.log("Error submitting Izu to API:", error);
-            console.log("Error response:", error.response?.data);
-            console.log(
-              "Error details:",
-              JSON.stringify(error, Object.getOwnPropertyNames(error))
-            );
-
+            await batchCreate("Izu", [savedIzu]);
+            
             Toast.show({
-              type: "error",
-              text1: t("Alerts.error.title"),
-              text2: t("Alerts.error.save_failed.server"),
+              type: "success",
+              text1: t("Alerts.success.title"),
+              text2: t("Alerts.success.izu"),
               position: "top",
-              visibilityTime: 4000,
+              visibilityTime: 3000,
             });
+            router.push("/(history)/history");
+            return;
+          }
+        }
 
-            // Fall back to offline approach if API submission fails
-            try {
-              createTemporaryIzu(realm, sanitizedIzuData, extraFields);
-              Toast.show({
-                type: "info",
-                text1: t("Alerts.info.saved_locally"),
-                text2: t("Alerts.submitting.offline"),
-                position: "top",
-                visibilityTime: 3000,
-              });
-              router.push("/(history)/history");
-            } catch (error: any) {
-              console.error("Error saving temporary IZU:", error);
-              Toast.show({
-                type: "error",
-                text1: t("Alerts.error.title"),
-                text2: t("Alerts.error.save_failed.local"),
-                position: "top",
-                visibilityTime: 4000,
-              });
-            }
-          });
-      } catch (error: any) {
-        console.error("Error in API submission block:", error);
-        Toast.show({
-          type: "error",
-          text1: t("Alerts.error.title"),
-          text2: t("Alerts.error.submission.process"),
-          position: "top",
-          visibilityTime: 4000,
-        });
-      }
-    } else {
-      // Offline mode - create with locally generated ID
-      console.log("Sanitized Izu Data:", JSON.stringify(sanitizedIzuData, null, 2));
-      try {
-        createTemporaryIzu(realm, sanitizedIzuData, extraFields);
+        // Offline or API didn't return ID - save locally
+        const localIzu = transformIzuForStorage({
+          ...izuData,
+          form_data: formData,
+          meta,
+          sync_data: {
+            sync_status: false,
+            sync_reason: isOnline() ? "API error" : "Created offline",
+            sync_attempts: 0,
+            last_sync_attempt: new Date().toISOString(),
+          },
+        }, user.id);
+
+        await batchCreate("Izu", [localIzu]);
+        
         Toast.show({
           type: "info",
-          text1: t("Alerts.info.saved_locally"),
-          text2: t("Alerts.submitting.offline"),
+          text1: t("Alerts.info.title"),
+          text2: t("Alerts.info.saved_locally"),
           position: "top",
           visibilityTime: 3000,
         });
         router.push("/(history)/history");
-      } catch (error: any) {
-        console.error("Error saving temporary IZU:", error);
+      } catch (error) {
+        console.error("Error saving IZU:", error);
+        
+        // Save locally on error
+        try {
+          const localIzu = transformIzuForStorage({
+            ...izuData,
+            form_data: formData,
+            meta,
+            sync_data: {
+              sync_status: false,
+              sync_reason: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              sync_attempts: 0,
+              last_sync_attempt: new Date().toISOString(),
+            },
+          }, user.id);
+
+          await batchCreate("Izus", [localIzu]);
+          
+          Toast.show({
+            type: "info",
+            text1: t("Alerts.info.title"),
+            text2: t("Alerts.info.saved_locally"),
+            position: "top",
+            visibilityTime: 3000,
+          });
+          router.push("/(history)/history");
+        } catch (saveError) {
+          Toast.show({
+            type: "error",
+            text1: t("Alerts.error.title"),
+            text2: t("Alerts.error.save_failed.local"),
+            position: "top",
+            visibilityTime: 4000,
+          });
+        }
+      }
+    },
+    [user?.id, batchCreate, t]
+  );
+
+  return { saveIzu };
+}
+
+// ---------------- SYNC LOCAL IZUS ----------------
+export function useSyncIzus() {
+  const { user } = useAuth({});
+  const { getByQuery, update } = useSQLite();
+  const { t } = useTranslation();
+
+  const syncTemporaryIzus = useCallback(
+    async (apiUrl: string) => {
+      if (!user?.id) {
         Toast.show({
           type: "error",
           text1: t("Alerts.error.title"),
-          text2: t("Alerts.error.save_failed.local"),
-          position: "top",
-          visibilityTime: 4000,
+          text2: t("Alerts.error.sync.no_user"),
         });
+        return;
       }
-    }
-  } catch (error: any) {
-    console.log("Error in saveIzuToAPI:", error);
-    console.log(
-      "Error details:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error))
-    );
 
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.submission.unexpected"),
-      position: "top",
-      visibilityTime: 4000,
-    });
-  }
-};
+      if (!isOnline()) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.network.title"),
+          text2: t("Alerts.error.network.offline"),
+        });
+        return;
+      }
 
-export const syncTemporaryIzus = async (
-  realm: Realm,
-  apiUrl: string,
-  t: TFunction,
-  userId?: number
-): Promise<void> => {
-  if (!isOnline()) {
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.network.title"),
-      text2: t("Alerts.error.network.offline"),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-    return;
-  }
+      try {
+        const pendingIzus = await getByQuery(
+          "Izu",
+          "created_by_user_id = ?",
+          [user.id]
+        );
 
-  if (!userId) {
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.sync.no_user"),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-    return;
-  }
+        // Filter out already synced ones
+        const unsynced = pendingIzus.filter(izu => {
+          const syncData = typeof izu.sync_data === 'string' 
+            ? JSON.parse(izu.sync_data) 
+            : izu.sync_data;
+          return !syncData?.sync_status;
+        });
 
-  // Find all Izus that need syncing AND were created by the current user
-  const izusToSync = realm
-    .objects<Izu>(Izu)
-    .filtered(
-      "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
-      userId
-    );
-
-  console.log(`Found ${izusToSync.length} Izus to sync for current user`);
-
-  if (izusToSync.length === 0) {
-    Toast.show({
-      type: "info",
-      text1: t("Alerts.info.title"),
-      text2: t("Alerts.info.no_pending"),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-    return;
-  }
-
-  let successCount = 0;
-  let failureCount = 0;
-
-  for (const izu of izusToSync) {
-    try {
-      // Extract data to send to API
-      const locationData = izu.location || {};
-
-      const apiData = {
-        id: izu.id,
-        izucode: izu.izucode,
-        name: izu.name,
-        villages_id: izu.villages_id,
-        ...locationData,
-        ...izu.meta,
-        ...izu.form_data,
-      };
-
-      console.log("Syncing Izu to API:", JSON.stringify(apiData, null, 2));
-      console.log("API URL:", apiUrl);
-
-      // Submit to API
-      const response = await baseInstance.post(apiUrl, apiData);
-
-      if (response.data?.result?.id) {
-        // Prepare updated data
-        const updatedData = {
-          ...apiData,
-          id: response.data.result.id,
-          izucode: response.data.result.izucode,
-          position:
-            typeof response.data.result.position === "string"
-              ? parseInt(response.data.result.position, 10)
-              : response.data.result.position,
-          ...response.data.result,
-          sync_data: {
-            sync_status: true,
-            sync_reason: "Successfully synced",
-            sync_attempts:
-              (typeof izu.sync_data?.sync_attempts === "number"
-                ? izu.sync_data.sync_attempts
-                : 0) + 1,
-            last_sync_attempt: new Date().toISOString(),
-            sync_type: SyncType.izus,
-            submitted_at: new Date().toISOString(),
-          },
-        };
-
-        // Update in a new write transaction
-        if (!realm.isInTransaction) {
-          realm.write(() => {
-            // Use the objects API to update the existing object
-            const existingIzu = realm.objectForPrimaryKey(Izu, izu.id);
-            if (existingIzu) {
-              // Update properties safely
-              if (updatedData.sync_data) {
-                existingIzu.sync_data = updatedData.sync_data;
-              }
-
-              if (updatedData.name) {
-                existingIzu.name = updatedData.name;
-              }
-
-              if (updatedData.izucode) {
-                existingIzu.izucode = updatedData.izucode;
-              }
-
-              if (updatedData.villages_id) {
-                existingIzu.villages_id = updatedData.villages_id;
-              }
-
-              if (updatedData.location) {
-                existingIzu.location = updatedData.location;
-              }
-
-              if (updatedData.meta) {
-                existingIzu.meta = updatedData.meta;
-              }
-
-              if (updatedData.form_data) {
-                existingIzu.form_data = updatedData.form_data;
-              }
-            }
+        if (unsynced.length === 0) {
+          Toast.show({
+            type: "info",
+            text1: t("Alerts.info.title"),
+            text2: t("Alerts.info.no_pending"),
+            position: "top",
+            visibilityTime: 3000,
           });
+          return;
         }
 
-        console.log(
-          `Successfully synced Izu ${izu.id} to server, updated with server id: ${response.data.result.id}`,
-          izu
-        );
-        successCount++;
-      }
-    } catch (error: any) {
-      failureCount++;
-      console.error("Error syncing Izu to API:", error);
-      // Update sync data to record the failure
-      if (!realm.isInTransaction) {
-        realm.write(() => {
-          if (izu.sync_data) {
-            izu.sync_data.sync_status = false;
-            izu.sync_data.sync_type = SyncType.izus;
-            izu.sync_data.sync_reason = `Failed: ${
-              error?.message || "Unknown error"
-            }`;
-            izu.sync_data.sync_attempts =
-              (typeof izu.sync_data.sync_attempts === "number"
-                ? izu.sync_data.sync_attempts
-                : 0) + 1;
-            izu.sync_data.last_sync_attempt = new Date().toISOString();
+        let successCount = 0;
+        let failureCount = 0;
+
+        for (const izu of unsynced) {
+          try {
+            const formData = typeof izu.form_data === 'string'
+              ? JSON.parse(izu.form_data)
+              : izu.form_data;
+            const meta = typeof izu.meta === 'string'
+              ? JSON.parse(izu.meta)
+              : izu.meta;
+
+            const res = await baseInstance.post(apiUrl, {
+              ...formData,
+              ...meta,
+            });
+
+            if (res.data?.result?.id) {
+              // Update with server ID and sync status
+              await update("Izu", izu._id, {
+                id: res.data.result.id,
+                sync_data: JSON.stringify({
+                  sync_status: true,
+                  sync_reason: "Successfully synced",
+                  sync_attempts: (izu.sync_attempts || 0) + 1,
+                  last_sync_attempt: new Date().toISOString(),
+                }),
+              });
+              successCount++;
+            }
+          } catch (err) {
+            console.error("Failed to sync IZU:", err);
+            failureCount++;
+
+            // Update sync attempts
+            const oldSyncData = typeof izu.sync_data === 'string'
+              ? JSON.parse(izu.sync_data)
+              : izu.sync_data;
+
+            await update("Izu", izu._id, {
+              sync_data: JSON.stringify({
+                ...oldSyncData,
+                sync_attempts: (oldSyncData.sync_attempts || 0) + 1,
+                sync_reason: `Failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+                last_sync_attempt: new Date().toISOString(),
+              }),
+            });
           }
+        }
+
+        if (successCount > 0 && failureCount === 0) {
+          Toast.show({
+            type: "success",
+            text1: t("Alerts.success.title"),
+            text2: t("Alerts.success.sync").replace("{count}", successCount.toString()),
+            position: "top",
+            visibilityTime: 4000,
+          });
+        } else if (successCount > 0 && failureCount > 0) {
+          Toast.show({
+            type: "info",
+            text1: t("Alerts.info.title"),
+            text2: t("Alerts.info.partial_success")
+              .replace("{success}", successCount.toString())
+              .replace("{failed}", failureCount.toString()),
+            position: "top",
+            visibilityTime: 4000,
+          });
+        } else if (failureCount > 0) {
+          Toast.show({
+            type: "error",
+            text1: t("Alerts.error.title"),
+            text2: t("Alerts.error.sync.failed").replace("{count}", failureCount.toString()),
+            position: "top",
+            visibilityTime: 4000,
+          });
+        }
+      } catch (error) {
+        console.error("Error syncing Izus:", error);
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.sync.failed"),
         });
       }
-    }
-  }
+    },
+    [user?.id, getByQuery, update, t]
+  );
 
-  // Show final status toast
-  if (successCount > 0 && failureCount === 0) {
-    Toast.show({
-      type: "success",
-      text1: t("Alerts.success.title"),
-      text2: t("Alerts.success.sync").replace(
-        "{count}",
-        successCount.toString()
-      ),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-  } else if (successCount > 0 && failureCount > 0) {
-    Toast.show({
-      type: "info",
-      text1: t("Alerts.info.title"),
-      text2: t("Alerts.info.partial_success")
-        .replace("{success}", successCount.toString())
-        .replace("{failed}", failureCount.toString()),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-  } else if (failureCount > 0) {
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.sync.failed").replace(
-        "{count}",
-        failureCount.toString()
-      ),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-  }
-};
+  return { syncTemporaryIzus };
+}
+
+// ---------------- GET ALL LOCALLY CREATED IZUS ----------------
+export function useGetAllLocallyCreatedIzus() {
+  const { getByQuery, isReady } = useSQLite();
+  const { user } = useAuth({});
+  const [localIzus, setLocalIzus] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const loadLocalIzus = useCallback(async () => {
+    if (!isReady || !user?.id) {
+      setLocalIzus([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const allUserIzus = await getByQuery(
+        "Izu",
+        "created_by_user_id = ?",
+        [user.id]
+      );
+
+      // Filter for unsynced only
+      const pendingIzus = allUserIzus
+        .map(izu => ({
+          ...izu,
+          sync_data: typeof izu.sync_data === 'string'
+            ? JSON.parse(izu.sync_data)
+            : izu.sync_data,
+          form_data: typeof izu.form_data === 'string'
+            ? JSON.parse(izu.form_data)
+            : izu.form_data,
+          location: typeof izu.location === 'string'
+            ? JSON.parse(izu.location)
+            : izu.location,
+          meta: typeof izu.meta === 'string'
+            ? JSON.parse(izu.meta)
+            : izu.meta,
+        }))
+        .filter(izu => !izu.sync_data?.sync_status);
+
+      setLocalIzus(pendingIzus);
+    } catch (err: any) {
+      console.error("Failed to fetch locally created IZUs:", err);
+      setError(err);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Failed to load locally created IZUs",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [isReady, user?.id, getByQuery]);
+
+  useEffect(() => {
+    loadLocalIzus();
+  }, [loadLocalIzus]);
+
+  const refreshIzus = useCallback(async () => {
+    setRefreshing(true);
+    await loadLocalIzus();
+    setRefreshing(false);
+  }, [loadLocalIzus]);
+
+  return { localIzus, loading, refreshing, error, refresh: refreshIzus };
+}

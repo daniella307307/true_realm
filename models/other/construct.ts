@@ -1,25 +1,11 @@
-import { Realm } from '@realm/react';
-
-export class Construct extends Realm.Object {
-  id!: number;
-  name!: string;
-  description!: string;
-  status!: number;
-  project_id!: number;
-  created_at?: Date;
-  updated_at?: Date;
-
-  static schema = {
-    name: 'Construct',
-    primaryKey: 'id',
-    properties: {
-      id: 'int',
-      name: 'string',
-      description: 'string',
-      status: 'int',
-      project_id: 'int',
-      created_at: 'date?',
-      updated_at: 'date?'
-    }
-  };
-}
+export const CREATE_CONSTRUCT_TABLE = `
+  CREATE TABLE IF NOT EXISTS Constructs (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    project_id INTEGER NOT NULL,
+    created_at TEXT,  
+    updated_at TEXT  
+  );
+`;

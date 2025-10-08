@@ -1,31 +1,14 @@
-import { Realm } from '@realm/react';
-
-export class Contact extends Realm.Object {
-  id!: number;
-  first_name!: string;
-  last_name!: string;
-  email!: string;
-  role!: number;
-  job_title!: string;
-  city!: string;
-  country!: string;
-  created_at?: Date;
-  updated_at?: Date;
-
-  static schema = {
-    name: 'Contact',
-    primaryKey: 'id',
-    properties: {
-      id: 'int',
-      first_name: 'string',
-      last_name: 'string',
-      email: 'string',
-      role: 'int',
-      job_title: 'string',
-      city: 'string',
-      country: 'string',
-      created_at: 'date?',
-      updated_at: 'date?'
-    }
-  };
-}
+export const CREATE_CONTACT_TABLE = `
+  CREATE TABLE IF NOT EXISTS Contacts (
+    id INTEGER PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    role INTEGER NOT NULL,
+    job_title TEXT NOT NULL,
+    city TEXT NOT NULL,
+    country TEXT NOT NULL,
+    created_at TEXT,  
+    updated_at TEXT   
+  );
+`;

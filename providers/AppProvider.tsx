@@ -1,12 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from "~/lib/hooks/useAuth";
+import { useSQLite } from "~/providers/RealContextProvider";
+
+// Services (SQLite-compatible hooks)
 import { useGetAllProjects } from "~/services/project";
-import { useGetFamilies } from "~/services/families";
+// import { useFamilyService, useGetFamilies } from "~/services/families";
 import { useGetForms } from "~/services/formElements";
 import { useGetIzus } from "~/services/izus";
-import { useGetPosts } from "~/services/posts";
-import { useGetStakeholders } from "~/services/stakeholders";
+// import { useGetAllPosts } from "~/services/posts";
+// import { useGetStakeholders } from "~/services/stakeholders";
 import { useGetCohorts } from "~/services/cohorts";
-import { useAuth } from "~/lib/hooks/useAuth";
 import { useGetNotifications } from '~/services/notifications';
 import { useGetAllSurveySubmissions } from '~/services/survey-submission';
 import { useGetMonitoringForms } from '~/services/monitoring/monitoring-forms';
@@ -28,70 +31,222 @@ const AppDataContext = createContext<AppDataContextType>({
 
 export const useAppData = () => useContext(AppDataContext);
 
-export const AppDataProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+// Helper function to add delay between API calls
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // ===== ALL STATE HOOKS MUST BE AT THE TOP =====
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { isLoggedIn } = useAuth({});
+  const [hasInitialized, setHasInitialized] = useState(false);
+  
+  // ===== ALL CONTEXT HOOKS MUST BE AT THE TOP =====
+  const { isLoggedIn, user } = useAuth({});
+  const { isReady: isSQLiteReady } = useSQLite();
+  // ===== ALL CUSTOM HOOKS MUST BE CALLED UNCONDITIONALLY =====
+  // Pass 'false' initially to prevent automatic fetching, we'll control it manually
+  const izusHook = useGetIzus(false);
+  const projectsHook = useGetAllProjects(false);
+  // const familiesHook = useGetFamilies(false);
+  const formsHook = useGetForms(false);
+  // const postsHook = useGetAllPosts(false);
+  // const stakeholdersHook = useGetStakeholders(false);
+  const cohortsHook = useGetCohorts(false);
+  const notificationsHook = useGetNotifications(false);
+  const monitoringModulesHook = useGetMonitoringModules(false);
+  const monitoringFormsHook = useGetMonitoringForms(false);
+  const monitoringResponsesHook = useGetMonitoringResponses(false);
+  const followUpsHook = useGetAllFollowUps(false);
+  const surveySubmissionsHook = useGetAllSurveySubmissions();
 
-  // Data fetching hooks
-  const { refresh: refreshIzus } = useGetIzus(true);
-  const { refresh: refreshProjects } = useGetAllProjects(true);
-  const { refresh: refreshFamilies } = useGetFamilies(true);
-  const { refresh: refreshForms } = useGetForms(true);
-  const { refresh: refreshPosts } = useGetPosts(true);
-  const { refresh: refreshStakeholders } = useGetStakeholders(true);
-  const { refresh: refreshCohorts } = useGetCohorts(true);
-  const { refresh: refreshNotifications } = useGetNotifications(true);
-  const { refresh: refreshMonitoringModules } = useGetMonitoringModules(true);
-  const { refresh: refreshMonitoringForms } = useGetMonitoringForms(true);
-  const { refresh: refreshMonitoringResponses } = useGetMonitoringResponses(true);
-  const { refresh: refreshFollowUps } = useGetAllFollowUps(true);
-  const { refresh: refreshSurveySubmissions } = useGetAllSurveySubmissions(true);
-  const refreshAllData = async () => {
+  // Memoized refresh function with rate limiting and sequential batching
+  const refreshAllData = useCallback(async () => {
+    if (isRefreshing) {
+      console.log("⚠️ Refresh already in progress, skipping...");
+      return;
+    }
+
+    if (!isSQLiteReady) {
+      console.log("⚠️ SQLite not ready yet, cannot refresh data");
+      return;
+    }
+
     try {
       setIsRefreshing(true);
-      console.log("Starting data refresh...");
+      console.log("🔄 Starting sequential data refresh with rate limiting...");
+
+      // Batch 1: Critical data (with 200ms delays between each)
+      console.log("📦 Batch 1: Loading critical data...");
+      try {
+        await projectsHook?.refresh?.();
+        await delay(200);
+      } catch (error) {
+        console.error("Error loading projects:", error);
+      }
       
-      await Promise.all([
-        refreshIzus(),
-        refreshProjects(),
-        refreshFamilies(),
-        refreshForms(),
-        refreshPosts(),
-        refreshStakeholders(),
-        refreshCohorts(),
-        refreshNotifications(),
-        refreshMonitoringModules(),
-        refreshMonitoringForms(),
-        refreshSurveySubmissions(),
-        refreshMonitoringResponses(),
-        refreshFollowUps(),
-      ]);
+      try {
+        await formsHook?.refresh?.();
+        await delay(200);
+      } catch (error) {
+        console.error("Error loading forms:", error);
+      }
       
-      console.log("All data refreshed successfully");
+      try {
+        await izusHook?.refresh?.();
+        await delay(200);
+      } catch (error) {
+        console.error("Error loading izus:", error);
+      }
+
+      // Batch 2: User-related data (with 200ms delays)
+      console.log("📦 Batch 2: Loading user data...");
+      // try {
+      //   await familiesHook?.refresh?.();
+      //   await delay(200);
+      // } catch (error) {
+      //   console.error("Error loading families:", error);
+      // }
+      
+      try {
+        await notificationsHook?.refresh?.();
+        await delay(200);
+      } catch (error) {
+        console.error("Error loading notifications:", error);
+      }
+      
+      try {
+        await followUpsHook?.refresh?.();
+        await delay(200);
+      } catch (error) {
+        console.error("Error loading follow-ups:", error);
+      }
+
+      // Batch 3: Monitoring data (with 200ms delays)
+      console.log("📦 Batch 3: Loading monitoring data...");
+      try {
+        await monitoringModulesHook?.refresh?.();
+        await delay(200);
+      } catch (error) {
+        console.error("Error loading monitoring modules:", error);
+      }
+      
+      try {
+        await monitoringFormsHook?.refresh?.();
+        await delay(200);
+      } catch (error) {
+        console.error("Error loading monitoring forms:", error);
+      }
+      
+      try {
+        await monitoringResponsesHook?.refresh?.();
+        await delay(200);
+      } catch (error) {
+        console.error("Error loading monitoring responses:", error);
+      }
+
+      // Batch 4: Secondary data (with 200ms delays)
+      console.log("📦 Batch 4: Loading secondary data...");
+      try {
+        await surveySubmissionsHook?.refresh?.();
+        await delay(200);
+      } catch (error) {
+        console.error("Error loading submissions:", error);
+      }
+      
+      // try {
+      //   await postsHook?.refresh?.();
+      //   await delay(200);
+      // } catch (error) {
+      //   console.error("Error loading posts:", error);
+      // }
+      
+      // try {
+      //   await stakeholdersHook?.refresh?.();
+      //   await delay(200);
+      // } catch (error) {
+      //   console.error("Error loading stakeholders:", error);
+      // }
+      
+      // try {
+      //   await cohortsHook?.refresh?.();
+      // } catch (error) {
+      //   console.error("Error loading cohorts:", error);
+      // }
+
+      console.log("🎉 All data refresh completed successfully");
       setIsDataLoaded(true);
     } catch (error) {
-      console.error("Error refreshing app data:", error);
+      console.error("❌ Error refreshing app data:", error);
+      // Still mark as loaded to allow app to function with whatever data succeeded
+      setIsDataLoaded(true);
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [
+    isRefreshing,
+    isSQLiteReady,
+    izusHook,
+    projectsHook,
+    // familiesHook,
+    formsHook,
+    // postsHook,
+    // stakeholdersHook,
+    cohortsHook,
+    notificationsHook,
+    monitoringModulesHook,
+    monitoringFormsHook,
+    surveySubmissionsHook,
+    monitoringResponsesHook,
+    followUpsHook,
+  ]);
 
-  // Don't auto-load data when not logged in
+  // Initialize data when user logs in AND SQLite is ready
   useEffect(() => {
-    const checkLoginAndLoadData = async () => {
-      const loginStatus = await isLoggedIn;
-      if (loginStatus && !isDataLoaded && !isRefreshing) {
-        console.log("User is logged in, initializing data load");
-        refreshAllData();
+    const initializeData = async () => {
+      try {
+        const loginStatus = await isLoggedIn;
+        
+        console.log("🔍 Checking initialization conditions:", {
+          loginStatus,
+          isSQLiteReady,
+          hasInitialized,
+          isRefreshing,
+          isDataLoaded
+        });
+
+        // Only initialize if:
+        // 1. User is logged in
+        // 2. SQLite is ready
+        // 3. We haven't initialized yet
+        // 4. Not currently refreshing
+        if (loginStatus && isSQLiteReady && !hasInitialized && !isRefreshing) {
+          console.log("🚀 All conditions met, starting initial data load");
+          setHasInitialized(true);
+          await refreshAllData();
+        } else if (!loginStatus && hasInitialized) {
+          // Reset state when user logs out
+          console.log("👋 User logged out, resetting data state");
+          setHasInitialized(false);
+          setIsDataLoaded(false);
+        } else if (!isSQLiteReady) {
+          console.log("⏳ Waiting for SQLite to be ready before data load");
+        }
+      } catch (error) {
+        console.error("❌ Error in initializeData:", error);
       }
     };
-    
-    checkLoginAndLoadData();
-  }, [isLoggedIn]);
+
+    initializeData();
+  }, [isLoggedIn, isSQLiteReady, hasInitialized, isRefreshing, refreshAllData]);
+
+  const contextValue: AppDataContextType = {
+    isDataLoaded,
+    isRefreshing,
+    refreshAllData,
+  };
 
   return (
-    <AppDataContext.Provider value={{ isDataLoaded, isRefreshing, refreshAllData }}>
+    <AppDataContext.Provider value={contextValue}>
       {children}
     </AppDataContext.Provider>
   );

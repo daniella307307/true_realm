@@ -1,15 +1,8 @@
-import { Realm } from "@realm/react";
-
-export class Cohort extends Realm.Object {
-  _id!: Realm.BSON.ObjectId;
-  cohort!: string;
-
-  static schema = {
-    name: "Cohort",
-    primaryKey: '_id',
-    properties: {
-      _id: 'objectId',
-      cohort: "string",
-    },
-  };
-} 
+export const CREATE_COHORT_TABLE = `
+  CREATE TABLE IF NOT EXISTS Cohorts (
+    _id TEXT PRIMARY KEY,   
+    cohort TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+`;

@@ -80,8 +80,8 @@ const SubmissionListByModuleScreen = () => {
   const { families, isLoading: familiesLoading } = useGetFamilies();
 
   const {
-    locallyCreatedIzus,
-    isLoading: locallyCreatedIzusLoading,
+    localIzus,
+    loading,
     refresh: refreshLocallyCreatedIzus,
   } = useGetAllLocallyCreatedIzus();
 
@@ -145,7 +145,7 @@ const SubmissionListByModuleScreen = () => {
     );
 
     // Process locally created izus
-    const processedIzus: CombinedItem[] = locallyCreatedIzus.map(
+    const processedIzus: CombinedItem[] = localIzus.map(
       (izu: any) => ({
         _id: izu?.id,
         table_name: izu?.form_data?.table_name,
@@ -166,7 +166,7 @@ const SubmissionListByModuleScreen = () => {
 
     // Combine both datasets
     return [...processedSubmissions, ...processedFamilies, ...processedIzus];
-  }, [surveySubmissions, locallyCreatedFamilies, locallyCreatedIzus]);
+  }, [surveySubmissions, locallyCreatedFamilies, localIzus]);
 
   // console.log("Combined data", JSON.stringify(combinedData, null, 2));
 

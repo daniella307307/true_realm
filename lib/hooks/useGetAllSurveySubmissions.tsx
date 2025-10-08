@@ -1,32 +1,58 @@
 import { useEffect, useState } from "react";
-import { RealmContext } from "~/providers/RealContextProvider";
-import { SurveySubmission } from "~/models/surveys/survey-submission";
+import { useSQLite } from "~/providers/RealContextProvider";
+import { ISurveySubmission } from "~/types"; // Make sure this type matches your SQLite SurveySubmission
 
-const { useRealm } = RealmContext;
+// Convert SQLite row to submission object
+function sqliteRowToSubmission(row: any): ISurveySubmission {
+return {
+  id: row.id,
+  survey_id: row.survey_id,
+  user_id: row.user_id,
+  responses: row.responses ? JSON.parse(row.responses) : {},
+  status: row.status,
+  created_at: row.created_at,
+  updated_at: row.updated_at,
+  answers: {},
+  form_data: {},
+  location: {},
+  sync_data: {}
+};
+}
+
+// Convert submission object to SQLite row
+function submissionToSQLiteRow(submission: ISurveySubmission) {
+  return {
+    id: submission.id,
+    survey_id: submission.survey_id,
+    user_id: submission.user_id,
+    responses: JSON.stringify(submission.responses || {}),
+    status: submission.status || 0,
+    created_at: submission.created_at || new Date().toISOString(),
+    updated_at: submission.updated_at || new Date().toISOString(),
+  };
+}
 
 export const useGetAllSurveySubmissions = () => {
-  const realm = useRealm();
-  const [submissions, setSubmissions] = useState<SurveySubmission[]>([]);
+  const { getAll } = useSQLite();
+  const [submissions, setSubmissions] = useState<ISurveySubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const loadSubmissions = async () => {
+    setIsLoading(true);
     try {
-      const realmSubmissions = realm.objects(SurveySubmission);
-      setSubmissions([...realmSubmissions]); // convert to array
-      setIsLoading(false);
-
-      // Optional: listen to changes in Realm
-      const listener = () => setSubmissions([...realm.objects(SurveySubmission)]);
-      realmSubmissions.addListener(listener);
-
-      return () => {
-        realmSubmissions.removeListener(listener);
-      };
+      const rows = await getAll<any>("SurveySubmissions"); // Table name
+      const loaded = rows.map(sqliteRowToSubmission);
+      setSubmissions(loaded);
     } catch (error) {
-      console.error("Error loading local submissions:", error);
+      console.error("Error loading survey submissions:", error);
+    } finally {
       setIsLoading(false);
     }
-  }, [realm]);
+  };
 
-  return { submissions, isLoading };
+  useEffect(() => {
+    loadSubmissions();
+  }, []);
+
+  return { submissions, isLoading, refresh: loadSubmissions };
 };

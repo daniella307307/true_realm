@@ -1,28 +1,19 @@
-import { Realm } from "@realm/react";
-
-export class MonitoringForms extends Realm.Object {
-  id!: number;
-  name!: string;
-  name_kin!: string;
-
-  json2!: string;
-  post_data!: string;
-  table_name!: string;
-  single_page!: string;
-  status!: string;
-
-  static schema = {
-    name: "MonitoringForms",
-    primaryKey: "id",
-    properties: {
-      id: "int",
-      name: "string",
-      name_kin: "string?",
-      json2: "string",
-      post_data: "string",
-      table_name: "string?",
-      single_page: "string?",
-      status: "string?",
-    },
-  };
-} 
+export const CREATE_MONITORING_FORMS_TABLE = `
+  CREATE TABLE IF NOT EXISTS  MonitoringForms (
+    _id INTEGER,
+    id INTEGER,
+    form_id INTEGER,
+    module_id INTEGER,
+    project_id INTEGER,
+    name TEXT NOT NULL,
+    name_kin TEXT,
+    json2 TEXT NOT NULL,
+    post_data TEXT NOT NULL,
+    table_name TEXT,
+    single_page TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    status TEXT,
+    source_module_id INTEGER
+  );
+`;

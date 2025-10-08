@@ -1,28 +1,12 @@
-import { Realm } from '@realm/react';
-
-
-export class Comment extends Realm.Object {
-  id!: number;
-  module_id!: string;
-  family_id!: string;
-  form_id!: string;
-  question_id!: string;
-  comment!: string;
-  created_at?: Date;
-  updated_at?: Date;
-
-  static schema = {
-    name: 'Comment',
-    primaryKey: 'id',
-    properties: {
-      id: 'int',
-      module_id: 'string',
-      family_id: 'string',
-      form_id: 'string',
-      question_id: 'string',
-      comment: 'string',
-      created_at: 'date?',
-      updated_at: 'date?'
-    }
-  };
-}
+export const CREATE_COMMENT_TABLE = `
+  CREATE TABLE IF NOT EXISTS Comments (
+    id INTEGER PRIMARY KEY,
+    module_id TEXT NOT NULL,
+    family_id TEXT NOT NULL,
+    form_id TEXT NOT NULL,
+    question_id TEXT NOT NULL,
+    comment TEXT NOT NULL,
+    created_at TEXT,
+    updated_at TEXT
+  );
+`;

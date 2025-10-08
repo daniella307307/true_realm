@@ -1,742 +1,282 @@
-import { RealmContext } from "~/providers/RealContextProvider";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { SurveySubmission } from "~/models/surveys/survey-submission";
+import { useSQLite } from "~/providers/RealContextProvider";
+import { ISurveySubmission } from "~/types";
 import { baseInstance } from "~/utils/axios";
-import { useDataSync } from "./dataSync";
-import { FollowUps } from "~/models/followups/follow-up";
-import { isOnline } from "./network";
-import { useAuth } from "~/lib/hooks/useAuth";
-import { useMemo } from "react";
-import { filterDataByUserId } from "./filterData";
-import { SyncType } from "~/types";
-import Toast from "react-native-toast-message";
-import { router } from "expo-router";
-import { useTranslation } from "react-i18next";
-import { TFunction } from "i18next";
 
-const { useQuery, useRealm } = RealmContext;
-
-interface IFollowUpsResponse {
-  message: string;
-  data: Array<{
-    id: number;
-    followup_date: string;
-    status: string;
-    comment: string;
-    project_module_id: number;
-    project_id: number;
-    source_module_id: number;
-    survey_id: number;
-    survey_result_id: number;
-    user_id: number;
-    created_at: string;
-    updated_at: string;
-    user: {
-      id: number;
-      name: string;
-    };
-    survey: {
-      name: string;
-      id: number;
-      name_kin: string;
-    };
-    survey_result: {
-      id: number;
-      _id: string;
-    };
-  }>;
+// FollowUp interface matching your SQLite table
+export interface IFollowUp {
+  id?: number;
+  followup_date: string;
+  status: string;
+  comment: string;
+  form_data?: any;       // store object
+  sync_data?: any;       // store object
+  user?: any;            // store object
+  survey?: any;          // store object
+  survey_result?: any;   // store object
+  created_at?: string;
+  updated_at?: string;
+  survey_result_id?: number; // ID of the related survey result
+  project_module_id?: number; // ID of the related project module
+  project_id?: number; // ID of the related project
+  source_module_id?: number; // ID of the source module
+  survey_id?: string; // ID of the related survey
 }
 
-export async function fetchFollowUpsFromRemote() {
-  const res = await baseInstance.get<IFollowUpsResponse>("/get-all-followups");
-
-  // Create a map of existing IDs from the response to prevent duplicates
-  const uniqueFollowUps = res.data.data.reduce((acc, followup) => {
-    // Only add if we haven't seen this ID before
-    if (!acc.has(followup.id)) {
-      acc.set(followup.id, followup);
-    }
-    return acc;
-  }, new Map());
-
-  return Array.from(uniqueFollowUps.values()).map((followup) => ({
+// Convert API response to SQLite row
+function followUpToSQLiteRow(followup: IFollowUp) {
+  return {
     id: followup.id,
     followup_date: followup.followup_date,
     status: followup.status,
     comment: followup.comment,
-    form_data: {
-      project_module_id: followup.project_module_id,
-      project_id: followup.project_id,
-      source_module_id: followup.source_module_id,
-      survey_id: followup.survey_id,
-      survey_result_id: followup.survey_result_id,
-      user_id: followup.user_id,
-    },
-    user: followup.user,
-    survey: followup.survey,
-    survey_result: followup.survey_result,
-    created_at: followup.created_at,
-    updated_at: followup.updated_at,
-    sync_data: {
-      sync_status: true,
-      sync_reason: "Synced from server",
-      sync_attempts: 1,
-      sync_type: SyncType.follow_ups,
-      last_sync_attempt: new Date().toISOString(),
-      submitted_at: new Date().toISOString(),
-      created_by_user_id: followup.user.id,
-    },
-  }));
+    form_data: followup.form_data ? JSON.stringify(followup.form_data) : null,
+    sync_data: followup.sync_data ? JSON.stringify(followup.sync_data) : null,
+    user: followup.user ? JSON.stringify(followup.user) : null,
+    survey: followup.survey ? JSON.stringify(followup.survey) : null,
+    survey_result: followup.survey_result ? JSON.stringify(followup.survey_result) : null,
+    created_at: followup.created_at || new Date().toISOString(),
+    updated_at: followup.updated_at || new Date().toISOString(),
+  };
 }
 
-export function useGetAllFollowUps(forceSync: boolean = false) {
-  const realm = useRealm();
-  const storedFollowUps = useQuery(FollowUps);
-  const { user } = useAuth({});
+// Convert SQLite row back to IFollowUp
+function sqliteRowToFollowUp(row: any): IFollowUp {
+  return {
+    id: row.id,
+    followup_date: row.followup_date,
+    status: row.status,
+    comment: row.comment,
+    form_data: row.form_data ? JSON.parse(row.form_data) : null,
+    sync_data: row.sync_data ? JSON.parse(row.sync_data) : null,
+    user: row.user ? JSON.parse(row.user) : null,
+    survey: row.survey ? JSON.parse(row.survey) : null,
+    survey_result: row.survey_result ? JSON.parse(row.survey_result) : null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
 
-  // Filter followups by current user
-  const userFilteredFollowUps = useMemo(() => {
-    if (!user || !user.id) return storedFollowUps;
-    return filterDataByUserId(storedFollowUps, user.id);
-  }, [storedFollowUps, user]);
+// Fetch follow-ups from remote API
+async function fetchFollowUpsFromRemote(): Promise<IFollowUp[]> {
+  const res = await baseInstance.get<{ data: IFollowUp[] }>("/get-all-followups");
+  return res.data.data || [];
+}
 
-  const { syncStatus, refresh } = useDataSync([
-    {
-      key: "followups",
-      fetchFn: fetchFollowUpsFromRemote,
-      model: FollowUps,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      forceSync,
-      transformData: (data: any[]) => {
-        if (!data || data.length === 0) {
-          console.log("No followups data to transform");
-          return [];
-        }
+export async function saveFollowupToAPI(followup: IFollowUp, t: unknown): Promise<IFollowUp> {
+  const res = await baseInstance.post<{ data: IFollowUp }>("/save-followup", followup);
+  return res.data.data;
+}
 
-        return data.map((followup) => ({
-          ...followup,
-          sync_data: {
-            sync_status: true,
-            sync_reason: "Fetched from server",
-            sync_attempts: 0,
-            sync_type: SyncType.follow_ups,
-            last_sync_attempt: new Date().toISOString(),
-            submitted_at: new Date().toISOString(),
-          },
-        }));
-      },
+// FIXED: Separate hook for getting follow-ups by survey result ID
+export function useGetFollowUpsBySurveyResultId(p0: string, p1: string) {
+  const { query } = useSQLite();
+  
+  const getFollowUpsBySurveyResultId = useCallback(
+    async (survey: SurveySubmission): Promise<IFollowUp[]> => {
+      const rows = await query(
+        "SELECT * FROM FollowUps WHERE json_extract(survey_result, '$.id') = ? ORDER BY followup_date DESC",
+        [survey.id]
+      );
+      return rows.map(sqliteRowToFollowUp);
     },
-  ]);
+    [query]
+  );
+
+  return { getFollowUpsBySurveyResultId };
+}
+
+// FIXED: Main hook for getting all follow-ups
+export function useGetAllFollowUps(forceSync: boolean = false) {
+  const { getAll, batchCreate, deleteAll } = useSQLite();
+  const [followUps, setFollowUps] = useState<IFollowUp[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  
+  // Use ref to track if initial load happened
+  const initialLoadDone = useRef(false);
+
+  const isStale = useCallback(() => {
+    if (!lastSyncTime) return true;
+    const staleTime = 5 * 60 * 1000; // 5 minutes
+    return Date.now() - lastSyncTime.getTime() > staleTime;
+  }, [lastSyncTime]);
+
+  const loadFollowUps = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const rows = await getAll("FollowUps");
+      setFollowUps(rows.map(sqliteRowToFollowUp));
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Error loading follow-ups:", err);
+      setError(err as Error);
+      setIsLoading(false);
+    }
+  }, [getAll]);
+
+  const syncFollowUps = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const remoteData = await fetchFollowUpsFromRemote();
+      await deleteAll("FollowUps"); // Clear existing data
+
+      if (remoteData.length > 0) {
+        const sqliteRows = remoteData.map(followUpToSQLiteRow);
+        await batchCreate("FollowUps", sqliteRows);
+      }
+
+      setFollowUps(remoteData);
+      setLastSyncTime(new Date());
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Error syncing follow-ups:", err);
+      setError(err as Error);
+      setIsLoading(false);
+    }
+  }, [deleteAll, batchCreate]);
+
+  const refresh = useCallback(
+    async (forceFetch: boolean = true) => {
+      if (forceFetch) {
+        await syncFollowUps();
+      } else {
+        await loadFollowUps();
+      }
+    },
+    [syncFollowUps, loadFollowUps]
+  );
+
+  // FIXED: Proper dependency array and initialization logic
+  useEffect(() => {
+    // Prevent running on every render
+    if (initialLoadDone.current && !forceSync) {
+      return;
+    }
+
+    const initialize = async () => {
+      await loadFollowUps();
+      
+      // Check if sync is needed after loading
+      if (forceSync || isStale() || followUps.length === 0) {
+        await syncFollowUps();
+      }
+      
+      initialLoadDone.current = true;
+    };
+
+    initialize();
+  }, [forceSync, loadFollowUps, syncFollowUps, isStale, followUps.length]);
 
   return {
-    followups: userFilteredFollowUps,
-    isLoading: syncStatus.followups?.isLoading || false,
-    error: syncStatus.followups?.error || null,
-    lastSyncTime: syncStatus.followups?.lastSyncTime || null,
-    refresh: () => refresh("followups", forceSync),
+    followUps,
+    isLoading,
+    error,
+    lastSyncTime,
+    refresh,
+    // FIXED: Don't return hooks - users should call useGetFollowUpsBySurveyResultId separately
   };
 }
 
-function getNextAvailableId(realm: Realm): number {
-  try {
-    const followups = realm.objects<FollowUps>(FollowUps);
-    if (followups.length > 0) {
-      const maxId = Math.max(...followups.map((f) => f.id));
-      return maxId + 1;
-    }
-    return 1;
-  } catch (error) {
-    console.log("Error getting next ID, using default:", error);
-    return 1;
-  }
-}
+// ALTERNATIVE: Combined hook if you need both functionalities together
+export function useFollowUps(forceSync: boolean = false) {
+  const { query, getAll, batchCreate, deleteAll } = useSQLite();
+  const [followUps, setFollowUps] = useState<IFollowUp[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const initialLoadDone = useRef(false);
 
-function createTemporaryFollowup(
-  realm: Realm,
-  followupData: Record<string, any>
-): FollowUps {
-  // We'll keep the same ID format but mark it as temporary
-  const localId = getNextAvailableId(realm);
+  const isStale = useCallback(() => {
+    if (!lastSyncTime) return true;
+    const staleTime = 5 * 60 * 1000; // 5 minutes
+    return Date.now() - lastSyncTime.getTime() > staleTime;
+  }, [lastSyncTime]);
 
-  // Add sync data using values from sanitized data if available
-  const syncData = {
-    sync_status: followupData.sync_data?.sync_status ?? false,
-    sync_type: followupData.sync_data?.sync_type ?? SyncType.follow_ups,
-    sync_reason: "Created offline",
-    sync_attempts: followupData.sync_data?.sync_attempts ?? 0,
-    last_sync_attempt:
-      followupData.sync_data?.last_sync_attempt ?? new Date().toISOString(),
-    submitted_at:
-      followupData.sync_data?.submitted_at ?? new Date().toISOString(),
-    created_by_user_id: followupData.sync_data?.created_by_user_id,
-  };
-
-  let response: FollowUps;
-
-  if (realm.isInTransaction) {
-    response = createFollowupWithMeta(realm, {
-      ...followupData,
-      id: localId,
-      sync_data: syncData,
-    });
-  } else {
-    realm.write(() => {
-      response = createFollowupWithMeta(realm, {
-        ...followupData,
-        id: localId,
-        sync_data: syncData,
-      });
-    });
-  }
-  return response!;
-}
-
-function createFollowupWithMeta(
-  realm: Realm,
-  followupData: Record<string, any>
-): FollowUps {
-  try {
-    const id = followupData.id || getNextAvailableId(realm);
-
-    const formData = {
-      project_module_id: followupData.project_module_id || null,
-      project_id: followupData.project_id || null,
-      source_module_id: followupData.source_module_id || null,
-      survey_id: followupData.survey_id || null,
-      survey_result_id: followupData.survey_result_id || null,
-      user_id: followupData.user_id || null,
-    };
-
-    const syncData = followupData.sync_data || {
-      sync_status: false,
-      sync_reason: "New record",
-      sync_attempts: 0,
-      last_sync_attempt: new Date().toISOString(),
-      submitted_at: new Date().toISOString(),
-      created_by_user_id: followupData.user.id,
-      sync_type: SyncType.follow_ups,
-    };
-
-    const followup = {
-      id,
-      followup_date: followupData.followup_date,
-      status: followupData.status,
-      comment: followupData.comment,
-      form_data: formData,
-      user: followupData.user,
-      survey: followupData.survey,
-      survey_result: followupData.survey_result,
-      created_at: followupData.created_at || new Date().toISOString(),
-      updated_at: followupData.updated_at || new Date().toISOString(),
-      sync_data: syncData,
-    };
-
-    let result;
-
-    // Handle transaction
-    const createFollowupInRealm = () => {
-      return realm.create(FollowUps, followup, Realm.UpdateMode.Modified);
-    };
-
-    if (realm.isInTransaction) {
-      result = createFollowupInRealm();
-    } else {
-      realm.write(() => {
-        result = createFollowupInRealm();
-      });
-    }
-
-    if (!result) {
-      throw new Error("Failed to create followup object");
-    }
-    return result;
-  } catch (error) {
-    console.log("Error creating followup with meta:", error);
-    throw error;
-  }
-}
-
-export const saveFollowupToAPI = async (
-  realm: Realm,
-  followupData: Record<string, any>,
-  t: TFunction,
-  apiUrl: string = "/followups"
-): Promise<void> => {
-  try {
-    console.log(
-      "saveFollowupToAPI received data:",
-      JSON.stringify(followupData, null, 2)
-    );
-
-    // Only check for duplicates if the form is under a module (has source_module_id) 
-    // AND source_module_id is not 22 (direct forms that can have multiple submissions)
-    if (followupData.source_module_id && followupData.source_module_id !== 22) {
-      const existingFollowups = realm.objects<FollowUps>(FollowUps);
-      const isDuplicate = existingFollowups.some(
-        (followup) =>
-          followup.followup_date === followupData.followup_date &&
-          followup.survey_result?.id === followupData.survey_result_id &&
-          followup.survey?.id === followupData.survey_id
-      );
-
-      if (isDuplicate) {
-        Toast.show({
-          type: "error",
-          text1: t("Alerts.error.title"),
-          text2: t("Alerts.error.duplicate.followup"),
-          position: "top",
-          visibilityTime: 4000,
-        });
-        return;
-      }
-    }
-
-    // Format the date from object to yyyy-mm-dd
-    let formattedDate: string;
-    if (
-      typeof followupData.followup_date === "object" &&
-      followupData.followup_date !== null
-    ) {
-      const { year, month, day } = followupData.followup_date;
-      formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(
-        2,
-        "0"
-      )}`;
-    } else if (typeof followupData.followup_date === "string") {
-      formattedDate = followupData.followup_date.includes("T")
-        ? followupData.followup_date.split("T")[0]
-        : followupData.followup_date;
-    } else {
-      throw new Error("Invalid followup_date format");
-    }
-
-    // Prepare form data
-    const formData = {
-      project_module_id: followupData.project_module_id,
-      project_id: followupData.project_id,
-      source_module_id: followupData.source_module_id,
-      survey_id: followupData.survey_id,
-      survey_result_id: followupData.survey_result_id,
-      user_id: followupData.user_id,
-    };
-
-    // Prepare sync data
-    const syncData = followupData.sync_data || {
-      sync_status: false,
-      sync_reason: "New record",
-      sync_attempts: 0,
-      last_sync_attempt: new Date().toISOString(),
-      submitted_at: new Date().toISOString(),
-      created_by_user_id: followupData.user_id,
-      sync_type: SyncType.follow_ups,
-    };
-
-    const sanitizedFollowupData = {
-      ...followupData,
-      followup_date: formattedDate,
-      form_data: formData,
-      sync_data: syncData,
-    };
-
-    const isConnected = isOnline();
-    console.log("Network connection status:", isConnected);
-
-    // If we're online, try to submit to API first
-    if (isConnected) {
-      try {
-        Toast.show({
-          type: "info",
-          text1: t("Alerts.saving.followup"),
-          text2: t("Alerts.submitting.server"),
-          position: "top",
-          visibilityTime: 2000,
-        });
-
-        console.log("Attempting to send data to API");
-
-        const apiData = {
-          followup_date: formattedDate,
-          status: followupData.status,
-          comment: followupData.comment,
-          project_module_id: followupData.project_module_id,
-          survey_result_id: followupData.survey_result_id,
-          project_id: followupData.project_id,
-          module_id: followupData.source_module_id,
-          survey_id: followupData.survey_id,
-        };
-
-        console.log(
-          "Data being sent to API:",
-          JSON.stringify(apiData, null, 2)
-        );
-
-        // Send to API
-        baseInstance
-          .post(apiUrl, apiData)
-          .then((response) => {
-            if (response.data?.data) {
-              console.log("API returned data:", response.data.data);
-
-              const completeData = {
-                ...response.data.data,
-                user: followupData.user,
-                survey: followupData.survey,
-                survey_result: followupData.survey_result,
-                sync_data: {
-                  sync_status: true,
-                  sync_reason: "Successfully synced",
-                  sync_attempts: 1,
-                  last_sync_attempt: new Date().toISOString(),
-                  submitted_at: new Date().toISOString(),
-                  created_by_user_id: followupData.user.id,
-                  sync_type: SyncType.follow_ups,
-                },
-              };
-
-              console.log(
-                "Complete data for Realm:",
-                JSON.stringify(completeData, null, 2)
-              );
-
-              try {
-                realm.write(() => {
-                  realm.create(
-                    FollowUps,
-                    completeData,
-                    Realm.UpdateMode.Modified
-                  );
-                });
-
-                Toast.show({
-                  type: "success",
-                  text1: t("Alerts.success.title"),
-                  text2: t("Alerts.success.followup"),
-                  position: "top",
-                  visibilityTime: 3000,
-                });
-                router.push("/(history)/history");
-              } catch (error: any) {
-                console.error("Error saving to Realm:", error);
-                Toast.show({
-                  type: "error",
-                  text1: t("Alerts.error.title"),
-                  text2: t("Alerts.error.save_failed.local"),
-                  position: "top",
-                  visibilityTime: 4000,
-                });
-              }
-            } else {
-              // If API didn't return data, save locally
-              console.log("API did not return data, saving locally");
-              try {
-                createTemporaryFollowup(realm, sanitizedFollowupData);
-                Toast.show({
-                  type: "info",
-                  text1: t("Alerts.info.saved_locally"),
-                  text2: t("Alerts.info.api_invalid"),
-                  position: "top",
-                  visibilityTime: 3000,
-                });
-                router.push("/(history)/history");
-              } catch (error: any) {
-                console.error("Error saving temporary follow-up:", error);
-                Toast.show({
-                  type: "error",
-                  text1: t("Alerts.error.title"),
-                  text2: t("Alerts.error.save_failed.local"),
-                  position: "top",
-                  visibilityTime: 4000,
-                });
-              }
-            }
-          })
-          .catch((error: any) => {
-            console.log("Error submitting follow-up to API:", error);
-            console.log("Error response:", error.response?.data);
-            console.log(
-              "Error details:",
-              JSON.stringify(error, Object.getOwnPropertyNames(error))
-            );
-
-            Toast.show({
-              type: "error",
-              text1: t("Alerts.error.title"),
-              text2: t("Alerts.error.save_failed.server"),
-              position: "top",
-              visibilityTime: 4000,
-            });
-
-            // Fall back to offline approach if API submission fails
-            try {
-              createTemporaryFollowup(realm, sanitizedFollowupData);
-              Toast.show({
-                type: "info",
-                text1: t("Alerts.info.saved_locally"),
-                text2: t("Alerts.submitting.offline"),
-                position: "top",
-                visibilityTime: 3000,
-              });
-              router.push("/(history)/history");
-            } catch (error: any) {
-              console.error("Error saving temporary follow-up:", error);
-              Toast.show({
-                type: "error",
-                text1: t("Alerts.error.title"),
-                text2: t("Alerts.error.save_failed.local"),
-                position: "top",
-                visibilityTime: 4000,
-              });
-            }
-          });
-      } catch (error: any) {
-        console.error("Error in API submission block:", error);
-        Toast.show({
-          type: "error",
-          text1: t("Alerts.error.title"),
-          text2: t("Alerts.error.submission.process"),
-          position: "top",
-          visibilityTime: 4000,
-        });
-      }
-    } else {
-      // Offline mode - create with locally generated ID
-      try {
-        createTemporaryFollowup(realm, sanitizedFollowupData);
-        Toast.show({
-          type: "info",
-          text1: t("Alerts.info.offline_mode"),
-          text2: t("Alerts.info.will_sync"),
-          position: "top",
-          visibilityTime: 3000,
-        });
-        router.push("/(history)/history");
-      } catch (error: any) {
-        console.error("Error saving temporary follow-up:", error);
-        Toast.show({
-          type: "error",
-          text1: t("Alerts.error.title"),
-          text2: t("Alerts.error.save_failed.local"),
-          position: "top",
-          visibilityTime: 4000,
-        });
-      }
-    }
-  } catch (error: any) {
-    console.log("Error in saveFollowupToAPI:", error);
-    console.log(
-      "Error details:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error))
-    );
-
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.submission.unexpected"),
-      position: "top",
-      visibilityTime: 4000,
-    });
-  }
-};
-
-export const syncTemporaryFollowups = async (
-  realm: Realm,
-  apiUrl: string,
-  t: TFunction,
-  userId?: number
-): Promise<void> => {
-  if (!isOnline()) {
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.network.title"),
-      text2: t("Alerts.error.network.offline"),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-    return;
-  }
-
-  if (!userId) {
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.sync.no_user"),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-    return;
-  }
-
-  // Find all followups that need syncing AND were created by the current user
-  const followupsToSync = realm
-    .objects<FollowUps>(FollowUps)
-    .filtered(
-      "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
-      userId
-    );
-
-  console.log(
-    `Found ${followupsToSync.length} followups to sync for current user`
-  );
-
-  if (followupsToSync.length === 0) {
-    Toast.show({
-      type: "info",
-      text1: t("Alerts.info.title"),
-      text2: t("Alerts.info.no_pending"),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-    return;
-  }
-
-  let successCount = 0;
-  let failureCount = 0;
-
-  for (const followup of followupsToSync) {
+  const loadFollowUps = useCallback(async () => {
     try {
-      // Format the date
-      let formattedDate = followup.followup_date;
-      if (
-        typeof followup.followup_date === "object" &&
-        followup.followup_date !== null
-      ) {
-        const { year, month, day } = followup.followup_date as any;
-        formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(
-          2,
-          "0"
-        )}`;
-      } else if (
-        typeof followup.followup_date === "string" &&
-        followup.followup_date.includes("T")
-      ) {
-        formattedDate = followup.followup_date.split("T")[0];
-      }
-
-      const apiData = {
-        followup_date: formattedDate,
-        status: followup.status,
-        comment: followup.comment,
-        project_module_id: followup.form_data?.project_module_id,
-        survey_result_id: followup.form_data?.survey_result_id,
-        project_id: followup.form_data?.project_id,
-        module_id: followup.form_data?.source_module_id,
-        survey_id: followup.form_data?.survey_id,
-      };
-
-      const response = await baseInstance.post(apiUrl, apiData);
-
-      if (response.data?.data) {
-        const updatedData = {
-          ...response.data.data,
-          user: followup.user,
-          survey: followup.survey,
-          survey_result: followup.survey_result,
-          sync_data: {
-            sync_status: true,
-            sync_reason: "Successfully synced",
-            sync_attempts:
-              (followup.sync_data?.sync_attempts
-                ? Number(followup.sync_data.sync_attempts)
-                : 0) + 1,
-            last_sync_attempt: new Date().toISOString(),
-            submitted_at:
-              followup.sync_data?.submitted_at || new Date().toISOString(),
-            sync_type: SyncType.follow_ups,
-          },
-        };
-
-        realm.write(() => {
-          realm.create(FollowUps, updatedData, Realm.UpdateMode.Modified);
-        });
-        successCount++;
-      }
-    } catch (error: any) {
-      failureCount++;
-      console.error("Error syncing Followup to API:", error);
-
-      realm.write(() => {
-        if (followup.sync_data) {
-          followup.sync_data.sync_status = false;
-          followup.sync_data.sync_type = SyncType.follow_ups;
-          followup.sync_data.sync_reason = `Failed: ${
-            error?.message || "Unknown error"
-          }`;
-          followup.sync_data.sync_attempts =
-            (followup.sync_data.sync_attempts
-              ? Number(followup.sync_data.sync_attempts)
-              : 0) + 1;
-          followup.sync_data.last_sync_attempt = new Date().toISOString();
-        }
-      });
+      setIsLoading(true);
+      const rows = await getAll("FollowUps");
+      setFollowUps(rows.map(sqliteRowToFollowUp));
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Error loading follow-ups:", err);
+      setError(err as Error);
+      setIsLoading(false);
     }
-  }
+  }, [getAll]);
 
-  // Show final status toast
-  if (successCount > 0 && failureCount === 0) {
-    Toast.show({
-      type: "success",
-      text1: t("Alerts.success.title"),
-      text2: t("Alerts.success.sync").replace(
-        "{count}",
-        successCount.toString()
-      ),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-  } else if (successCount > 0 && failureCount > 0) {
-    Toast.show({
-      type: "info",
-      text1: t("Alerts.info.title"),
-      text2: t("Alerts.info.partial_success")
-        .replace("{success}", successCount.toString())
-        .replace("{failed}", failureCount.toString()),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-  } else if (failureCount > 0) {
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.sync.failed").replace(
-        "{count}",
-        failureCount.toString()
-      ),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-  }
-};
+  const syncFollowUps = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const remoteData = await fetchFollowUpsFromRemote();
+      await deleteAll("FollowUps");
 
-// Function to get followups by survey result ID
-export function useGetFollowUpsBySurveyResultId(
-  surveyResultId: string,
-  surveyId: string
-) {
-  const followups = useQuery(FollowUps);
-  const filteredFollowups = followups.filter(
-    (followup) =>
-      followup.survey_result?.id === Number(surveyResultId) &&
-      followup.survey?.id === Number(surveyId)
+      if (remoteData.length > 0) {
+        const sqliteRows = remoteData.map(followUpToSQLiteRow);
+        await batchCreate("FollowUps", sqliteRows);
+      }
+
+      setFollowUps(remoteData);
+      setLastSyncTime(new Date());
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Error syncing follow-ups:", err);
+      setError(err as Error);
+      setIsLoading(false);
+    }
+  }, [deleteAll, batchCreate]);
+
+  const refresh = useCallback(
+    async (forceFetch: boolean = true) => {
+      if (forceFetch) {
+        await syncFollowUps();
+      } else {
+        await loadFollowUps();
+      }
+    },
+    [syncFollowUps, loadFollowUps]
   );
 
-  return { followups: filteredFollowups };
-}
+  // Get follow-ups by survey result ID
+  const getFollowUpsBySurveyResultId = useCallback(
+    async (survey: SurveySubmission): Promise<IFollowUp[]> => {
+      const rows = await query(
+        "SELECT * FROM FollowUps WHERE json_extract(survey_result, '$.id') = ? ORDER BY followup_date DESC",
+        [survey.id]
+      );
+      return rows.map(sqliteRowToFollowUp);
+    },
+    [query]
+  );
 
-// Function to get notification by ID
-export function useGetFollowUpById(id: number) {
-  const followups = useQuery(FollowUps);
+  useEffect(() => {
+    if (initialLoadDone.current && !forceSync) {
+      return;
+    }
 
-  const followup = followups.find((followup) => followup.id === id);
+    const initialize = async () => {
+      await loadFollowUps();
+      
+      if (forceSync || isStale() || followUps.length === 0) {
+        await syncFollowUps();
+      }
+      
+      initialLoadDone.current = true;
+    };
 
-  return { followup };
+    initialize();
+  }, [forceSync, loadFollowUps, syncFollowUps, isStale, followUps.length]);
+
+  return {
+    followUps,
+    isLoading,
+    error,
+    lastSyncTime,
+    refresh,
+    getFollowUpsBySurveyResultId, // Now it's a function, not a hook
+    saveFollowupToAPI, // Helper function
+  };
 }

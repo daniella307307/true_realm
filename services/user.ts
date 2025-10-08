@@ -1,17 +1,8 @@
 import { ILoginDetails, ILoginResponse, IResponse, User } from "~/types";
 import { baseInstance } from "~/utils/axios";
 import { fetchWithRetry, checkNetworkConnection, showNetworkErrorAlert } from "~/utils/networkHelpers";
-import { RealmContext } from "~/providers/RealContextProvider";
-import { Families } from "~/models/family/families";
-import { Izu } from "~/models/izus/izu";
-import { SurveySubmission } from "~/models/surveys/survey-submission";
-import { FollowUps } from "~/models/followups/follow-up";
-import { MonitoringResponses } from "~/models/monitoring/monitoringresponses";
-import Realm from "realm";
 
-const { useRealm } = RealmContext;
-
-export async function userLogout(realm: Realm | null) {
+export async function userLogout(sqlite: any | null) {
   // Proceed with the logout API call
   const res = await baseInstance.post<IResponse<{}>>(`/logout`);
   return res.data;
@@ -61,7 +52,8 @@ export async function userLogin(values: ILoginDetails) {
   }
 }
 
-export async function useGetCurrentLoggedInProfile() {
+// FIXED: Removed "use" prefix - this is NOT a Hook, it's a regular async function
+export async function getCurrentLoggedInProfile() {
   console.log("Fetching current user profile...");
   try {
     // Use fetchWithRetry for better reliability

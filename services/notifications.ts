@@ -1,10 +1,8 @@
-import { RealmContext } from "~/providers/RealContextProvider";
+import { useSQLite } from "~/providers/RealContextProvider";
 import { baseInstance } from "~/utils/axios";
 import { useDataSync } from "./dataSync";
-import { Notifications } from "~/models/notifications/notifications";
 import { showMultipleNotifications } from "./notificationService";
-
-const { useQuery, useRealm } = RealmContext;
+import { useEffect, useState } from "react";
 
 interface INotificationResponse {
   message: string;
@@ -73,17 +71,26 @@ export async function fetchNotificationsFromRemote() {
 }
 
 export function useGetNotifications(forceSync: boolean = false) {
-  const storedNotifications = useQuery(Notifications);
+  const { getAll } = useSQLite();
+  const [storedNotifications, setStoredNotifications] = useState<any[]>([]);
 
   const { syncStatus, refresh } = useDataSync([
     {
       key: "notifications",
       fetchFn: fetchNotificationsFromRemote,
-      model: Notifications,
+      tableName: "Notifications",
       staleTime: 5 * 60 * 1000, // 5 minutes
       forceSync,
     },
   ]);
+  
+  useEffect(() => {
+    const load = async () => {
+      const rows = await getAll("Notifications");
+      setStoredNotifications(rows);
+    };
+    load();
+  }, [syncStatus.notifications?.lastSyncTime, getAll]);
 
   return {
     notifications: storedNotifications,
@@ -96,12 +103,19 @@ export function useGetNotifications(forceSync: boolean = false) {
 
 // Function to get notification by ID
 export function useGetNotificationById(id: string | number) {
-  const realm = useRealm();
-  const notifications = useQuery(Notifications);
+  const { getAll } = useSQLite();
+  const [notification, setNotification] = useState<any | null>(null);
   
-  const notification = notifications.find(notification => 
-    notification.id.toString() === (typeof id === 'number' ? id : parseInt(id)).toString()
-  );
-  
+  useEffect(() => {
+    const load = async () => {
+      const rows = await getAll("Notifications");
+      const found = rows.find(
+        (n: any) => n.id.toString() === id.toString()
+      );
+      setNotification(found || null);
+    };
+    load();
+  }, [id, getAll]);
+
   return { notification };
-} 
+}

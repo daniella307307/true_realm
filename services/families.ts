@@ -1,172 +1,117 @@
-import { Families } from "~/models/family/families";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { FormField, IFamilies, SyncType } from "~/types";
-import { RealmContext } from "~/providers/RealContextProvider";
+import { useSQLite } from "~/providers/RealContextProvider";
 import { baseInstance } from "~/utils/axios";
-import { Realm } from "@realm/react";
-import { useDataSync } from "./dataSync";
+import { SyncConfig, useDataSync } from "./dataSync";
 import { isOnline } from "./network";
 import { useAuth } from "~/lib/hooks/useAuth";
-import { useMemo } from "react";
-import { Izu } from "~/models/izus/izu";
-import { filterDataByUserId } from "./filterData";
 import Toast from "react-native-toast-message";
 import { router } from "expo-router";
 import { TFunction } from "i18next";
 
-const { useQuery, useRealm } = RealmContext;
+// ============================================
+// HELPER FUNCTIONS FOR SQLite CONVERSION
+// ============================================
 
-export async function fetchFamiliesFromRemote() {
-  const res = await baseInstance.get<{
-    families: IFamilies[];
-  }>("/families");
+function familyToSQLiteRow(family: IFamilies): any {
+  const location = family.location || {};
+  const formData = family.form_data || {};
+  const syncData = family.sync_data || {};
+  const meta = family.meta || {};
+
   return {
-    families: res.data.families || [],
+    _id: family._id || family.id?.toString(),
+    id: family.id,
+    hh_id: family.hh_id,
+    hh_head_fullname: family.hh_head_fullname,
+    village_name: family.village_name,
+    village_id: family.village_id,
+    izucode: family.izucode,
+    
+    location_province: location.province,
+    location_district: location.district,
+    location_sector: location.sector,
+    location_cell: location.cell,
+    location_village: location.village,
+    
+    form_data_time_spent_filling_the_form: formData.time_spent_filling_the_form,
+    form_data_user_id: formData.user_id,
+    form_data_table_name: formData.table_name,
+    form_data_project_module_id: formData.project_module_id,
+    form_data_source_module_id: formData.source_module_id,
+    form_data_project_id: formData.project_id,
+    form_data_survey_id: formData.survey_id,
+    form_data_post_data: formData.post_data,
+    form_data_izucode: formData.izucode,
+    form_data_cohorts: formData.cohorts,
+    form_data_form_status: formData.form_status,
+    
+    sync_data_sync_status: syncData.sync_status ? true : false,
+    sync_data_sync_reason: syncData.sync_reason,
+    sync_data_sync_attempts: syncData.sync_attempts || 0,
+    sync_data_sync_type: syncData.sync_type,
+    sync_data_last_sync_attempt: syncData.last_sync_attempt,
+    sync_data_submitted_at: syncData.submitted_at,
+    
+    meta_json: JSON.stringify(meta),
+    
+    created_at: family.created_at || new Date().toISOString(),
+    updated_at: family.updated_at || new Date().toISOString(),
   };
 }
-export function useGetFamilies(forceSync: boolean = false) {
-  const realm = useRealm();
-  const storedFamilies = useQuery(Families);
-  const { user } = useAuth({});
-  // Move these queries to the top level
-  const allIzus = useQuery(Izu);
-  // console.log("The allIzus: ", JSON.stringify(allIzus, null, 2));
 
-  const { syncStatus, refresh } = useDataSync([
-    {
-      key: "families",
-      fetchFn: fetchFamiliesFromRemote,
-      model: Families,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      forceSync,
-      transformData: (data: { families: IFamilies[] }) => {
-        if (!data.families || data.families.length === 0) {
-          console.log("No families data to transform");
-          return [];
-        }
-
-        return data.families.map((fam) => ({
-          ...fam,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          location: fam.location || {},
-          meta: fam.meta || {},
-        }));
-      },
+function sqliteRowToFamily(row: any): IFamilies {
+  return {
+    _id: row._id,
+    id: row.id,
+    hh_id: row.hh_id,
+    hh_head_fullname: row.hh_head_fullname,
+    village_name: row.village_name,
+    village_id: row.village_id,
+    izucode: row.izucode,
+    
+    location: {
+      province: row.location_province,
+      district: row.location_district,
+      sector: row.location_sector,
+      cell: row.location_cell,
+      village: row.location_village,
     },
-  ]);
-
-  // Apply user ID filtering first
-  const userFilteredFamilies = useMemo(() => {
-    if (!user || !user.id) return storedFamilies;
-    return filterDataByUserId(storedFamilies, user.id);
-  }, [storedFamilies, user]);
-
-  // Filter families based on user's sector or cell and position
-  const filteredFamilies = useMemo(() => {
-    // If no user, return all families
-    if (!user || !user.json) return userFilteredFamilies;
-
-    const position = Number(user.position || user.json.position);
-    console.log("User position: ", position);
-
-    // If position is Cell Coordinator (7)
-    if (position === 7 && (user.cell || user.json.cell)) {
-      const userCell = user.cell || user.json.cell;
-      // Filter IZUs at top level, then use filtered results here
-      const relevantIzus = allIzus.filtered(
-        "position IN {7, 8} AND location.cell = $0",
-        userCell
-      );
-
-      const izucodes = relevantIzus.map((izu: Izu) => izu.izucode);
-      // Filter families by these izucodes
-      return userFilteredFamilies.filtered("izucode IN $0", izucodes);
-    }
-
-    // If position is Sector Coordinator (13)
-    if (position === 13 && (user.sector || user.json.sector)) {
-      const userSector = user.sector || user.json.sector;
-      // Filter IZUs at top level, then use filtered results here
-      const relevantIzus = allIzus.filtered(
-        "position IN {7, 8} AND location.sector = $0",
-        userSector
-      );
-
-      const izucodes = relevantIzus.map((izu: Izu) => izu.izucode);
-      console.log("The izucodes: ", JSON.stringify(izucodes, null, 2));
-      // Filter families by these izucodes
-      return userFilteredFamilies.filtered("izucode IN $0", izucodes);
-    }
-    console.log("User izucode: ", user.user_code);
-    // If position is Village Coordinator (8) and village is logged in izu's village check that the position matches and the village is the logged in izu's village
-    if (
-      position === 8 &&
-      (user.village || user.json.village) &&
-      user.user_code
-    ) {
-      const userVillage = user.village || user.json.village;
-      // Filter IZUs at top level, then use filtered results here
-      const relevantIzus = allIzus.filtered(
-        "position = $0 AND location.village = $1 AND izucode = $2",
-        position,
-        userVillage,
-        user.user_code
-      );
-
-      const izucodes = relevantIzus.map((izu: Izu) => izu.izucode);
-      console.log("The izucodes: ", JSON.stringify(izucodes, null, 2));
-      // Filter families by these izucodes
-      return userFilteredFamilies.filtered("izucode IN $0", izucodes);
-    }
-
-    // Default return all families
-    return userFilteredFamilies;
-  }, [userFilteredFamilies, user, allIzus]);
-
-  return {
-    families: filteredFamilies,
-    isLoading: syncStatus.families?.isLoading || false,
-    error: syncStatus.families?.error || null,
-    lastSyncTime: syncStatus.families?.lastSyncTime || null,
-    refresh: () => refresh("families", forceSync),
+    
+    form_data: {
+      time_spent_filling_the_form: row.form_data_time_spent_filling_the_form,
+      user_id: row.form_data_user_id,
+      table_name: row.form_data_table_name,
+      project_module_id: row.form_data_project_module_id,
+      source_module_id: row.form_data_source_module_id,
+      project_id: row.form_data_project_id,
+      survey_id: row.form_data_survey_id,
+      post_data: row.form_data_post_data,
+      izucode: row.form_data_izucode,
+      cohorts: row.form_data_cohorts,
+      form_status: row.form_data_form_status,
+    },
+    
+    sync_data: {
+      sync_status: Boolean(row.sync_data_sync_status),
+      sync_reason: row.sync_data_sync_reason,
+      sync_attempts: row.sync_data_sync_attempts,
+      sync_type: row.sync_data_sync_type,
+      last_sync_attempt: row.sync_data_last_sync_attempt,
+      submitted_at: row.sync_data_submitted_at
+    },
+    
+    meta: row.meta_json ? JSON.parse(row.meta_json) : {},
+    
+    created_at: row.created_at,
+    updated_at: row.updated_at,
   };
-}
-
-// Function to useGetAllLocallyCreatedFamilies
-export function useGetAllLocallyCreatedFamilies() {
-  const storedFamilies = useQuery(Families);
-
-  return {
-    locallyCreatedFamilies: storedFamilies.filter(
-      (family) =>
-        family.sync_data?.sync_status === true ||
-        family.sync_data?.sync_status === false
-    ),
-    isLoading: false,
-    error: null,
-    lastSyncTime: null,
-    refresh: () => {},
-  };
-}
-
-function getNextAvailableId(realm: Realm): number {
-  try {
-    const families = realm.objects<Families>(Families);
-    if (families.length > 0) {
-      return Math.max(...families.map((f) => f.id)) + 1;
-    }
-    return 1; // Start with 1 if no records exist
-  } catch (error) {
-    console.log("Error getting next ID, using default:", error);
-    return 1;
-  }
 }
 
 function prepareMetaData(
   familyData: Record<string, any>,
   extraFields: FormField[] = []
 ) {
-  // If field definitions are provided, use them to extract specific fields
   if (extraFields.length > 0) {
     return Object.fromEntries(
       extraFields
@@ -179,7 +124,6 @@ function prepareMetaData(
         .map((field) => {
           const value = familyData[field.key];
 
-          // Handle different field types
           switch (field.type) {
             case "switch":
               return [field.key, value ? true : false];
@@ -195,289 +139,472 @@ function prepareMetaData(
     );
   }
 
-  // If no field definitions are provided, return the familyData as-is for meta
-  // This preserves all form field answers just like survey submissions
   return familyData;
 }
 
-export const createFamilyWithMeta = (
-  realm: Realm,
-  familyData: Record<string, any>,
-  extraFields: FormField[] = []
-): Families => {
-  try {
-    // Prepare metadata
-    const meta = familyData.meta || prepareMetaData(familyData, extraFields);
-    // Generate or use provided ID
-    const id =
-      typeof familyData.id === "number"
-        ? familyData.id
-        : getNextAvailableId(realm);
-    // console.log("Using ID:", id);
+// =========================================
 
-    // Prepare location object
-    const location =
-      typeof familyData.location === "object"
-        ? familyData.location
-        : {
-            province: familyData.province,
-            district: familyData.district,
-            sector: familyData.sector,
-            cell: familyData.cell,
-            village: familyData.village,
-          };
+const configs: SyncConfig<IFamilies>[] = [
+  {
+    key: "families",
+    tableName: "Families",
+    transformData: (data: any) => {
+      return data.families.map((fam: any) => ({
+        ...fam,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        location: fam.location || {},
+        meta: fam.meta || {},
+      }));
+    },
+    fetchFn: async () => {
+      const res = await baseInstance.get("/get-families");
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 10,
+    forceSync: true,
+  },
+];
 
-    const formData = {
-      time_spent_filling_the_form:
-        familyData.time_spent_filling_the_form || null,
-      user_id: familyData.user_id || null,
-      table_name: familyData.table_name || null,
-      project_module_id: familyData.project_module_id || null,
-      source_module_id: familyData.source_module_id || null,
-      project_id: familyData.project_id || null,
-      survey_id: familyData.survey_id || null,
-      post_data: familyData.post_data || null,
-      izucode: familyData.izucode || null,
-      cohorts: familyData.cohorts || null,
-      form_status: familyData.form_status || null,
-    };
+export function useFamilyService() {
+  const { db, isReady, getAll } = useSQLite();
+  const { syncStatus, refresh } = useDataSync(configs);
+  const { user } = useAuth({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [families, setFamilies] = useState<IFamilies[]>([]);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  
+  const t: TFunction<"translation", undefined> = useMemo(() => {
+    try {
+      return require("i18next").t;
+    } catch {
+      return (key: string) => key;
+    }
+  }, []);
 
-    const syncData = familyData.sync_data || {
-      sync_status: false,
-      sync_reason: "New record",
-      sync_attempts: 0,
-      last_sync_attempt: new Date(),
-      sync_type: SyncType.families,
-      submitted_at: new Date(),
-      created_by_user_id: familyData.user_id || null,
-    };
+  const loadFamilies = useCallback(async () => {
+    if (!isReady) return;
+    try {
+      setLoading(true);
+      const rows = await getAll<any>("Families");
+      const familyList: IFamilies[] = []; 
+      rows.forEach(result => {
+        for (let i = 0; i < result.rows.length; i++) {
+          const row = result.rows.item(i);
+          familyList.push(sqliteRowToFamily(row));
+        }
+      });
+      setFamilies(familyList);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error loading families:", err);
+      setError(err as Error);
+      setLoading(false);
+    }
+  }, [isReady, getAll]);
 
-    const family = {
-      id,
-      ...familyData,
-      hh_id: familyData.hh_id,
-      hh_head_fullname: familyData.hh_head_fullname || "Unknown",
-      village_name: familyData.village_name || "Unknown",
-      village_id: familyData.village_id || null,
-      izucode: familyData.izucode || null,
-      location,
-      meta,
-      form_data: formData,
-      sync_data: syncData,
-    };
-
-    let result;
-
-    // Handle transaction
-    const createFamilyInRealm = () => {
-      console.log("Creating family in realm:", JSON.stringify(family, null, 2));
-      return realm.create(Families, family, Realm.UpdateMode.Modified);
-    };
-
-    if (realm.isInTransaction) {
-      result = createFamilyInRealm();
-    } else {
-      realm.write(() => {
-        result = createFamilyInRealm();
+  const syncFamilies = useCallback(async (force: boolean = false) => {
+    if (!isReady) {
+      console.log("SQLite not ready, cannot sync families");
+      return;
+    }
+    if (!user) {
+      console.log("No authenticated user, cannot sync families");
+      return;
+    }
+    if (!isOnline()) {
+      console.log("Offline, cannot sync families");
+      Toast.show({
+        type: "error",
+        text1: t("You are offline. Please connect to the internet to sync families."),
+      });
+      return;
+    }
+    try {
+      setLoading(true);
+      await refresh("families", true);
+      setLastSyncTime(new Date());
+      await loadFamilies();
+      setLoading(false);
+      Toast.show({
+        type: "success",
+        text1: t("Families synced successfully"),
+      });
+    } catch (err) {
+      console.error("Error syncing families:", err);
+      setError(err as Error);
+      setLoading(false);
+      Toast.show({
+        type: "error",
+        text1: t("Error syncing families"),
+        text2: (err as Error).message,
       });
     }
+  }, [isReady, user, t, refresh, loadFamilies]);
 
-    if (!result) {
-      throw new Error("Failed to create family object");
-    }
-    return result;
-  } catch (error) {
-    console.log("Error creating family with meta:", error);
-    throw error;
-  }
-};
+  useEffect(() => {
+    loadFamilies();
+  }, [loadFamilies]);
 
-function createTemporaryFamily(
-  realm: Realm,
-  familyData: Record<string, any>,
-  extraFields: FormField[] = []
-): Families {
-  // We'll keep the same ID format but mark it as temporary
-  const localId = getNextAvailableId(realm);
-
-  // Add sync data marking this as needing to be synced
-  const syncData = {
-    sync_status: familyData.sync_data?.sync_status ?? false,
-    sync_reason: "Created offline",
-    sync_attempts: familyData.sync_data?.sync_attempts ?? 0,
-    last_sync_attempt: familyData.sync_data?.last_sync_attempt ?? new Date(),
-    sync_type: SyncType.families,
-    submitted_at: familyData.sync_data?.submitted_at ?? new Date(),
-    created_by_user_id: familyData.sync_data?.created_by_user_id || null,
+  return {
+    families,
+    loading,  
+    error,
+    lastSyncTime,
+    loadFamilies,
+    syncFamilies,
   };
-  // Create temporary family data with all fields
-  const tempFamilyData = {
-    ...familyData,
-    id: localId,
-    hh_id: null,
-    sync_data: syncData,
-  };
-
-  return createFamilyWithMeta(realm, tempFamilyData, extraFields);
 }
 
-// Function to replace a temporary family with the official one from API
-function replaceTemporaryFamily(
-  realm: Realm,
-  tempFamily: Families,
-  apiData: Record<string, any>
-): Families {
-  // We'll update the existing record with API data, keeping the same local ID
-  const updatedFamily = {
-    ...apiData,
-    id: tempFamily.id, // Keep the same local ID
-    hh_id: apiData.hh_id, // Update hh_id from API
-    izucode: apiData.izucode || null,
-    sync_data: {
-      sync_status: true,
-      sync_reason: "Synced with server",
-      sync_type: SyncType.families,
-      sync_attempts:
-        (tempFamily.sync_data?.sync_attempts
-          ? Number(tempFamily.sync_data.sync_attempts)
-          : 0) + 1,
-      last_sync_attempt: new Date().toISOString(),
-      submitted_at:
-        tempFamily.sync_data?.submitted_at || new Date().toISOString(),
-    },
+export async function fetchFamiliesFromRemote() {
+  const res = await baseInstance.get<{ families: IFamilies[] }>("/get-families");
+  return {
+    families: res.data.families || [],
   };
-
-  return createFamilyWithMeta(realm, updatedFamily, []);
 }
 
-export const saveFamilyToAPI = (
-  realm: Realm,
-  familyData: Record<string, any>,
-  apiUrl: string,
-  t: TFunction,
-  extraFields: FormField[] = []
-): void => {
-  try {
-    console.log(
-      "saveFamilyToAPI received data:",
-      JSON.stringify(familyData, null, 2)
-    );
+export function useGetFamilies(forceSync: boolean = false) {
+  const { getAll, batchCreate } = useSQLite();
+  const { user } = useAuth({});
+  const [storedFamilies, setStoredFamilies] = useState<IFamilies[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [allIzus, setAllIzus] = useState<any[]>([]);
 
-    // Only check for duplicates if the form is under a module (has source_module_id)
-    // AND source_module_id is not 22 (direct forms that can have multiple submissions)
-    if (familyData.source_module_id && familyData.source_module_id !== 22) {
-      const existingFamilies = realm.objects<Families>(Families);
-      const isDuplicate = existingFamilies.some(
-        (family) =>
-          family.hh_head_fullname === familyData.hh_head_fullname &&
-          family.village_id === familyData.village_id &&
-          family.izucode === familyData.izucode
-      );
-
-      if (isDuplicate) {
-        Toast.show({
-          type: "error",
-          text1: t("Alerts.error.title"),
-          text2: t("Alerts.error.duplicate.family"),
-          position: "top",
-          visibilityTime: 4000,
-        });
-        return;
-      }
-    }
-
-    // Prepare location data
-    const location =
-      typeof familyData.location === "object"
-        ? familyData.location
-        : {
-            province: familyData.province,
-            district: familyData.district,
-            sector: familyData.sector,
-            cell: familyData.cell,
-            village: familyData.village,
-          };
-
-    // Prepare form data
-    const formData = {
-      time_spent_filling_the_form:
-        familyData.time_spent_filling_the_form || null,
-      user_id: familyData.user_id || null,
-      table_name: familyData.table_name || null,
-      project_module_id: familyData.project_module_id || null,
-      source_module_id: familyData.source_module_id || null,
-      project_id: familyData.project_id || null,
-      survey_id: familyData.survey_id || null,
-      post_data: familyData.post_data || null,
-      izucode: familyData.izucode || null,
-      cohorts: familyData.cohorts || null,
-    };
-
-    // Prepare sync data
-    const syncData = familyData.sync_data || {
-      sync_status: false,
-      sync_reason: "New record",
-      sync_attempts: 0,
-      last_sync_attempt: new Date(),
-      submitted_at: new Date(),
-      sync_type: SyncType.families,
-      created_by_user_id: familyData.user_id || null,
-    };
-
-    const sanitizedFamilyData = {
-      ...familyData,
-      id: familyData.id || null,
-      hh_id: null, // Always set hh_id to null for local records
-      hh_head_fullname:
-        familyData.hh_head_fullname ||
-        familyData.head_of_household ||
-        "Unknown",
-      village_name: familyData.village_name || "Unknown",
-      village_id: familyData.village_id || null,
-      sync_data: syncData,
-      form_data: formData,
-      meta: prepareMetaData(familyData, extraFields),
-      location,
-    };
-
-    const isConnected = isOnline();
-    console.log("Network connection status:", isConnected);
-
-    // If we're online, try to submit to API first
-    if (isConnected) {
+  useEffect(() => {
+    const loadData = async () => {
       try {
-        Toast.show({
-          type: "info",
-          text1: t("Alerts.saving.family"),
-          text2: t("Alerts.submitting.server"),
-          position: "top",
-          visibilityTime: 2000,
-        });
+        const izuRows = await getAll<any>("Izu");
+        setAllIzus(izuRows);
 
-        console.log("Attempting to send data to API");
-        // Prepare data for API - flatten meta fields at the top level
-        const apiData = {
-          ...familyData,
-          ...(sanitizedFamilyData.meta || {}),
-          ...(sanitizedFamilyData.form_data || {}),
-          meta: undefined, // Add this to ensure we can delete it safely
+        const familyRows = await getAll<any>("Families");
+        const families = familyRows.map(sqliteRowToFamily);
+
+        if (families.length === 0 && forceSync && isOnline()) {
+          const remoteData = await fetchFamiliesFromRemote();
+          const transformedFamilies = remoteData.families.map((fam) => ({
+            ...fam,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            location: fam.location || {},
+            meta: fam.meta || {},
+          }));
+
+          const sqliteRows = transformedFamilies.map(familyToSQLiteRow);
+          await batchCreate("Families", sqliteRows);
+          setStoredFamilies(transformedFamilies);
+        } else {
+          setStoredFamilies(families);
+        }
+
+        setIsLoading(false);
+      } catch (err) {
+        console.error("Error loading families:", err);
+        setError(err as Error);
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [forceSync, getAll, batchCreate]);
+
+  const userFilteredFamilies = useMemo(() => {
+    if (!user?.id) return storedFamilies;
+    return storedFamilies.filter(
+      (family) => family.form_data?.user_id === user.id
+    );
+  }, [storedFamilies, user]);
+
+  const filteredFamilies = useMemo(() => {
+    if (!user || !user.json) return userFilteredFamilies;
+
+    const position = Number(user.position || user.json.position);
+
+    if (position === 7 && (user.cell || user.json.cell)) {
+      const userCell = user.cell || user.json.cell;
+      const relevantIzus = allIzus.filter(
+        (izu) =>
+          (izu.position === 7 || izu.position === 8) &&
+          izu.location_cell === userCell
+      );
+      const izucodes = relevantIzus.map((izu) => izu.izucode);
+      return userFilteredFamilies.filter((family) =>
+        izucodes.includes(family.izucode)
+      );
+    }
+
+    if (position === 13 && (user.sector || user.json.sector)) {
+      const userSector = user.sector || user.json.sector;
+      const relevantIzus = allIzus.filter(
+        (izu) =>
+          (izu.position === 7 || izu.position === 8) &&
+          izu.location_sector === userSector
+      );
+      const izucodes = relevantIzus.map((izu) => izu.izucode);
+      return userFilteredFamilies.filter((family) =>
+        izucodes.includes(family.izucode)
+      );
+    }
+
+    if (
+      position === 8 &&
+      (user.village || user.json.village) &&
+      user.user_code
+    ) {
+      const userVillage = user.village || user.json.village;
+      const relevantIzus = allIzus.filter(
+        (izu) =>
+          izu.position === position &&
+          izu.location_village === userVillage &&
+          izu.izucode === user.user_code
+      );
+      const izucodes = relevantIzus.map((izu) => izu.izucode);
+      return userFilteredFamilies.filter((family) =>
+        izucodes.includes(family.izucode)
+      );
+    }
+
+    return userFilteredFamilies;
+  }, [userFilteredFamilies, user, allIzus]);
+
+  return {
+    families: filteredFamilies,
+    isLoading,
+    error,
+    lastSyncTime: null,
+    refresh: () => {},
+  };
+}
+
+export function useGetAllLocallyCreatedFamilies() {
+  const { getAll } = useSQLite();
+  const [locallyCreatedFamilies, setLocallyCreatedFamilies] = useState<IFamilies[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFamilies = async () => {
+      try {
+        const rows = await getAll<any>("Families");
+        const families = rows.map(sqliteRowToFamily).filter(
+          (family) =>
+            family.sync_data?.sync_status === true ||
+            family.sync_data?.sync_status === false
+        );
+        setLocallyCreatedFamilies(families);
+      } catch (error) {
+        console.error("Error loading locally created families:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFamilies();
+  }, [getAll]);
+
+  return {
+    locallyCreatedFamilies,
+    isLoading,
+    error: null,
+    lastSyncTime: null,
+    refresh: () => {},
+  };
+}
+
+// ============================================
+// HOOK FOR FAMILY OPERATIONS
+// ============================================
+
+export function useFamilyOperations() {
+  const { create, getAll, update, getByQuery } = useSQLite();
+
+  const getNextAvailableId = useCallback(async (): Promise<number> => {
+    try {
+      const families = await getAll<any>("Families");
+      if (families.length > 0) {
+        const maxId = Math.max(...families.map((f) => f.id || 0));
+        return maxId + 1;
+      }
+      return 1;
+    } catch (error) {
+      console.log("Error getting next ID, using default:", error);
+      return 1;
+    }
+  }, [getAll]);
+
+  const createFamilyWithMeta = useCallback(
+    async (
+      familyData: Record<string, any>,
+      extraFields: FormField[] = []
+    ): Promise<IFamilies> => {
+      try {
+        const meta = familyData.meta || prepareMetaData(familyData, extraFields);
+        const id = typeof familyData.id === "number" ? familyData.id : await getNextAvailableId();
+
+        const location =
+          typeof familyData.location === "object"
+            ? familyData.location
+            : {
+                province: familyData.province,
+                district: familyData.district,
+                sector: familyData.sector,
+                cell: familyData.cell,
+                village: familyData.village,
+              };
+
+        const formData = {
+          time_spent_filling_the_form: familyData.time_spent_filling_the_form || null,
+          user_id: familyData.user_id || null,
+          table_name: familyData.table_name || null,
+          project_module_id: familyData.project_module_id || null,
+          source_module_id: familyData.source_module_id || null,
+          project_id: familyData.project_id || null,
+          survey_id: familyData.survey_id || null,
+          post_data: familyData.post_data || null,
+          izucode: familyData.izucode || null,
+          cohorts: familyData.cohorts || null,
+          form_status: familyData.form_status || null,
         };
 
-        // Remove the meta object itself from the API data
-        delete apiData.meta;
+        const syncData = familyData.sync_data || {
+          sync_status: false,
+          sync_reason: "New record",
+          sync_attempts: 0,
+          last_sync_attempt: new Date().toISOString(),
+          sync_type: SyncType.families,
+          submitted_at: new Date().toISOString(),
+          created_by_user_id: familyData.user_id || null,
+        };
 
-        console.log(
-          "Data being sent to API:",
-          JSON.stringify(apiData, null, 2)
-        );
+        const family: IFamilies = {
+          id,
+          ...familyData,
+          hh_id: familyData.hh_id,
+          hh_head_fullname: familyData.hh_head_fullname || "Unknown",
+          village_name: familyData.village_name || "Unknown",
+          village_id: familyData.village_id || null,
+          izucode: familyData.izucode || null,
+          location,
+          meta,
+          form_data: formData,
+          sync_data: syncData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          _id: ""
+        };
 
-        // Send to API
-        baseInstance
-          .post(apiUrl, apiData)
-          .then((response) => {
+        const sqliteRow = familyToSQLiteRow(family);
+        await create("Families", sqliteRow);
+
+        return family;
+      } catch (error) {
+        console.error("Error creating family with meta:", error);
+        throw error;
+      }
+    },
+    [create, getNextAvailableId]
+  );
+
+  const saveFamilyToAPI = useCallback(
+    async (
+      familyData: Record<string, any>,
+      apiUrl: string,
+      t: TFunction,
+      extraFields: FormField[] = []
+    ): Promise<void> => {
+      try {
+        if (familyData.source_module_id && familyData.source_module_id !== 22) {
+          const existingFamilies = await getAll<any>("Families");
+          const isDuplicate = existingFamilies.some(
+            (family) =>
+              family.hh_head_fullname === familyData.hh_head_fullname &&
+              family.village_id === familyData.village_id &&
+              family.izucode === familyData.izucode
+          );
+
+          if (isDuplicate) {
+            Toast.show({
+              type: "error",
+              text1: t("Alerts.error.title"),
+              text2: t("Alerts.error.duplicate.family"),
+              position: "top",
+              visibilityTime: 4000,
+            });
+            return;
+          }
+        }
+
+        const location =
+          typeof familyData.location === "object"
+            ? familyData.location
+            : {
+                province: familyData.province,
+                district: familyData.district,
+                sector: familyData.sector,
+                cell: familyData.cell,
+                village: familyData.village,
+              };
+
+        const formData = {
+          time_spent_filling_the_form: familyData.time_spent_filling_the_form || null,
+          user_id: familyData.user_id || null,
+          table_name: familyData.table_name || null,
+          project_module_id: familyData.project_module_id || null,
+          source_module_id: familyData.source_module_id || null,
+          project_id: familyData.project_id || null,
+          survey_id: familyData.survey_id || null,
+          post_data: familyData.post_data || null,
+          izucode: familyData.izucode || null,
+          cohorts: familyData.cohorts || null,
+        };
+
+        const syncData = familyData.sync_data || {
+          sync_status: false,
+          sync_reason: "New record",
+          sync_attempts: 0,
+          last_sync_attempt: new Date().toISOString(),
+          submitted_at: new Date().toISOString(),
+          sync_type: SyncType.families,
+          created_by_user_id: familyData.user_id || null,
+        };
+
+        const sanitizedFamilyData = {
+          ...familyData,
+          id: familyData.id || null,
+          hh_id: null,
+          hh_head_fullname: familyData.hh_head_fullname || familyData.head_of_household || "Unknown",
+          village_name: familyData.village_name || "Unknown",
+          village_id: familyData.village_id || null,
+          sync_data: syncData,
+          form_data: formData,
+          meta: prepareMetaData(familyData, extraFields),
+          location,
+        };
+
+        const isConnected = isOnline();
+
+        if (isConnected) {
+          try {
+            Toast.show({
+              type: "info",
+              text1: t("Alerts.saving.family"),
+              text2: t("Alerts.submitting.server"),
+              position: "top",
+              visibilityTime: 2000,
+            });
+
+            const apiData: any = {
+              ...familyData,
+              ...(sanitizedFamilyData.meta || {}),
+              ...(sanitizedFamilyData.form_data || {}),
+            };
+            if ("meta" in apiData) {
+              delete apiData.meta;
+            }
+
+            const response = await baseInstance.post(apiUrl, apiData);
+
             if (response.data?.result?.id) {
-              console.log("API returned ID:", response.data.result.id);
-
               const completeData = {
                 ...sanitizedFamilyData,
                 id: response.data.result.id,
@@ -488,316 +615,201 @@ export const saveFamilyToAPI = (
                   sync_status: true,
                   sync_reason: "Successfully synced",
                   sync_attempts: 1,
-                  last_sync_attempt: new Date(),
-                  submitted_at: new Date(),
+                  last_sync_attempt: new Date().toISOString(),
+                  submitted_at: new Date().toISOString(),
                   created_by_user_id: familyData.user_id || null,
                   sync_type: SyncType.families,
                 },
               };
 
-              console.log(
-                "Complete data for Realm:",
-                JSON.stringify(completeData, null, 2)
-              );
-
-              try {
-                createFamilyWithMeta(realm, completeData, extraFields);
-                Toast.show({
-                  type: "success",
-                  text1: t("Alerts.success.title"),
-                  text2: t("Alerts.success.family"),
-                  position: "top",
-                  visibilityTime: 3000,
-                });
-                router.push("/(history)/history");
-              } catch (error: any) {
-                console.error("Error saving to Realm:", error);
-                Toast.show({
-                  type: "error",
-                  text1: t("Alerts.error.title"),
-                  text2: t("Alerts.error.save_failed.local"),
-                  position: "top",
-                  visibilityTime: 4000,
-                });
-              }
-            } else {
-              // If API didn't return an ID, save locally
-              console.log("API did not return an ID, saving locally");
-              try {
-                createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
-                Toast.show({
-                  type: "info",
-                  text1: t("Alerts.info.saved_locally"),
-                  text2: t("Alerts.info.api_invalid"),
-                  position: "top",
-                  visibilityTime: 3000,
-                });
-                router.push("/(history)/history");
-              } catch (error: any) {
-                console.error("Error saving temporary family:", error);
-                Toast.show({
-                  type: "error",
-                  text1: t("Alerts.error.title"),
-                  text2: t("Alerts.error.save_failed.local"),
-                  position: "top",
-                  visibilityTime: 4000,
-                });
-              }
-            }
-          })
-          .catch((error) => {
-            console.log("Error submitting family to API:", error);
-            console.log("Error response:", error.response?.data);
-            console.log(
-              "Error details:",
-              JSON.stringify(error, Object.getOwnPropertyNames(error))
-            );
-
-            Toast.show({
-              type: "error",
-              text1: t("Alerts.error.title"),
-              text2: t("Alerts.error.save_failed.server"),
-              position: "top",
-              visibilityTime: 4000,
-            });
-
-            // Fall back to offline approach if API submission fails
-            try {
-              createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
+              await createFamilyWithMeta(completeData, extraFields);
+              
               Toast.show({
-                type: "info",
-                text1: t("Alerts.info.saved_locally"),
-                text2: t("Alerts.submitting.offline"),
+                type: "success",
+                text1: t("Alerts.success.title"),
+                text2: t("Alerts.success.family"),
                 position: "top",
                 visibilityTime: 3000,
               });
               router.push("/(history)/history");
-            } catch (error: any) {
-              console.error("Error saving temporary family:", error);
+            } else {
+              await createFamilyWithMeta(sanitizedFamilyData, extraFields);
               Toast.show({
-                type: "error",
-                text1: t("Alerts.error.title"),
-                text2: t("Alerts.error.save_failed.local"),
+                type: "info",
+                text1: t("Alerts.info.saved_locally"),
+                text2: t("Alerts.info.api_invalid"),
                 position: "top",
-                visibilityTime: 4000,
+                visibilityTime: 3000,
               });
+              router.push("/(history)/history");
             }
+          } catch (error: any) {
+            console.error("Error submitting family to API:", error);
+            
+            await createFamilyWithMeta(sanitizedFamilyData, extraFields);
+            Toast.show({
+              type: "info",
+              text1: t("Alerts.info.saved_locally"),
+              text2: t("Alerts.submitting.offline"),
+              position: "top",
+              visibilityTime: 3000,
+            });
+            router.push("/(history)/history");
+          }
+        } else {
+          await createFamilyWithMeta(sanitizedFamilyData, extraFields);
+          Toast.show({
+            type: "info",
+            text1: t("Alerts.info.offline_mode"),
+            text2: t("Alerts.info.will_sync"),
+            position: "top",
+            visibilityTime: 3000,
           });
+          router.push("/(history)/history");
+        }
       } catch (error: any) {
-        console.error("Error in API submission block:", error);
+        console.error("Error in saveFamilyToAPI:", error);
         Toast.show({
           type: "error",
           text1: t("Alerts.error.title"),
-          text2: t("Alerts.error.submission.process"),
+          text2: t("Alerts.error.submission.unexpected"),
           position: "top",
           visibilityTime: 4000,
         });
       }
-    } else {
-      console.log("Offline mode - creating temporary family");
-      // Offline mode - create with locally generated ID
-      try {
-        createTemporaryFamily(realm, sanitizedFamilyData, extraFields);
+    },
+    [getAll, createFamilyWithMeta]
+  );
+
+  const syncTemporaryFamilies = useCallback(
+    async (
+      query: <T = any>(sql: string, params?: any[]) => Promise<T[]>,
+      apiUrl: string,
+      t: TFunction,
+      userId?: number
+    ): Promise<void> => {
+      if (!isOnline()) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.network.title"),
+          text2: t("Alerts.error.network.offline"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+        return;
+      }
+
+      if (!userId) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: t("Alerts.error.sync.no_user"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+        return;
+      }
+
+      const pendingRows = await getByQuery<any>(
+        "Families",
+        "sync_data_sync_status = ?",
+        [false]
+      );
+
+      if (pendingRows.length === 0) {
         Toast.show({
           type: "info",
-          text1: t("Alerts.info.offline_mode"),
-          text2: t("Alerts.info.will_sync"),
+          text1: t("Alerts.info.title"),
+          text2: t("Alerts.info.no_pending"),
           position: "top",
-          visibilityTime: 3000,
+          visibilityTime: 4000,
         });
-        router.push("/(history)/history");
-      } catch (error: any) {
-        console.error("Error saving temporary family:", error);
+        return;
+      }
+
+      const familiesToSync = pendingRows.map(sqliteRowToFamily);
+
+      let successCount = 0;
+      let failureCount = 0;
+
+      for (const family of familiesToSync) {
+        try {
+          const apiData = {
+            hh_id: family.hh_id,
+            hh_head_fullname: family.hh_head_fullname,
+            izucode: family.izucode || null,
+            village_name: family.village_name,
+            village_id: family.village_id,
+            province: family.location?.province || 0,
+            district: family.location?.district || 0,
+            sector: family.location?.sector || 0,
+            cell: family.location?.cell || 0,
+            village: family.location?.village || 0,
+            ...family.form_data,
+            ...family.meta,
+          };
+
+          const response = await baseInstance.post(apiUrl, apiData);
+
+          if (response.data?.result?.id) {
+            await update("Families", family._id!, {
+              id: response.data.result.id,
+              hh_id: response.data.result.hh_id,
+              sync_data_sync_status: 1,
+              sync_data_sync_reason: "Successfully synced",
+              sync_data_sync_attempts: 1,
+              sync_data_last_sync_attempt: new Date().toISOString(),
+            });
+            successCount++;
+          }
+        } catch (error: any) {
+          failureCount++;
+          
+          if (family._id) {
+            await update("Families", family._id, {
+              sync_data_sync_attempts: (family.sync_data?.sync_attempts || 0) + 1,
+              sync_data_last_sync_attempt: new Date().toISOString(),
+              sync_data_sync_reason: `Failed: ${error?.message || "Unknown error"}`,
+            });
+          }
+        }
+      }
+
+      if (successCount > 0 && failureCount === 0) {
+        Toast.show({
+          type: "success",
+          text1: t("Alerts.success.title"),
+          text2: t("Alerts.success.sync").replace("{count}", successCount.toString()),
+          position: "top",
+          visibilityTime: 4000,
+        });
+      } else if (successCount > 0 && failureCount > 0) {
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.info.title"),
+          text2: t("Alerts.info.partial_success")
+            .replace("{success}", successCount.toString())
+            .replace("{failed}", failureCount.toString()),
+          position: "top",
+          visibilityTime: 4000,
+        });
+      } else if (failureCount > 0) {
         Toast.show({
           type: "error",
           text1: t("Alerts.error.title"),
-          text2: t("Alerts.error.save_failed.local"),
+          text2: t("Alerts.error.sync.failed").replace("{count}", failureCount.toString()),
           position: "top",
           visibilityTime: 4000,
         });
       }
-    }
-  } catch (error: any) {
-    console.log("Error in saveFamilyToAPI:", error);
-    console.log(
-      "Error details:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error))
-    );
+    },
+    [getByQuery, update]
+  );
 
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.submission.unexpected"),
-      position: "top",
-      visibilityTime: 4000,
-    });
-  }
-};
-
-// Function to sync temporary families with the server
-export const syncTemporaryFamilies = async (
-  realm: Realm,
-  apiUrl: string,
-  t: TFunction,
-  userId?: number
-): Promise<void> => {
-  if (!isOnline()) {
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.network.title"),
-      text2: t("Alerts.error.network.offline"),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-    return;
-  }
-
-  if (!userId) {
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.sync.no_user"),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-    return;
-  }
-
-  // Find all families that need syncing AND were created by the current user
-  const familiesToSync = realm
-    .objects<Families>(Families)
-    .filtered(
-      "sync_data.sync_status == false AND sync_data.created_by_user_id == $0",
-      userId
-    );
-
-  if (familiesToSync.length === 0) {
-    Toast.show({
-      type: "info",
-      text1: t("Alerts.info.title"),
-      text2: t("Alerts.info.no_pending"),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-    return;
-  }
-  ``;
-  let successCount = 0;
-  let failureCount = 0;
-
-  for (const family of familiesToSync) {
-    try {
-      // Extract data to send to API
-      const locationData = family.location || {};
-
-      // Prepare API data exactly like survey submissions and online submission
-      const apiData = {
-        hh_id: family.hh_id, // Will be null for unsynced records
-        hh_head_fullname: family.hh_head_fullname,
-        izucode: family.izucode || null,
-        village_name: family.village_name,
-        village_id: family.village_id,
-        province: locationData.province || 0,
-        district: locationData.district || 0,
-        sector: locationData.sector || 0,
-        cell: locationData.cell || 0,
-        village: locationData.village || 0,
-        ...family.form_data,
-        ...family.meta,
-      };
-
-      console.log("Syncing family to API:", JSON.stringify(apiData, null, 2));
-      console.log("API URL:", apiUrl);
-      // Submit to API
-      const response = await baseInstance.post(apiUrl, apiData);
-
-      if (response.data?.result?.id) {
-        // Update the record with API data
-        replaceTemporaryFamily(realm, family, {
-          ...apiData,
-          id: response.data.result.id, // Update local ID
-          hh_id: response.data.result.hh_id, // Update hh_id from API
-          izucode: response.data.result.izucode || null,
-          ...response.data.result,
-          sync_data: {
-            sync_status: true,
-            sync_reason: "Successfully synced",
-            sync_type: SyncType.families,
-            sync_attempts: 1,
-            last_sync_attempt: new Date(),
-            submitted_at: new Date(),
-          },
-        });
-        console.log(
-          `Successfully synced family ${family.id} to server, updated with hh_id: ${response.data.result.hh_id}`
-        );
-        successCount++;
-      }
-    } catch (error: any) {
-      failureCount++;
-      // Update sync data to record the failure
-      realm.write(() => {
-        if (family.sync_data) {
-          family.sync_data.sync_status = false;
-          family.sync_data.sync_type = SyncType.families;
-          family.sync_data.sync_reason = `Failed: ${
-            error?.message || "Unknown error"
-          }`;
-          family.sync_data.sync_attempts =
-            Number(family.sync_data.sync_attempts || 0) + 1;
-          family.sync_data.last_sync_attempt = new Date().toISOString();
-          family.sync_data.submitted_at = new Date().toISOString();
-        }
-      });
-      console.log(`Failed to sync family ${family.id}:`, error);
-      // Continue with other records - this one will be tried again next sync
-    }
-  }
-
-  // Show final status toast
-  if (successCount > 0 && failureCount === 0) {
-    Toast.show({
-      type: "success",
-      text1: t("Alerts.success.title"),
-      text2: t("Alerts.success.sync").replace(
-        "{count}",
-        successCount.toString()
-      ),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-  } else if (successCount > 0 && failureCount > 0) {
-    Toast.show({
-      type: "info",
-      text1: t("Alerts.info.title"),
-      text2: t("Alerts.info.partial_success")
-        .replace("{success}", successCount.toString())
-        .replace("{failed}", failureCount.toString()),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-  } else if (failureCount > 0) {
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.sync.failed").replace(
-        "{count}",
-        failureCount.toString()
-      ),
-      position: "top",
-      visibilityTime: 4000,
-      autoHide: true,
-      topOffset: 50,
-    });
-  }
-};
+  return {
+    getNextAvailableId,
+    createFamilyWithMeta,
+    saveFamilyToAPI,
+    syncTemporaryFamilies,
+  };
+}

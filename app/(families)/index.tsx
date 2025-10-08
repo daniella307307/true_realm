@@ -12,7 +12,7 @@ import { z } from "zod";
 import CustomInput from "~/components/ui/input";
 import { useTranslation } from "react-i18next";
 import { router } from "expo-router";
-import { IModule } from "~/types";
+import { IExistingForm, IForm, IModule } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
@@ -21,7 +21,7 @@ import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGetFormByProjectAndModule } from "~/services/formElements";
-import { Survey } from "~/models/surveys/survey";
+
 
 const FamiliesPage = () => {
   const { t, i18n } = useTranslation();
@@ -148,7 +148,7 @@ const FamiliesPage = () => {
   };
 
   // console.log("Filtered Modules: ", JSON.stringify(filteredModules, null, 2));
-  const renderItem = ({ item }: { item: IModule | Survey }) => {
+  const renderItem = ({ item }: { item: IModule | IForm }) => {
     if ("module_name" in item) {
       // This is a module
       return (
@@ -205,7 +205,16 @@ const FamiliesPage = () => {
       );
     }
   };
-
+ 
+  const mapExistingFormToIForm = (form: IExistingForm): IForm => ({
+    _id: form.id,
+    name: form.name,
+    project_id: form.project_id,
+    source_module_id: form.source_module_id,
+    project_module_id: form.project_module_id,
+    description: "",
+    data: []
+  });
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation
@@ -213,35 +222,38 @@ const FamiliesPage = () => {
         showRight={true}
         title={t("ModulePage.title")}
       />
-      <FlatList
-        data={
-          uncategorizedModule && uncategorizedForms?.length > 0
-                ? uncategorizedForms
-                : filteredModules
-        }
-        keyExtractor={(item, index) => `${item.id}-${index}`}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={ListHeaderComponent}
-        ListHeaderComponentStyle={{ paddingTop: 16 }}
-        ListEmptyComponent={() =>
-          isModulesLoading ||
-          isProjectsLoading ||
-          isUncategorizedFormsLoading ? (
-            renderContent()
-          ) : (
-            <EmptyDynamicComponent />
-          )
-        }
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingBottom: insets.bottom + 24,
-          flexGrow: 1,
-        }}
-        renderItem={renderItem}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      />
+      <FlatList<IModule | IForm>
+  data={
+    uncategorizedModule && uncategorizedForms?.length > 0
+      ? uncategorizedForms.map(mapExistingFormToIForm)
+      : uncategorizedModule
+        ? [uncategorizedModule] 
+        : []                    
+  }
+  keyExtractor={(item, index) => `${item.id}-${index}`}
+  showsVerticalScrollIndicator={false}
+  ListHeaderComponent={ListHeaderComponent}
+  ListHeaderComponentStyle={{ paddingTop: 16 }}
+  ListEmptyComponent={() =>
+    isModulesLoading ||
+    isProjectsLoading ||
+    isUncategorizedFormsLoading ? (
+      renderContent()
+    ) : (
+      <EmptyDynamicComponent />
+    )
+  }
+  contentContainerStyle={{
+    paddingHorizontal: 16,
+    paddingBottom: insets.bottom + 24,
+    flexGrow: 1,
+  }}
+  renderItem={renderItem}
+  refreshControl={
+    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+  }
+/>
+
     </SafeAreaView>
   );
 };

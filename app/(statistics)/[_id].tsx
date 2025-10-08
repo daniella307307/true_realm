@@ -52,7 +52,7 @@ const IzuIndexStatisticsScreen = () => {
     useGetIzuStatisticsByMonitoringResponse(selectedIzuId);
 
   const { families } = useGetFamilies();
-  const { submissions: surveySubmissions } = useGetAllSurveySubmissions(true);
+  const { submissions: surveySubmissions } = useGetAllSurveySubmissions();
 
   // Calculate total families for this IZU
   const totalFamilies = families.filter(

@@ -20,7 +20,6 @@ import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { useGetAllLocallyCreatedIzus } from "~/services/izus";
-
 const HistoryProjectScreen = () => {
   const storedProjects = useGetAllProjects();
 
@@ -34,8 +33,8 @@ const HistoryProjectScreen = () => {
   } = useGetAllLocallyCreatedFamilies();
 
   const {
-    locallyCreatedIzus,
-    isLoading: isLoadingIzus,
+    localIzus,
+    loading,
     refresh: refreshIzus,
   } = useGetAllLocallyCreatedIzus();
 
@@ -80,7 +79,7 @@ const HistoryProjectScreen = () => {
 
     // Get unique project IDs from locally created izus
     const locallyCreatedIzuProjectIds = new Set(
-      locallyCreatedIzus.map((izu) => izu.form_data?.project_id)
+      localIzus.map((izu) => izu.form_data?.project_id)
     );
 
     // Filter projects that have survey submissions
@@ -127,7 +126,7 @@ const HistoryProjectScreen = () => {
       ) || [];
 
     const locallyCreatedIzuSubmissions =
-      locallyCreatedIzus?.filter(
+      localIzus?.filter(
         (izu) => izu.form_data?.project_id === item?.id
       ) || [];
 

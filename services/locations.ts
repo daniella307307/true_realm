@@ -1,435 +1,211 @@
-import { useEffect, useMemo, useState } from "react";
-import { Realm } from "@realm/react";
+import { useEffect, useState, useMemo } from "react";
 import provincesData from "~/mocks/provinces.json";
 import districtsData from "~/mocks/districts.json";
 import sectorsData from "~/mocks/sectors.json";
 import cellsData from "~/mocks/cells.json";
 import villagesData from "~/mocks/villages.json";
-import { Province } from "~/models/locations/province";
-import { District } from "~/models/locations/district";
-import { Sector } from "~/models/locations/sector";
-import { Cell } from "~/models/locations/cell";
-import { Village } from "~/models/locations/village";
-import { RealmContext } from "~/providers/RealContextProvider";
+import { useSQLite } from "~/providers/RealContextProvider";
 import { baseInstance } from "~/utils/axios";
-import { useQuery as useReactQuery } from "@tanstack/react-query";
 
-const { useRealm, useQuery: useQueryRealm } = RealmContext;
-
-/**
- * Common logic for initializing location data
- */
-const useInitLocationData = <T extends Realm.Object>(
-  realmCollection: Realm.Results<T>,
-  mockData: any[],
-  schemaName: string
-) => {
-  const realm = useRealm();
-
-  useEffect(() => {
-    if (realmCollection.length === 0) {
-      realm.write(() => {
-        mockData.forEach((item) => {
-          // Ensure all IDs are stored as strings to avoid type mismatches
-          const itemWithStringId = {
-            ...item,
-            id: item.id.toString(),
-          };
-          realm.create(
-            schemaName as any,
-            itemWithStringId,
-            Realm.UpdateMode.Modified
-          );
-        });
-      });
-    }
-  }, [realm, realmCollection, mockData, schemaName]);
-
-  return {
-    data: realmCollection,
-    isInitialized: realmCollection.length > 0,
-  };
-};
-
-/**
- * Flexible query helper that tries both string and numeric ID comparisons
- */
-const getEntityById = <T extends Realm.Object>(
-  realm: Realm,
-  schema: string,
-  id: string | number
-): T | null => {
-  if (id === undefined || id === null) return null;
-
-  const idStr = id.toString();
-  const idNum = typeof id === "string" ? parseInt(id, 10) : id;
-
-  // Try string comparison first (preferred)
-  const resultsStr = realm.objects<T>(schema).filtered("id == $0", idStr);
-
-  // If not found, try numeric comparison
-  const resultsNum =
-    resultsStr.length === 0
-      ? realm.objects<T>(schema).filtered("id == $0", idNum)
-      : null;
-
-  return resultsStr.length > 0
-    ? resultsStr[0]
-    : resultsNum && resultsNum.length > 0
-    ? resultsNum[0]
-    : null;
-};
-
-export function useGetProvinces() {
-  const realm = useRealm();
-  const storedProvinces = useQueryRealm(Province);
-
-  const { isInitialized } = useInitLocationData(
-    storedProvinces,
-    provincesData,
-    "Province"
-  );
-
-  return {
-    data: storedProvinces,
-    isLoading: !isInitialized,
-    getById: (id: string | number) =>
-      getEntityById<Province>(realm, "Province", id),
-  };
+interface BaseLocation {
+  id: string;
+  [key: string]: any;
 }
 
-export function useGetDistricts(provinceId?: string) {
-  const realm = useRealm();
-  const storedDistricts = useQueryRealm(District);
-
-  const { isInitialized } = useInitLocationData(
-    storedDistricts,
-    districtsData,
-    "District"
-  );
-
-  const filteredDistricts = useMemo(
-    () =>
-      provinceId
-        ? storedDistricts.filtered("province_id == $0", provinceId)
-        : storedDistricts,
-    [provinceId, storedDistricts]
-  );
-
-  return {
-    data: filteredDistricts,
-    isLoading: !isInitialized,
-    getById: (id: string | number) =>
-      getEntityById<District>(realm, "District", id),
-  };
-}
-
-export function useGetSectors(districtId?: string) {
-  const realm = useRealm();
-  const storedSectors = useQueryRealm(Sector);
-
-  const { isInitialized } = useInitLocationData(
-    storedSectors,
-    sectorsData,
-    "Sector"
-  );
-
-  const filteredSectors = useMemo(
-    () =>
-      districtId
-        ? storedSectors.filtered("district_id == $0", districtId)
-        : storedSectors,
-    [districtId, storedSectors]
-  );
-
-  return {
-    data: filteredSectors,
-    isLoading: !isInitialized,
-    getById: (id: string | number) =>
-      getEntityById<Sector>(realm, "Sector", id),
-  };
-}
-
-export function useGetCells(sectorId?: string) {
-  const realm = useRealm();
-  const storedCells = useQueryRealm(Cell);
-
-  const { isInitialized } = useInitLocationData(storedCells, cellsData, "Cell");
-
-  const filteredCells = useMemo(
-    () =>
-      sectorId
-        ? storedCells.filtered("sector_id == $0", sectorId)
-        : storedCells,
-    [sectorId, storedCells]
-  );
-
-  return {
-    data: filteredCells,
-    isLoading: !isInitialized,
-    getById: (id: string | number) => getEntityById<Cell>(realm, "Cell", id),
-  };
-}
-
-export function useGetVillages(cellId?: string) {
-  const realm = useRealm();
-  const storedVillages = useQueryRealm(Village);
-
-  const { isInitialized } = useInitLocationData(
-    storedVillages,
-    villagesData,
-    "Village"
-  );
-
-  const filteredVillages = useMemo(
-    () =>
-      cellId
-        ? storedVillages.filtered("cells_id == $0", cellId)
-        : storedVillages,
-    [cellId, storedVillages]
-  );
-
-  return {
-    data: filteredVillages,
-    isLoading: !isInitialized,
-    getById: (id: string | number) =>
-      getEntityById<Village>(realm, "Village", id),
-  };
-}
-
-/**
- * A unified hook for retrieving location data by ID
- * Useful for the Settings screen where we have IDs but need to display names
- */
-export function useGetLocationById() {
-  const realm = useRealm();
-
-  // Initialize all location data
-  const { isLoading: isLoadingProvinces } = useGetProvinces();
-  const { isLoading: isLoadingDistricts } = useGetDistricts();
-  const { isLoading: isLoadingSectors } = useGetSectors();
-  const { isLoading: isLoadingCells } = useGetCells();
-  const { isLoading: isLoadingVillages } = useGetVillages();
-
-  const isLoading =
-    isLoadingProvinces ||
-    isLoadingDistricts ||
-    isLoadingSectors ||
-    isLoadingCells ||
-    isLoadingVillages;
-
-  return {
-    isLoading,
-    getProvince: (id: string | number) =>
-      getEntityById<Province>(realm, "Province", id),
-    getDistrict: (id: string | number) =>
-      getEntityById<District>(realm, "District", id),
-    getSector: (id: string | number) =>
-      getEntityById<Sector>(realm, "Sector", id),
-    getCell: (id: string | number) => getEntityById<Cell>(realm, "Cell", id),
-    getVillage: (id: string | number) =>
-      getEntityById<Village>(realm, "Village", id),
-  };
-}
-
-/**
- * A unified hook that provides all location data with optimized loading states
- * and data access patterns.
- */
-export function useLocalLocation() {
-  const {
-    data: provinces,
-    isLoading: isLoadingProvinces,
-    getById: getProvinceById,
-  } = useGetProvinces();
-
-  return {
-    provinces: {
-      data: provinces,
-      isLoading: isLoadingProvinces,
-      getById: getProvinceById,
-    },
-    districts: {
-      getForProvince: (provinceId: string) => {
-        const { data, isLoading, getById } = useGetDistricts(provinceId);
-        return { data, isLoading, getById };
-      },
-      getById: (id: string | number) => {
-        const realm = useRealm();
-        return getEntityById<District>(realm, "District", id);
-      },
-    },
-    sectors: {
-      getForDistrict: (districtId: string) => {
-        const { data, isLoading, getById } = useGetSectors(districtId);
-        return { data, isLoading, getById };
-      },
-      getById: (id: string | number) => {
-        const realm = useRealm();
-        return getEntityById<Sector>(realm, "Sector", id);
-      },
-    },
-    cells: {
-      getForSector: (sectorId: string) => {
-        const { data, isLoading, getById } = useGetCells(sectorId);
-        return { data, isLoading, getById };
-      },
-      getById: (id: string | number) => {
-        const realm = useRealm();
-        return getEntityById<Cell>(realm, "Cell", id);
-      },
-    },
-    villages: {
-      getForCell: (cellId: string) => {
-        const { data, isLoading, getById } = useGetVillages(cellId);
-        return { data, isLoading, getById };
-      },
-      getById: (id: string | number) => {
-        const realm = useRealm();
-        return getEntityById<Village>(realm, "Village", id);
-      },
-    },
-  };
-}
-
-interface ILocationDerivedByVillageId {
-  location: {
-    province: {
-      id: number;
-      province_name: string;
-    };
-    district: {
-      id: number;
-      district_name: string;
-    };
-    sector: {
-      id: number;
-      sector_name: string;
-    };
-    cell: {
-      id: number;
-      cell_name: string;
-    };
-    village: {
-      id: number;
-      village_name: string;
-    };
+// Changed from hook-like name to regular function name
+const initLocationDataSQLite = async (tableName: string, mockData: BaseLocation[], createFn: any) => {
+  const records = await createFn.getAll(tableName);
+  if (records.length === 0) {
+    await createFn.batchCreate(tableName, mockData.map(d => ({ ...d, id: d.id.toString() })));
+    return mockData.map(d => ({ ...d, id: d.id.toString() }));
   }
-}
-
-const fetchLocationVillageById = async (
-  villageId: string
-): Promise<ILocationDerivedByVillageId> => {
-  console.log("Fetching location village by id", villageId);
-  const response = await baseInstance.get(`/location/village/${villageId}`);
-  console.log("Response", response.data);
-  return response.data;
+  return records;
 };
 
-export function useGetLocationByVillageId(
-  villageId: string,
-  forceSync: boolean = false
-) {
-  const { data, isLoading, error } = useReactQuery({
-    queryKey: ["location-village", villageId],
-    queryFn: () => fetchLocationVillageById(villageId),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: forceSync ? false : 5 * 60 * 1000,
-  });
+const getEntityByIdSQLite = (records: BaseLocation[], id: string | number) => {
+  if (!id) return null;
+  return records.find(r => r.id.toString() === id.toString()) || null;
+};
 
-  return { data, isLoading, error };
-}
-
-export function useGetLocationByVillageIdOffline(
-  villageId: string
-) {
-  const realm = useRealm();
+// ------------------- PROVINCES -------------------
+export function useGetProvinces() {
+  const { getAll, batchCreate } = useSQLite();
+  const [data, setData] = useState<BaseLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [locationData, setLocationData] = useState<ILocationDerivedByVillageId | null>(null);
 
   useEffect(() => {
-    if (!villageId) {
+    const load = async () => {
+      const records = await initLocationDataSQLite("Provinces", provincesData, { getAll, batchCreate });
+      setData(records);
       setIsLoading(false);
-      return;
-    }
+    };
+    load();
+  }, [getAll, batchCreate]);
 
-    try {
-      // Get village
-      const village = getEntityById<Village>(realm, "Village", villageId);
-      
+  return {
+    data,
+    isLoading,
+    getById: (id: string | number) => getEntityByIdSQLite(data, id),
+  };
+}
+
+// ------------------- DISTRICTS -------------------
+export function useGetDistricts(provinceId?: string) {
+  const { getAll, batchCreate } = useSQLite();
+  const [data, setData] = useState<BaseLocation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const records = await initLocationDataSQLite("Districts", districtsData, { getAll, batchCreate });
+      setData(records);
+      setIsLoading(false);
+    };
+    load();
+  }, [getAll, batchCreate]);
+
+  const filteredData = useMemo(() => {
+    return provinceId ? data.filter(d => d.province_id.toString() === provinceId) : data;
+  }, [provinceId, data]);
+
+  return {
+    data: filteredData,
+    isLoading,
+    getById: (id: string | number) => getEntityByIdSQLite(data, id),
+  };
+}
+
+// ------------------- SECTORS -------------------
+export function useGetSectors(districtId?: string) {
+  const { getAll, batchCreate } = useSQLite();
+  const [data, setData] = useState<BaseLocation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const records = await initLocationDataSQLite("Sectors", sectorsData, { getAll, batchCreate });
+      setData(records);
+      setIsLoading(false);
+    };
+    load();
+  }, [getAll, batchCreate]);
+
+  const filteredData = useMemo(() => {
+    return districtId ? data.filter(d => d.district_id.toString() === districtId) : data;
+  }, [districtId, data]);
+
+  return {
+    data: filteredData,
+    isLoading,
+    getById: (id: string | number) => getEntityByIdSQLite(data, id),
+  };
+}
+
+// ------------------- CELLS -------------------
+export function useGetCells(sectorId?: string) {
+  const { getAll, batchCreate } = useSQLite();
+  const [data, setData] = useState<BaseLocation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const records = await initLocationDataSQLite("Cells", cellsData, { getAll, batchCreate });
+      setData(records);
+      setIsLoading(false);
+    };
+    load();
+  }, [getAll, batchCreate]);
+
+  const filteredData = useMemo(() => {
+    return sectorId ? data.filter(d => d.sector_id.toString() === sectorId) : data;
+  }, [sectorId, data]);
+
+  return {
+    data: filteredData,
+    isLoading,
+    getById: (id: string | number) => getEntityByIdSQLite(data, id),
+  };
+}
+
+// ------------------- VILLAGES -------------------
+export function useGetVillages(cellId?: string) {
+  const { getAll, batchCreate } = useSQLite();
+  const [data, setData] = useState<BaseLocation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const records = await initLocationDataSQLite("Villages", villagesData, { getAll, batchCreate });
+      setData(records);
+      setIsLoading(false);
+    };
+    load();
+  }, [getAll, batchCreate]);
+
+  const filteredData = useMemo(() => {
+    return cellId ? data.filter(v => v.cells_id.toString() === cellId) : data;
+  }, [cellId, data]);
+
+  return {
+    data: filteredData,
+    isLoading,
+    getById: (id: string | number) => getEntityByIdSQLite(data, id),
+  };
+}
+
+// ------------------- GET LOCATION BY VILLAGE OFFLINE -------------------
+export function useGetLocationByVillageIdOffline(villageId: string) {
+  const { getAll } = useSQLite();
+  const [locationData, setLocationData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!villageId) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Load all required tables
+      const [villages, cells, sectors, districts, provinces] = await Promise.all([
+        getAll("Villages"),
+        getAll("Cells"),
+        getAll("Sectors"),
+        getAll("Districts"),
+        getAll("Provinces"),
+      ]);
+
+      const village = villages.find(v => v.id.toString() === villageId);
       if (!village) {
         setIsLoading(false);
         return;
       }
 
-      // Get cell using the village's cells_id
-      const cell = getEntityById<Cell>(realm, "Cell", village.cells_id);
-      
-      if (!cell) {
+      const cell = cells.find(c => c.id.toString() === village.cells_id);
+      const sector = sectors.find(s => s.id.toString() === cell?.sector_id);
+      const district = districts.find(d => d.id.toString() === sector?.district_id);
+      const province = provinces.find(p => p.id.toString() === district?.province_id);
+
+      if (!cell || !sector || !district || !province) {
         setIsLoading(false);
         return;
       }
 
-      // Get sector using the cell's sector_id
-      const sector = getEntityById<Sector>(realm, "Sector", cell.sector_id);
-      
-      if (!sector) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Get district using the sector's district_id
-      const district = getEntityById<District>(realm, "District", sector.district_id);
-      
-      if (!district) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Get province using the district's province_id
-      const province = getEntityById<Province>(realm, "Province", district.province_id);
-      
-      if (!province) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Format data to match the online API response structure
-      const formattedLocation: ILocationDerivedByVillageId = {
+      setLocationData({
         location: {
-          province: {
-            id: Number(province.id),
-            province_name: province.province_name
-          },
-          district: {
-            id: Number(district.id),
-            district_name: district.district_name
-          },
-          sector: {
-            id: Number(sector.id),
-            sector_name: sector.sector_name
-          },
-          cell: {
-            id: Number(cell.id),
-            cell_name: cell.cell_name
-          },
-          village: {
-            id: Number(village.id),
-            village_name: village.village_name
-          }
-        }
-      };
+          province: { id: Number(province.id), province_name: province.province_name },
+          district: { id: Number(district.id), district_name: district.district_name },
+          sector: { id: Number(sector.id), sector_name: sector.sector_name },
+          cell: { id: Number(cell.id), cell_name: cell.cell_name },
+          village: { id: Number(village.id), village_name: village.village_name },
+        },
+      });
 
-      setLocationData(formattedLocation);
       setIsLoading(false);
-    } catch (error) {
-      console.log("Error fetching offline location data:", error);
-      setIsLoading(false);
-    }
-  }, [realm, villageId]);
+    };
 
-  return { 
-    data: locationData, 
-    isLoading 
-  };
+    load();
+  }, [villageId, getAll]);
+
+  return { data: locationData, isLoading };
 }

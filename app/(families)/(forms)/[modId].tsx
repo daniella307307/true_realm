@@ -19,8 +19,7 @@ import {
   useGetFormByProjectAndModule,
 } from "~/services/formElements";
 import { Button } from "~/components/ui/button";
-import { IModule } from "~/types";
-import { Survey } from "~/models/surveys/survey";
+import { IExistingForm, IModule } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { useForm } from "react-hook-form";
@@ -109,7 +108,6 @@ const ProjectFormsScreen = () => {
   const {
     filteredForms,
     isLoading: isFormsLoading,
-    error: formsError,
   } = useGetFormByProjectAndModule(
     currentModule.project_id,
     currentModule.source_module_id,
@@ -145,7 +143,7 @@ const ProjectFormsScreen = () => {
   const displayFilteredForms = useMemo(() => {
     if (!filteredForms) return [];
 
-    return filteredForms.filter((form: Survey) => {
+    return filteredForms.filter((form: IExistingForm) => {
       if (!searchQuery) return true;
       return form.name.toLowerCase().includes(searchQuery.toLowerCase());
     });
@@ -175,12 +173,11 @@ const ProjectFormsScreen = () => {
       );
     }
 
-    if (modulesError || formsError) {
+    if (modulesError) {
       return (
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-red-500">
-            {modulesError?.message ||
-              formsError?.message ||
+            {modulesError ||
               "An error occurred"}
           </Text>
         </View>
@@ -198,7 +195,7 @@ const ProjectFormsScreen = () => {
         title={t("FormPage.title")}
       />
 
-      <FlatList<Survey>
+      <FlatList
         data={displayFilteredForms}
         keyExtractor={(item, index) => `${item.id}-${index}`}
         showsVerticalScrollIndicator={false}

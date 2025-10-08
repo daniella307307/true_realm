@@ -5,38 +5,34 @@ import {
   TouchableOpacity,
   SafeAreaView,
   RefreshControl,
+  Text,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import CustomInput from "~/components/ui/input";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
-import {
-  fetchFormByProjectAndModuleFromRemote,
-  useGetFormByProjectAndModule,
-} from "~/services/formElements";
-import { IModule } from "~/types";
-import { Survey } from "~/models/surveys/survey";
-import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import { Text } from "~/components/ui/text";
 import { useForm } from "react-hook-form";
-import { useGetAllModules } from "~/services/project";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { NotFound } from "~/components/ui/not-found";
+import { TabBarIcon } from "~/components/ui/tabbar-icon";
+
+import { IExistingForm, IModule } from "~/types";
+import { fetchFormByProjectAndModuleFromRemote, IForm, useGetFormByProjectAndModule } from "~/services/formElements";
+import { useGetAllModules } from "~/services/project";
 
 const ProjectFormsScreen = () => {
   const { modId, project_id } = useLocalSearchParams<{
     modId: string;
     project_id: string;
   }>();
-  
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
 
   if (!modId) {
     return (
-      <NotFound 
+      <NotFound
         title={t("FormPage.module_not_found")}
         description={t("FormPage.module_not_found_description")}
         redirectTo={() => router.back()}
@@ -44,57 +40,51 @@ const ProjectFormsScreen = () => {
     );
   }
 
-  const {
-    modules,
-    isLoading: isModulesLoading,
-    error: modulesError,
-  } = useGetAllModules();
-  
   const moduleId = parseInt(modId);
   const projectId = parseInt(project_id);
 
+  const { modules, isLoading: isModulesLoading, error: modulesError } =
+    useGetAllModules();
+
+  // Find the current module
   const currentModule = useMemo(() => {
     if (!modules) return null;
     return (
-      modules.find((module: IModule | null) => {
-        if (!module) return false;
-        return (
-          module.source_module_id === moduleId &&
-          module.project_id === projectId
-        );
-      }) || null
+      modules.find(
+        (m: IModule | null) =>
+          m !== null &&
+          m.source_module_id === moduleId &&
+          m.project_id === projectId
+      ) || null
     );
   }, [modules, moduleId, projectId]);
-  console.log("currentModule", JSON.stringify(currentModule, null, 2));
 
-  // For regular forms
+  // Load forms from SQLite for current module
   const {
     filteredForms,
     isLoading: isFormsLoading,
-    error: formsError,
   } = useGetFormByProjectAndModule(
     currentModule?.project_id || 0,
     currentModule?.source_module_id || 0,
     currentModule?.id || 0
   );
-  console.log("filteredForms", JSON.stringify(filteredForms, null, 2));
-  
+
   const { control, watch } = useForm({
-    defaultValues: {
-      searchQuery: "",
-    },
+    defaultValues: { searchQuery: "" },
     mode: "onChange",
   });
 
   const searchQuery = watch("searchQuery");
   const [refreshing, setRefreshing] = useState(false);
 
+  // Pull-to-refresh: fetch from remote and update SQLite
   const onRefresh = useCallback(async () => {
+    if (!currentModule) return;
     setRefreshing(true);
     try {
       await fetchFormByProjectAndModuleFromRemote(
-        currentModule?.project_id || 0,
-        currentModule?.source_module_id || 0
+        currentModule.project_id,
+        currentModule.source_module_id
       );
     } catch (error) {
       console.error("Error refreshing forms:", error);
@@ -103,17 +93,15 @@ const ProjectFormsScreen = () => {
     }
   }, [currentModule]);
 
-  // Filter forms based on search query
+  // Filter forms by search query
   const filteredItems = useMemo(() => {
-    // Filter regular forms
     if (!filteredForms) return [];
-    return filteredForms.filter((form: Survey) => {
+    return mappedForms.filter((form)=> {
       if (!searchQuery) return true;
-      return form.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return form.name?.toLowerCase().includes(searchQuery.toLowerCase());
     });
   }, [filteredForms, searchQuery]);
 
-  
   const ListHeaderComponent = useCallback(
     () => (
       <CustomInput
@@ -127,9 +115,7 @@ const ProjectFormsScreen = () => {
     [control, t]
   );
 
-  const renderItem = ({ item }: { item: Survey }) => {
-     console.log("item", item);
-    // Render regular form item
+  const renderItem = ({ item }: { item: IForm }) => {
     return (
       <TouchableOpacity
         onPress={() =>
@@ -154,7 +140,7 @@ const ProjectFormsScreen = () => {
     );
   };
 
-  const isLoading = isFormsLoading || isModulesLoading;
+  const isLoading = isModulesLoading || isFormsLoading;
 
   const renderContent = () => {
     if (isLoading) {
@@ -167,13 +153,11 @@ const ProjectFormsScreen = () => {
       );
     }
 
-    if (modulesError || formsError) {
+    if (modulesError) {
       return (
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-red-500">
-            {modulesError?.message ||
-              formsError?.message ||
-              "An error occurred"}
+            { "An error occurred"}
           </Text>
         </View>
       );
@@ -181,27 +165,41 @@ const ProjectFormsScreen = () => {
 
     return null;
   };
+  const mappedForms: IForm[] = filteredForms.map(f => ({
+  _id: f.id.toString(),   // generate _id from SQLite `id`
+  id: f.id,
+  name: f.name,
+  name_kin: f.name_kin,
+  json2: f.json2,
+  json2_bkp: f.json2_bkp,
+  survey_status: f.survey_status,
+  module_id: f.module_id,
+  is_primary: f.is_primary,
+  table_name: f.table_name,
+  post_data: f.post_data,
+  fetch_data: f.fetch_data,
+  loads: f.loads,
+  prev_id: f.prev_id,
+  created_at: f.created_at,
+  updated_at: f.updated_at,
+  order_list: f.order_list,
+  project_module_id: f.project_module_id,
+  project_id: f.project_id,
+  source_module_id: f.source_module_id,
+}));
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <HeaderNavigation
-        showLeft={true}
-        showRight={true}
-        title={t("FormPage.title")}
-      />
+      <HeaderNavigation showLeft showRight title={t("FormPage.title")} />
 
-      <FlatList
+      <FlatList<IForm>
         data={filteredItems}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
+        keyExtractor={(item) => item._id}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={ListHeaderComponent}
         ListHeaderComponentStyle={{ paddingHorizontal: 0, paddingTop: 16 }}
         ListEmptyComponent={() =>
-          isLoading ? (
-            renderContent()
-          ) : (
-            <EmptyDynamicComponent message={t("FormPage.empty_forms")} />
-          )
+          isLoading ? renderContent() : <EmptyDynamicComponent message={t("FormPage.empty_forms")} />
         }
         contentContainerStyle={{
           paddingHorizontal: 16,
@@ -209,9 +207,7 @@ const ProjectFormsScreen = () => {
           flexGrow: 1,
         }}
         renderItem={renderItem}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       />
     </SafeAreaView>
   );

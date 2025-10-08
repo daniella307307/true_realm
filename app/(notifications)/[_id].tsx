@@ -17,24 +17,21 @@ import { useMemo, useState } from "react";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import { NotFound } from "~/components/ui/not-found";
 import { useGetNotificationById } from "~/services/notifications";
-import {
-  useGetFollowUpsBySurveyResultId,
-  saveFollowupToAPI,
-} from "~/services/followups";
+import { useGetFollowUpsBySurveyResultId,
+    saveFollowupToAPI, } from "~/services/followups";
 import {
   DayInputComponent,
   SelectBoxComponent,
   TextAreaComponent,
 } from "~/components/DynamicComponents";
 import { useForm } from "react-hook-form";
-import { RealmContext } from "~/providers/RealContextProvider";
 import Toast from "react-native-toast-message";
 import { useAuth } from "~/lib/hooks/useAuth";
 import i18n from "~/utils/i18n";
 
-const { useRealm } = RealmContext;
 
-const NotificationDetailScreen = () => {
+
+function NotificationDetailScreen  ()  {
   const { id, _id, project_module_id, survey_id } = useLocalSearchParams<{
     id: string;
     _id: string;
@@ -51,12 +48,17 @@ const NotificationDetailScreen = () => {
   const [showAddFollowup, setShowAddFollowup] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { control, handleSubmit, reset } = useForm();
-  const realm = useRealm();
   const { user } = useAuth({});
 
   const { notification } = useGetNotificationById(id || "");
   console.log("notification", notification);
-  const { followups } = useGetFollowUpsBySurveyResultId(_id || "", survey_id || "");
+  // const { getFollowUpsBySurveyResultId } = useGetFollowUpsBySurveyResultId();
+  // const followups = useMemo(() => {
+  //   if (!survey_id) return [];
+  //   return getFollowUpsBySurveyResultId(survey_id);
+  // }
+  // , [getFollowUpsBySurveyResultId, notification?._id]);
+  // console.log("followups", followups);
 
   // Parse the submission data from notification json
   const submissionData = useMemo(() => {
@@ -183,7 +185,6 @@ const NotificationDetailScreen = () => {
       };
 
       await saveFollowupToAPI(
-        realm,
         {
           followup_date: data.followup_date,
           status: data.status,
@@ -192,7 +193,7 @@ const NotificationDetailScreen = () => {
           project_module_id: Number(project_module_id),
           project_id: Number(projectId),
           source_module_id: Number(sourceModuleId),
-          survey_id: Number(surveyIdNumber),
+          survey_id:surveyIdNumber,
           user: followupUser,
           survey: notification?.survey,
           survey_result: { id: Number(_id), _id },
@@ -375,8 +376,8 @@ const NotificationDetailScreen = () => {
                 </Text>
               </Button>
             </View>
-
-            {followups.length > 0 ? (
+            
+            {/* {followups.length > 0 ? (
               followups.map((followup) => (
                 <View
                   key={followup.id}
@@ -423,7 +424,7 @@ const NotificationDetailScreen = () => {
                   {t("Notifications.no_followups", "No follow-ups available")}
                 </Text>
               </View>
-            )}
+            )} */}
           </View>
         )}
       </ScrollView>

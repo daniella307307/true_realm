@@ -1,6 +1,4 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { RealmContext } from "~/providers/RealContextProvider";
-
 import {
   FlatList,
   TouchableOpacity,
@@ -12,13 +10,11 @@ import {
   RefreshControl,
   SafeAreaView,
 } from "react-native";
-
 import { useRouter } from "expo-router";
-
 import CustomInput from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Ionicons } from "@expo/vector-icons";
-import { ILikes } from "~/types";
+import { ILikes, IPost } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { format, formatDistanceToNow } from "date-fns";
@@ -26,7 +22,7 @@ import { t } from "i18next";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useForm } from "react-hook-form";
 import {
-  useGetPosts,
+  useGetAllPosts,
   likePost,
   unlikePost,
   deletePost,
@@ -34,21 +30,19 @@ import {
 } from "~/services/posts";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Post } from "~/models/posts/post";
 import HeaderNavigation from "~/components/ui/header";
 import Toast from "react-native-toast-message";
-import Realm from "realm";
-
-const { useRealm } = RealmContext;
+import { useSQLite } from "~/providers/RealContextProvider";
 
 const CommunityScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [reportText, setReportText] = useState("");
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const router = useRouter();
   const { user } = useAuth({});
+  const sqlite = useSQLite();
+  
   const { control, watch } = useForm({
     resolver: zodResolver(
       z.object({
@@ -59,23 +53,19 @@ const CommunityScreen: React.FC = () => {
   });
 
   const searchQuery = watch("searchQuery");
-  const { posts, isLoading, refresh } = useGetPosts();
-  const realm = useRealm();
+  const { posts, isLoading, refresh } = useGetAllPosts();
 
-  useEffect(() => {
-    if (posts) {
-      setLocalPosts([...posts]);
-    }
-  }, [posts]);
-
-  const handleLikePress = async (post: Post) => {
+  const handleLikePress = async (post: IPost) => {
     console.log('=== Starting handleLikePress ===');
     console.log('Post received:', { id: post.id, likes: post.likes });
     
     const currentUserId = user.id;
     console.log('Current user ID:', currentUserId);
     
-    const currentLikes = JSON.parse(post.likes);
+    // Parse likes - handle both string and object formats
+    const currentLikes = typeof post.likes === 'string' 
+      ? JSON.parse(post.likes) 
+      : post.likes;
     console.log('Current likes:', currentLikes);
     
     const isLiked = currentLikes.some(
@@ -89,35 +79,15 @@ const CommunityScreen: React.FC = () => {
       : [...currentLikes, { user_id: currentUserId }];
     console.log('Updated likes array:', updatedLikes);
 
-    let updatedPost: Post | null = null;
-
     try {
-      console.log('Attempting to update local Realm state');
-      // Update local state immediately
-      realm.write(() => {
-        updatedPost = realm.create(
-          Post,
-          {
-            ...post,
-            likes: JSON.stringify(updatedLikes)
-          },
-          Realm.UpdateMode.Modified
-        );
+      console.log('Attempting to update local SQLite state');
+      
+      // Update local SQLite database
+      await sqlite.update('posts', post.id.toString(), {
+        likes: JSON.stringify(updatedLikes)
       });
 
-      if (!updatedPost) {
-        throw new Error('Failed to update post in Realm');
-      }
-
-      console.log('Local Realm update successful:', { 
-        id: (updatedPost as Post).id, 
-        newLikesCount: JSON.parse((updatedPost as Post).likes).length 
-      });
-
-      setLocalPosts(prevPosts =>
-        prevPosts.map(p => p.id === post.id ? (updatedPost as Post) : p)
-      );
-      console.log('Local state updated successfully');
+      console.log('Local SQLite update successful');
 
       console.log('Making API call to', isLiked ? 'unlike' : 'like', 'post');
       if (isLiked) {
@@ -139,22 +109,11 @@ const CommunityScreen: React.FC = () => {
       console.log('Attempting to revert optimistic update');
       
       try {
-        realm.write(() => {
-          const revertedPost = realm.create(
-            Post,
-            {
-              ...post,
-              likes: JSON.stringify(currentLikes)
-            },
-            Realm.UpdateMode.Modified
-          );
-          console.log('Successfully reverted local Realm state');
-          
-          setLocalPosts(prevPosts =>
-            prevPosts.map(p => p.id === post.id ? revertedPost : p)
-          );
+        // Revert SQLite update
+        await sqlite.update('posts', post.id.toString(), {
+          likes: JSON.stringify(currentLikes)
         });
-        console.log('Successfully reverted local state');
+        console.log('Successfully reverted local SQLite state');
       } catch (revertError) {
         console.error('Error while reverting optimistic update:', revertError);
       }
@@ -179,46 +138,21 @@ const CommunityScreen: React.FC = () => {
     console.log('Attempting to delete post:', postId);
 
     // Store the post for potential recovery
-    const postToDelete = localPosts.find(p => p.id === postId);
+    const postToDelete = posts.find(p => p.id === postId);
     if (!postToDelete) {
       console.log('Post not found in local state');
       return;
     }
 
-    // Create a detached copy of the post data
-    const postCopy = {
-      id: postToDelete.id,
-      user_id: postToDelete.user_id,
-      status: postToDelete.status,
-      title: postToDelete.title,
-      body: postToDelete.body,
-      flagged: postToDelete.flagged,
-      created_at: postToDelete.created_at,
-      updated_at: postToDelete.updated_at,
-      user: postToDelete.user,
-      comments: postToDelete.comments,
-      likes: postToDelete.likes
-    };
-
-    console.log('Created detached copy of post:', { id: postCopy.id, title: postCopy.title });
+    // Create a copy of the post data
+    const postCopy = { ...postToDelete };
+    console.log('Created copy of post:', { id: postCopy.id, title: postCopy.title });
 
     try {
-      // Optimistically remove the post from local state
-      console.log('Updating local state...');
-      setLocalPosts(prevPosts => prevPosts.filter(p => p.id !== postId));
-      console.log('Local state updated - post removed');
-
-      // Optimistically remove from Realm
-      console.log('Attempting to update Realm...');
-      realm.write(() => {
-        const realmPost = realm.objectForPrimaryKey(Post, postId);
-        if (realmPost) {
-          realm.delete(realmPost);
-          console.log('Post deleted from Realm successfully');
-        } else {
-          console.log('Post not found in Realm');
-        }
-      });
+      // Optimistically remove from SQLite
+      console.log('Attempting to delete from SQLite...');
+      await sqlite.delete('posts', postToDelete.id.toString());
+      console.log('Post deleted from SQLite successfully');
 
       // Make the API call
       console.log('Making API call to delete post');
@@ -236,19 +170,9 @@ const CommunityScreen: React.FC = () => {
       console.log('Attempting to restore deleted post');
 
       try {
-        // Restore the post in local state using the copy
-        setLocalPosts(prevPosts => [...prevPosts, postCopy as Post]);
-        console.log('Local state restored');
-
-        // Restore in Realm using the copy
-        realm.write(() => {
-          realm.create(
-            Post,
-            postCopy,
-            Realm.UpdateMode.Modified
-          );
-          console.log('Post restored in Realm');
-        });
+        // Restore in SQLite using the copy
+        await sqlite.create('posts', postCopy);
+        console.log('Post restored in SQLite');
 
         Toast.show({
           type: 'error',
@@ -317,33 +241,45 @@ const CommunityScreen: React.FC = () => {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [refresh]);
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
+      <SafeAreaView className="flex-1 bg-background">
+        <HeaderNavigation
+          showLeft={true}
+          showRight={true}
+          title={t("CommunityPage.title")}
+        />
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#A23A91" />
+        </View>
+      </SafeAreaView>
     );
   }
-  const filteredPosts = localPosts
-    .filter((post: Post) => post.status === 1)
-    .filter((post: Post) => {
+
+  const filteredPosts = posts
+    .filter((post: IPost) => post.status === 1)
+    .filter((post: IPost) => {
       if (!searchQuery) return true;
       return (
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         post.body.toLowerCase().includes(searchQuery.toLowerCase())
       );
-    })
-    .sort((a: Post, b: Post) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    });
 
-  // console.log("Posts: ", JSON.stringify(posts, null, 2));
-  const renderPost = ({ item }: { item: Post }) => {
+  const renderPost = ({ item }: { item: IPost }) => {
     const currentUserId = user.id;
-    const isLiked = JSON.parse(item.likes).some(
+    
+    // Parse data - handle both string and object formats
+    const likes = typeof item.likes === 'string' ? JSON.parse(item.likes) : item.likes;
+    const comments = typeof item.comments === 'string' ? JSON.parse(item.comments) : item.comments;
+    const postUser = typeof item.user === 'string' ? JSON.parse(item.user) : item.user;
+    
+    const isLiked = likes.some(
       (like: ILikes) => like.user_id === currentUserId
     );
-    const isOwner = JSON.parse(item.user).id === currentUserId;
+    const isOwner = postUser.id === currentUserId;
 
     return (
       <View className="bg-white p-4 m-2 rounded-lg shadow">
@@ -354,12 +290,12 @@ const CommunityScreen: React.FC = () => {
           <View className="flex-row items-center justify-between mb-2">
             <View className="flex-row items-center">
               <Image
-                source={{ uri: JSON.parse(item.user).picture }}
+                source={{ uri: postUser.picture }}
                 className="w-10 h-10 rounded-full"
               />
               <View className="ml-3">
                 <Text className="font-semibold">
-                  {JSON.parse(item.user).name}
+                  {postUser.name}
                 </Text>
                 <Text className="text-gray-500 text-sm">
                   {`${format(
@@ -399,7 +335,7 @@ const CommunityScreen: React.FC = () => {
           <View className="flex-row justify-between mt-3">
             <View className="flex-row gap-x-4">
               <TouchableOpacity
-                onPress={() => handleLikePress(item as Post)}
+                onPress={() => handleLikePress(item)}
                 className="flex-row flex justify-center items-center"
               >
                 <TabBarIcon
@@ -409,7 +345,7 @@ const CommunityScreen: React.FC = () => {
                   family="MaterialCommunityIcons"
                 />
                 <Text className="ml-2 text-gray-500">
-                  {JSON.parse(item.likes).length}
+                  {likes.length}
                 </Text>
               </TouchableOpacity>
               <View className="flex-row items-center">
@@ -420,7 +356,7 @@ const CommunityScreen: React.FC = () => {
                   family="FontAwesome6"
                 />
                 <Text className="ml-2 text-gray-500">
-                  {JSON.parse(item.comments).length}
+                  {comments.length}
                 </Text>
               </View>
               <View className="flex-row items-center">
@@ -456,7 +392,7 @@ const CommunityScreen: React.FC = () => {
         showRight={true}
         title={t("CommunityPage.title")}
       />
-      <View className="bg-slate-50 relative">
+      <View className="bg-slate-50 relative flex-1">
         <CustomInput
           control={control}
           name="searchQuery"
@@ -464,7 +400,7 @@ const CommunityScreen: React.FC = () => {
           keyboardType="default"
           accessibilityLabel={t("CommunityPage.search_post")}
         />
-        <FlatList<Post>
+        <FlatList
           data={filteredPosts}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderPost}

@@ -13,7 +13,7 @@ import Toast from "react-native-toast-message";
 import { enableScreens } from "react-native-screens";
 import { FontSizeProvider } from "~/providers/FontSizeContext";
 import { initializeNetworkListener } from "~/services/network";
-import { RealmContext } from "~/providers/RealContextProvider";
+import { SQLiteProvider, useSQLite } from "~/providers/RealContextProvider";
 import { DrawerProvider } from "~/providers/DrawerProvider";
 import CustomDrawer from "~/components/ui/custom-drawer";
 import { useDrawer } from "~/providers/DrawerProvider";
@@ -23,9 +23,8 @@ import { configureNetworkForPlatform } from "~/utils/networkHelpers";
 import NetInfo from "@react-native-community/netinfo";
 import { registerForPushNotificationsAsync } from "~/services/notificationService";
 import * as Notifications from 'expo-notifications';
-import { View, Text } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
 
-// Debug logging utility
 const debug = {
   log: (component: string, message: string, data?: any) => {
     console.log(`[${component}] ${message}`, data ? data : '');
@@ -42,8 +41,6 @@ SplashScreen.preventAutoHideAsync().catch(err => {
   debug.error('SplashScreen', 'Failed to prevent auto hide', err);
 });
 enableScreens();
-
-const { RealmProvider } = RealmContext;
 
 export default function AppLayout() {
   const [error, setError] = useState<string | null>(null);
@@ -62,9 +59,12 @@ export default function AppLayout() {
   if (error) {
     debug.log('AppLayout', 'Rendering error state', { error });
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: 'red', textAlign: 'center', margin: 20 }}>
-          Critical Error: {error}
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <Text style={{ color: 'red', textAlign: 'center', marginBottom: 10, fontSize: 16, fontWeight: 'bold' }}>
+          Critical Error
+        </Text>
+        <Text style={{ color: '#333', textAlign: 'center' }}>
+          {error}
         </Text>
       </View>
     );
@@ -72,20 +72,42 @@ export default function AppLayout() {
 
   return (
     <QueryProvider>
-      <RealmProvider>
-        <DrawerProvider>
-          <FontSizeProvider>
-            <RouteProtectionProvider>
-              <AppDataProvider>
-                <Layout />
-              </AppDataProvider>
-            </RouteProtectionProvider>
-          </FontSizeProvider>
-        </DrawerProvider>
-      </RealmProvider>
+      <SQLiteProvider>
+        <SQLiteReadyGate>
+          <DrawerProvider>
+            <FontSizeProvider>
+              <RouteProtectionProvider>
+                <AppDataProvider>
+                  <Layout />
+                </AppDataProvider>
+              </RouteProtectionProvider>
+            </FontSizeProvider>
+          </DrawerProvider>
+        </SQLiteReadyGate>
+      </SQLiteProvider>
       <Toast />
     </QueryProvider>
   );
+}
+
+// This component blocks rendering of children until SQLite is ready
+function SQLiteReadyGate({ children }: { children: React.ReactNode }) {
+  const { isReady } = useSQLite();
+
+  if (!isReady) {
+    debug.log('SQLiteReadyGate', 'Waiting for SQLite to be ready...');
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
+          Initializing database...
+        </Text>
+      </View>
+    );
+  }
+
+  debug.log('SQLiteReadyGate', 'SQLite is ready, rendering app');
+  return <>{children}</>;
 }
 
 function Layout() {
@@ -97,7 +119,6 @@ function Layout() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Debug state changes
   useEffect(() => {
     const logState = async () => {
       try {
@@ -122,7 +143,6 @@ function Layout() {
       debug.log('Layout', 'Starting app initialization');
       
       try {
-        // Auth check
         if (!authChecked) {
           debug.log('Layout', 'Waiting for auth check to complete');
           return;
@@ -193,14 +213,13 @@ function Layout() {
       } catch (error) {
         debug.error('Layout', 'App initialization failed', error);
         setError(error instanceof Error ? error.message : "Unknown initialization error");
-        setAppReady(true); // Still mark as ready to show error state
+        setAppReady(true);
       }
     };
 
     initializeApp();
   }, [authChecked]);
 
-  // Navigation handling
   useEffect(() => {
     const handleNavigation = async () => {
       debug.log('Layout', 'Navigation handler started', {
@@ -277,9 +296,12 @@ function Layout() {
   if (error) {
     debug.log('Layout', 'Rendering error state', { error });
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: 'red', textAlign: 'center', margin: 20 }}>
-          Error: {error}
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <Text style={{ color: 'red', textAlign: 'center', marginBottom: 10, fontSize: 16, fontWeight: 'bold' }}>
+          Error
+        </Text>
+        <Text style={{ color: '#333', textAlign: 'center' }}>
+          {error}
         </Text>
       </View>
     );
@@ -287,9 +309,7 @@ function Layout() {
 
   debug.log('Layout', 'Rendering main app layout');
   return (
-    <GestureHandlerRootView
-      // style={{ flex: 1 }}
-    >
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <CustomDrawer isOpen={isDrawerOpen} onClose={closeDrawer} />
       <Slot />

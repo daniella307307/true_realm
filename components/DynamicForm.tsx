@@ -11,7 +11,7 @@ import { router } from "expo-router";
 
 import { useForm, useWatch } from "react-hook-form";
 import { FormField } from "~/types";
-import { RealmContext } from "~/providers/RealContextProvider";
+import { useSQLite } from "~/providers/RealContextProvider";
 import { saveSurveySubmissionToAPI } from "~/services/survey-submission";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { useTranslation } from "react-i18next";
@@ -34,10 +34,10 @@ import {
 } from "./DynamicComponents";
 import { AnswerPreview } from "./AnswerPreview";
 import { DynamicFieldProps, DynamicFormProps } from "~/types/form-types";
-import { saveFamilyToAPI } from "~/services/families";
-import { saveIzuToAPI } from "~/services/izus";
+import { useFamilyOperations } from "~/services/families";
+import { useSaveIzu } from "~/services/izus";
 import { saveMonitoringResponseToAPI } from "~/services/monitoring/monitoring-responses";
-const { useRealm } = RealmContext;
+
 
 // Use the interface directly rather than exporting it
 const DynamicField: React.FC<DynamicFieldProps> = ({
@@ -251,6 +251,8 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [currentLanguage, setCurrentLanguage] = useState(
     language || i18nInstance.language
   );
+  const { saveFamilyToAPI } = useFamilyOperations();
+  const { saveIzu } = useSaveIzu();
   const [submitting, setSubmitting] = useState(false);
   const [, setEditingFieldKey] = useState<string | null>(null);
   const [visibleFields, setVisibleFields] = useState<FormField[]>([]);
@@ -258,7 +260,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
   const [resetSubmittingCallback, setResetSubmittingCallback] = useState<
     (() => void) | null
   >(null);
-  const realm = useRealm();
+  
 
   const formValues = useWatch({
     control,
@@ -454,6 +456,7 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
             }
           }
         });
+        const { db,query } = useSQLite();
 
         const dataWithTime = {
           ...formattedData,
@@ -497,10 +500,11 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
         if (postData === "/createFamily") {
           // Create a family instead of a survey submission
-          saveFamilyToAPI(realm, dataWithTime, postData, t, visibleFields);
+          // saveFamilyToAPI(dataWithTime, postData, t, visibleFields);
+          await saveFamilyToAPI(dataWithTime, postData, t, visibleFields);
         } else if (postData === "/izucelldemography/create") {
           // Create an izu instead of a survey submission
-          saveIzuToAPI(realm, dataWithTime, postData, t, visibleFields);
+          await saveIzu(dataWithTime, postData, visibleFields);
         } else if (postData === "/sendMonitoringData") {
           const moduleId =
             formSubmissionMandatoryFields.source_module_id?.toString() || "";
@@ -595,15 +599,15 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
 
           console.log("Monitoring data:", JSON.stringify(monitoringData, null, 2));
           await saveMonitoringResponseToAPI(
-            realm,
             monitoringData,
             "/sendMonitoringData",
             t,
           );
         } else {
+          const sqlite = useSQLite();
           // Regular survey submission
           await saveSurveySubmissionToAPI(
-            realm,
+            sqlite,
             dataWithTime,
             postData,
             t,

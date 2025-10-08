@@ -4,29 +4,95 @@ import {
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
+  Image,
 } from "react-native";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Image } from "react-native";
-import { useAuth } from "~/lib/hooks/useAuth";
 import HeaderNavigation from "~/components/ui/header";
-import { RealmContext } from "~/providers/RealContextProvider";
-import { useGetLocationByVillageId, useGetLocationByVillageIdOffline } from "~/services/locations";
-const { useRealm } = RealmContext;
+import { useAuth } from "~/lib/hooks/useAuth";
+import { useSQLite } from "~/providers/RealContextProvider";
+import { useGetLocationByVillageIdOffline } from "~/services/locations";
+import { User } from "~/types";
+
+// Local User type (from SQLite)
+interface LocalUser {
+  id: number;
+  name: string;
+  email: string;
+  telephone: string;
+  user_code: string;
+  date_enrollment: string;
+  incentives: string | null;
+  village: number | null;
+  picture?: string | null;
+}
 
 const SettingsScreen = () => {
   const { t } = useTranslation();
-  const { user } = useAuth({});
-  const realm = useRealm();
-  const parsedIncentives = user?.incentives ? JSON.parse(user.incentives) : [];
+  const { user: authUser } = useAuth({});
+  const { query,db,create } = useSQLite();
 
-  console.log("id:", user?.id);
+  const [user, setUser] = useState<LocalUser | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  // useEffect(() => {
+  //   const saveUser = async()=>{
+  //     try{
+  //       if (!authUser?.id) return;
+  //       const existingUsers = await query<LocalUser>(
+  //         "SELECT * FROM users WHERE id = ?",
+  //         [authUser.id]
+  //       );
 
+  //       let savedUser : User;
+  //       if(existingUsers.length == 0){
+  //         // Update existing user
+  //         savedUser = await create<User>("Izu",{
+           
+  //         } as User);
+  //       }else{
+          
+  //       }
+  //       setUser(savedUser as LocalUser);
+  //       if(loadingUser){
+  //         setLoadingUser(false);
+  //       }
+       
+  //     }catch(error){
+  //       console.error("Error saving user to SQLite:", error);
+  //     }
+
+  //   }
+  // })
+  // Fetch user info from SQLite
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        if (!authUser?.id) return;
+        const res = authUser;
+
+        if (res) {
+          setUser(res as LocalUser);
+        }
+      } catch (error) {
+        console.error("Error loading user from SQLite:", error);
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+    fetchUser();
+  }, [authUser?.id]);
+
+  // Parse incentives JSON safely
+  const parsedIncentives =
+    user?.incentives && user.incentives !== ""
+      ? JSON.parse(user.incentives)
+      : [];
+
+  // Location (from offline DB)
   const { data: locationNamesOffline, isLoading: isLoadingLocationsOffline } =
-    useGetLocationByVillageIdOffline(user?.village.toString() || "");
+    useGetLocationByVillageIdOffline(user?.village?.toString() || "");
 
-  // console.log("Location Names", locationNamesOffline);
-
+  // UI helper component
   type InfoItemProps = {
     label: string;
     value: string | string[];
@@ -64,6 +130,14 @@ const SettingsScreen = () => {
     </View>
   );
 
+  if (loadingUser) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#4B5563" />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation
@@ -78,6 +152,7 @@ const SettingsScreen = () => {
         <Text className="text-lg font-semibold mb-2">
           {t("SettingsPage.account_details")}
         </Text>
+
         <View className="flex-row gap-x-2 items-center w-full">
           {user?.picture ? (
             <Image
@@ -97,19 +172,11 @@ const SettingsScreen = () => {
             className="max-w-fit"
           />
         </View>
+
         <InfoItem label={t("SettingsPage.email")} value={user?.email || ""} />
-        <InfoItem
-          label={t("SettingsPage.phone")}
-          value={user?.telephone || ""}
-        />
-        <InfoItem
-          label={t("SettingsPage.user_code")}
-          value={user?.user_code || ""}
-        />
-        <InfoItem
-          label={t("SettingsPage.date_of_enrollment")}
-          value={user?.date_enrollment || ""}
-        />
+        <InfoItem label={t("SettingsPage.phone")} value={user?.telephone || ""} />
+        <InfoItem label={t("SettingsPage.user_code")} value={user?.user_code || ""} />
+        <InfoItem label={t("SettingsPage.date_of_enrollment")} value={user?.date_enrollment || ""} />
 
         {user && (
           <>

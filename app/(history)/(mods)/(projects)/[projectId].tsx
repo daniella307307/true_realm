@@ -15,14 +15,13 @@ import CustomInput from "~/components/ui/input";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
-import { IModule } from "~/types";
+import { IExistingForm, IForm, IModule } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { useForm } from "react-hook-form";
 import { useGetAllModules } from "~/services/project";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { useGetFormByProjectAndModule } from "~/services/formElements";
-import { Survey } from "~/models/surveys/survey";
 import { NotFound } from "~/components/ui/not-found";
 import { useGetAllLocallyCreatedFamilies } from "~/services/families";
 import { useGetAllLocallyCreatedIzus } from "~/services/izus";
@@ -60,8 +59,8 @@ const ProjectModuleScreens = () => {
   } = useGetAllLocallyCreatedFamilies();
 
   const {
-    locallyCreatedIzus,
-    isLoading: isLoadingIzus,
+    localIzus,
+    loading,
     refresh: refreshIzus,
   } = useGetAllLocallyCreatedIzus();
 
@@ -69,7 +68,7 @@ const ProjectModuleScreens = () => {
     modulesLoading ||
     surveySubmissionsLoading ||
     isLoadingFamilies ||
-    isLoadingIzus;
+    loading;
 
   const { control, watch } = useForm({
     defaultValues: {
@@ -145,7 +144,7 @@ const ProjectModuleScreens = () => {
 
     // Get module IDs from locally created izus
     const locallyCreatedIzuModuleIds = new Set(
-      locallyCreatedIzus
+      localIzus
         .filter((izu) => izu.form_data?.project_id === Number(projectId))
         .map((izu) => izu.form_data?.source_module_id)
     );
@@ -176,7 +175,7 @@ const ProjectModuleScreens = () => {
     modules,
     surveySubmissions,
     locallyCreatedFamilies,
-    locallyCreatedIzus,
+    localIzus,
     projectId,
     searchQuery,
   ]);
@@ -203,7 +202,7 @@ const ProjectModuleScreens = () => {
     );
   }, [surveySubmissions, projectId]);
 
-  const renderItem = ({ item }: { item: IModule | Survey }) => {
+  const renderItem = ({ item }: { item: IModule | IExistingForm }) => {
     if ('module_name' in item) {
       // Submissions under a module
       const moduleSubmissions = surveySubmissions.filter(
@@ -221,7 +220,7 @@ const ProjectModuleScreens = () => {
       // console.log("Module Families: ", JSON.stringify(moduleFamilies, null, 2));
 
       // Izus created under a module
-      const moduleIzus = locallyCreatedIzus.filter(
+      const moduleIzus = localIzus.filter(
         (izu) =>
           izu.form_data &&
           izu.form_data?.project_id === Number(projectId) &&
@@ -305,7 +304,7 @@ const ProjectModuleScreens = () => {
       );
 
       // Izus created under a form  
-      const formIzus = locallyCreatedIzus.filter(
+      const formIzus = localIzus.filter(
         (izu) =>
           izu.form_data &&
           izu.form_data?.project_id === Number(projectId) &&
@@ -392,7 +391,7 @@ const ProjectModuleScreens = () => {
             <SimpleSkeletonItem />
           </View>
         ) : (
-          <FlatList<IModule | Survey>
+          <FlatList<IModule | IExistingForm>
             data={
               uncategorizedModule ? uncategorizedForms || [] : filteredModules
             }
