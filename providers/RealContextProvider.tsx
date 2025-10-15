@@ -10,7 +10,7 @@ import { CREATE_FOLLOWUPS_TABLE } from "~/models/followups/follow-up";
 import { CREATE_PROJECT_TABLE } from "~/models/projects/project";
 import { CREATE_COHORT_TABLE } from "~/models/cohorts/cohort";
 import { CREATE_IZU_TABLE } from "~/models/izus/izu";
-import { CREATE_SURVEY_SUBMISSIONS_TABLE } from "~/models/surveys/survey-submission";
+import { CREATE_SURVEY_SUBMISSIONS_TABLE } from "~/services/survey-submission";
 import { CREATE_CELL_TABLE } from "~/models/locations/cell";
 import { CREATE_VILLAGE_TABLE } from "~/models/locations/village";
 import { CREATE_SECTOR_TABLE } from "~/models/locations/sector";
@@ -30,23 +30,25 @@ interface BaseModel {
   _id?: string;
   [key: string]: any;
 }
+
 interface TableConfig {
-  primaryKey?: string;       // Primary key column name, defaults to '_id'
-  columns?: string[];        // List of allowed columns for insert/update, defaults to all keys in data object
+  primaryKey?: string;
+  columns?: string[];
 }
 
 const tableConfigs: Record<string, TableConfig> = {
   Families: { primaryKey: "_id" },
-  MonituringModules: { primaryKey: "_id" },
-  MonituringResponses: { primaryKey: "_id" }
-}
+  MonitoringModules: { primaryKey: "_id" }, // Fixed typo
+  MonitoringResponses: { primaryKey: "_id" }
+};
 
 interface SQLiteContextValue {
   db: SQLite.SQLiteDatabase | null;
   isReady: boolean;
 
   create: <T extends BaseModel>(tableName: string, data: T) => Promise<T>;
-  batchCreate: <T extends BaseModel>(tableName: string, dataArray: T[]) => Promise<T[]>;
+  batchCreate: <T extends BaseModel>(tableName: string, dataArray: T[], useTransaction?: boolean) => Promise<T[]>;
+  upsertMany: <T extends BaseModel>(tableName: string, dataArray: T[], uniqueKey: string, useTransaction?: boolean) => Promise<T[]>;
   update: <T extends BaseModel>(tableName: string, id: string, data: Partial<T>) => Promise<void>;
   delete: (tableName: string, id: string) => Promise<void>;
   deleteAll: (tableName: string) => Promise<void>;
@@ -76,14 +78,13 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const database = await SQLite.openDatabaseAsync("app.db");
         console.log("✅ Database opened successfully");
 
-        // List of all your tables and create statements
         const tables = [
           { name: "Surveys", sql: CREATE_SURVEY_TABLE },
           { name: "Notifications", sql: CREATE_NOTIFICATIONS_TABLE },
           { name: "Users", sql: CREATE_USERS_TABLE },
           { name: "Families", sql: CREATE_FAMILIES_TABLE },
           { name: "Comment", sql: CREATE_COMMENT_TABLE },
-          { name: "FollowUps", sql: CREATE_FOLLOWUPS_TABLE }, // ✅ use correct name (no dash)
+          { name: "FollowUps", sql: CREATE_FOLLOWUPS_TABLE },
           { name: "Project", sql: CREATE_PROJECT_TABLE },
           { name: "Cohort", sql: CREATE_COHORT_TABLE },
           { name: "Izu", sql: CREATE_IZU_TABLE },
@@ -100,17 +101,7 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           { name: "SurveySubmissions", sql: CREATE_SURVEY_SUBMISSIONS_TABLE },
         ];
 
-        // ✅ Drop and recreate all tables safely
         await database.withTransactionAsync(async () => {
-          for (const table of tables) {
-            try {
-              await database.execAsync(`DROP TABLE IF EXISTS ${table.name};`);
-              console.log(`🗑️  Dropped table: ${table.name}`);
-            } catch (error) {
-              console.error(`⚠️ Error dropping table ${table.name}:`, error);
-            }
-          }
-
           for (const table of tables) {
             try {
               await database.execAsync(table.sql);
@@ -123,7 +114,7 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         setDb(database);
         setIsReady(true);
-        console.log("🎉 SQLite database initialized successfully (tables recreated)");
+        console.log("🎉 SQLite database initialized successfully");
       } catch (error) {
         console.error("❌ Error initializing SQLite DB:", error);
         setInitError(error as Error);
@@ -134,10 +125,6 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     initDatabase();
   }, []);
 
-
-
-
-  // Guarded helper to ensure database is initialized
   const ensureDb = useCallback((): SQLite.SQLiteDatabase => {
     if (!db) {
       throw new Error("SQLite database not initialized yet. Please wait for isReady to be true.");
@@ -145,7 +132,21 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return db;
   }, [db]);
 
-  // --- CRUD Operations (ALL wrapped in useCallback) ---
+  const transaction = useCallback(async (callback: () => Promise<void>): Promise<void> => {
+    const database = ensureDb();
+    try {
+      await database.withTransactionAsync(async () => {
+        await callback();
+      });
+    } catch (error: any) {
+      if (error.message?.includes("cannot rollback")) {
+        console.warn("⚠️ Ignoring harmless rollback warning");
+      } else {
+        console.error("❌ SQLite transaction error:", error);
+        throw error;
+      }
+    }
+  }, [ensureDb]);
 
   const create = useCallback(async <T extends BaseModel>(tableName: string, data: T): Promise<T> => {
     const database = ensureDb();
@@ -168,63 +169,125 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [ensureDb]);
 
-  type AnyRecord = { [key: string]: any };
-
   const batchCreate = useCallback(
-  async <T extends AnyRecord>(
-    tableName: string,
-    dataArray: T[],
-    useTransaction: boolean = false // ✅ default to false
-  ): Promise<T[]> => {
-    const database = ensureDb();
-    if (dataArray.length === 0) return [];
+    async <T extends BaseModel>(
+      tableName: string,
+      dataArray: T[],
+      useTransaction: boolean = false
+    ): Promise<T[]> => {
+      const database = ensureDb();
+      if (dataArray.length === 0) return [];
 
-    const result: T[] = [];
-    const config = tableConfigs[tableName] || {};
-    const primaryKey = config.primaryKey ?? "_id";
+      const result: T[] = [];
+      const config = tableConfigs[tableName] || {};
+      const primaryKey = config.primaryKey ?? "_id";
 
-    const prepareInsertQuery = (data: AnyRecord) => {
-      const id = data[primaryKey] || generateId();
-      const keys = config.columns
-        ? config.columns.filter((k) => k in data)
-        : Object.keys(data);
+      const prepareInsertQuery = (data: BaseModel) => {
+        const id = data[primaryKey] || generateId();
+        const keys = config.columns
+          ? config.columns.filter((k) => k in data)
+          : Object.keys(data).filter(k => k !== primaryKey);
 
-      if (!keys.includes(primaryKey)) keys.unshift(primaryKey);
-      const values = keys.map((k) => (k === primaryKey ? id : data[k]));
-      const placeholders = keys.map(() => "?").join(", ");
-      const columns = keys.join(", ");
+        const allKeys = [primaryKey, ...keys];
+        const values = allKeys.map((k) => (k === primaryKey ? id : data[k]));
+        const placeholders = allKeys.map(() => "?").join(", ");
+        const columns = allKeys.join(", ");
 
-      return {
-        sql: `INSERT OR REPLACE INTO ${tableName} (${columns}) VALUES (${placeholders})`,
-        params: values,
-        id,
+        return {
+          sql: `INSERT OR REPLACE INTO ${tableName} (${columns}) VALUES (${placeholders})`,
+          params: values,
+          id,
+        };
       };
-    };
 
-    const runInserts = async () => {
-      for (const data of dataArray) {
-        const { sql, params, id } = prepareInsertQuery(data);
-        await database.runAsync(sql, params);
-        result.push({ ...data, [primaryKey]: id } as T);
+      const runInserts = async () => {
+        for (const data of dataArray) {
+          const { sql, params, id } = prepareInsertQuery(data);
+          await database.runAsync(sql, params);
+          result.push({ ...data, [primaryKey]: id } as T);
+        }
+      };
+
+      try {
+        if (useTransaction) {
+          await transaction(runInserts);
+        } else {
+          await runInserts();
+        }
+      } catch (error) {
+        console.error(`Error batch creating records in ${tableName}:`, error);
+        throw error;
       }
-    };
 
-    try {
-      if (useTransaction) {
-        await transaction(runInserts); // ✅ use safe wrapper
-      } else {
-        await runInserts();
+      return result;
+    },
+    [ensureDb, transaction]
+  );
+
+  // NEW: upsertMany function for your forms hook
+  const upsertMany = useCallback(
+    async <T extends BaseModel>(
+      tableName: string,
+      dataArray: T[],
+      uniqueKey: string = "id",
+      useTransaction: boolean = true
+    ): Promise<T[]> => {
+      const database = ensureDb();
+      if (dataArray.length === 0) return [];
+
+      const result: T[] = [];
+
+      const runUpserts = async () => {
+        for (const data of dataArray) {
+          // Check if record exists
+          const existingRecord = await database.getFirstAsync<any>(
+            `SELECT ${uniqueKey} FROM ${tableName} WHERE ${uniqueKey} = ?`,
+            [data[uniqueKey]]
+          );
+
+          const keys = Object.keys(data);
+          const values = keys.map(k => data[k]);
+
+          if (existingRecord) {
+            // UPDATE existing record
+            const updateKeys = keys.filter(k => k !== uniqueKey);
+            const updateValues = updateKeys.map(k => data[k]);
+            const setClause = updateKeys.map(k => `${k} = ?`).join(", ");
+
+            await database.runAsync(
+              `UPDATE ${tableName} SET ${setClause} WHERE ${uniqueKey} = ?`,
+              [...updateValues, data[uniqueKey]]
+            );
+          } else {
+            // INSERT new record
+            const placeholders = keys.map(() => "?").join(", ");
+            const columns = keys.join(", ");
+
+            await database.runAsync(
+              `INSERT INTO ${tableName} (${columns}) VALUES (${placeholders})`,
+              values
+            );
+          }
+
+          result.push(data);
+        }
+      };
+
+      try {
+        if (useTransaction) {
+          await transaction(runUpserts);
+        } else {
+          await runUpserts();
+        }
+      } catch (error) {
+        console.error(`Error upserting records in ${tableName}:`, error);
+        throw error;
       }
-    } catch (error) {
-      console.error(`Error batch creating records in ${tableName}:`, error);
-      throw error;
-    }
 
-    return result;
-  },
-  [ensureDb]
-);
-
+      return result;
+    },
+    [ensureDb, transaction]
+  );
 
   const update = useCallback(async <T extends BaseModel>(
     tableName: string,
@@ -267,8 +330,6 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw error;
     }
   }, [ensureDb]);
-
-  // --- Read Operations (ALL wrapped in useCallback) ---
 
   const getAll = useCallback(async <T extends BaseModel>(
     tableName: string,
@@ -355,8 +416,6 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [ensureDb]);
 
-  // --- Raw Query Operations (ALL wrapped in useCallback) ---
-
   const query = useCallback(async <T = any>(sql: string, params?: any[]): Promise<T[]> => {
     const database = ensureDb();
     try {
@@ -376,36 +435,13 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw error;
     }
   }, [ensureDb]);
-  const transaction = useCallback(async (callback: () => Promise<void>): Promise<void> => {
-    const database = ensureDb();
-    try {
-      if (!database) throw new Error("Database not initialized");
 
-      // Wrap transaction safely
-      await database.withTransactionAsync(async () => {
-        try {
-          await callback();
-        } catch (err) {
-          console.error("⚠️ Transaction callback failed:", err);
-          throw err;
-        }
-      });
-    } catch (error: any) {
-      // Prevent "cannot rollback - no transaction is active" crash
-      if (error.message?.includes("cannot rollback")) {
-        console.warn("⚠️ Ignoring harmless rollback warning");
-      } else {
-        console.error("❌ SQLite transaction error:", error);
-      }
-    }
-  }, [ensureDb]);
-
-  // Context value - wrapped in useMemo to prevent unnecessary re-renders
   const value: SQLiteContextValue = useMemo(() => ({
     db,
     isReady,
     create,
     batchCreate,
+    upsertMany,
     update,
     delete: deleteRecord,
     deleteAll,
@@ -422,6 +458,7 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     isReady,
     create,
     batchCreate,
+    upsertMany,
     update,
     deleteRecord,
     deleteAll,
@@ -435,16 +472,13 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     transaction,
   ]);
 
-  // If there's an initialization error, you might want to handle it
   if (initError) {
     console.error("SQLite initialization error:", initError);
-    // You could render an error UI here if needed
   }
 
   return <SQLiteContext.Provider value={value}>{children}</SQLiteContext.Provider>;
 };
 
-// CRITICAL: Export the hook as a named export
 export const useSQLite = () => {
   const ctx = useContext(SQLiteContext);
   if (!ctx) {
@@ -453,5 +487,4 @@ export const useSQLite = () => {
   return ctx;
 };
 
-// Also export as default for flexibility
 export default SQLiteProvider;

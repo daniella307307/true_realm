@@ -290,6 +290,7 @@
     "logout": "Logout",
     "not_available": "Not available",
     "no_incentives": "No incentives available"
+
   },
   "CommunityPage": {
     "title": "Community",
@@ -456,7 +457,9 @@
     "Users": "Users",
     "responses": "Monitoring Responses",
     "followups": "Follow-ups",
-    "pending": "Pending"
+    "pending": "Pending",
+    "syncAll":"Sync All",
+    "submissions":"Submissions"
   },
   "DateTimePicker": {
     "selectDateTime": "Select a date/time"
@@ -654,5 +657,5 @@
     "updated": "Updated",
     "error": "Error"
   }
-
+ 
 }

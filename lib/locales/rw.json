@@ -262,6 +262,7 @@
     "izu": "Umukoresha",
     "search_izu": "Shakisha Ubarura"
   },
+ 
   "SettingsPage": {
     "title": "Igenamiterere",
     "language": "Ururimi",
@@ -455,7 +456,9 @@
     "families": "Huza imiryango",
     "Users": "Huza Abakoresha",
     "responses": "Huza ibisubizo byo kugenzura",
-    "followups": "Huza amafishi ku gukurikirana"
+    "followups": "Huza amafishi ku gukurikirana",
+    "syncAll":"Huza amakuru yose",
+    "submissions":"Ibisubizo"
   },
   "DateTimePicker": {
     "selectDateTime": "Hitamo itariki/isaha"
@@ -625,6 +628,7 @@
     "ok": "OK",
     "yes": "Yego",
     "no": "Oya",
+    "refresh":"",
     "family": "Umuryango",
     "headName": "Umukuru w' Umuryango",
     "village": "Akagari",
@@ -653,5 +657,6 @@
     "updated": "Byahindutse",
     "error": "Ikosa"
   }
+   
 
 }

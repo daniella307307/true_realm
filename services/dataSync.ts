@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSQLite } from "~/providers/RealContextProvider";
+import { isOnline } from "./network";
 
+// ===================== TYPES =====================
 export interface SyncConfig<T = any> {
   key: string;
   fetchFn: () => Promise<any>;
@@ -10,11 +12,8 @@ export interface SyncConfig<T = any> {
   staleTime?: number;
   forceSync?: boolean;
   autoMigrate?: boolean;
-  priority?: number; // Lower number = higher priority
-}
-
-interface SyncStatus {
-  [key: string]: SyncState;
+  priority?: number; // lower number = higher priority,
+  customMerge?: (remoteData: T[], getAll: (table: string) => Promise<T[]>, create: any, update: any) => Promise<void>;
 }
 
 export type SyncState = {
@@ -24,96 +23,11 @@ export type SyncState = {
   migrationApplied?: boolean;
 };
 
-/**
- * Get existing columns from a table
- */
-async function getTableColumns(
-  db: any,
-  tableName: string
-): Promise<string[]> {
-  try {
-    const result = await db.getAllAsync(`PRAGMA table_info(${tableName});`);
-    return result.map((col: any) => col.name);
-  } catch (error) {
-    console.error(`[DataSync] Error getting columns for ${tableName}:`, error);
-    return [];
-  }
+interface SyncStatus {
+  [key: string]: SyncState;
 }
 
-/**
- * Add missing columns to a table
- */
-async function addMissingColumns(
-  db: any,
-  tableName: string,
-  schema: Record<string, string>
-): Promise<string[]> {
-  const existingColumns = await getTableColumns(db, tableName);
-  const schemaColumns = Object.keys(schema);
-  const missingColumns = schemaColumns.filter(
-    (col) => !existingColumns.includes(col)
-  );
-
-  if (missingColumns.length === 0) {
-    console.log(`[DataSync] No missing columns for ${tableName}`);
-    return [];
-  }
-
-  console.log(`[DataSync] Adding missing columns to ${tableName}:`, missingColumns);
-
-  for (const column of missingColumns) {
-    const columnType = schema[column];
-    try {
-      // Add delay between ALTER TABLE operations
-      await new Promise(resolve => setTimeout(resolve, 50));
-      await db.execAsync(
-        `ALTER TABLE ${tableName} ADD COLUMN ${column} ${columnType};`
-      );
-      console.log(`[DataSync] ✅ Added column: ${column} ${columnType}`);
-    } catch (error) {
-      console.error(`[DataSync] ❌ Failed to add column ${column}:`, error);
-    }
-  }
-
-  return missingColumns;
-}
-
-/**
- * Validate data against schema and add default values for missing columns
- */
-function ensureSchemaCompliance<T>(
-  records: T[],
-  schema?: Record<string, string>
-): T[] {
-  if (!schema || records.length === 0) return records;
-
-  return records.map((record) => {
-    const compliantRecord = { ...record } as any;
-
-    Object.keys(schema).forEach((column) => {
-      if (!(column in compliantRecord)) {
-        const type = schema[column].toUpperCase();
-        
-        if (type.includes('INTEGER') || type.includes('REAL')) {
-          compliantRecord[column] = 0;
-        } else if (type.includes('TEXT')) {
-          compliantRecord[column] = '';
-        } else if (type.includes('BLOB')) {
-          compliantRecord[column] = null;
-        } else {
-          compliantRecord[column] = null;
-        }
-      }
-    });
-
-    return compliantRecord;
-  });
-}
-
-// ============================================
-// OPERATION QUEUE FOR SEQUENTIAL EXECUTION
-// ============================================
-
+// ===================== OPERATION QUEUE =====================
 class OperationQueue {
   private queue: Array<() => Promise<void>> = [];
   private isProcessing = false;
@@ -121,45 +35,36 @@ class OperationQueue {
 
   setReady(ready: boolean) {
     this.isReady = ready;
-    if (ready && !this.isProcessing) {
-      this.processQueue();
-    }
+    if (ready && !this.isProcessing) this.processQueue();
   }
 
-  async add<T>(operation: () => Promise<T>): Promise<T> {
+  add<T>(operation: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
       this.queue.push(async () => {
         try {
           const result = await operation();
           resolve(result);
-        } catch (error) {
-          reject(error);
+        } catch (err) {
+          reject(err);
         }
       });
 
-      if (this.isReady && !this.isProcessing) {
-        this.processQueue();
-      }
+      if (this.isReady && !this.isProcessing) this.processQueue();
     });
   }
 
   private async processQueue() {
-    if (this.isProcessing || this.queue.length === 0 || !this.isReady) {
-      return;
-    }
-
+    if (this.isProcessing || !this.isReady || this.queue.length === 0) return;
     this.isProcessing = true;
 
     while (this.queue.length > 0) {
       const operation = this.queue.shift();
-      if (operation) {
-        try {
-          await operation();
-          // Add small delay between operations to prevent lock contention
-          await new Promise(resolve => setTimeout(resolve, 100));
-        } catch (error) {
-          console.error('[OperationQueue] Error executing operation:', error);
-        }
+      if (!operation) continue;
+      try {
+        await operation();
+        await new Promise(res => setTimeout(res, 100)); // small delay between ops
+      } catch (err) {
+        console.error("[OperationQueue] Error executing operation:", err);
       }
     }
 
@@ -172,194 +77,159 @@ class OperationQueue {
   }
 }
 
-// Global operation queue
 const operationQueue = new OperationQueue();
 
+// ===================== SCHEMA HELPERS =====================
+async function getTableColumns(db: any, tableName: string) {
+  try {
+    const result = await db.getAllAsync(`PRAGMA table_info(${tableName});`);
+    return result.map((col: any) => col.name);
+  } catch (err) {
+    console.error(`[DataSync] Error getting columns for ${tableName}:`, err);
+    return [];
+  }
+}
+
+async function addMissingColumns(db: any, tableName: string, schema: Record<string, string>) {
+  const existing = await getTableColumns(db, tableName);
+  const missing = Object.keys(schema).filter(col => !existing.includes(col));
+
+  for (const col of missing) {
+    const type = schema[col];
+    try {
+      await new Promise(res => setTimeout(res, 50));
+      await db.execAsync(`ALTER TABLE ${tableName} ADD COLUMN ${col} ${type};`);
+      console.log(`[DataSync] Added column ${col} ${type}`);
+    } catch (err) {
+      console.error(`[DataSync] Failed to add column ${col}:`, err);
+    }
+  }
+
+  return missing;
+}
+
+function ensureSchemaCompliance<T>(records: T[], schema?: Record<string, string>): T[] {
+  if (!schema || records.length === 0) return records;
+
+  return records.map(record => {
+    const r = { ...record } as any;
+    for (const col of Object.keys(schema)) {
+      if (!(col in r)) {
+        const type = schema[col].toUpperCase();
+        if (type.includes("INTEGER") || type.includes("REAL")) r[col] = 0;
+        else if (type.includes("TEXT")) r[col] = "";
+        else r[col] = null;
+      }
+    }
+    return r;
+  });
+}
+
+// ===================== HOOK =====================
 export function useDataSync<T = any>(configs: SyncConfig<T>[]) {
   const { deleteAll, batchCreate, db, isReady } = useSQLite();
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({});
+  const syncStatusRef = useRef(syncStatus);
+  const configsRef = useRef(configs);
+  const initializedRef = useRef(false);
 
-  const syncStatusRef = useRef<SyncStatus>({});
+  // update refs
   syncStatusRef.current = syncStatus;
+  configsRef.current = configs;
 
-  const configsRef = useRef<SyncConfig<T>[]>(configs);
-  const hasInitializedRef = useRef(false);
-
-  // Update queue ready state when db is ready
+  // mark queue ready
   useEffect(() => {
     operationQueue.setReady(isReady);
   }, [isReady]);
 
+  // ===================== REFRESH =====================
   const refresh = useCallback(
     async (key: string, force: boolean = false) => {
-      // Wait for database to be ready
-      if (!isReady) {
-        console.log(`[DataSync] Database not ready, queueing ${key}`);
-      }
-
       return operationQueue.add(async () => {
-        const config = configsRef.current.find((c) => c.key === key);
-        if (!config) return;
+        const cfg = configsRef.current.find(c => c.key === key);
+        if (!cfg) return;
 
-        const {
-          fetchFn,
-          tableName,
-          transformData,
-          staleTime,
-          forceSync,
-          schema,
-          autoMigrate = true,
-        } = config;
-
+        const { fetchFn, tableName, transformData, staleTime, forceSync, schema, autoMigrate = true } = cfg;
         const effectiveForce = force || forceSync;
         const lastSyncTime = syncStatusRef.current[key]?.lastSyncTime;
         const now = Date.now();
 
-        // Stale check
-        if (
-          !effectiveForce &&
-          staleTime &&
-          lastSyncTime &&
-          now - lastSyncTime.getTime() < staleTime
-        ) {
+        // skip if not stale
+        if (!effectiveForce && staleTime && lastSyncTime && now - lastSyncTime.getTime() < staleTime) {
           console.log(`[DataSync] Skipping ${key}, still fresh`);
           return;
         }
 
-        // Set loading state
-        setSyncStatus((prev) => ({
+        setSyncStatus(prev => ({
           ...prev,
-          [key]: {
-            isLoading: true,
-            error: null,
-            lastSyncTime: prev[key]?.lastSyncTime || null,
-            migrationApplied: false,
-          },
+          [key]: { isLoading: true, error: null, lastSyncTime: prev[key]?.lastSyncTime || null, migrationApplied: false }
         }));
 
         try {
-          // Step 1: Schema migration
           let migrationApplied = false;
+
+          // Offline-safe: only apply schema locally
           if (schema && autoMigrate && db) {
-            try {
-              const missingColumns = await addMissingColumns(db, tableName, schema);
-              migrationApplied = missingColumns.length > 0;
-            } catch (migrationError) {
-              console.warn(`[DataSync] Migration failed for ${tableName}, continuing...`, migrationError);
-            }
+            const added = await addMissingColumns(db, tableName, schema);
+            migrationApplied = added.length > 0;
           }
 
-          // Step 2: Fetch remote data
-          const remoteData = await fetchFn();
-
-          let records: T[] = transformData
-            ? transformData(remoteData)
-            : Array.isArray(remoteData?.data)
-            ? remoteData.data
-            : [];
-
-          // Step 3: Ensure schema compliance
-          if (schema) {
-            records = ensureSchemaCompliance(records, schema);
+          // Offline-safe fetch
+          let remoteData: any[] = [];
+          if (isOnline()) {
+            remoteData = transformData ? transformData(await fetchFn()) : await fetchFn();
+          } else {
+            console.log(`[DataSync] Offline, skipping fetch for ${key}`);
           }
 
-          // Step 4: Delete old data (with retry)
-          try {
+          let records = schema ? ensureSchemaCompliance(remoteData, schema) : remoteData;
+
+          // Only write to DB if online
+          if (isOnline() && records.length > 0) {
             await deleteAll(tableName);
-          } catch (deleteError: any) {
-            if (deleteError.message?.includes('NullPointerException')) {
-              console.log(`[DataSync] Retrying deleteAll for ${tableName}...`);
-              await new Promise(resolve => setTimeout(resolve, 200));
-              await deleteAll(tableName);
-            } else {
-              throw deleteError;
-            }
+            await batchCreate(tableName, records);
           }
 
-          // Step 5: Insert new data (with retry)
-          if (records.length > 0) {
-            try {
-              await batchCreate(tableName, records);
-            } catch (insertError: any) {
-              if (insertError.message?.includes('NullPointerException')) {
-                console.log(`[DataSync] Retrying batchCreate for ${tableName}...`);
-                await new Promise(resolve => setTimeout(resolve, 200));
-                await batchCreate(tableName, records);
-              } else {
-                throw insertError;
-              }
-            }
-          }
-
-          setSyncStatus((prev) => ({
+          setSyncStatus(prev => ({
             ...prev,
-            [key]: {
-              isLoading: false,
-              error: null,
-              lastSyncTime: new Date(),
-              migrationApplied,
-            },
+            [key]: { isLoading: false, error: null, lastSyncTime: new Date(), migrationApplied }
           }));
 
-          console.log(
-            `[DataSync] ✅ Synced ${records.length} records into ${tableName}` +
-              (migrationApplied ? " (schema updated)" : "")
-          );
+          console.log(`[DataSync] ✅ ${key} synced ${records.length} records${migrationApplied ? " (schema updated)" : ""}`);
         } catch (err: any) {
           console.error(`[DataSync] ❌ Error syncing ${key}:`, err);
-          setSyncStatus((prev) => ({
+          setSyncStatus(prev => ({
             ...prev,
-            [key]: {
-              isLoading: false,
-              error: err instanceof Error ? err : new Error(String(err)),
-              lastSyncTime: prev[key]?.lastSyncTime || null,
-              migrationApplied: false,
-            },
+            [key]: { isLoading: false, error: err instanceof Error ? err : new Error(String(err)), lastSyncTime: prev[key]?.lastSyncTime || null }
           }));
         }
       });
     },
-    [deleteAll, batchCreate, db, isReady]
+    [deleteAll, batchCreate, db]
   );
 
-  // Update configsRef when configs change
+  // ===================== INITIAL SYNC =====================
   useEffect(() => {
-    configsRef.current = configs;
-  }, [configs]);
-
-  // Initial sync - with priority sorting
-  useEffect(() => {
-    if (hasInitializedRef.current || !isReady) return;
-
-    let isMounted = true;
+    if (!isReady || initializedRef.current) return;
+    let mounted = true;
 
     const syncAll = async () => {
-      // Sort configs by priority (lower number = higher priority)
-      const sortedConfigs = [...configsRef.current].sort(
-        (a, b) => (a.priority ?? 999) - (b.priority ?? 999)
-      );
-
+      const sortedConfigs = [...configsRef.current].sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
       for (const cfg of sortedConfigs) {
-        if (!isMounted) break;
+        if (!mounted) break;
         await refresh(cfg.key, cfg.forceSync);
       }
-
-      if (isMounted) {
-        hasInitializedRef.current = true;
-      }
+      if (mounted) initializedRef.current = true;
     };
 
     syncAll();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [refresh, isReady]);
+    return () => { mounted = false; };
+  }, [isReady, refresh]);
 
   return { syncStatus, refresh };
 }
 
-// Helper function to reset sync state (useful for logout/login)
+// ===================== RESET =====================
 export function resetDataSync() {
   operationQueue.clear();
 }

@@ -31,20 +31,15 @@ const AppDataContext = createContext<AppDataContextType>({
 
 export const useAppData = () => useContext(AppDataContext);
 
-// Helper function to add delay between API calls
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // ===== ALL STATE HOOKS MUST BE AT THE TOP =====
+
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
-  
-  // ===== ALL CONTEXT HOOKS MUST BE AT THE TOP =====
   const { isLoggedIn, user } = useAuth({});
   const { isReady: isSQLiteReady } = useSQLite();
-  // ===== ALL CUSTOM HOOKS MUST BE CALLED UNCONDITIONALLY =====
-  // Pass 'false' initially to prevent automatic fetching, we'll control it manually
   const izusHook = useGetIzus(false);
   const projectsHook = useGetAllProjects(false);
   // const familiesHook = useGetFamilies(false);
@@ -57,26 +52,26 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const monitoringFormsHook = useGetMonitoringForms(false);
   const monitoringResponsesHook = useGetMonitoringResponses(false);
   const followUpsHook = useGetAllFollowUps(false);
-  const surveySubmissionsHook = useGetAllSurveySubmissions();
+  const surveySubmissionsHook = useGetAllSurveySubmissions(false);
 
   // Memoized refresh function with rate limiting and sequential batching
   const refreshAllData = useCallback(async () => {
     if (isRefreshing) {
-      console.log("⚠️ Refresh already in progress, skipping...");
+      console.log("Refresh already in progress, skipping...");
       return;
     }
 
     if (!isSQLiteReady) {
-      console.log("⚠️ SQLite not ready yet, cannot refresh data");
+      console.log("SQLite not ready yet, cannot refresh data");
       return;
     }
 
     try {
       setIsRefreshing(true);
-      console.log("🔄 Starting sequential data refresh with rate limiting...");
+      console.log("Starting sequential data refresh with rate limiting...");
 
       // Batch 1: Critical data (with 200ms delays between each)
-      console.log("📦 Batch 1: Loading critical data...");
+      console.log("Batch 1: Loading critical data...");
       try {
         await projectsHook?.refresh?.();
         await delay(200);
@@ -98,8 +93,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.error("Error loading izus:", error);
       }
 
-      // Batch 2: User-related data (with 200ms delays)
-      console.log("📦 Batch 2: Loading user data...");
+      // // Batch 2: User-related data (with 200ms delays)
+      // console.log("Batch 2: Loading user data...");
       // try {
       //   await familiesHook?.refresh?.();
       //   await delay(200);
@@ -121,8 +116,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.error("Error loading follow-ups:", error);
       }
 
-      // Batch 3: Monitoring data (with 200ms delays)
-      console.log("📦 Batch 3: Loading monitoring data...");
+      // // Batch 3: Monitoring data (with 200ms delays)
+      // console.log("Batch 3: Loading monitoring data...");
       try {
         await monitoringModulesHook?.refresh?.();
         await delay(200);
@@ -145,7 +140,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
 
       // Batch 4: Secondary data (with 200ms delays)
-      console.log("📦 Batch 4: Loading secondary data...");
+      // console.log(" Batch 4: Loading secondary data...");
       try {
         await surveySubmissionsHook?.refresh?.();
         await delay(200);
@@ -173,10 +168,10 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       //   console.error("Error loading cohorts:", error);
       // }
 
-      console.log("🎉 All data refresh completed successfully");
+      console.log(" All data refresh completed successfully");
       setIsDataLoaded(true);
     } catch (error) {
-      console.error("❌ Error refreshing app data:", error);
+      console.error(" Error refreshing app data:", error);
       // Still mark as loaded to allow app to function with whatever data succeeded
       setIsDataLoaded(true);
     } finally {
@@ -204,9 +199,9 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     const initializeData = async () => {
       try {
-        const loginStatus = await isLoggedIn;
+        const loginStatus = await Promise.resolve(isLoggedIn);
         
-        console.log("🔍 Checking initialization conditions:", {
+        console.log(" Checking initialization conditions:", {
           loginStatus,
           isSQLiteReady,
           hasInitialized,
@@ -214,25 +209,20 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
           isDataLoaded
         });
 
-        // Only initialize if:
-        // 1. User is logged in
-        // 2. SQLite is ready
-        // 3. We haven't initialized yet
-        // 4. Not currently refreshing
         if (loginStatus && isSQLiteReady && !hasInitialized && !isRefreshing) {
-          console.log("🚀 All conditions met, starting initial data load");
+          console.log(" All conditions met, starting initial data load");
           setHasInitialized(true);
           await refreshAllData();
         } else if (!loginStatus && hasInitialized) {
           // Reset state when user logs out
-          console.log("👋 User logged out, resetting data state");
+          console.log(" User logged out, resetting data state");
           setHasInitialized(false);
           setIsDataLoaded(false);
         } else if (!isSQLiteReady) {
-          console.log("⏳ Waiting for SQLite to be ready before data load");
+          console.log(" Waiting for SQLite to be ready before data load");
         }
       } catch (error) {
-        console.error("❌ Error in initializeData:", error);
+        console.error(" Error in initializeData:", error);
       }
     };
 

@@ -132,11 +132,11 @@ function HomeScreen(): React.JSX.Element{
         title: t("HomePage.history"),
         route: "/(history)/realmDbViewer",
       },
-      {
-        icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
-        title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
-        route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
-      },
+      // {
+      //   icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
+      //   title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
+      //   route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
+      // },
       // {
       //   icon: <TabBarIcon name="chat" family="Entypo" />,
       //   title: t("HomePage.community"),

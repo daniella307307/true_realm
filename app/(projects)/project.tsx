@@ -16,14 +16,11 @@ import { IProject } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { Text } from "~/components/ui/text";
 import { useGetAllProjects } from "~/services/project";
-import { SimpleSkeletonItem, Skeleton } from "~/components/ui/skeleton";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import HeaderNavigation from "~/components/ui/header";
 
-// Projects to exclude from this screen (they are shown on Home)
-const EXCLUDED_PROJECT_IDS = new Set<number>([5, 3, 6, 7, 8, 11, 12, 13]);
-
 const ProjectScreen = () => {
-  const { projects: storedProjects, isLoading, refresh } = useGetAllProjects();
+  const { projects, isLoading, refresh } = useGetAllProjects();
   const { t, i18n } = useTranslation();
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -36,110 +33,89 @@ const ProjectScreen = () => {
 
   const searchQuery = watch("searchQuery");
   const [refreshing, setRefreshing] = useState(false);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    refresh();
+    await refresh();
     setRefreshing(false);
   };
 
-  const organizedProjects = useMemo(() => {
-    if (!storedProjects) return [];
+  // Filter and organize projects
+  const filteredProjects = useMemo(() => {
+    if (!projects) return [];
 
-    const activeProjects = storedProjects.filter(
-      (project) => project.status !== 0 && !EXCLUDED_PROJECT_IDS.has(project.id) // <-- exclude IDs here
-      //  && !EXCLUDED_PROJECT_IDS.has(project.id)
-    );
+    // Filter active projects
+    const activeProjects = projects.filter((project) => project.status !== 0);
 
-    if (!searchQuery) {
-      // Split projects into risk management and others
-      const riskProjects = activeProjects.filter((project) =>
-        project.name.toLowerCase().includes("risk of harm management")
+    // Apply search filter if exists
+    if (searchQuery) {
+      return activeProjects.filter((project) =>
+        project.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      const otherProjects = activeProjects.filter(
-        (project) =>
-          !project.name.toLowerCase().includes("risk of harm management")
-      );
-
-      return [...riskProjects, ...otherProjects];
     }
 
-    return activeProjects.filter((project) =>
-      project.name.toLowerCase().includes(searchQuery.toLowerCase())
+    // Organize: Risk management first, then others
+    const riskProjects = activeProjects.filter((project) =>
+      project.name.toLowerCase().includes("risk of harm management")
     );
-  }, [storedProjects, searchQuery]);
+    const otherProjects = activeProjects.filter(
+      (project) =>
+        !project.name.toLowerCase().includes("risk of harm management")
+    );
+
+    return [...riskProjects, ...otherProjects];
+  }, [projects, searchQuery]);
 
   const renderItem = ({ item, index }: { item: IProject; index: number }) => {
     const isRiskManagement = item.name
       .toLowerCase()
       .includes("risk of harm management");
-    //const isRiskManagement = item.name .toLowerCase() .includes("risk of harm management"); const isFirstItem = index === 0;
+
+    // Skip risk management projects in the list
     if (isRiskManagement) {
-      // ❌ Skip risky projects
       return null;
     }
-    const isFirstItem = index === 0;
 
     return (
       <TouchableOpacity
         onPress={() => router.push(`/(mods)/(projects)/${item.id}`)}
-        className={`p-4 border mb-4 rounded-xl
-          ${isRiskManagement ? "border-red-500" : "border-gray-200"}
-          ${isRiskManagement && isFirstItem ? "mt-4" : ""}`}
+        className="p-4 border border-gray-200 mb-4 rounded-xl"
       >
         <View className="flex flex-row pr-4 items-center">
           <TabBarIcon
             name="chat"
             family="MaterialIcons"
             size={24}
-            color={isRiskManagement ? "#EF4444" : "#71717A"}
+            color="#71717A"
           />
-          <Text
-            className={`text-lg ml-4 font-semibold ${isRiskManagement ? "text-red-500" : ""
-              }`}
-          >
+          <Text className="text-lg ml-4 font-semibold">
             {i18n.language === "rw-RW" ? item.kin_name || item.name : item.name}
           </Text>
         </View>
-         {/* <Text className="text-sm py-2 text-gray-600">{item.description}</Text>  */}
+        {item.description && (
+          <Text className="text-sm py-2 text-gray-600">
+            {item.description}
+          </Text>
+        )}
       </TouchableOpacity>
     );
   };
 
-  const ListHeader = () => {
-    const hasRiskProject = organizedProjects.some((project) =>
-      project.name.toLowerCase().includes("risk management")
-    );
-
-    if (!hasRiskProject) return null;
-
-    return (
-      <View className="bg-red-50 p-4 rounded-xl mb-4">
-        <Text className="text-red-500 font-semibold">
-          {t("ProjectPage.risk_management_section")}
-        </Text>
-      </View>
-    );
-  };
-
-  const transformedProjects: IProject[] = organizedProjects.map((project) => ({
-    id: project.id,
-    name: project.name,
-    kin_name: project.kin_name,
-    duration: project.duration || "",
-    progress: project.progress || "",
-    description: project.description || "",
-    status: project.status,
-    beneficiary: project.beneficiary || "",
-    projectlead: project.projectlead || "",
-    has_modules: project.has_modules,
-    created_at: project.created_at
-      ? new Date(project.created_at).toDateString()
-      : undefined,
-    updated_at: project.updated_at
-      ? new Date(project.updated_at).toDateString()
-      : undefined,
-    project_modules: Array.from(project.project_modules),
-  }));
+  const ListEmptyComponent = () => (
+    <View className="flex-1 justify-center items-center py-20">
+      <TabBarIcon
+        name="folder-open"
+        family="MaterialIcons"
+        size={64}
+        color="#D1D5DB"
+      />
+      <Text className="text-gray-500 mt-4 text-center">
+        {searchQuery
+          ? t("ProjectPage.no_projects_found")
+          : t("ProjectPage.no_projects_available")}
+      </Text>
+    </View>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -165,11 +141,11 @@ const ProjectScreen = () => {
           </View>
         ) : (
           <FlatList
-            data={transformedProjects}
-            ListHeaderComponent={ListHeader}
+            data={filteredProjects}
             showsVerticalScrollIndicator={false}
-            keyExtractor={(item: IProject, index) => `${item.id}-${index}`}
+            keyExtractor={(item: IProject) => item.id.toString()}
             renderItem={renderItem}
+            ListEmptyComponent={ListEmptyComponent}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }

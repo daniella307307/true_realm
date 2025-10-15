@@ -1,8 +1,8 @@
 // db/schema.ts
 export const CREATE_PROJECT_TABLE = `
   CREATE TABLE IF NOT EXISTS Projects (
+    _id TEXT PRIMARY KEY,
     id INTEGER,
-    _id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     duration TEXT,
     progress TEXT,
@@ -15,6 +15,8 @@ export const CREATE_PROJECT_TABLE = `
     kin_descriptions TEXT,
     created_at TEXT,
     updated_at TEXT,
-    project_modules TEXT 
+    project_modules TEXT ,
+    onPhone BOOLEAN,
+    show_under_project TEXT
   );
 `;

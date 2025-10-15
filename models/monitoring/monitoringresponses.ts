@@ -6,6 +6,7 @@ export const CREATE_MONITORING_RESPONSES_TABLE = `
     module_id TEXT,
     form_id TEXT,
     project_id INTEGER,
+    project_module_id INTEGER,
     date_recorded TEXT,  
     type TEXT,
     cohort TEXT,

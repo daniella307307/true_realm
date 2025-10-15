@@ -1,396 +1,443 @@
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useState, useMemo } from "react";
 import { useSQLite } from "~/providers/RealContextProvider";
 import { baseInstance } from "~/utils/axios";
 import { useDataSync } from "./dataSync";
 import { I4BaseFormat, IExistingForm } from "~/types";
-import { isOnline } from "./network";
-
-interface IFetchFormsResponse {
-  data: IExistingForm[];
-}
-
-export interface IForm {
-  _id: string;                 // Primary key (Realm.ObjectId → TEXT)
-  id: number;                  // Form ID
-  parent_id?: number | null;   // Optional parent form ID
-  name: string;                // Form name
-  name_kin?: string | null;    // Localized name
-  slug?: string | null;        // Optional slug
-  json2: string;               // JSON data as string
-  json2_bkp?: string | null;   // Optional backup JSON string
-  survey_status: number;       // Status of survey
-  module_id?: number | null;   // Optional module ID
-  is_primary: number;          // Boolean as 0/1
-  table_name?: string | null;  // Optional table name
-  post_data?: string | null;   // Optional post data
-  fetch_data?: string | null;  // Optional fetch data
-  loads?: string | null;       // Optional loads info
-  prev_id?: string | null;     // Optional previous form ID
-  created_at?: string | null;  // ISO string date
-  updated_at?: string | null;  // ISO string date
-  order_list: number;          // Sorting order
-  project_module_id: number;   // Project module ID
-  project_id?: number | null;  // Project ID
-  source_module_id?: number | null; // Original module ID
-}
+import { checkNetworkConnection } from "~/utils/networkHelpers";
 
 // ---------------- FETCH FROM API ----------------
 export async function fetchFormsFromRemote(): Promise<IExistingForm[]> {
-  const res = await baseInstance.get<I4BaseFormat<IExistingForm[]>>(`/v2/surveys`);
-  return res.data.data;
+  try {
+    const res = await baseInstance.get<I4BaseFormat<IExistingForm[]>>(`/v2/surveys`);
+    const data = res.data?.data;
+    
+    // Ensure we always return an array
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    
+    console.warn('[fetchFormsFromRemote] Unexpected data format:', typeof data);
+    return [];
+  } catch (error) {
+    console.error('[fetchFormsFromRemote] Error:', error);
+    return [];
+  }
 }
 
-export async function fetchFormByProjectAndModuleFromRemote(
-  projectId: number,
-  moduleId: number
+export async function fetchFormByProjectFromRemote(
+  projectId: number
 ): Promise<IExistingForm[]> {
-  const res = await baseInstance.get<I4BaseFormat<IExistingForm[]>>(
-    `/v2/projects/${projectId}/module/${moduleId}/surveys`
-  );
-  return res.data.data;
+  try {
+    const res = await baseInstance.get<I4BaseFormat<IExistingForm[]>>(
+      `/v2/surveys`
+    );
+    const data = res.data?.data;
+    
+    // Ensure we always return an array
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    
+    console.warn(`[fetchFormByProjectFromRemote] Unexpected data format for project ${projectId}:`, typeof data);
+    return [];
+  } catch (error) {
+    console.error(`[fetchFormByProjectFromRemote] Error for project ${projectId}:`, error);
+    return [];
+  }
 }
 
-// ---------------- USE GET FORMS ----------------
+// ---------------- HELPER: DEDUPLICATE FORMS ----------------
+function deduplicateForms(forms: IExistingForm[]): IExistingForm[] {
+  const uniqueMap = new Map<number, IExistingForm>();
+  
+  forms.forEach((form) => {
+    const existing = uniqueMap.get(form.id);
+    
+    // Keep the most recently updated form, or the first one if no updated_at field
+    if (!existing) {
+      uniqueMap.set(form.id, form);
+    } else {
+      const existingTime = existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
+      const currentTime = form.updated_at ? new Date(form.updated_at).getTime() : 0;
+      
+      if (currentTime > existingTime) {
+        console.warn(`Replacing duplicate form ID ${form.id} with newer version`);
+        uniqueMap.set(form.id, form);
+      } else {
+        console.warn(`Skipping duplicate form ID ${form.id}`);
+      }
+    }
+  });
+  
+  return Array.from(uniqueMap.values());
+}
+
+// ---------------- USE GET ALL FORMS (OFFLINE-FIRST) ----------------
 export function useGetForms(forceSync: boolean = false) {
-  const { getAll, batchCreate } = useSQLite();
+  const { getAll } = useSQLite();
   const [storedForms, setStoredForms] = useState<IExistingForm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+  const [dataSource, setDataSource] = useState<"local" | "remote" | "pending">("pending");
   const [error, setError] = useState<Error | null>(null);
-  
-  // Track if initial load is done to prevent unnecessary re-renders
-  const initialLoadDone = useRef(false);
-  const forceSyncRef = useRef(forceSync);
 
-  // Update ref when forceSync changes
+  const { syncStatus, refresh: syncRefresh } = useDataSync<IExistingForm>([
+    {
+      key: "forms",
+      fetchFn: async () => {
+        const data = await fetchFormsFromRemote();
+        console.log(`[useDataSync] forms fetched: ${data?.length || 0} records`);
+        return data;
+      },
+      tableName: "Surveys",
+      staleTime: 5 * 60 * 1000,
+      forceSync,
+    },
+  ]);
+
   useEffect(() => {
-    forceSyncRef.current = forceSync;
-  }, [forceSync]);
+    let isMounted = true;
 
-  // FIXED: Memoized loadForms to prevent infinite loops
-  const loadForms = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      let localForms: IExistingForm[] = await getAll<IExistingForm>("Surveys");
-
-      if ((forceSyncRef.current || localForms.length === 0) && isOnline()) {
-        const remoteForms = await fetchFormsFromRemote();
-        await batchCreate("Surveys", remoteForms);
-        localForms = remoteForms;
-      }
-
-      setStoredForms(localForms);
-      setIsLoading(false);
-    } catch (err) {
-      console.error("Error loading forms:", err);
-      setError(err as Error);
-      setIsLoading(false);
-    }
-  }, [getAll, batchCreate]);
-
-  // FIXED: Proper refresh function
-  const refresh = useCallback(async () => {
-    if (isOnline()) {
+    const loadForms = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const remoteForms = await fetchFormsFromRemote();
-        await batchCreate("Surveys", remoteForms);
-        setStoredForms(remoteForms);
-        setIsLoading(false);
+
+        // STEP 1: Load from SQLite immediately (OFFLINE-FIRST)
+        console.log("Loading forms from local SQLite...");
+        const localForms = await getAll<IExistingForm>("Surveys");
+        const dedupedLocalForms = deduplicateForms(localForms);
+        
+        if (isMounted) {
+          setStoredForms(dedupedLocalForms);
+          setDataSource("local");
+          setIsLoading(false); // Show local data immediately
+          console.log(`Loaded ${dedupedLocalForms.length} forms from local SQLite`);
+        }
+
+        // STEP 2: Check network and sync in background
+        const online = await checkNetworkConnection();
+        setIsOffline(!online);
+
+        if (online && isMounted) {
+          console.log("Online — syncing forms from remote in background...");
+          
+          try {
+            // Trigger background sync (this will update SQLite)
+            await syncRefresh("forms", forceSync);
+
+            // Wait for sync to complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Reload from SQLite after sync
+            const syncedForms = await getAll<IExistingForm>("Surveys");
+            const dedupedSyncedForms = deduplicateForms(syncedForms);
+
+            if (isMounted) {
+              setStoredForms(dedupedSyncedForms);
+              setDataSource("remote");
+              console.log(`Synced ${dedupedSyncedForms.length} forms from remote`);
+            }
+          } catch (syncErr) {
+            console.warn("Background sync failed, continuing with local data:", syncErr);
+            // Keep local data, don't set error since we have valid local data
+          }
+        }
       } catch (err) {
-        console.error("Error refreshing forms:", err);
-        setError(err as Error);
-        setIsLoading(false);
+        console.error("Error loading forms:", err);
+        
+        if (isMounted) {
+          setError(err as Error);
+          setIsLoading(false);
+        }
       }
-    } else {
-      console.log("Offline: cannot refresh forms right now");
-    }
-  }, [batchCreate]);
+    };
 
-  // FIXED: Load once on mount or when forceSync changes
-  useEffect(() => {
-    if (!initialLoadDone.current || forceSync) {
-      loadForms();
-      initialLoadDone.current = true;
-    }
-  }, [forceSync, loadForms]);
+    loadForms();
 
-  // Periodic background syncing
-  // FIXED: Removed async IIFE anti-pattern
-  useDataSync([
-    {
-      key: "forms",
-      fetchFn: fetchFormsFromRemote,
-      tableName: "Surveys",
-      transformData: (data: IExistingForm[]) => {
-        // Schedule state update properly
-        Promise.resolve().then(async () => {
-          try {
-            await batchCreate("Surveys", data);
-            setStoredForms(data);
-          } catch (err) {
-            console.error("Error in background sync:", err);
-          }
-        });
-        return data;
-      },
-      staleTime: 5 * 60 * 1000,
-    },
-  ]);
+    return () => {
+      isMounted = false;
+    };
+  }, [getAll, syncRefresh, forceSync]);
 
-  return { forms: storedForms, isLoading, error, refresh };
-}
+  // Already deduped in the effect, but keep for safety
+  const uniqueForms = useMemo(() => {
+    return deduplicateForms(storedForms);
+  }, [storedForms]);
 
-// ---------------- USE GET FORM BY PROJECT & MODULE ----------------
-export function useGetFormByProjectAndModule(
-  projectId: number,
-  moduleId: number,
-  projectModuleId: number
-) {
-  const { getAll, batchCreate, getByQuery } = useSQLite();
-  const [storedForms, setStoredForms] = useState<IExistingForm[]>([]);
-  const [filteredForms, setFilteredForms] = useState<IForm[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  
-  const initialLoadDone = useRef(false);
-
-  // FIXED: Memoized load function with proper dependencies
-  const loadForms = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Get filtered monitoring forms
-      const rows = await getByQuery<IForm>(
-        "MonitoringForms",
-        "project_id = ? AND source_module_id = ? AND project_module_id = ?",
-        [projectId, moduleId, projectModuleId]
-      );
-      setFilteredForms(rows);
-
-      // Get all forms
-      let allForms: IExistingForm[] = await getAll<IExistingForm>("Surveys");
-
-      // Fetch from remote if online
-      if (isOnline()) {
-        const remoteForms = await fetchFormByProjectAndModuleFromRemote(
-          projectId,
-          moduleId
-        );
-        await batchCreate("Surveys", remoteForms);
-        allForms = remoteForms;
-      }
-
-      // Filter forms based on criteria
-      const filtered = allForms.filter(
-        (f) =>
-          f.project_id === projectId &&
-          f.source_module_id === moduleId &&
-          f.project_module_id === projectModuleId
-      );
-
-      setStoredForms(filtered);
-      setIsLoading(false);
-    } catch (err) {
-      console.error("Error loading forms:", err);
-      setError(err as Error);
-      setIsLoading(false);
-    }
-  }, [projectId, moduleId, projectModuleId, getAll, getByQuery, batchCreate]);
-
-  // FIXED: Only run on mount or when dependencies change
-  useEffect(() => {
-    if (!initialLoadDone.current) {
-      loadForms();
-      initialLoadDone.current = true;
-    }
-  }, [loadForms]);
-
-  // Refresh function
   const refresh = useCallback(async () => {
-    await loadForms();
-  }, [loadForms]);
+    const online = await checkNetworkConnection();
+    setIsOffline(!online);
+    
+    if (online) {
+      try {
+        await syncRefresh("forms", true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (syncErr) {
+        console.warn("Sync failed during refresh:", syncErr);
+      }
+    }
+    
+    const forms = await getAll<IExistingForm>("Surveys");
+    const dedupedForms = deduplicateForms(forms);
+    setStoredForms(dedupedForms);
+    setDataSource(online ? "remote" : "local");
+  }, [getAll, syncRefresh]);
 
-  // FIXED: Proper transformData without async IIFE
-  useDataSync([
-    {
-      key: `forms-${projectId}-${moduleId}-${projectModuleId}`,
-      fetchFn: () => fetchFormByProjectAndModuleFromRemote(projectId, moduleId),
-      tableName: "Surveys",
-      transformData: (data: IExistingForm[]) => {
-        // Schedule state update properly
-        Promise.resolve().then(async () => {
-          try {
-            await batchCreate("Surveys", data);
-            const filtered = data.filter(
-              (f) =>
-                f.project_id === projectId &&
-                f.source_module_id === moduleId &&
-                f.project_module_id === projectModuleId
-            );
-            setStoredForms(filtered);
-          } catch (err) {
-            console.error("Error in background sync:", err);
-          }
-        });
-        return data;
-      },
-      staleTime: 5 * 60 * 1000,
-    },
-  ]);
-
-  return { 
-    filteredForms: storedForms, 
-    monitoringForms: filteredForms,
-    isLoading, 
-    error,
-    refresh 
+  return {
+    forms: uniqueForms,
+    isLoading: isLoading || syncStatus.forms?.isLoading || false,
+    error: error || syncStatus.forms?.error || null,
+    isOffline,
+    dataSource,
+    lastSyncTime: syncStatus.forms?.lastSyncTime || null,
+    refresh,
   };
 }
 
-// ---------------- USE GET FORM BY ID ----------------
+// ---------------- USE GET FORMS BY PROJECT (OFFLINE-FIRST) ----------------
+export function useGetFormsByProject(
+  projectId?: number,
+  sourceModuleId?: number,
+  projectModuleId?: number,
+  forceSync: boolean = false
+) {
+  const { getAll } = useSQLite();
+  const [storedForms, setStoredForms] = useState<IExistingForm[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+  const [dataSource, setDataSource] = useState<"local" | "remote" | "pending">("pending");
+  const [error, setError] = useState<Error | null>(null);
+
+  const { syncStatus, refresh: syncRefresh } = useDataSync<IExistingForm>(
+    projectId
+      ? [
+          {
+            key: `forms-${projectId}`,
+            fetchFn: () => fetchFormByProjectFromRemote(projectId),
+            tableName: "Surveys",
+            staleTime: 5 * 60 * 1000,
+            forceSync,
+          },
+        ]
+      : []
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadForms = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // STEP 1: Load from SQLite immediately (OFFLINE-FIRST)
+        console.log("Loading forms from local SQLite...");
+        const allForms = await getAll<IExistingForm>("Surveys");
+        const dedupedForms = deduplicateForms(allForms);
+        const filtered = filterForms(dedupedForms, projectId, sourceModuleId, projectModuleId);
+
+        if (isMounted) {
+          setStoredForms(filtered);
+          setDataSource("local");
+          setIsLoading(false); // Show local data immediately
+          console.log(`Loaded ${filtered.length} filtered forms from local SQLite`);
+        }
+
+        // STEP 2: Check network and sync in background
+        const online = await checkNetworkConnection();
+        setIsOffline(!online);
+
+        if (online && projectId && isMounted) {
+          console.log(`Online — syncing forms for project ${projectId} in background...`);
+
+          try {
+            // Trigger background sync (this will update SQLite)
+            await syncRefresh(`forms-${projectId}`, forceSync);
+
+            // Wait for sync to complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Reload from SQLite after sync
+            const syncedForms = await getAll<IExistingForm>("Surveys");
+            const dedupedSyncedForms = deduplicateForms(syncedForms);
+            const filteredSynced = filterForms(dedupedSyncedForms, projectId, sourceModuleId, projectModuleId);
+
+            if (isMounted) {
+              setStoredForms(filteredSynced);
+              setDataSource("remote");
+              console.log(`Synced ${filteredSynced.length} filtered forms from remote`);
+            }
+          } catch (syncErr) {
+            console.warn("Background sync failed, continuing with local data:", syncErr);
+            // Keep local data, don't set error since we have valid local data
+          }
+        }
+      } catch (err) {
+        console.error("Error loading forms:", err);
+        
+        if (isMounted) {
+          setError(err as Error);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadForms();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId, sourceModuleId, projectModuleId, getAll, syncRefresh, forceSync]);
+
+  // Deduplicate and sort
+  const uniqueFilteredForms = useMemo(() => {
+    const deduped = deduplicateForms(storedForms);
+    
+    // Sort by order_list
+    return deduped.sort((a, b) => (a.order_list || 0) - (b.order_list || 0));
+  }, [storedForms]);
+
+  const refresh = useCallback(async () => {
+    const online = await checkNetworkConnection();
+    setIsOffline(!online);
+    
+    if (online && projectId) {
+      try {
+        await syncRefresh(`forms-${projectId}`, true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (syncErr) {
+        console.warn("Sync failed during refresh:", syncErr);
+      }
+    }
+    
+    const allForms = await getAll<IExistingForm>("Surveys");
+    const dedupedForms = deduplicateForms(allForms);
+    const filtered = filterForms(dedupedForms, projectId, sourceModuleId, projectModuleId);
+    setStoredForms(filtered);
+    setDataSource(online ? "remote" : "local");
+  }, [projectId, sourceModuleId, projectModuleId, getAll, syncRefresh]);
+
+  return {
+    filteredForms: uniqueFilteredForms,
+    isLoading: isLoading || syncStatus[`forms-${projectId}`]?.isLoading || false,
+    error: error || syncStatus[`forms-${projectId}`]?.error || null,
+    isOffline,
+    dataSource,
+    lastSyncTime: syncStatus[`forms-${projectId}`]?.lastSyncTime || null,
+    refresh,
+  };
+}
+
+// ---------------- USE GET FORM BY ID (OFFLINE-FIRST) ----------------
 export function useGetFormById(
   formId: number,
-  projectModuleId: number,
-  sourceModuleId: number,
-  projectId: number
+  projectModuleId?: number,
+  sourceModuleId?: number,
+  projectId?: number
 ) {
   const { getAll } = useSQLite();
   const [form, setForm] = useState<IExistingForm | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  
-  const initialLoadDone = useRef(false);
 
-  // FIXED: Memoized load function
-  const loadForm = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const allForms = await getAll<IExistingForm>("Surveys");
-      const found = allForms.find(
-        (f) =>
-          f.id === formId &&
-          f.project_module_id === projectModuleId &&
-          f.source_module_id === sourceModuleId &&
-          f.project_id === projectId
-      );
-      
-      setForm(found || null);
-      setIsLoading(false);
-    } catch (err) {
-      console.error("Error loading form:", err);
-      setError(err as Error);
-      setIsLoading(false);
-    }
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadForm = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Check network status
+        const online = await checkNetworkConnection();
+        setIsOffline(!online);
+
+        // Load all forms from SQLite (single source of truth)
+        const allForms = await getAll<IExistingForm>("Surveys");
+        const dedupedForms = deduplicateForms(allForms);
+
+        // Find form by ID with optional strict matching
+        const found = dedupedForms.find((f) => {
+          // Always match form ID
+          if (f.id !== formId) return false;
+
+          // Optional strict matching
+          if (projectModuleId !== undefined && f.project_module_id !== projectModuleId)
+            return false;
+          if (sourceModuleId !== undefined && f.source_module_id !== sourceModuleId)
+            return false;
+          if (projectId !== undefined && f.project_id !== projectId) return false;
+
+          return true;
+        });
+
+        if (isMounted) {
+          setForm(found || null);
+          console.log(
+            found
+              ? `Found form ${formId}`
+              : `Form ${formId} not found in local storage`
+          );
+        }
+      } catch (err) {
+        console.error("Error loading form:", err);
+        if (isMounted) {
+          setError(err as Error);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadForm();
+
+    return () => {
+      isMounted = false;
+    };
   }, [formId, projectModuleId, sourceModuleId, projectId, getAll]);
 
-  // FIXED: Only run on mount or when dependencies change
-  useEffect(() => {
-    if (!initialLoadDone.current) {
-      loadForm();
-      initialLoadDone.current = true;
-    }
-  }, [loadForm]);
-
-  // Refresh function
   const refresh = useCallback(async () => {
-    await loadForm();
-  }, [loadForm]);
+    setIsLoading(true);
+    const allForms = await getAll<IExistingForm>("Surveys");
+    const dedupedForms = deduplicateForms(allForms);
+    const found = dedupedForms.find((f) => {
+      if (f.id !== formId) return false;
+      if (projectModuleId !== undefined && f.project_module_id !== projectModuleId)
+        return false;
+      if (sourceModuleId !== undefined && f.source_module_id !== sourceModuleId)
+        return false;
+      if (projectId !== undefined && f.project_id !== projectId) return false;
+      return true;
+    });
+    setForm(found || null);
+    setIsLoading(false);
+  }, [formId, projectModuleId, sourceModuleId, projectId, getAll]);
 
-  return { form, isLoading, error, refresh };
+  return { form, isLoading, error, isOffline, refresh };
 }
 
-// ---------------- ALTERNATIVE: Combined Forms Hook ----------------
-// Use this if you need multiple forms functionalities in one component
-export function useForms() {
-  const { getAll, batchCreate, getByQuery } = useSQLite();
+// ---------------- HELPER FUNCTION ----------------
+function filterForms(
+  forms: IExistingForm[],
+  projectId?: number,
+  sourceModuleId?: number,
+  projectModuleId?: number
+): IExistingForm[] {
+  let filtered = forms;
 
-  // Get all forms
-  const getAllForms = useCallback(async (): Promise<IExistingForm[]> => {
-    try {
-      let localForms: IExistingForm[] = await getAll<IExistingForm>("Survey");
+  if (projectId !== undefined) {
+    filtered = filtered.filter((f) => f.project_id === projectId);
+  }
 
-      if (localForms.length === 0 && isOnline()) {
-        const remoteForms = await fetchFormsFromRemote();
-        await batchCreate("Surveys", remoteForms);
-        return remoteForms;
-      }
+  if (sourceModuleId !== undefined) {
+    filtered = filtered.filter((f) => f.source_module_id === sourceModuleId);
+  }
 
-      return localForms;
-    } catch (err) {
-      console.error("Error getting all forms:", err);
-      return [];
-    }
-  }, [getAll, batchCreate]);
+  if (projectModuleId !== undefined) {
+    filtered = filtered.filter((f) => f.project_module_id === projectModuleId);
+  }
 
-  // Get forms by project and module
-  const getFormsByProjectAndModule = useCallback(
-    async (
-      projectId: number,
-      moduleId: number,
-      projectModuleId: number
-    ): Promise<IExistingForm[]> => {
-      try {
-        let allForms: IExistingForm[] = await getAll<IExistingForm>("Surveys");
-
-        if (isOnline()) {
-          const remoteForms = await fetchFormByProjectAndModuleFromRemote(
-            projectId,
-            moduleId
-          );
-          await batchCreate("Surveys", remoteForms);
-          allForms = remoteForms;
-        }
-
-        return allForms.filter(
-          (f) =>
-            f.project_id === projectId &&
-            f.source_module_id === moduleId &&
-            f.project_module_id === projectModuleId
-        );
-      } catch (err) {
-        console.error("Error getting forms by project and module:", err);
-        return [];
-      }
-    },
-    [getAll, batchCreate]
-  );
-
-  // Get form by ID
-  const getFormById = useCallback(
-    async (
-      formId: number,
-      projectModuleId: number,
-      sourceModuleId: number,
-      projectId: number
-    ): Promise<IExistingForm | null> => {
-      try {
-        const allForms = await getAll<IExistingForm>("Surveys");
-        return (
-          allForms.find(
-            (f) =>
-              f.id === formId &&
-              f.project_module_id === projectModuleId &&
-              f.source_module_id === sourceModuleId &&
-              f.project_id === projectId
-          ) || null
-        );
-      } catch (err) {
-        console.error("Error getting form by ID:", err);
-        return null;
-      }
-    },
-    [getAll]
-  );
-
-  return {
-    getAllForms,
-    getFormsByProjectAndModule,
-    getFormById,
-  };
+  return filtered;
 }

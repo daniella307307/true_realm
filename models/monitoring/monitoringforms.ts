@@ -14,6 +14,7 @@ export const CREATE_MONITORING_FORMS_TABLE = `
     created_at TEXT,
     updated_at TEXT,
     status TEXT,
-    source_module_id INTEGER
+    source_module_id INTEGER,
+    project_module_id INTEGER
   );
 `;

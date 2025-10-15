@@ -15,7 +15,7 @@ import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { useGetAllLocallyCreatedFamilies } from "~/services/families";
 import CustomInput from "~/components/ui/input";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import { IProject } from "~/types";
+import { IProject,ITransformedProject } from "~/types";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import HeaderNavigation from "~/components/ui/header";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
@@ -109,7 +109,7 @@ const HistoryProjectScreen = () => {
     );
   }, [storedProjects.projects, surveySubmissions, searchQuery]);
 
-  const renderItem = ({ item, index }: { item: IProject; index: number }) => {
+  const renderItem = ({ item, index }: { item: ITransformedProject; index: number }) => {
     const isRiskManagement =
       item.name?.toLowerCase()?.includes("risk of harm management") || false;
     const isFirstItem = index === 0;
@@ -117,17 +117,17 @@ const HistoryProjectScreen = () => {
     // Get submissions for this project
     const projectSubmissions =
       surveySubmissions?.filter(
-        (submission) => submission?.form_data?.project_id === item?.id
+        (submission) => submission?.form_data?.project_id === item?._id
       ) || [];
 
     const locallyCreatedFamilySubmissions =
       locallyCreatedFamilies?.filter(
-        (family) => family.form_data?.project_id === item?.id
+        (family) => family.form_data?.project_id === item?._id
       ) || [];
 
     const locallyCreatedIzuSubmissions =
       localIzus?.filter(
-        (izu) => izu.form_data?.project_id === item?.id
+        (izu) => izu.form_data?.project_id === item?._id
       ) || [];
 
     const totalSubmissions =
@@ -137,7 +137,7 @@ const HistoryProjectScreen = () => {
 
     return (
       <TouchableOpacity
-        onPress={() => router.push(`/(mods)/(projects)/${item.id}`)}
+        onPress={() => router.push(`/(mods)/(projects)/${item._id}`)}
         className={`p-4 border mb-4 rounded-xl
           ${isRiskManagement ? "border-red-500" : "border-gray-200"}
           ${isRiskManagement && isFirstItem ? "mt-4" : ""}`}
@@ -264,28 +264,38 @@ const HistoryProjectScreen = () => {
       </View>
     );
   };
-
-  const transformedProjects = organizedProjects.map((project) => ({
-    id: project.id,
-    name: project.name || "",
-    kin_name: project.kin_name || "",
-    duration: project.duration || "",
-    progress: project.progress || "",
-    description: project.description || "",
-    status: project.status,
-    beneficiary: project.beneficiary || "",
-    projectlead: project.projectlead || "",
-    has_modules: project.has_modules,
-    created_at: project.created_at
-      ? new Date(project.created_at).toDateString()
-      : undefined,
-    updated_at: project.updated_at
-      ? new Date(project.updated_at).toDateString()
-      : undefined,
-    project_modules: Array.isArray(project.project_modules)
-      ? Array.from(project.project_modules)
-      : [],
-  }));
+  const safeParseModules = (data: any): string[] => {
+  if (!data) return [];
+  try {
+    const parsed = typeof data === "string" ? JSON.parse(data) : data;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+ };
+  const transformedProjects: ITransformedProject[] = useMemo(
+  () =>
+    (organizedProjects || []).map((project) => ({
+      _id: project.id,
+      name: project.name || "",
+      kin_name: project.kin_name || "",
+      duration: project.duration || "",
+      progress: project.progress || "",
+      description: project.description || "",
+      status: project.status,
+      beneficiary: project.beneficiary || "",
+      projectlead: project.projectlead || "",
+      has_modules: project.has_modules,
+      created_at: project.created_at
+        ? new Date(project.created_at).toDateString()
+        : undefined,
+      updated_at: project.updated_at
+        ? new Date(project.updated_at).toDateString()
+        : undefined,
+      project_modules: safeParseModules(project.project_modules),
+    })),
+  [organizedProjects]
+);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -316,7 +326,7 @@ const HistoryProjectScreen = () => {
             data={transformedProjects || []}
             ListHeaderComponent={ListHeader}
             showsVerticalScrollIndicator={false}
-            keyExtractor={(item, index) => `${item?.id || index}-${index}`}
+            keyExtractor={(item, index) => `${item._id}-${index}`}
             renderItem={renderItem}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

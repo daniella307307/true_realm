@@ -177,8 +177,7 @@ const ProjectFormsScreen = () => {
       return (
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-red-500">
-            {modulesError ||
-              "An error occurred"}
+            { "An error occurred"}
           </Text>
         </View>
       );

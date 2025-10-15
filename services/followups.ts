@@ -77,7 +77,7 @@ export function useGetFollowUpsBySurveyResultId(p0: string, p1: string) {
     async (survey: SurveySubmission): Promise<IFollowUp[]> => {
       const rows = await query(
         "SELECT * FROM FollowUps WHERE json_extract(survey_result, '$.id') = ? ORDER BY followup_date DESC",
-        [survey.id]
+        [survey._id]
       );
       return rows.map(sqliteRowToFollowUp);
     },
@@ -245,7 +245,7 @@ export function useFollowUps(forceSync: boolean = false) {
     async (survey: SurveySubmission): Promise<IFollowUp[]> => {
       const rows = await query(
         "SELECT * FROM FollowUps WHERE json_extract(survey_result, '$.id') = ? ORDER BY followup_date DESC",
-        [survey.id]
+        [survey._id]
       );
       return rows.map(sqliteRowToFollowUp);
     },
@@ -280,3 +280,5 @@ export function useFollowUps(forceSync: boolean = false) {
     saveFollowupToAPI, // Helper function
   };
 }
+
+

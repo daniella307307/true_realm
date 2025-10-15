@@ -98,7 +98,23 @@ export interface IForm {
   project_id: number;
   source_module_id: number;
   project_module_id: number;
-  json2?: string; // optional
+  json2?: string; 
+  id?: number;
+  parent_id?: number;
+  slug?: string | null;
+  json?: string | null;
+  json2_bkp?: string | null;
+  survey_status: number;
+  module_id?: number | null;
+  is_primary: number;
+  table_name?: string;
+  post_data?: string;
+  fetch_data?: string | null;
+  loads?: string | null;
+  prev_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  order_list: number;
 }
 export interface IForms {
   id: number;
@@ -266,6 +282,7 @@ export interface IPost {
   user: IUsers;
   comments: IComment[];
   likes: ILikes[];
+  sync_status:string;
 }
 
 export interface User {
@@ -591,7 +608,24 @@ export interface User {
   is_password_changed: number;
 }
 
+export interface ITransformedProject {
+  _id: number;
+  name: string;
+  kin_name: string;
+  duration: string;
+  progress: string;
+  description: string;
+  status: number;
+  beneficiary: string;
+  projectlead: string;
+  has_modules: number;
+  created_at?: string;
+  updated_at?: string;
+  project_modules: string[];
+}
+
 export interface IProject {
+  _id: string;
   id: number;
   name: string;
   kin_name?: string;
@@ -623,6 +657,7 @@ export interface IModule {
   created_at?: Date;
   updated_at?: Date;
   project_module_id?: number;
+  [key:string]:any;
 }
 
 export interface FormField {
@@ -705,6 +740,7 @@ export interface FormField {
 }
 
 export interface IExistingForm {
+  description: string;
   project_id: number;
   source_module_id: number;
   id: number;
@@ -861,7 +897,7 @@ export interface IFamilies extends Generic {
 
 export interface Izus extends Generic {
   meta: any;
-  position(position: any): unknown;
+  position(positin: any): unknown;
   id: number | null;
   name: string;
   name_kin?: string;

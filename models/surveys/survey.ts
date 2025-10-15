@@ -20,7 +20,7 @@ export const CREATE_SURVEY_TABLE = `
        updated_at TEXT,                      
        order_list INTEGER NOT NULL,          
        project_module_id INTEGER NOT NULL,   
-       project_id INTEGER,                   
-       source_module_id INTEGER             );`
+       project_id INTEGER NOT NULL,                   
+       source_module_id INTEGER NOT NULL            );`
 
  

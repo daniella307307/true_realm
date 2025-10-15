@@ -1,126 +1,94 @@
 import { SafeAreaView, View, ActivityIndicator, Text } from "react-native";
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { WebView } from "react-native-webview";
 import { useLocalSearchParams, router } from "expo-router";
 import { useGetFormById } from "~/services/formElements";
 import { NotFound } from "~/components/ui/not-found";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
-import { checkNetworkConnection } from "~/utils/networkHelpers"; 
+import { checkNetworkConnection } from "~/utils/networkHelpers";
 import { useAuth } from "~/lib/hooks/useAuth";
-import type { FormField, SyncType } from "~/types";
 import Toast from "react-native-toast-message";
 import { useSQLite } from "~/providers/RealContextProvider";
-import { SurveySubmission } from "~/models/surveys/survey-submission";
+import { Asset } from "expo-asset";
+import { saveSurveySubmissionToAPI } from "~/services/survey-submission";
 
-function cleanObject(obj: Record<string, any>): Record<string, any> {
-  const cleaned: Record<string, any> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (value === undefined) {
-      cleaned[key] = null; // replace undefined with null
-    } else {
-      cleaned[key] = value;
-    }
-  }
-  return cleaned;
-}
-
-export const saveFormSubmissionLocallySQLite = async (
-  formData: Record<string, any>,
-  regularForm: any,
-  user: any,
-  fields: any[] = [],
-  timeSpent: number = 0
-) => {
-  const { create } = useSQLite();
-
-  try {
-    const submissionId = Date.now(); // Or generateId()
-
-    // Clean undefined values
-    const clean = (obj: Record<string, any>) =>
-      Object.fromEntries(
-        Object.entries(obj).map(([k, v]) => [k, v === undefined ? null : v])
-      );
-
-    const completeFormData = clean({
-      ...formData,
-      id: submissionId,
-      user_id: user?.id ?? user?.json?.id ?? null,
-      table_name: regularForm?.table_name ?? null,
-      project_module_id: regularForm?.project_module_id ?? 0,
-      source_module_id: regularForm?.source_module_id ?? 0,
-      project_id: regularForm?.project_id ?? 0,
-      survey_id: regularForm?.id ?? 0,
-      post_data: regularForm?.post_data ?? null,
-      time_spent_filling_the_form: timeSpent,
-      form_status: "completed",
-      province: formData.province ?? null,
-      district: formData.district ?? null,
-      sector: formData.sector ?? null,
-      cell: formData.cell ?? null,
-      village: formData.village ?? null,
-      created_at: new Date().toISOString(),
-      submitted_at: new Date().toISOString(),
-    });
-
-    const submission = await create("SurveySubmissions", {
-      _id: submissionId.toString(),
-      id: submissionId,
-      answers: JSON.stringify(clean(formData)),
-      form_data: JSON.stringify(completeFormData),
-      location: JSON.stringify({
-        province: formData.province ?? null,
-        district: formData.district ?? null,
-        sector: formData.sector ?? null,
-        cell: formData.cell ?? null,
-        village: formData.village ?? null,
-      }),
-      sync_data: JSON.stringify({
-        synced_at: null,
-        sync_type: null,
-        sync_status: false,
-        created_by_user_id: user?.id ?? user?.json?.id ?? null,
-      }),
-    });
-
-    console.log("Form submission saved in SQLite with _id:", submission._id);
-    return submission;
-  } catch (error) {
-    console.error("Error saving submission in SQLite:", error);
-    throw error;
-  }
+const formioAssets = {
+  js: require("~/assets/formio/formio.full.min.js"),
+  css: require("~/assets/formio/formio.full.min.css"),
+  bootstrap: require("~/assets/formio/bootstrap.min.css"),
 };
 
+// Helper function to convert flat form to wizard with pagination
+function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any {
+  if (!formSchema || !formSchema.components) {
+    return formSchema;
+  }
 
-function ProjectFormElementScreen (): React.JSX.Element {
+  if (formSchema.display === 'wizard') {
+    return formSchema;
+  }
+
+  const components = formSchema.components;
+  
+  const questionComponents = components.filter((comp: any) => {
+    const excludedTypes = ['button', 'htmlelement', 'content'];
+    const isSubmitButton = comp.type === 'button' && (comp.action === 'submit' || comp.key === 'submit');
+    return !excludedTypes.includes(comp.type) && !isSubmitButton;
+  });
+
+  if (questionComponents.length === 0) {
+    return formSchema;
+  }
+
+  const pages: any[] = [];
+  const totalPages = Math.ceil(questionComponents.length / questionsPerPage);
+  
+  for (let i = 0; i < questionComponents.length; i += questionsPerPage) {
+    const pageComponents = questionComponents.slice(i, i + questionsPerPage);
+    const pageNumber = Math.floor(i / questionsPerPage) + 1;
+    
+    if (pageComponents.length > 0) {
+      pages.push({
+        title: `Page ${pageNumber} of ${totalPages}`,
+        label: `Page ${pageNumber} of ${totalPages}`,
+        type: 'panel',
+        key: `page${pageNumber}`,
+        components: pageComponents,
+      });
+    }
+  }
+
+  return {
+    ...formSchema,
+    display: 'wizard',
+    components: pages,
+  };
+}
+
+function ProjectFormElementScreen(): React.JSX.Element {
   const params = useLocalSearchParams<{
     formId: string;
-    project_module_id: string;
-    source_module_id: string;
-    project_id: string;
+    project_module_id?: string;
+    source_module_id?: string;
+    project_id?: string;
   }>();
 
-  // Memorize parsed parameters to prevent unnecessary re-renders
   const parsedParams = useMemo(() => {
     const { formId, project_module_id, source_module_id, project_id } = params;
     return {
       pid: formId ? parseInt(formId, 10) : NaN,
-      pmid: project_module_id ? parseInt(project_module_id, 10) : NaN,
-      smid: source_module_id ? parseInt(source_module_id, 10) : NaN,
-      projId: project_id ? parseInt(project_id, 10) : NaN,
+      pmid: project_module_id ? parseInt(project_module_id, 10) : undefined,
+      smid: source_module_id ? parseInt(source_module_id, 10) : undefined,
+      projId: project_id ? parseInt(project_id, 10) : undefined,
     };
   }, [params]);
 
-  // Hooks with stable dependencies
-  const { form: regularForm, isLoading } = useGetFormById(
-    parsedParams.pid,
-    parsedParams.pmid,
-    parsedParams.smid,
-    parsedParams.projId
-  );
+  const { form: regularForm, isLoading } = useGetFormById(parsedParams.pid);
+  
   const { user } = useAuth({});
   const { t } = useTranslation();
+  const { create, update, getAll } = useSQLite();
   const [loading, setLoading] = useState(true);
   const [localAssets, setLocalAssets] = useState<{
     js: string;
@@ -131,8 +99,10 @@ function ProjectFormElementScreen (): React.JSX.Element {
   const [formStartTime, setFormStartTime] = useState<number>(Date.now());
   const [timeSpent, setTimeSpent] = useState<number>(0);
   const [isOnline, setIsOnline] = useState<boolean>(true);
+  
+  
+  const assetsLoadedRef = useRef(false);
 
-  // Timer to track time spent
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeSpent(Date.now() - formStartTime);
@@ -141,105 +111,110 @@ function ProjectFormElementScreen (): React.JSX.Element {
     return () => clearInterval(interval);
   }, [formStartTime]);
 
-  // Network-aware asset loading
-  const loadLocalAssets = useCallback(async () => {
-    try {
-      // Check network connectivity using your utility
-      const isConnected = await checkNetworkConnection();
-      
-      if (isConnected) {
-        // Use CDN assets when online
-        setLocalAssets({
-          js: "https://cdn.form.io/formiojs/formio.full.min.js",
-          css: "https://cdn.form.io/formiojs/formio.full.min.css",
-          bootstrap: "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
-        });
-        setIsOnline(true);
-        console.log("Using CDN assets (online)");
-      } else {
-        // Use local assets when offline
-        // Note: You'll need to add these files to your assets folder
-        setLocalAssets({
-          js: "~/assets/formio/formio.full.min.js",
-          css: "~/assets/formio/formio.full.min.css", 
-          bootstrap: "~/assets/formio/bootstrap.min.css",
-        });
-        setIsOnline(false);
-        console.log("Using local assets (offline)");
-        
-        // Show offline notice
-        Toast.show({
-          type: "info",
-          text1: "Offline Mode",
-          text2: "Using cached form resources",
-          position: "top",
-          visibilityTime: 3000,
-        });
-      }
-    } catch (error) {
-      console.warn("Error checking connectivity, defaulting to CDN:", error);
-      // Default fallback to CDN
-      setLocalAssets({
-        js: "https://cdn.form.io/formiojs/formio.full.min.js",
-        css: "https://cdn.form.io/formiojs/formio.full.min.css",
-        bootstrap: "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
-      });
-      setIsOnline(true);
-    }
-  }, []);
-
-  // Load assets once with proper cleanup
   useEffect(() => {
     let isMounted = true;
 
-    const initializeAssets = async () => {
-      if (isMounted) {
-        await loadLocalAssets();
+    const loadAssets = async () => {
+      // Prevent multiple loads
+      if (assetsLoadedRef.current) {
+        console.log("Assets already loaded, skipping...");
+        return;
+      }
+
+      try {
+        console.log("Starting asset load...");
+        
+        const [jsAsset, cssAsset, bootstrapAsset] = await Asset.loadAsync([
+          formioAssets.js,
+          formioAssets.css,
+          formioAssets.bootstrap,
+        ]);
+        
+        console.log("Assets loaded successfully");
+
+        if (isMounted) {
+          setLocalAssets({
+            js: jsAsset[0].localUri || jsAsset[0].uri,
+            css: cssAsset[0].localUri || cssAsset[0].uri,
+            bootstrap: bootstrapAsset[0].localUri || bootstrapAsset[0].uri,
+          });
+          
+          assetsLoadedRef.current = true;
+          console.log("Local assets set successfully");
+        }
+      } catch (assetError) {
+        console.error("Asset loading failed:", assetError);
+        
+        if (isMounted) {
+          // Fallback to CDN
+          setLocalAssets({
+            js: "https://cdn.form.io/formiojs/formio.full.min.js",
+            css: "https://cdn.form.io/formiojs/formio.full.min.css",
+            bootstrap: "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
+          });
+          
+          assetsLoadedRef.current = true;
+        }
       }
     };
 
-    initializeAssets();
+    loadAssets();
 
     return () => {
       isMounted = false;
     };
-  }, [loadLocalAssets]);
-
-  // Monitor network changes
+  }, []); 
   useEffect(() => {
     const checkConnectivity = async () => {
       try {
         const isConnected = await checkNetworkConnection();
-        setIsOnline(isConnected);
+        if (isConnected !== isOnline) {
+          setIsOnline(isConnected);
+          console.log("Network status changed:", isConnected ? "Online" : "Offline");
+          
+          // Just show a toast, don't reload assets
+          Toast.show({
+            type: isConnected ? "success" : "info",
+            text1: isConnected ? "Back Online" : "Offline Mode",
+            text2: isConnected ? "Connected to network" : "Using cached resources",
+            position: "top",
+            visibilityTime: 2000,
+          });
+        }
       } catch (error) {
         console.warn("Error checking network status:", error);
       }
     };
 
-    // Check connectivity every 30 seconds
     const interval = setInterval(checkConnectivity, 30000);
-
     return () => clearInterval(interval);
-  }, []);
+  }, [isOnline]); // ✅ Only depends on isOnline
 
-  // Memoize parsed form to prevent re-parsing on every render
   const parsedForm = useMemo(() => {
     if (!regularForm?.json2) return null;
 
     try {
-      return typeof regularForm.json2 === "string"
+      const baseForm = typeof regularForm.json2 === "string"
         ? JSON.parse(regularForm.json2)
         : regularForm.json2;
+      
+      return convertToWizardForm(baseForm, 5);
     } catch (err) {
       console.error("Failed to parse form JSON:", err);
       return null;
     }
   }, [regularForm?.json2]);
 
-  // Memoize form fields
-  const fields = useMemo(() => parsedForm?.components || [], [parsedForm]);
+  const fields = useMemo(() => {
+    if (!parsedForm?.components) return [];
+    
+    if (parsedForm.display === 'wizard') {
+      return parsedForm.components.flatMap((page: any) => page.components || []);
+    }
+    
+    return parsedForm.components || [];
+  }, [parsedForm]);
 
-  // Format time display
   const formatTime = useCallback((ms: number) => {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
@@ -254,93 +229,142 @@ function ProjectFormElementScreen (): React.JSX.Element {
     }
   }, []);
 
-  // Stable form submission handler
-  const handleFormSubmission = useCallback(async (formData: any) => {
-    if (isSubmitting) return; // Prevent double submission
-
-    setIsSubmitting(true);
-    const finalTimeSpent = Date.now() - formStartTime;
-    
-    try {
-      console.log("Form submission data:", formData);
-      console.log("Time spent filling form:", formatTime(finalTimeSpent));
-
-      await saveFormSubmissionLocallySQLite(formData, regularForm, user, fields,finalTimeSpent);
-
-      Toast.show({
-        type: "success",
-        text1: t("Alerts.success.title") || "Success",
-        text2: `${t("Alerts.success.form_saved_locally") || "Form saved locally"} (${formatTime(finalTimeSpent)})`,
-        position: "top",
-        visibilityTime: 3000,
-      });
-
-      // Navigate to history
-      router.push("/(history)/realmDbViewer");
-
-    } catch (error) {
-      console.error("Error handling form submission:", error);
-
-      Toast.show({
-        type: "error",
-        text1: t("Alerts.error.title") || "Error",
-        text2: t("Alerts.error.save_failed.local") || "Failed to save form",
-        position: "top",
-        visibilityTime: 4000,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [regularForm, user, fields, t, isSubmitting, formStartTime, formatTime]);
-
-  // Stable WebView message handler
-  const handleWebViewMessage = useCallback((event: any) => {
-    try {
-      const message = JSON.parse(event.nativeEvent.data);
-      console.log("WebView Message:", message.type);
-
-      switch (message.type) {
-        case "FORM_READY":
-          console.log("Form is ready");
-          setLoading(false);
-          setFormStartTime(Date.now()); // Reset timer when form is ready
-          break;
-        case "FORM_SUBMIT":
-          console.log("Form submitted");
-          handleFormSubmission(message.data);
-          break;
-        case "FORM_ERROR":
-          console.error("Form error:", message.error);
-          setLoading(false);
-          Toast.show({
-            type: "error",
-            text1: t("Alerts.error.title") || "Error",
-            text2: "Form loading error",
-            position: "top",
-            visibilityTime: 4000,
-          });
-          break;
-        case "FORM_VALIDATION_ERROR":
-          console.log("Form validation errors:", message.errors);
-          break;
-        case "FORM_CHANGE":
-          // Form data changed - could be used for auto-save
-          break;
-        default:
-          console.log("Unknown WebView message:", message);
+  const handleFormSubmission = useCallback(
+    async (formData: any) => {
+      console.log("handleFormSubmission called with data:", formData);
+      
+      if (isSubmitting) {
+        console.warn("Already submitting, ignoring duplicate submission");
+        return;
       }
-    } catch (err) {
-      console.error("Failed to parse WebView message:", err);
-    }
-  }, [handleFormSubmission, t]);
 
-  // Memoize HTML content to prevent unnecessary WebView reloads
+      setIsSubmitting(true);
+      const finalTimeSpent = Date.now() - formStartTime;
+      const userId = user?.id || user?.json?.id;
+
+      try {
+        console.log("Time spent filling form:", formatTime(finalTimeSpent));
+        console.log("User ID:", userId);
+        console.log("Form ID:", regularForm?.id);
+
+        const completeFormData = {
+          ...formData,
+          time_spent_filling_the_form: Math.floor(finalTimeSpent / 1000),
+          survey_id: regularForm?.id,
+          table_name: regularForm?.table_name,
+          project_module_id: parsedParams.pmid,
+          source_module_id: parsedParams.smid,
+          project_id: parsedParams.projId,
+          user_id: userId,
+        };
+
+        console.log("Complete submission data:", JSON.stringify(completeFormData, null, 2));
+        
+        await saveSurveySubmissionToAPI(
+          create, 
+          completeFormData, 
+          "/sendVisitData", 
+          t, 
+          fields, 
+          userId 
+        );
+
+        console.log("Submission completed successfully");
+
+      } catch (error) {
+        console.error("Error handling form submission:", error);
+        console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title") || "Error",
+          text2: t("Alerts.error.submission.unexpected") || "Failed to save form",
+          position: "top",
+          visibilityTime: 4000,
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [
+      regularForm, 
+      user, 
+      fields, 
+      t, 
+      isSubmitting, 
+      formStartTime, 
+      formatTime, 
+      create,
+      parsedParams
+    ]
+  );
+
+  const handleWebViewMessage = useCallback(
+    (event: any) => {
+      try {
+        const message = JSON.parse(event.nativeEvent.data);
+        console.log("WebView Message received:", message.type);
+
+        switch (message.type) {
+          case "FORM_READY":
+            console.log("Form is ready and loaded");
+            setLoading(false);
+            setFormStartTime(Date.now());
+            break;
+            
+          case "FORM_SUBMIT":
+            console.log("Form submitted from WebView");
+            console.log("Submission data:", message.data);
+            handleFormSubmission(message.data);
+            break;
+            
+          case "FORM_ERROR":
+            console.error("Form error:", message.error);
+            setLoading(false);
+            Toast.show({
+              type: "error",
+              text1: t("Alerts.error.title") || "Error",
+              text2: message.error || "Form loading error",
+              position: "top",
+              visibilityTime: 4000,
+            });
+            break;
+            
+          case "FORM_VALIDATION_ERROR":
+            console.log("Form validation errors:", message.errors);
+            Toast.show({
+              type: "error",
+              text1: "Validation Error",
+              text2: "Please check all required fields",
+              position: "top",
+              visibilityTime: 3000,
+            });
+            break;
+            
+          case "FORM_CHANGE":
+            break;
+            
+          case "DEBUG":
+            console.log("Debug from WebView:", message.message);
+            break;
+            
+          default:
+            console.log("Unknown WebView message:", message);
+        }
+      } catch (err) {
+        console.error("Failed to parse WebView message:", err);
+        console.error("Raw message:", event.nativeEvent.data);
+      }
+    },
+    [handleFormSubmission, t]
+  );
+
   const formHtml = useMemo(() => {
-    if (!localAssets || !parsedForm) return '';
+    if (!localAssets || !parsedForm) return "";
 
-    // Escape any potential XSS in form data
-    const escapedFormJson = JSON.stringify(parsedForm).replace(/</g, '\\u003c');
+    const escapedFormJson = JSON.stringify(parsedForm).replace(/</g, "\\u003c");
     const escapedFormName = (regularForm?.name || "Form").replace(/'/g, "\\'");
+    const totalPages = parsedForm.display === 'wizard' ? parsedForm.components.length : 1;
 
     return `
     <!DOCTYPE html>
@@ -357,355 +381,263 @@ function ProjectFormElementScreen (): React.JSX.Element {
             --primary-color: #A23A91;
             --primary-light: #c864b5;
             --primary-dark: #7d2c6d;
-            --secondary-color: #f8f9fa;
-            --border-color: #e0e0e0;
-            --text-color: #333;
-            --success-color: #28a745;
-            --danger-color: #dc3545;
-            --warning-color: #ffc107;
-            --info-color: #17a2b8;
           }
-
           body { 
             margin: 0; 
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            color: var(--text-color);
-            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
           }
-
           .form-container {
             max-width: 800px;
             margin: 20px auto;
             padding: 20px;
             background: white;
             border-radius: 12px;
-            position: relative;
-            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
           }
-
-          .form-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
-          }
-
-          .form-header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #f0f0f0;
-          }
-
           .form-title {
             color: var(--primary-color);
             font-size: 24px;
             font-weight: 600;
+            text-align: center;
             margin-bottom: 10px;
           }
-
-         
-
-          .time-tracker {
+          
+          .custom-progress-container {
+            margin: 15px 0 25px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+          }
+          
+          .custom-progress-info {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 8px;
-            font-weight: 500;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+          }
+          
+          .custom-progress-text {
+            font-weight: 600;
             color: var(--primary-color);
           }
-
-          .connection-status {
-            font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-weight: 500;
-            text-transform: uppercase;
-          }
-
-          .online {
-            background: rgba(40, 167, 69, 0.1);
-            color: var(--success-color);
-          }
-
-          .offline {
-            background: rgba(220, 53, 69, 0.1);
-            color: var(--danger-color);
-          }
-
-          #formio { 
-            min-height: 60vh;
-          }
-
-          /* Custom FormIO styling */
-          .formio-form {
-            background: transparent;
-          }
-
-          .formio-component-submit .btn-primary {
-            background: var(--primary-color);
-            border: none;
-            border-radius: 8px;
-            padding: 12px 30px;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.3s ease;
+          
+          .custom-progress-bar-container {
             width: 100%;
-            box-shadow: 0 4px 15px rgba(162, 58, 145, 0.3);
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
           }
-
-          .formio-component-submit .btn-primary:hover {
-            background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(162, 58, 145, 0.4);
+          
+          .custom-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+            border-radius: 4px;
+            transition: width 0.3s ease;
           }
-
-          .form-control {
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 10px 15px;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+          
+          .pagination {
+            display: none !important;
           }
-
+          
+          .btn-wizard-nav-cancel,
+          .btn-wizard-nav-previous,
+          .btn-wizard-nav-next,
+          .btn-wizard-nav-submit {
+            border-radius: 8px;
+            padding: 10px 24px;
+            font-weight: 600;
+            border: none;
+            margin: 0 5px;
+          }
+          
+          .btn-wizard-nav-next,
+          .btn-wizard-nav-submit {
+            background: var(--primary-color) !important;
+            color: white !important;
+          }
+          
+          .btn-wizard-nav-next:hover,
+          .btn-wizard-nav-submit:hover {
+            background: var(--primary-dark) !important;
+          }
+          
+          .btn-wizard-nav-previous {
+            background: #6c757d !important;
+            color: white !important;
+          }
+          
+          .btn-wizard-nav-cancel {
+            background: #dc3545 !important;
+            color: white !important;
+          }
+          
           .form-control:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(162, 58, 145, 0.1);
           }
-
-          .form-group label {
-            font-weight: 600;
-            color: var(--text-color);
-            margin-bottom: 8px;
-            display: block;
-          }
-
-          .alert {
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-          }
-
-          .alert-danger {
-            background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05));
-            border: 1px solid rgba(220, 53, 69, 0.2);
-            color: var(--danger-color);
-          }
-
+          
           .loading {
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 300px;
-            text-align: center;
-          }
-
-          .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-          }
-
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-
-          .loading-text {
-            font-size: 16px;
-            color: #666;
-            font-weight: 500;
-          }
-
-          /* Radio and checkbox styling */
-          .radio input[type="radio"],
-          .checkbox input[type="checkbox"] {
-            margin-right: 8px;
-            accent-color: var(--primary-color);
-            background-color: var(--primary-color);
-          }
-
-          /* Select styling */
-          select.form-control {
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 8px center;
-            background-repeat: no-repeat;
-            background-size: 16px 16px;
-            padding-right: 40px;
-          }
-
-          /* Responsive design */
-          @media (max-width: 768px) {
-            .form-container {
-              margin: 10px;
-              padding: 15px;
-            }
-            
-            .form-stats {
-              flex-direction: column;
-              gap: 10px;
-              text-align: center;
-            }
-            
-            .form-title {
-              font-size: 20px;
-            }
+            font-size: 18px;
+            color: var(--primary-color);
           }
         </style>
       </head>
       <body>
         <div class="form-container">
-          <div class="form-header">
-            <div class="form-title">${escapedFormName}</div>
-            <div class="form-stats">
-              <div class="time-tracker">
-                <i class="fas fa-clock"></i>
-                <span id="timeDisplay">0s</span>
-              </div>
-             
+          <div class="form-title">${escapedFormName}</div>
+          <div id="custom-progress" class="custom-progress-container" style="display: none;">
+            <div class="custom-progress-info">
+              <span class="custom-progress-text" id="progress-text">Page 1 of ${totalPages}</span>
+              <span id="progress-percentage">0%</span>
+            </div>
+            <div class="custom-progress-bar-container">
+              <div class="custom-progress-bar" id="progress-bar" style="width: 0%"></div>
             </div>
           </div>
-          
-          <div id="loading" class="loading">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">Loading form...</div>
-          </div>
-          
+          <div id="loading" class="loading">Loading form...</div>
           <div id="formio" style="display: none;"></div>
         </div>
-        
-        <script src="${localAssets.js}"></script>
         <script>
           Object.defineProperty(document, 'cookie', {
             get: function() { return ''; },
-            set: function() { return true; },
+            set: function() { return true; }
           });
-
+          
+          const originalError = console.error;
+          console.error = function(...args) {
+            const message = args.join(' ');
+            if (message.includes('cookie') || message.includes('Cookie')) {
+              return;
+            }
+            originalError.apply(console, args);
+          };
+        </script>
+        <script src="${localAssets.js}"></script>
+        <script>
           (function() {
-            let formInitialized = false;
-            let startTime = Date.now();
             const loadingEl = document.getElementById('loading');
             const formioEl = document.getElementById('formio');
-            const timeDisplayEl = document.getElementById('timeDisplay');
-            
-            // Update time display every second
-            setInterval(() => {
-              const elapsed = Date.now() - startTime;
-              const seconds = Math.floor(elapsed / 1000);
-              const minutes = Math.floor(seconds / 60);
-              const hours = Math.floor(minutes / 60);
-              
-              let display;
-              if (hours > 0) {
-                display = hours + 'h ' + (minutes % 60) + 'm ' + (seconds % 60) + 's';
-              } else if (minutes > 0) {
-                display = minutes + 'm ' + (seconds % 60) + 's';
-              } else {
-                display = seconds + 's';
-              }
-              
-              if (timeDisplayEl) {
-                timeDisplayEl.textContent = display;
-              }
-            }, 1000);
-            
-            function showError(message) {
-              loadingEl.innerHTML = '<div style="color: var(--danger-color); text-align: center;"><i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 15px;"></i><br><strong>Error:</strong> ' + message + '</div>';
-              if (window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'FORM_ERROR',
-                  error: message
-                }));
-              }
-            }
+            const TOTAL_PAGES = ${totalPages};
             
             function postMessage(data) {
-              if (window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage(JSON.stringify(data));
-              } else {
-                console.log('ReactNativeWebView not available:', data);
+              try {
+                if (window.ReactNativeWebView) {
+                  window.ReactNativeWebView.postMessage(JSON.stringify(data));
+                  console.log('Posted message to React Native:', data.type);
+                } else {
+                  console.warn('ReactNativeWebView not available');
+                }
+              } catch (err) {
+                console.error('Error posting message:', err);
               }
             }
 
             async function initializeForm() {
-              if (formInitialized) return;
-              formInitialized = true;
-
               try {
-                // Check if Formio is loaded
+                console.log('🚀 Initializing form...');
+                
                 if (typeof Formio === 'undefined') {
                   throw new Error('Formio library not loaded');
                 }
 
                 const formSchema = ${escapedFormJson};
                 
-                if (!formSchema || !formSchema.components) {
-                  throw new Error('Invalid form schema');
-                }
-
                 const form = await Formio.createForm(formioEl, formSchema, {
                   noAlerts: true,
-                  language: '${t("language", "en")}',
                   readOnly: false,
                   sanitize: true,
-                  template: 'bootstrap'
+                  buttonSettings: {
+                    showCancel: false,
+                    showPrevious: true,
+                    showNext: true,
+                    showSubmit: true
+                  }
                 });
 
-                // Hide loading, show form
+                console.log('Form created successfully');
+                
                 loadingEl.style.display = 'none';
                 formioEl.style.display = 'block';
+                
+                const isWizard = formSchema.display === 'wizard';
+                const progressContainer = document.getElementById('custom-progress');
+                const progressText = document.getElementById('progress-text');
+                const progressBar = document.getElementById('progress-bar');
+                const progressPercentage = document.getElementById('progress-percentage');
+                
+                if (isWizard && TOTAL_PAGES > 1) {
+                  progressContainer.style.display = 'block';
+                  
+                  function updateProgress(currentPage) {
+                    const pageNum = currentPage + 1;
+                    const percentage = Math.round((pageNum / TOTAL_PAGES) * 100);
+                    
+                    progressText.textContent = \`Page \${pageNum} of \${TOTAL_PAGES}\`;
+                    progressPercentage.textContent = \`\${percentage}%\`;
+                    progressBar.style.width = \`\${percentage}%\`;
+                    
+                    console.log(\`Page \${pageNum}/\${TOTAL_PAGES} (\${percentage}%)\`);
+                  }
+                  
+                  updateProgress(0);
+                  
+                  form.on('wizardPageSelected', function(page) {
+                    console.log('Wizard page changed to:', page);
+                    updateProgress(page);
+                  });
+                }
 
-                // Set up event listeners
                 form.on('submit', function(submission) {
-                  const timeSpent = Date.now() - startTime;
-                  postMessage({
-                    type: 'FORM_SUBMIT',
-                    data: submission.data,
-                    formName: '${escapedFormName}',
-                    timeSpent: timeSpent,
-                    timestamp: new Date().toISOString()
+                  console.log('Form submit event triggered');
+                  console.log('Submission data:', submission);
+                  
+                  postMessage({ 
+                    type: 'FORM_SUBMIT', 
+                    data: submission.data 
+                  });
+                });
+
+                form.on('submitButton', function() {
+                  console.log('Submit button clicked');
+                });
+
+                form.on('submitDone', function(submission) {
+                  console.log('Submit done:', submission);
+                });
+
+                form.on('error', function(errors) {
+                  console.error('Form error:', errors);
+                  postMessage({ 
+                    type: 'FORM_ERROR', 
+                    error: JSON.stringify(errors)
                   });
                 });
 
                 form.on('change', function(changed) {
-                  postMessage({
-                    type: 'FORM_CHANGE',
-                    data: changed.data,
-                    component: changed.component ? changed.component.key : null,
-                    timestamp: new Date().toISOString()
-                  });
+                  if (changed?.changed) {
+                    console.log('Form changed:', changed.changed.component?.key);
+                  }
                 });
 
-                form.on('error', function(errors) {
-                  postMessage({
-                    type: 'FORM_VALIDATION_ERROR',
-                    errors: Array.isArray(errors) ? errors : [errors],
-                    timestamp: new Date().toISOString()
-                  });
-                });
-
-                // Notify React Native that form is ready
-                startTime = Date.now(); // Reset start time
-                postMessage({
-                  type: 'FORM_READY',
-                  formName: '${escapedFormName}',
-                  timestamp: new Date().toISOString()
-                });
-
+                postMessage({ type: 'FORM_READY' });
+                console.log('Form initialization complete');
+                
               } catch (error) {
                 console.error('Form initialization error:', error);
-                showError(error.message || 'Unknown error occurred');
+                loadingEl.innerHTML = '<div style="color: red; padding: 20px;">Error: ' + error.message + '</div>';
+                postMessage({ type: 'FORM_ERROR', error: error.message });
               }
             }
 
-            // Initialize when DOM is ready
             if (document.readyState === 'loading') {
               document.addEventListener('DOMContentLoaded', initializeForm);
             } else {
@@ -716,9 +648,8 @@ function ProjectFormElementScreen (): React.JSX.Element {
       </body>
     </html>
     `;
-  }, [localAssets, parsedForm, t, regularForm?.name, isOnline]);
+  }, [localAssets, parsedForm, regularForm?.name]);
 
-  // Early returns after all hooks
   if (isLoading || !localAssets) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
@@ -738,58 +669,30 @@ function ProjectFormElementScreen (): React.JSX.Element {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <HeaderNavigation 
-        title={t("FormElementPage.title")} 
-        showLeft 
-        showRight 
-      />
+      <HeaderNavigation title={t("FormElementPage.title")} showLeft showRight />
       <WebView
         originWhitelist={["*"]}
-        source={{ html: formHtml }}
+        source={{ html: formHtml, baseUrl: 'about:blank' }}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         onMessage={handleWebViewMessage}
-        mixedContentMode="compatibility"
-        allowsInlineMediaPlayback={false}
-        mediaPlaybackRequiresUserAction={false}
-        startInLoadingState={false}
-        cacheEnabled={true} // Enable caching for offline support
+        cacheEnabled={true}
+        sharedCookiesEnabled={false}
+        thirdPartyCookiesEnabled={false}
+        incognito={true}
+        allowFileAccess={false}
+        allowFileAccessFromFileURLs={false}
+        allowUniversalAccessFromFileURLs={false}
+        mixedContentMode="always"
         onError={(syntheticEvent) => {
-          const { nativeEvent } = syntheticEvent;
-          console.warn('WebView error: ', nativeEvent);
+          console.warn("WebView error:", syntheticEvent.nativeEvent);
           setLoading(false);
-          
-          // Show error toast if it's a network-related error
-          if (nativeEvent.description?.includes('net::') || !isOnline) {
-            Toast.show({
-              type: "error",
-              text1: "Connection Error",
-              text2: "Unable to load form resources. Please check your connection.",
-              position: "top",
-              visibilityTime: 4000,
-            });
-          }
         }}
         onHttpError={(syntheticEvent) => {
-          const { nativeEvent } = syntheticEvent;
-          console.warn('WebView HTTP error: ', nativeEvent);
-          setLoading(false);
-          
-          if (nativeEvent.statusCode >= 400) {
-            Toast.show({
-              type: "error",
-              text1: "Loading Error",
-              text2: `Failed to load form resources (${nativeEvent.statusCode})`,
-              position: "top",
-              visibilityTime: 4000,
-            });
-          }
-        }}
-        onLoadStart={() => {
-          console.log('WebView load started');
+          console.warn("WebView HTTP error:", syntheticEvent.nativeEvent);
         }}
         onLoadEnd={() => {
-          console.log('WebView load ended');
+          console.log("WebView finished loading");
         }}
       />
       {loading && (
@@ -797,20 +700,20 @@ function ProjectFormElementScreen (): React.JSX.Element {
           <ActivityIndicator size="large" color="#A23A91" />
           <Text className="mt-3 text-gray-600 font-medium">Loading form...</Text>
           <Text className="mt-2 text-sm text-gray-500">
-            Time: {formatTime(timeSpent)}
+            {isOnline ? "Loading from server..." : "Loading from cache..."}
           </Text>
-          <View className="flex-row items-center mt-2 space-x-2">
-            <View className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
-            <Text className="text-xs text-gray-500">
-              {isOnline ? 'Loading from server...' : 'Loading from cache...'}
-            </Text>
+        </View>
+      )}
+      {isSubmitting && (
+        <View className="absolute inset-0 items-center justify-center bg-black bg-opacity-50">
+          <View className="bg-white p-6 rounded-lg items-center">
+            <ActivityIndicator size="large" color="#A23A91" />
+            <Text className="mt-3 text-gray-700 font-medium">Saving submission...</Text>
           </View>
         </View>
       )}
     </SafeAreaView>
   );
-};
+}
 
 export default ProjectFormElementScreen;
-
-
