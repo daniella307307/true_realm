@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 import { useMutation } from "@tanstack/react-query";
 import {
-  useGetCurrentLoggedInProfile,
+  // getCurrentLoggedInProfile,
   verifyPasswordReset,
 } from "~/services/user";
 import { storeTokenInAsynStorage, useAuth } from "~/lib/hooks/useAuth";
@@ -53,6 +53,7 @@ const PasswordVerificationScreen: React.FC = () => {
       }
     },
   });
+  const { user: authUser} = useAuth({})
   const ref = useBlurOnFulfill({ value: code, cellCount: CELL_COUNT });
   const [props, getCellOnLayoutHandler] = useClearByFocusCell({
     value: code,
@@ -72,14 +73,14 @@ const PasswordVerificationScreen: React.FC = () => {
         if (!tokenStoredInCookie) throw new Error("Auth Token was not stored.");
 
         setAuthenticationStatus(true);
-
-        const profileData = await useGetCurrentLoggedInProfile();
-        if (!profileData) {
-          Toast.show({ text1: "Profile fetch failed", type: "error" });
-          setAuthenticationStatus(false);
-          return;
-        }
-        const didStoreUserInfo = mainStore.login({ userAccount: profileData });
+        console.log("Logged in user id:",authUser.id)
+        // const profileData = await getCurrentLoggedInProfile(authUser.id.toString());
+        // if (!profileData) {
+        //   Toast.show({ text1: "Profile fetch failed", type: "error" });
+        //   setAuthenticationStatus(false);
+        //   return;
+        // }
+        const didStoreUserInfo = mainStore.login({ userAccount: data?.user });
         if (didStoreUserInfo) {
           Toast.show({
             text1: "Login successful",

@@ -16,6 +16,7 @@ import { router } from "expo-router";
 import { useGetAllSurveySubmissions } from "~/services/survey-submission";
 import { SurveySubmission } from "~/services/survey-submission";
 import { useGetForms } from "~/services/formElements"; // Get ALL forms instead
+import EmptyDynamicComponent from "~/components/EmptyDynamic";
 
 const RealmDatabaseViewer = () => {
   const { t } = useTranslation();
@@ -394,22 +395,23 @@ const RealmDatabaseViewer = () => {
           </>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
+            <EmptyDynamicComponent message={t('HistoryPageReal.no_submissions') || 'No submissions found'}/>
+            {/* <Text style={styles.emptyText}>
               {t('HistoryPageReal.no_submissions') || 'No submissions found'}
-            </Text>
+            </Text>*/}
             <Text style={styles.emptySubText}>
               {t('HistoryPageReal.no_submissions_description') || 'Submit a form to see it here'}
-            </Text>
-            {!isLoading && (
+            </Text> 
+            {/* {!isLoading && (
               <TouchableOpacity 
                 style={styles.refreshButton}
                 onPress={handleRefresh}
               >
                 <Text style={styles.refreshButtonText}>
-                  🔄 {t('CommonPage.refresh') || 'Refresh'}
+                   {t('CommonPage.refresh') || 'Refresh'}
                 </Text>
               </TouchableOpacity>
-            )}
+            )} */}
           </View>
         )}
       </ScrollView>
@@ -592,7 +594,7 @@ const RealmDatabaseViewer = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "white",
   },
   loadingContainer: {
     flex: 1,

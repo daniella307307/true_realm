@@ -4,11 +4,11 @@ import { baseInstance } from "~/utils/axios";
 import { useDataSync } from "./dataSync";
 import { useSQLite } from "~/providers/RealContextProvider";
 import { checkNetworkConnection } from "~/utils/networkHelpers";
-
+import { isOnline } from "./network";
 // ============ FETCH FUNCTION ============
 export async function fetchProjectsFromRemote(): Promise<IProject[]> {
   try {
-    const res = await baseInstance.get<I2BaseFormat<IProject[]>>("/v2/projects");
+    const res = await baseInstance.get<I2BaseFormat<IProject[]>>("/forms");
   
     let data = res.data?.data;
     
@@ -41,6 +41,7 @@ export function useGetAllProjects(forceSync: boolean = false) {
   const [isOffline, setIsOffline] = useState(false);
   const [dataSource, setDataSource] = useState<"local" | "remote" | "pending">("pending");
   const [error, setError] = useState<Error | null>(null);
+  
 
   const { syncStatus, refresh: syncRefresh } = useDataSync<IProject>([
     {
@@ -65,8 +66,8 @@ export function useGetAllProjects(forceSync: boolean = false) {
         setError(null);
 
         // Check network connectivity
-        const online = await checkNetworkConnection();
-        setIsOffline(!online);
+        const online = isOnline();
+        setIsOffline(online);
 
         if (online) {
           console.log("🌐 Online — syncing projects from remote...");
@@ -159,7 +160,7 @@ export function useGetAllProjects(forceSync: boolean = false) {
 
 export async function fetchFormByProjectFromRemote(projectId: number): Promise<IExistingForm[]> {
   try {
-    const res = await baseInstance.get(`/v2/projects/${projectId}/surveys`);
+    const res = await baseInstance.get(`/forms`);
     let data = res.data?.data;
 
     // Handle nested data.data cases

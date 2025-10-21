@@ -71,21 +71,21 @@ function HomeScreen(): React.JSX.Element{
   const checkUnsyncedData = async () => {
     if (!user?.id) return;
 
-    const unsyncedFamilies = await getAll('Families', 'sync_status == false AND created_by_user_id == ?', [user.id]);
-    const unsyncedFamiliesCount = unsyncedFamilies.length;
-    const unsyncedFollowups = await getAll('FollowUps','sync_status == false AND created_by_user_id == ?', [user.id]);
-    const unsyncedFollowupsCount = unsyncedFollowups.length;
+    // const unsyncedFamilies = await getAll('Families', 'sync_status == false AND created_by_user_id == ?', [user.id]);
+    // const unsyncedFamiliesCount = unsyncedFamilies.length;
+    // const unsyncedFollowups = await getAll('FollowUps','sync_status == false AND created_by_user_id == ?', [user.id]);
+    // const unsyncedFollowupsCount = unsyncedFollowups.length;
 
-    const unsyncedResponses = await getAll('MonitoringResponses', 'sync_status == false AND created_by_user_id == ?', [user.id]);
-    const unsyncedResponsesCount = unsyncedResponses.length;
+    // const unsyncedResponses = await getAll('MonitoringResponses', 'sync_status == false AND created_by_user_id == ?', [user.id]);
+    // const unsyncedResponsesCount = unsyncedResponses.length;
 
     const unsyncedSubmissions = await getAll('SurveySubmissions', 'sync_status == false AND created_by_user_id == ?', [user.id]);
     const unsyncedSubmissionsCount = unsyncedSubmissions.length;
 
-    const unsyncedIzus = await getAll('Users', 'sync_status == false AND created_by_user_id == ?', [user.id]);
-    const unsyncedIzusCount = unsyncedIzus.length;
+    // const unsyncedIzus = await getAll('Users', 'sync_status == false AND created_by_user_id == ?', [user.id]);
+    // const unsyncedIzusCount = unsyncedIzus.length;
 
-    const total = unsyncedFamiliesCount + unsyncedFollowupsCount + unsyncedResponsesCount + unsyncedSubmissionsCount + unsyncedIzusCount;
+    const total = unsyncedSubmissionsCount;
     setUnsyncedCount(total);
     setShowSyncWarning(total > 0);
   };
@@ -301,7 +301,7 @@ function HomeScreen(): React.JSX.Element{
       >
         <View className="p-6">
           <Text className="text-2xl font-bold">
-            {t("HomePage.title") + user?.name}
+            {t("HomePage.title") + user?.lastName}
           </Text>
           {/* <Text className="text-lg text-[#71717A]">
             {t("HomePage.description")}

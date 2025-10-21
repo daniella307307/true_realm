@@ -4,7 +4,7 @@ import NetInfo from "@react-native-community/netinfo";
 
 const env = process.env["EXPO_PUBLIC_API_ENV"] || "development";
 // Add fallback URL if environment variable is not set
-export const BASE_URL = process.env["EXPO_PUBLIC_API_URL"] || "https://avocadoes.project.co.rw";
+export const BASE_URL = process.env["EXPO_PUBLIC_API_URL"] || "https://afriquollect.heis.farm";
 console.log("[API] Base URL:", BASE_URL);
 
 // Create a flag to track authentication status
@@ -30,7 +30,7 @@ export const clearAuthTokens = async () => {
 
 // Define routes that don't require authentication
 const publicRoutes = [
-  "/login",
+  "/auth/login",
   "/user/reset-password",
   "/user/verify-reset-code",
 ];

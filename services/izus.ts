@@ -35,13 +35,13 @@ async function filterIzusByUserId(
   }
 }
 
-// ---------------- FETCH FROM API ----------------
+
 export async function fetchIzusFromRemote(): Promise<Izus[]> {
-  const res = await baseInstance.get<{ izus: Izus[] }>("/izus");
+  const res = await baseInstance.get<{ izus: Izus[] }>("/users");
   return res.data.izus;
 }
 
-// ---------------- TRANSFORM IZU FOR STORAGE ----------------
+
 function transformIzuForStorage(izu: any, userId?: number): any {
   return {
     _id: izu.id?.toString() || generateId().toString(),
@@ -72,7 +72,7 @@ function transformIzuForStorage(izu: any, userId?: number): any {
   };
 }
 
-// ---------------- USE GET IZUS ----------------
+
 export function useGetIzus(forceSync: boolean = false, loggedInIzu?: Izus) {
   const { getAll, batchCreate, getByQuery, isReady } = useSQLite();
   const { user } = useAuth({});
@@ -91,25 +91,25 @@ export function useGetIzus(forceSync: boolean = false, loggedInIzu?: Izus) {
       
       let localIzus = await getAll<Izus>("Izu");
 
-      // Sync from remote if needed
-      if ((!localIzus.length || forceSync) && isOnline()) {
-        try {
-          const remoteIzus = await fetchIzusFromRemote();
+      // // Sync from remote if needed
+      // if ((!localIzus.length || forceSync) && isOnline()) {
+      //   try {
+      //     const remoteIzus = await fetchIzusFromRemote();
           
-          // Transform all Izus for storage
-          const transformedIzus = remoteIzus.map(izu => 
-            transformIzuForStorage(izu, user?.id)
-          );
+      //     // Transform all Izus for storage
+      //     const transformedIzus = remoteIzus.map(izu => 
+      //       transformIzuForStorage(izu, user?.id)
+      //     );
           
-          // Batch create all at once
-          if (transformedIzus.length > 0) {
-            await batchCreate("Izu", transformedIzus);
-            localIzus = transformedIzus;
-          }
-        } catch (syncError) {
-          console.error("Failed to sync Izus from remote:", syncError);
-        }
-      }
+      //     // Batch create all at once
+      //     if (transformedIzus.length > 0) {
+      //       await batchCreate("Izu", transformedIzus);
+      //       localIzus = transformedIzus;
+      //     }
+      //   } catch (syncError) {
+      //     console.error("Failed to sync Izus from remote:", syncError);
+      //   }
+      // }
 
       // Filter by user if logged in
       if (user?.id && localIzus.length > 0) {

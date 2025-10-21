@@ -10,9 +10,6 @@ import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { TFunction } from "i18next";
 
-// ============================================================================
-// TYPE DEFINITIONS
-// ============================================================================
 
 export interface SurveySubmission {
   _id?: string; // Local SQLite ID
@@ -448,7 +445,7 @@ export const syncPendingSubmissions = async (
 
         console.log("📤 Sending to API:", JSON.stringify(apiData, null, 2));
 
-        const response = await baseInstance.post("/sendVisitData", apiData);
+        const response = await baseInstance.post("/submissions", apiData);
 
         if (response.data?.result?.id) {
           // Update with server ID and mark as synced
@@ -547,7 +544,7 @@ export const getPendingSubmissionsCount = async (
  */
 export async function fetchSurveySubmissionsFromRemote(userId: number) {
   try {
-    const res = await baseInstance.get("/v2/surveys");
+    const res = await baseInstance.get("/forms");
     const submissions = Array.isArray(res.data?.data) ? res.data.data : [];
     
     // Filter by user

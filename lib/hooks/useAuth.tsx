@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import {
   updatePassword,
-  getCurrentLoggedInProfile,
+  // getCurrentLoggedInProfile,
   userLogin,
   userLogout,
 } from "~/services/user";
@@ -252,7 +252,8 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
                 user_code: data?.user?.user_code,
                 existing_code: data?.user?.existing_code,
                 nationalID: data?.user?.nationalID,
-                name: data?.user?.name,
+                firstName: data?.user?.firstName,
+                lastName:data?.user?.lastName,
                 gender: data?.user?.gender,
                 email: data?.user?.email,
                 dob: data?.user?.dob,
@@ -271,7 +272,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
 
         // First completely clear any existing tokens to prevent collisions
         await AsyncStorage.removeItem("tknToken");
-
+        await AsyncStorage.setItem("userId",data.user.id.toString());
         // Now store the new token
         const tokenStoredInCookie = await storeTokenInAsynStorage(data.token);
         if (!tokenStoredInCookie) {
@@ -289,16 +290,17 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
 
         try {
           console.log("Fetching user profile with token...");
-          const profileData = await getCurrentLoggedInProfile();
+          const userId = await AsyncStorage.getItem("userId");
+          // const profileData = await getCurrentLoggedInProfile(userId);
 
-          if (!profileData) {
-            Toast.show({ text1: t("Auth.profile_fetch_failed"), type: "error" });
-            await logoutUser();
-            return;
-          }
-
+          // if (!profileData) {
+          //   Toast.show({ text1: t("Auth.profile_fetch_failed"), type: "error" });
+          //   await logoutUser();
+          //   return;
+          // }
+          const profileData = data?.user;
           const didStoreUserInfo = mainStore.login({
-            userAccount: profileData,
+            userAccount: data?.user,
           });
           console.log(
             "User info stored in state:",
@@ -306,7 +308,8 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
               {
                 user: {
                   id: profileData.id,
-                  name: profileData.name,
+                  firstName: profileData.firstName,
+                  lastName:profileData.lastName,
                   email: profileData.email,
                   position: profileData.position,
                   is_password_changed: profileData.is_password_changed,

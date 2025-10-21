@@ -16,7 +16,8 @@
     },
     "assetBundlePatterns": [
       "**/*",
-      "assets/formio/**/*"
+      "assets/formio/**/*",
+      "assets/**/*"
     ],
     "ios": {
       "infoPlist": {

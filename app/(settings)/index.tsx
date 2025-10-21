@@ -17,7 +17,8 @@ import { User } from "~/types";
 // Local User type (from SQLite)
 interface LocalUser {
   id: number;
-  name: string;
+  firstName: string;
+  lastName:string;
   email: string;
   telephone: string;
   user_code: string;
@@ -71,7 +72,7 @@ const SettingsScreen = () => {
         const res = authUser;
 
         if (res) {
-          setUser(res as LocalUser);
+          setUser(res as unknown as LocalUser);
         }
       } catch (error) {
         console.error("Error loading user from SQLite:", error);
@@ -153,7 +154,7 @@ const SettingsScreen = () => {
           {t("SettingsPage.account_details")}
         </Text>
 
-        <View className="flex-row gap-x-2 items-center w-full">
+        <View className="items-center justify-center w-full h-40">
           {user?.picture ? (
             <Image
               source={{ uri: user.picture }}
@@ -162,23 +163,24 @@ const SettingsScreen = () => {
           ) : (
             <View className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center">
               <Text className="text-xl font-bold text-gray-400">
-                {user?.name?.charAt(0) || "U"}
+                {user?.firstName?.charAt(0) || "U"}
               </Text>
             </View>
           )}
-          <InfoItem
-            label={t("SettingsPage.name")}
-            value={user?.name || ""}
-            className="max-w-fit"
-          />
+         
         </View>
-
+        <View>
+           <InfoItem
+            label={t("SettingsPage.name")}
+            value={user?.firstName +" "+ user?.lastName || ""}
+          />
         <InfoItem label={t("SettingsPage.email")} value={user?.email || ""} />
-        <InfoItem label={t("SettingsPage.phone")} value={user?.telephone || ""} />
+        </View>
+        {/* <InfoItem label={t("SettingsPage.phone")} value={user?.telephone || ""} />
         <InfoItem label={t("SettingsPage.user_code")} value={user?.user_code || ""} />
-        <InfoItem label={t("SettingsPage.date_of_enrollment")} value={user?.date_enrollment || ""} />
+        <InfoItem label={t("SettingsPage.date_of_enrollment")} value={user?.date_enrollment || ""} /> */}
 
-        {user && (
+        {/* {user && (
           <>
             <Text className="text-lg font-semibold mb-2 mt-4">
               {t("SettingsPage.location")}
@@ -209,9 +211,9 @@ const SettingsScreen = () => {
               isLoading={isLoadingLocationsOffline}
             />
           </>
-        )}
+        )} */}
 
-        <InfoItem
+        {/* <InfoItem
           label={t("SettingsPage.incentives")}
           value={
             parsedIncentives.length > 0
@@ -219,7 +221,7 @@ const SettingsScreen = () => {
               : [t("SettingsPage.no_incentives")]
           }
           className="flex-wrap gap-x-2 pb-4"
-        />
+        /> */}
       </ScrollView>
     </SafeAreaView>
   );

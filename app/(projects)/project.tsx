@@ -18,6 +18,7 @@ import { Text } from "~/components/ui/text";
 import { useGetAllProjects } from "~/services/project";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 import HeaderNavigation from "~/components/ui/header";
+import EmptyDynamicComponent from "~/components/EmptyDynamic";
 
 const ProjectScreen = () => {
   const { projects, isLoading, refresh } = useGetAllProjects();
@@ -103,17 +104,9 @@ const ProjectScreen = () => {
 
   const ListEmptyComponent = () => (
     <View className="flex-1 justify-center items-center py-20">
-      <TabBarIcon
-        name="folder-open"
-        family="MaterialIcons"
-        size={64}
-        color="#D1D5DB"
-      />
-      <Text className="text-gray-500 mt-4 text-center">
-        {searchQuery
-          ? t("ProjectPage.no_projects_found")
-          : t("ProjectPage.no_projects_available")}
-      </Text>
+      <EmptyDynamicComponent message={searchQuery
+          ? t("Project.no_projects_found")
+          : t("ProjectPage.empty_projects")}/>
     </View>
   );
 

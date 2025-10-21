@@ -7,7 +7,7 @@ import { useColorScheme } from "~/lib/useColorScheme";
 import Logo from "~/components/Logo";
 import { useDrawer } from "~/providers/DrawerProvider";
 import { useProtectedNavigation } from "~/utils/navigation";
-import { useGetNotifications } from "~/services/notifications";
+// import { useGetNotifications } from "~/services/notifications";
 
 type FeatherIconName = keyof typeof Feather.glyphMap;
 
@@ -44,8 +44,8 @@ const HeaderNavigation = ({
   const { goBack } = useProtectedNavigation();
   
   // Get notifications to show count
-  const { notifications } = useGetNotifications();
-  const unreadCount = notifications.filter(n => n.status !== 'resolved').length;
+  // const { notifications } = useGetNotifications();
+  // const unreadCount = notifications.filter(n => n.status !== 'resolved').length;
   
   return (
     <View
@@ -84,7 +84,7 @@ const HeaderNavigation = ({
       </View>
 
       <View style={{ width: size * 2 }} className="flex-row items-center justify-end">
-        {showNotification && (
+        {/* {showNotification && (
           <TouchableOpacity
             onPress={() => router.push('/(notifications)')}
             activeOpacity={0.7}
@@ -100,7 +100,7 @@ const HeaderNavigation = ({
             }}
           >
             <Feather name="bell" size={size - 2} color={themeColor} />
-            {/* {unreadCount > 0 && (
+            {unreadCount > 0 && (
               <View
                 style={{
                   position: 'absolute',
@@ -119,9 +119,9 @@ const HeaderNavigation = ({
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </Text>
               </View>
-            )} */}
+            )}
           </TouchableOpacity>
-        )}
+        )} */}
         
         {showRight && (
           <TouchableOpacity

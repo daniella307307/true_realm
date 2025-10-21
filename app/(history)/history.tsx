@@ -1,341 +1,341 @@
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  RefreshControl,
-  SafeAreaView,
-} from "react-native";
-import { useTranslation } from "react-i18next";
-import { useForm } from "react-hook-form";
-import { useState, useMemo } from "react";
-import { router } from "expo-router";
-import { useGetAllProjects } from "~/services/project";
-import { useGetAllSurveySubmissions } from "~/services/survey-submission";
-import { useGetAllLocallyCreatedFamilies } from "~/services/families";
-import CustomInput from "~/components/ui/input";
-import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import { IProject,ITransformedProject } from "~/types";
-import EmptyDynamicComponent from "~/components/EmptyDynamic";
-import HeaderNavigation from "~/components/ui/header";
-import { SimpleSkeletonItem } from "~/components/ui/skeleton";
-import { useGetAllLocallyCreatedIzus } from "~/services/izus";
-const HistoryProjectScreen = () => {
-  const storedProjects = useGetAllProjects();
+// import {
+//   View,
+//   Text,
+//   TouchableOpacity,
+//   FlatList,
+//   RefreshControl,
+//   SafeAreaView,
+// } from "react-native";
+// import { useTranslation } from "react-i18next";
+// import { useForm } from "react-hook-form";
+// import { useState, useMemo } from "react";
+// import { router } from "expo-router";
+// import { useGetAllProjects } from "~/services/project";
+// import { useGetAllSurveySubmissions } from "~/services/survey-submission";
+// import { useGetAllLocallyCreatedFamilies } from "~/services/families";
+// import CustomInput from "~/components/ui/input";
+// import { TabBarIcon } from "~/components/ui/tabbar-icon";
+// import { IProject,ITransformedProject } from "~/types";
+// import EmptyDynamicComponent from "~/components/EmptyDynamic";
+// import HeaderNavigation from "~/components/ui/header";
+// import { SimpleSkeletonItem } from "~/components/ui/skeleton";
+// import { useGetAllLocallyCreatedIzus } from "~/services/izus";
+// const HistoryProjectScreen = () => {
+//   const storedProjects = useGetAllProjects();
 
-  const { submissions: surveySubmissions, isLoading: isLoadingSubmissions } =
-    useGetAllSurveySubmissions();
+//   const { submissions: surveySubmissions, isLoading: isLoadingSubmissions } =
+//     useGetAllSurveySubmissions();
 
-  const {
-    locallyCreatedFamilies,
-    isLoading: isLoadingFamilies,
-    refresh: refreshFamilies,
-  } = useGetAllLocallyCreatedFamilies();
+//   const {
+//     locallyCreatedFamilies,
+//     isLoading: isLoadingFamilies,
+//     refresh: refreshFamilies,
+//   } = useGetAllLocallyCreatedFamilies();
 
-  const {
-    localIzus,
-    loading,
-    refresh: refreshIzus,
-  } = useGetAllLocallyCreatedIzus();
+//   const {
+//     localIzus,
+//     loading,
+//     refresh: refreshIzus,
+//   } = useGetAllLocallyCreatedIzus();
 
-  // console.log("locallyCreatedIzus", JSON.stringify(locallyCreatedIzus, null, 2));
-  const { t, i18n } = useTranslation();
+//   // console.log("locallyCreatedIzus", JSON.stringify(locallyCreatedIzus, null, 2));
+//   const { t, i18n } = useTranslation();
 
-  const { control, watch } = useForm({
-    defaultValues: {
-      searchQuery: "",
-    },
-    mode: "onChange",
-  });
+//   const { control, watch } = useForm({
+//     defaultValues: {
+//       searchQuery: "",
+//     },
+//     mode: "onChange",
+//   });
 
-  const searchQuery = watch("searchQuery");
-  const [refreshing, setRefreshing] = useState(false);
+//   const searchQuery = watch("searchQuery");
+//   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await storedProjects.refresh();
-    await refreshFamilies();
-    await refreshIzus();
-    setRefreshing(false);
-  };
+//   const onRefresh = async () => {
+//     setRefreshing(true);
+//     await storedProjects.refresh();
+//     await refreshFamilies();
+//     await refreshIzus();
+//     setRefreshing(false);
+//   };
 
-  const organizedProjects = useMemo(() => {
-    if (
-      !storedProjects?.projects ||
-      !surveySubmissions ||
-      !locallyCreatedFamilies
-    )
-      return [];
+//   const organizedProjects = useMemo(() => {
+//     if (
+//       !storedProjects?.projects ||
+//       !surveySubmissions ||
+//       !locallyCreatedFamilies
+//     )
+//       return [];
 
-    // Get unique project IDs from locally created families
-    const locallyCreatedFamilyProjectIds = new Set(
-      locallyCreatedFamilies.map((family) => family.form_data?.project_id)
-    );
+//     // Get unique project IDs from locally created families
+//     const locallyCreatedFamilyProjectIds = new Set(
+//       locallyCreatedFamilies.map((family) => family.form_data?.project_id)
+//     );
 
-    // Get unique project IDs from survey submissions
-    const projectIdsWithSubmissions = new Set(
-      surveySubmissions.map((submission) => submission.form_data?.project_id)
-    );
+//     // Get unique project IDs from survey submissions
+//     const projectIdsWithSubmissions = new Set(
+//       surveySubmissions.map((submission) => submission.form_data?.project_id)
+//     );
 
-    // Get unique project IDs from locally created izus
-    const locallyCreatedIzuProjectIds = new Set(
-      localIzus.map((izu) => izu.form_data?.project_id)
-    );
+//     // Get unique project IDs from locally created izus
+//     const locallyCreatedIzuProjectIds = new Set(
+//       localIzus.map((izu) => izu.form_data?.project_id)
+//     );
 
-    // Filter projects that have survey submissions
-    const activeProjects = storedProjects.projects.filter(
-      (project) =>
-        project?.status !== 0 &&
-        (projectIdsWithSubmissions.has(project.id) ||
-          locallyCreatedFamilyProjectIds.has(project.id) ||
-          locallyCreatedIzuProjectIds.has(project.id))
-    );
+//     // Filter projects that have survey submissions
+//     const activeProjects = storedProjects.projects.filter(
+//       (project) =>
+//         project?.status !== 0 &&
+//         (projectIdsWithSubmissions.has(project.id) ||
+//           locallyCreatedFamilyProjectIds.has(project.id) ||
+//           locallyCreatedIzuProjectIds.has(project.id))
+//     );
 
-    if (!searchQuery) {
-      // Split projects into risk management and others
-      const riskProjects = activeProjects.filter((project) =>
-        project.name?.toLowerCase().includes("risk of harm management")
-      );
-      const otherProjects = activeProjects.filter(
-        (project) =>
-          !project.name?.toLowerCase().includes("risk of harm management")
-      );
+//     if (!searchQuery) {
+//       // Split projects into risk management and others
+//       const riskProjects = activeProjects.filter((project) =>
+//         project.name?.toLowerCase().includes("risk of harm management")
+//       );
+//       const otherProjects = activeProjects.filter(
+//         (project) =>
+//           !project.name?.toLowerCase().includes("risk of harm management")
+//       );
 
-      return [...riskProjects, ...otherProjects];
-    }
+//       return [...riskProjects, ...otherProjects];
+//     }
 
-    return activeProjects.filter((project) =>
-      project.name?.toLowerCase().includes(searchQuery?.toLowerCase() || "")
-    );
-  }, [storedProjects.projects, surveySubmissions, searchQuery]);
+//     return activeProjects.filter((project) =>
+//       project.name?.toLowerCase().includes(searchQuery?.toLowerCase() || "")
+//     );
+//   }, [storedProjects.projects, surveySubmissions, searchQuery]);
 
-  const renderItem = ({ item, index }: { item: ITransformedProject; index: number }) => {
-    const isRiskManagement =
-      item.name?.toLowerCase()?.includes("risk of harm management") || false;
-    const isFirstItem = index === 0;
+//   const renderItem = ({ item, index }: { item: ITransformedProject; index: number }) => {
+//     const isRiskManagement =
+//       item.name?.toLowerCase()?.includes("risk of harm management") || false;
+//     const isFirstItem = index === 0;
 
-    // Get submissions for this project
-    const projectSubmissions =
-      surveySubmissions?.filter(
-        (submission) => submission?.form_data?.project_id === item?._id
-      ) || [];
+//     // Get submissions for this project
+//     const projectSubmissions =
+//       surveySubmissions?.filter(
+//         (submission) => submission?.form_data?.project_id === item?._id
+//       ) || [];
 
-    const locallyCreatedFamilySubmissions =
-      locallyCreatedFamilies?.filter(
-        (family) => family.form_data?.project_id === item?._id
-      ) || [];
+//     const locallyCreatedFamilySubmissions =
+//       locallyCreatedFamilies?.filter(
+//         (family) => family.form_data?.project_id === item?._id
+//       ) || [];
 
-    const locallyCreatedIzuSubmissions =
-      localIzus?.filter(
-        (izu) => izu.form_data?.project_id === item?._id
-      ) || [];
+//     const locallyCreatedIzuSubmissions =
+//       localIzus?.filter(
+//         (izu) => izu.form_data?.project_id === item?._id
+//       ) || [];
 
-    const totalSubmissions =
-      projectSubmissions.length +
-      locallyCreatedFamilySubmissions.length +
-      locallyCreatedIzuSubmissions.length;
+//     const totalSubmissions =
+//       projectSubmissions.length +
+//       locallyCreatedFamilySubmissions.length +
+//       locallyCreatedIzuSubmissions.length;
 
-    return (
-      <TouchableOpacity
-        onPress={() => router.push(`/(mods)/(projects)/${item._id}`)}
-        className={`p-4 border mb-4 rounded-xl
-          ${isRiskManagement ? "border-red-500" : "border-gray-200"}
-          ${isRiskManagement && isFirstItem ? "mt-4" : ""}`}
-      >
-        <View className="flex flex-row pr-4 items-center">
-          <TabBarIcon
-            name="chat"
-            family="MaterialIcons"
-            size={24}
-            color={isRiskManagement ? "#EF4444" : "#71717A"}
-          />
-          <Text
-            className={`text-lg ml-4 font-semibold ${
-              isRiskManagement ? "text-red-500" : ""
-            }`}
-          >
-            {i18n.language === "rw-RW" ? item.kin_name || item.name : item.name}
-          </Text>
-        </View>
-        <View className="flex flex-col justify-between items-start mt-2">
-          {/* <Text className="text-sm text-gray-500">
-            {t("History.submissions")}: {totalSubmissions}
-          </Text> */}
-          <Text className="text-sm text-gray-500">
-            {t("History.lastSubmission")}:{" "}
-            {projectSubmissions.length > 0 ||
-            locallyCreatedFamilySubmissions.length > 0
-              ? (() => {
-                  // Find the most recent submission from either array
-                  let latestDate: Date | null = new Date();
+//     return (
+//       <TouchableOpacity
+//         onPress={() => router.push(`/(mods)/(projects)/${item._id}`)}
+//         className={`p-4 border mb-4 rounded-xl
+//           ${isRiskManagement ? "border-red-500" : "border-gray-200"}
+//           ${isRiskManagement && isFirstItem ? "mt-4" : ""}`}
+//       >
+//         <View className="flex flex-row pr-4 items-center">
+//           <TabBarIcon
+//             name="chat"
+//             family="MaterialIcons"
+//             size={24}
+//             color={isRiskManagement ? "#EF4444" : "#71717A"}
+//           />
+//           <Text
+//             className={`text-lg ml-4 font-semibold ${
+//               isRiskManagement ? "text-red-500" : ""
+//             }`}
+//           >
+//             {i18n.language === "rw-RW" ? item.kin_name || item.name : item.name}
+//           </Text>
+//         </View>
+//         <View className="flex flex-col justify-between items-start mt-2">
+//           {/* <Text className="text-sm text-gray-500">
+//             {t("History.submissions")}: {totalSubmissions}
+//           </Text> */}
+//           <Text className="text-sm text-gray-500">
+//             {t("History.lastSubmission")}:{" "}
+//             {projectSubmissions.length > 0 ||
+//             locallyCreatedFamilySubmissions.length > 0
+//               ? (() => {
+//                   // Find the most recent submission from either array
+//                   let latestDate: Date | null = new Date();
 
-                  // Check project submissions
-                  if (
-                    projectSubmissions.length > 0 &&
-                    projectSubmissions[projectSubmissions.length - 1]?.sync_data
-                      ?.submitted_at
-                  ) {
-                    const submissionDate =
-                      projectSubmissions[projectSubmissions.length - 1]
-                        .sync_data?.submitted_at;
-                    // @ts-ignore
-                    if (
-                      submissionDate &&
-                      (!latestDate || submissionDate > latestDate)
-                    ) {
-                      latestDate = new Date(submissionDate.toLocaleString());
-                    }
-                  }
+//                   // Check project submissions
+//                   if (
+//                     projectSubmissions.length > 0 &&
+//                     projectSubmissions[projectSubmissions.length - 1]?.sync_data
+//                       ?.submitted_at
+//                   ) {
+//                     const submissionDate =
+//                       projectSubmissions[projectSubmissions.length - 1]
+//                         .sync_data?.submitted_at;
+//                     // @ts-ignore
+//                     if (
+//                       submissionDate &&
+//                       (!latestDate || submissionDate > latestDate)
+//                     ) {
+//                       latestDate = new Date(submissionDate.toLocaleString());
+//                     }
+//                   }
 
-                  // Check family submissions
-                  if (
-                    locallyCreatedFamilySubmissions.length > 0 &&
-                    locallyCreatedFamilySubmissions[
-                      locallyCreatedFamilySubmissions.length - 1
-                    ]?.sync_data?.submitted_at
-                  ) {
-                    const submissionDate =
-                      locallyCreatedFamilySubmissions[
-                        locallyCreatedFamilySubmissions.length - 1
-                      ].sync_data?.submitted_at;
-                    // @ts-ignore
-                    if (
-                      submissionDate &&
-                      // @ts-ignore
-                      (!latestDate || submissionDate > latestDate)
-                    ) {
-                      // @ts-ignore
-                      latestDate = submissionDate;
-                    }
-                  }
+//                   // Check family submissions
+//                   if (
+//                     locallyCreatedFamilySubmissions.length > 0 &&
+//                     locallyCreatedFamilySubmissions[
+//                       locallyCreatedFamilySubmissions.length - 1
+//                     ]?.sync_data?.submitted_at
+//                   ) {
+//                     const submissionDate =
+//                       locallyCreatedFamilySubmissions[
+//                         locallyCreatedFamilySubmissions.length - 1
+//                       ].sync_data?.submitted_at;
+//                     // @ts-ignore
+//                     if (
+//                       submissionDate &&
+//                       // @ts-ignore
+//                       (!latestDate || submissionDate > latestDate)
+//                     ) {
+//                       // @ts-ignore
+//                       latestDate = submissionDate;
+//                     }
+//                   }
 
-                  // Check izus submissions
-                  if (
-                    locallyCreatedIzuSubmissions.length > 0 &&
-                    locallyCreatedIzuSubmissions[
-                      locallyCreatedIzuSubmissions.length - 1
-                    ]?.sync_data?.submitted_at
-                  ) {
-                    const submissionDate =
-                      locallyCreatedIzuSubmissions[
-                        locallyCreatedIzuSubmissions.length - 1
-                      ].sync_data?.submitted_at;
-                    // @ts-ignore
-                    if (
-                      submissionDate &&
-                      // @ts-ignore
-                      (!latestDate || submissionDate > latestDate)
-                    ) {
-                      // @ts-ignore
-                      latestDate = submissionDate;
-                    }
-                  }
+//                   // Check izus submissions
+//                   if (
+//                     locallyCreatedIzuSubmissions.length > 0 &&
+//                     locallyCreatedIzuSubmissions[
+//                       locallyCreatedIzuSubmissions.length - 1
+//                     ]?.sync_data?.submitted_at
+//                   ) {
+//                     const submissionDate =
+//                       locallyCreatedIzuSubmissions[
+//                         locallyCreatedIzuSubmissions.length - 1
+//                       ].sync_data?.submitted_at;
+//                     // @ts-ignore
+//                     if (
+//                       submissionDate &&
+//                       // @ts-ignore
+//                       (!latestDate || submissionDate > latestDate)
+//                     ) {
+//                       // @ts-ignore
+//                       latestDate = submissionDate;
+//                     }
+//                   }
 
-                  return latestDate
-                    ? latestDate.toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      })
-                    : t("History.no_submissions");
-                })()
-              : t("History.no_submissions")}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+//                   return latestDate
+//                     ? latestDate.toLocaleDateString("en-GB", {
+//                         day: "2-digit",
+//                         month: "2-digit",
+//                         year: "numeric",
+//                         hour: "2-digit",
+//                         minute: "2-digit",
+//                         hour12: false,
+//                       })
+//                     : t("History.no_submissions");
+//                 })()
+//               : t("History.no_submissions")}
+//           </Text>
+//         </View>
+//       </TouchableOpacity>
+//     );
+//   };
 
-  const ListHeader = () => {
-    const hasRiskProject = organizedProjects.some((project) =>
-      project.name?.toLowerCase().includes("risk management")
-    );
+//   const ListHeader = () => {
+//     const hasRiskProject = organizedProjects.some((project) =>
+//       project.name?.toLowerCase().includes("risk management")
+//     );
 
-    if (!hasRiskProject) return null;
+//     if (!hasRiskProject) return null;
 
-    return (
-      <View className="bg-red-50 p-4 rounded-xl mb-4">
-        <Text className="text-red-500 font-semibold">
-          {t("ProjectPage.risk_management_section")}
-        </Text>
-      </View>
-    );
-  };
-  const safeParseModules = (data: any): string[] => {
-  if (!data) return [];
-  try {
-    const parsed = typeof data === "string" ? JSON.parse(data) : data;
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
- };
-  const transformedProjects: ITransformedProject[] = useMemo(
-  () =>
-    (organizedProjects || []).map((project) => ({
-      _id: project.id,
-      name: project.name || "",
-      kin_name: project.kin_name || "",
-      duration: project.duration || "",
-      progress: project.progress || "",
-      description: project.description || "",
-      status: project.status,
-      beneficiary: project.beneficiary || "",
-      projectlead: project.projectlead || "",
-      has_modules: project.has_modules,
-      created_at: project.created_at
-        ? new Date(project.created_at).toDateString()
-        : undefined,
-      updated_at: project.updated_at
-        ? new Date(project.updated_at).toDateString()
-        : undefined,
-      project_modules: safeParseModules(project.project_modules),
-    })),
-  [organizedProjects]
-);
+//     return (
+//       <View className="bg-red-50 p-4 rounded-xl mb-4">
+//         <Text className="text-red-500 font-semibold">
+//           {t("ProjectPage.risk_management_section")}
+//         </Text>
+//       </View>
+//     );
+//   };
+//   const safeParseModules = (data: any): string[] => {
+//   if (!data) return [];
+//   try {
+//     const parsed = typeof data === "string" ? JSON.parse(data) : data;
+//     return Array.isArray(parsed) ? parsed : [];
+//   } catch {
+//     return [];
+//   }
+//  };
+//   const transformedProjects: ITransformedProject[] = useMemo(
+//   () =>
+//     (organizedProjects || []).map((project) => ({
+//       _id: project.id,
+//       name: project.name || "",
+//       kin_name: project.kin_name || "",
+//       duration: project.duration || "",
+//       progress: project.progress || "",
+//       description: project.description || "",
+//       status: project.status,
+//       beneficiary: project.beneficiary || "",
+//       projectlead: project.projectlead || "",
+//       has_modules: project.has_modules,
+//       created_at: project.created_at
+//         ? new Date(project.created_at).toDateString()
+//         : undefined,
+//       updated_at: project.updated_at
+//         ? new Date(project.updated_at).toDateString()
+//         : undefined,
+//       project_modules: safeParseModules(project.project_modules),
+//     })),
+//   [organizedProjects]
+// );
 
-  return (
-    <SafeAreaView className="flex-1 bg-background">
-      <HeaderNavigation
-        showLeft={true}
-        showRight={true}
-        title={t("HistoryProjectPage.title")}
-      />
-      <View className="px-4">
-        <CustomInput
-          control={control}
-          name="searchQuery"
-          placeholder={t("HistoryProjectPage.search_history_project")}
-          keyboardType="default"
-          accessibilityLabel={t("HistoryProjectPage.search_history_project")}
-        />
+//   return (
+//     <SafeAreaView className="flex-1 bg-background">
+//       <HeaderNavigation
+//         showLeft={true}
+//         showRight={true}
+//         title={t("HistoryProjectPage.title")}
+//       />
+//       <View className="px-4">
+//         <CustomInput
+//           control={control}
+//           name="searchQuery"
+//           placeholder={t("HistoryProjectPage.search_history_project")}
+//           keyboardType="default"
+//           accessibilityLabel={t("HistoryProjectPage.search_history_project")}
+//         />
 
-        {isLoadingSubmissions || isLoadingFamilies ? (
-          <View>
-            <SimpleSkeletonItem />
-            <SimpleSkeletonItem />
-            <SimpleSkeletonItem />
-          </View>
-        ) : transformedProjects?.length === 0 ? (
-          <EmptyDynamicComponent />
-        ) : (
-          <FlatList
-            data={transformedProjects || []}
-            ListHeaderComponent={ListHeader}
-            showsVerticalScrollIndicator={false}
-            keyExtractor={(item, index) => `${item._id}-${index}`}
-            renderItem={renderItem}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-          />
-        )}
-      </View>
-    </SafeAreaView>
-  );
-};
+//         {isLoadingSubmissions || isLoadingFamilies ? (
+//           <View>
+//             <SimpleSkeletonItem />
+//             <SimpleSkeletonItem />
+//             <SimpleSkeletonItem />
+//           </View>
+//         ) : transformedProjects?.length === 0 ? (
+//           <EmptyDynamicComponent />
+//         ) : (
+//           <FlatList
+//             data={transformedProjects || []}
+//             ListHeaderComponent={ListHeader}
+//             showsVerticalScrollIndicator={false}
+//             keyExtractor={(item, index) => `${item._id}-${index}`}
+//             renderItem={renderItem}
+//             refreshControl={
+//               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+//             }
+//           />
+//         )}
+//       </View>
+//     </SafeAreaView>
+//   );
+// };
 
-export default HistoryProjectScreen;
+// export default HistoryProjectScreen;

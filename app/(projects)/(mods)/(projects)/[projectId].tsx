@@ -153,8 +153,6 @@ const ProjectFormsScreen = () => {
   );
 
   const isLoading = isProjectLoading || isFormsLoading;
-
-  // 🧱 UI
   return (
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation

@@ -4,12 +4,12 @@ import { fetchWithRetry, checkNetworkConnection, showNetworkErrorAlert } from "~
 
 export async function userLogout(sqlite: any | null) {
   // Proceed with the logout API call
-  const res = await baseInstance.post<IResponse<{}>>(`/logout`);
+  const res = await baseInstance.post<IResponse<{}>>(`/auth/logout`);
   return res.data;
 }
 
 export async function userLogin(values: ILoginDetails) {
-  console.log("Sending login request with data:", { identifier: values.identifier });
+  console.log("Sending login request with data:", { email: values.identifier });
   
   // Check network connection before attempting login
   const isConnected = await checkNetworkConnection();
@@ -23,8 +23,8 @@ export async function userLogin(values: ILoginDetails) {
     // Use fetchWithRetry for better reliability
     const response = await fetchWithRetry(() => 
       baseInstance.post<ILoginResponse>(
-        "/login",
-        { identifier: values.identifier, password: values.password },
+        "/auth/login",
+        { email: values.identifier, password: values.password },
         {
           headers: {
             Authorization: undefined,
@@ -53,26 +53,26 @@ export async function userLogin(values: ILoginDetails) {
 }
 
 // FIXED: Removed "use" prefix - this is NOT a Hook, it's a regular async function
-export async function getCurrentLoggedInProfile() {
-  console.log("Fetching current user profile...");
-  try {
-    // Use fetchWithRetry for better reliability
-    const res = await fetchWithRetry(() => baseInstance.post<User>(`/profile`));
+// export async function getCurrentLoggedInProfile(id:string) {
+//   console.log("Fetching current user profile...");
+//   try {
+//     // Use fetchWithRetry for better reliability
+//     const res = await fetchWithRetry(() => baseInstance.get<User>(`/users/${id}`));
     
-    console.log("Profile API headers:", JSON.stringify(res.config?.headers, null, 2));
-    console.log("Profile API response status:", res.status);
-    console.log("Profile user email from API:", res.data.email);
-    return res.data;
-  } catch (error) {
-    console.error("Error fetching profile:", error);
-    throw error;
-  }
-}
+//     console.log("Profile API headers:", JSON.stringify(res.config?.headers, null, 2));
+//     console.log("Profile API response status:", res.status);
+//     console.log("Profile user email from API:", res.data.email);
+//     return res.data;
+//   } catch (error) {
+//     console.error("Error fetching profile:", error);
+//     throw error;
+//   }
+// }
 
-export async function requestPasswordReset(identifier: string) {
+export async function requestPasswordReset(id: string) {
   try {
     const res = await fetchWithRetry(() => 
-      baseInstance.post<IResponse<{}>>(`/user/reset-password`, { identifier })
+      baseInstance.post<IResponse<{}>>(`/users/${id}/reset-password`)
     );
     console.log(res.data);
     return res.data;
@@ -82,11 +82,11 @@ export async function requestPasswordReset(identifier: string) {
   }
 }
 
-export async function verifyPasswordReset(identifier: string, verification_code: string) {
+export async function verifyPasswordReset(email: string, verification_code: string) {
   try {
     const res = await fetchWithRetry(() =>
       baseInstance.post<ILoginResponse>(`/user/verify-reset-code`, {
-        identifier,
+        email,
         verification_code,
       })
     );
@@ -97,12 +97,12 @@ export async function verifyPasswordReset(identifier: string, verification_code:
   }
 }
 
-export async function updatePassword(password: string, identifier: string): Promise<{ message: string }> {
+export async function updatePassword(password: string, email: string): Promise<{ message: string }> {
   try {
     const res = await fetchWithRetry(() => 
       baseInstance.post<IResponse<{ message: string }>>(`/user/update-password`, { 
         password,
-        identifier 
+        email 
       })
     );
     console.log("Password update response:", res.data);

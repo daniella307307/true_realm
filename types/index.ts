@@ -286,6 +286,8 @@ export interface IPost {
 }
 
 export interface User {
+  [x: string]: any;
+  firstName: any;
   id: number;
   user_code: string;
   existing_code: string;
@@ -803,7 +805,7 @@ export interface IFormSubmissionDetail {
 
 export const protectedBasePaths = [
   // "/(families)",
-  "/(history)",
+  // "/(history)",
   // "/(statistics)",
   // "/(monitoring)",
   // "/(videos)",

@@ -9,13 +9,13 @@ import { useGetForms } from "~/services/formElements";
 import { useGetIzus } from "~/services/izus";
 // import { useGetAllPosts } from "~/services/posts";
 // import { useGetStakeholders } from "~/services/stakeholders";
-import { useGetCohorts } from "~/services/cohorts";
-import { useGetNotifications } from '~/services/notifications';
+// import { useGetCohorts } from "~/services/cohorts";
+// import { useGetNotifications } from '~/services/notifications';
 import { useGetAllSurveySubmissions } from '~/services/survey-submission';
-import { useGetMonitoringForms } from '~/services/monitoring/monitoring-forms';
-import { useGetMonitoringModules } from '~/services/monitoring/monitoring-module';
-import { useGetMonitoringResponses } from '~/services/monitoring/monitoring-responses';
-import { useGetAllFollowUps } from '~/services/followups';
+// import { useGetMonitoringForms } from '~/services/monitoring/monitoring-forms';
+// import { useGetMonitoringModules } from '~/services/monitoring/monitoring-module';
+// import { useGetMonitoringResponses } from '~/services/monitoring/monitoring-responses';
+// import { useGetAllFollowUps } from '~/services/followups';
 
 type AppDataContextType = {
   isDataLoaded: boolean;
@@ -46,12 +46,12 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const formsHook = useGetForms(false);
   // const postsHook = useGetAllPosts(false);
   // const stakeholdersHook = useGetStakeholders(false);
-  const cohortsHook = useGetCohorts(false);
-  const notificationsHook = useGetNotifications(false);
-  const monitoringModulesHook = useGetMonitoringModules(false);
-  const monitoringFormsHook = useGetMonitoringForms(false);
-  const monitoringResponsesHook = useGetMonitoringResponses(false);
-  const followUpsHook = useGetAllFollowUps(false);
+  // const cohortsHook = useGetCohorts(false);
+  // const notificationsHook = useGetNotifications(false);
+  // const monitoringModulesHook = useGetMonitoringModules(false);
+  // const monitoringFormsHook = useGetMonitoringForms(false);
+  // const monitoringResponsesHook = useGetMonitoringResponses(false);
+  // const followUpsHook = useGetAllFollowUps(false);
   const surveySubmissionsHook = useGetAllSurveySubmissions(false);
 
   // Memoized refresh function with rate limiting and sequential batching
@@ -102,42 +102,42 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       //   console.error("Error loading families:", error);
       // }
       
-      try {
-        await notificationsHook?.refresh?.();
-        await delay(200);
-      } catch (error) {
-        console.error("Error loading notifications:", error);
-      }
+      // try {
+      //   await notificationsHook?.refresh?.();
+      //   await delay(200);
+      // } catch (error) {
+      //   console.error("Error loading notifications:", error);
+      // }
       
-      try {
-        await followUpsHook?.refresh?.();
-        await delay(200);
-      } catch (error) {
-        console.error("Error loading follow-ups:", error);
-      }
+      // try {
+      //   await followUpsHook?.refresh?.();
+      //   await delay(200);
+      // } catch (error) {
+      //   console.error("Error loading follow-ups:", error);
+      // }
 
       // // Batch 3: Monitoring data (with 200ms delays)
       // console.log("Batch 3: Loading monitoring data...");
-      try {
-        await monitoringModulesHook?.refresh?.();
-        await delay(200);
-      } catch (error) {
-        console.error("Error loading monitoring modules:", error);
-      }
+      // try {
+      //   await monitoringModulesHook?.refresh?.();
+      //   await delay(200);
+      // } catch (error) {
+      //   console.error("Error loading monitoring modules:", error);
+      // }
       
-      try {
-        await monitoringFormsHook?.refresh?.();
-        await delay(200);
-      } catch (error) {
-        console.error("Error loading monitoring forms:", error);
-      }
+      // try {
+      //   await monitoringFormsHook?.refresh?.();
+      //   await delay(200);
+      // } catch (error) {
+      //   console.error("Error loading monitoring forms:", error);
+      // }
       
-      try {
-        await monitoringResponsesHook?.refresh?.();
-        await delay(200);
-      } catch (error) {
-        console.error("Error loading monitoring responses:", error);
-      }
+      // try {
+      //   await monitoringResponsesHook?.refresh?.();
+      //   await delay(200);
+      // } catch (error) {
+      //   console.error("Error loading monitoring responses:", error);
+      // }
 
       // Batch 4: Secondary data (with 200ms delays)
       // console.log(" Batch 4: Loading secondary data...");
@@ -186,13 +186,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     formsHook,
     // postsHook,
     // stakeholdersHook,
-    cohortsHook,
-    notificationsHook,
-    monitoringModulesHook,
-    monitoringFormsHook,
+    // cohortsHook,
+    // notificationsHook,
+    // monitoringModulesHook,
+    // monitoringFormsHook,
     surveySubmissionsHook,
-    monitoringResponsesHook,
-    followUpsHook,
+    // monitoringResponsesHook,
+    // followUpsHook,
   ]);
 
   // Initialize data when user logs in AND SQLite is ready

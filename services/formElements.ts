@@ -8,7 +8,7 @@ import { checkNetworkConnection } from "~/utils/networkHelpers";
 // ---------------- FETCH FROM API ----------------
 export async function fetchFormsFromRemote(): Promise<IExistingForm[]> {
   try {
-    const res = await baseInstance.get<I4BaseFormat<IExistingForm[]>>(`/v2/surveys`);
+    const res = await baseInstance.get<I4BaseFormat<IExistingForm[]>>(`/forms`);
     const data = res.data?.data;
     
     // Ensure we always return an array
@@ -28,7 +28,7 @@ export async function fetchFormByProjectFromRemote(
 ): Promise<IExistingForm[]> {
   try {
     const res = await baseInstance.get<I4BaseFormat<IExistingForm[]>>(
-      `/v2/surveys`
+      `/forms`
     );
     const data = res.data?.data;
     
@@ -59,10 +59,10 @@ function deduplicateForms(forms: IExistingForm[]): IExistingForm[] {
       const currentTime = form.updated_at ? new Date(form.updated_at).getTime() : 0;
       
       if (currentTime > existingTime) {
-        console.warn(`Replacing duplicate form ID ${form.id} with newer version`);
+        // console.warn(`Replacing duplicate form ID ${form.id} with newer version`);
         uniqueMap.set(form.id, form);
       } else {
-        console.warn(`Skipping duplicate form ID ${form.id}`);
+        // console.warn(`Skipping duplicate form ID ${form.id}`);
       }
     }
   });
