@@ -17,7 +17,7 @@
 // import EmptyDynamicComponent from "~/components/EmptyDynamic";
 // import i18n from "~/utils/i18n";
 
-// const NotificationsScreen = () => {
+ const NotificationsScreen = () => {
 //   const { t } = useTranslation();
 //   const [refreshing, setRefreshing] = useState(false);
 //   const { notifications, isLoading, refresh } = useGetNotifications();
@@ -140,6 +140,6 @@
 //       )}
 //     </SafeAreaView>
 //   );
-// };
+ };
 
-// export default NotificationsScreen;
+export default NotificationsScreen;

@@ -13,7 +13,7 @@
 // import { Card } from "~/components/ui/card";
 // import { TabBarIcon } from "~/components/ui/tabbar-icon";
 
-// const NewPostScreen: React.FC = () => {
+ const NewPostScreen = () => {
 //   const router = useRouter();
 //   const { useCreatePost, isLoading } = usePostManipulate();
 //   const { t } = useTranslation();
@@ -140,6 +140,6 @@
 //       </View>
 //     </SafeAreaView>
 //   );
-// };
+ };
 
-// export default NewPostScreen;
+ export default NewPostScreen;

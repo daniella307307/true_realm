@@ -10,11 +10,11 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useGetAllProjects } from "~/services/project";
 import { syncPendingSubmissions, getPendingSubmissionsCount } from "~/services/survey-submission";
-import { useGetStakeholders } from "~/services/stakeholders";
+// import { useGetStakeholders } from "~/services/stakeholders";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
-import { useFamilyOperations } from "~/services/families";
-import { useSyncIzus, useGetIzus } from "~/services/izus";
+// import { useFamilyOperations } from "~/services/families";
+// import { useSyncIzus, useGetIzus } from "~/services/izus";
 import Toast from "react-native-toast-message";
 import { syncTemporaryMonitoringResponses } from "~/services/monitoring/monitoring-responses";
 import { useNetworkStatus } from "~/services/network";
@@ -99,13 +99,13 @@ const SyncPage = () => {
   const { isConnected } = useNetworkStatus();
   const { user } = useAuth({});
   const { t } = useTranslation();
-  const { syncTemporaryFamilies } = useFamilyOperations();
-  const { syncTemporaryIzus } = useSyncIzus();
+  // const { syncTemporaryFamilies } = useFamilyOperations();
+  // const { syncTemporaryIzus } = useSyncIzus();
 
   // Service hooks
   const { refresh: refreshProjects } = useGetAllProjects(true);
-  const { refresh: refreshStakeholders } = useGetStakeholders(true);
-  useGetIzus(true);
+  // const { refresh: refreshStakeholders } = useGetStakeholders(true);
+  // useGetIzus(true);
   useGetForms(true);
 
   // State
@@ -223,107 +223,107 @@ const SyncPage = () => {
     }
   };
 
-  const syncFamilies = async () => {
-    if (isSyncing || !isConnected || !user?.id) {
-      showToast("error", t("Sync.networkError"), t("Sync.offlineMessage"));
-      return;
-    }
+  // const syncFamilies = async () => {
+  //   if (isSyncing || !isConnected || !user?.id) {
+  //     showToast("error", t("Sync.networkError"), t("Sync.offlineMessage"));
+  //     return;
+  //   }
 
-    setIsSyncing(true);
-    setSyncType(getSyncTypeKey("Sync.families", t));
+  //   setIsSyncing(true);
+  //   setSyncType(getSyncTypeKey("Sync.families", t));
 
-    try {
-      console.log("🔄 Starting families sync...");
-      await syncTemporaryFamilies(query, "/families", t, user.id);
-      setLastSyncDate(new Date());
-      await updateSubmissionCounts();
-      showToast("success", t("Sync.success"), t("Sync.familiesSynced") || "Families synced successfully");
-    } catch (error) {
-      console.error("❌ Error syncing families:", error);
-      showToast("error", t("Sync.error"), t("Sync.familiesSyncFailed") || "Failed to sync families");
-    } finally {
-      setIsSyncing(false);
-      setSyncType(null);
-      setForceRefresh((prev) => prev + 1);
-    }
-  };
+  //   try {
+  //     console.log("Starting families sync...");
+  //     await syncTemporaryFamilies(query, "/families", t, user.id);
+  //     setLastSyncDate(new Date());
+  //     await updateSubmissionCounts();
+  //     showToast("success", t("Sync.success"), t("Sync.familiesSynced") || "Families synced successfully");
+  //   } catch (error) {
+  //     console.error("Error syncing families:", error);
+  //     showToast("error", t("Sync.error"), t("Sync.familiesSyncFailed") || "Failed to sync families");
+  //   } finally {
+  //     setIsSyncing(false);
+  //     setSyncType(null);
+  //     setForceRefresh((prev) => prev + 1);
+  //   }
+  // };
 
-  const syncIzusFn = async () => {
-    if (isSyncing || !isConnected || !user?.id) {
-      showToast("error", t("Sync.networkError"), t("Sync.offlineMessage"));
-      return;
-    }
+  // const syncIzusFn = async () => {
+  //   if (isSyncing || !isConnected || !user?.id) {
+  //     showToast("error", t("Sync.networkError"), t("Sync.offlineMessage"));
+  //     return;
+  //   }
 
-    setIsSyncing(true);
-    setSyncType(getSyncTypeKey("Sync.izus", t));
+  //   setIsSyncing(true);
+  //   setSyncType(getSyncTypeKey("Sync.izus", t));
 
-    try {
-      console.log("🔄 Starting izus sync...");
-      await syncTemporaryIzus("/izus");
-      setLastSyncDate(new Date());
-      await updateSubmissionCounts();
-      showToast("success", t("Sync.success"), t("Sync.izusSynced") || "Users synced successfully");
-    } catch (error) {
-      console.error("❌ Error syncing izus:", error);
-      showToast("error", t("Sync.error"), t("Sync.izusSyncFailed") || "Failed to sync users");
-    } finally {
-      setIsSyncing(false);
-      setSyncType(null);
-      setForceRefresh((prev) => prev + 1);
-    }
-  };
+  //   try {
+  //     console.log("🔄 Starting izus sync...");
+  //     await syncTemporaryIzus("/izus");
+  //     setLastSyncDate(new Date());
+  //     await updateSubmissionCounts();
+  //     showToast("success", t("Sync.success"), t("Sync.izusSynced") || "Users synced successfully");
+  //   } catch (error) {
+  //     console.error("❌ Error syncing izus:", error);
+  //     showToast("error", t("Sync.error"), t("Sync.izusSyncFailed") || "Failed to sync users");
+  //   } finally {
+  //     setIsSyncing(false);
+  //     setSyncType(null);
+  //     setForceRefresh((prev) => prev + 1);
+  //   }
+  // };
 
-  const syncMonitoringResponsesFn = async () => {
-    if (isSyncing || !isConnected || !user?.id) {
-      showToast("error", t("Sync.networkError"), t("Sync.offlineMessage"));
-      return;
-    }
+  // const syncMonitoringResponsesFn = async () => {
+  //   if (isSyncing || !isConnected || !user?.id) {
+  //     showToast("error", t("Sync.networkError"), t("Sync.offlineMessage"));
+  //     return;
+  //   }
 
-    setIsSyncing(true);
-    setSyncType(getSyncTypeKey("Sync.responses", t));
+  //   setIsSyncing(true);
+  //   setSyncType(getSyncTypeKey("Sync.responses", t));
 
-    try {
-      console.log("🔄 Starting monitoring responses sync...");
-      await syncTemporaryMonitoringResponses(query, "/get-performances", t, user.id);
-      setLastSyncDate(new Date());
-      await updateSubmissionCounts();
-      showToast("success", t("Sync.success"), t("Sync.responsesSynced") || "Responses synced successfully");
-    } catch (error) {
-      console.error("❌ Error syncing monitoring responses:", error);
-      showToast("error", t("Sync.error"), t("Sync.responsesSyncFailed") || "Failed to sync responses");
-    } finally {
-      setIsSyncing(false);
-      setSyncType(null);
-      setForceRefresh((prev) => prev + 1);
-    }
-  };
+  //   try {
+  //     console.log("🔄 Starting monitoring responses sync...");
+  //     await syncTemporaryMonitoringResponses(query, "/get-performances", t, user.id);
+  //     setLastSyncDate(new Date());
+  //     await updateSubmissionCounts();
+  //     showToast("success", t("Sync.success"), t("Sync.responsesSynced") || "Responses synced successfully");
+  //   } catch (error) {
+  //     console.error("❌ Error syncing monitoring responses:", error);
+  //     showToast("error", t("Sync.error"), t("Sync.responsesSyncFailed") || "Failed to sync responses");
+  //   } finally {
+  //     setIsSyncing(false);
+  //     setSyncType(null);
+  //     setForceRefresh((prev) => prev + 1);
+  //   }
+  // };
 
-  const syncFollowupsFn = async () => {
-    if (isSyncing || !isConnected || !user?.id) {
-      showToast("error", t("Sync.networkError"), t("Sync.offlineMessage"));
-      return;
-    }
+  // const syncFollowupsFn = async () => {
+  //   if (isSyncing || !isConnected || !user?.id) {
+  //     showToast("error", t("Sync.networkError"), t("Sync.offlineMessage"));
+  //     return;
+  //   }
 
-    setIsSyncing(true);
-    setSyncType(getSyncTypeKey("Sync.followups", t));
+  //   setIsSyncing(true);
+  //   setSyncType(getSyncTypeKey("Sync.followups", t));
 
-    try {
-      console.log("🔄 Starting followups sync...");
-      // TODO: Replace with your followups sync service
-      // e.g., await syncTemporaryFollowups(query, t, user.id);
-      console.log("TODO: sync followups with backend");
-      setLastSyncDate(new Date());
-      await updateSubmissionCounts();
-      showToast("info", t("Sync.info"), "Followups sync not implemented yet");
-    } catch (error) {
-      console.error("❌ Error syncing followups:", error);
-      showToast("error", t("Sync.error"), t("Sync.followupsSyncFailed") || "Failed to sync followups");
-    } finally {
-      setIsSyncing(false);
-      setSyncType(null);
-      setForceRefresh((prev) => prev + 1);
-    }
-  };
+  //   try {
+  //     console.log("🔄 Starting followups sync...");
+  //     // TODO: Replace with your followups sync service
+  //     // e.g., await syncTemporaryFollowups(query, t, user.id);
+  //     console.log("TODO: sync followups with backend");
+  //     setLastSyncDate(new Date());
+  //     await updateSubmissionCounts();
+  //     showToast("info", t("Sync.info"), "Followups sync not implemented yet");
+  //   } catch (error) {
+  //     console.error("Error syncing followups:", error);
+  //     showToast("error", t("Sync.error"), t("Sync.followupsSyncFailed") || "Failed to sync followups");
+  //   } finally {
+  //     setIsSyncing(false);
+  //     setSyncType(null);
+  //     setForceRefresh((prev) => prev + 1);
+  //   }
+  // };
 
   // ===== Sync All Function =====
   const syncAll = async () => {
@@ -336,18 +336,18 @@ const SyncPage = () => {
     setSyncType("Syncing All");
 
     try {
-      console.log("🔄 Starting sync all...");
+      console.log("Starting sync all...");
       
       // Sync in order
       await syncSurveySubmissions();
       // await syncFamilies();
-      await syncIzusFn();
+      // await syncIzusFn();
       // await syncMonitoringResponsesFn();
       
       setLastSyncDate(new Date());
       showToast("success", t("Sync.success"), t("Sync.allSynced") || "All data synced successfully");
     } catch (error) {
-      console.error("❌ Error syncing all:", error);
+      console.error("Error syncing all:", error);
       showToast("error", t("Sync.error"), "Failed to sync all data");
     } finally {
       setIsSyncing(false);
@@ -369,11 +369,11 @@ const SyncPage = () => {
       //   name: `${t("Sync.families") || "Families"} (${pendingFamiliesCount} ${t("Sync.unsent") || "unsent"})`,
       //   status: pendingFamiliesCount === 0 ? "nopendingfamilies" : "notsynced",
       // },
-      {
-        key: "Sync.izus",
-        name: `${t("Sync.Users") || "Users"} (${pendingIzusCount} ${t("Sync.unsent") || "unsent"})`,
-        status: pendingIzusCount === 0 ? "nopendingusers" : "notsynced",
-      },
+      // {
+      //   key: "Sync.izus",
+      //   name: `${t("Sync.Users") || "Users"} (${pendingIzusCount} ${t("Sync.unsent") || "unsent"})`,
+      //   status: pendingIzusCount === 0 ? "nopendingusers" : "notsynced",
+      // },
       // {
       //   key: "Sync.responses",
       //   name: `${t("Sync.responses") || "Monitoring Responses"} (${pendingMonitoringResponsesCount} ${t("Sync.unsent") || "unsent"})`,
@@ -388,7 +388,7 @@ const SyncPage = () => {
     [
       pendingSurveySubmissionsCount,
       // pendingFamiliesCount,
-      pendingIzusCount,
+      // pendingIzusCount,
       // pendingMonitoringResponsesCount,
       // pendingFollowupsCount,
       t,
@@ -432,7 +432,7 @@ const SyncPage = () => {
           onPress={() => {
             if (item.key === "Sync.submissions") syncSurveySubmissions();
             // else if (item.key === "Sync.families") syncFamilies();
-            else if (item.key === "Sync.izus") syncIzusFn();
+            // else if (item.key === "Sync.izus") syncIzusFn();
             // else if (item.key === "Sync.responses") syncMonitoringResponsesFn();
             // else if (item.key === "Sync.followups") syncFollowupsFn();
           }}

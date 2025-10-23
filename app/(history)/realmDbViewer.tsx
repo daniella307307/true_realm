@@ -13,7 +13,7 @@ import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { router } from "expo-router";
-import { useGetAllSurveySubmissions } from "~/services/survey-submission";
+import { useGetAllSurveySubmissions } from "~/lib/hooks/useGetAllSurveySubmissions";
 import { SurveySubmission } from "~/services/survey-submission";
 import { useGetForms } from "~/services/formElements"; // Get ALL forms instead
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
@@ -85,16 +85,16 @@ const RealmDatabaseViewer = () => {
 
     submissions.forEach((s) => {
       // Try multiple sources for project info
-      const surveyId = parseInt(s.form_data?.survey_id.toString());
+      const surveyId = s?.form_data?.survey_id;
       console.log("Survey ID:", surveyId)
-      const projectId = String(surveyId || 'unknown');
+      const projectId = surveyId || 'unknown';
       
       
       const form = surveyId ? formsMap[surveyId] : null;
       
       const projectName = String(
-        form?.name || 
-        s.form_data?.table_name || 
+        form?.title || 
+        s.form_data?.title || 
         `${t('CommonPage.project') || 'Project'} ${projectId}`
       );
       
@@ -426,13 +426,13 @@ const RealmDatabaseViewer = () => {
        
       />
       
-      {isOffline && (
+      {/* {isOffline && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineText}>
-            📴 {t('CommonPage.offline_mode') || 'Offline Mode'}
+            {t('CommonPage.offline_mode') || 'Offline Mode'}
           </Text>
         </View>
-      )}
+      )} */}
       
       <ScrollView style={styles.listContainer}>
         {selectedProject && submissionsByProject[selectedProject] ? (

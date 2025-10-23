@@ -11,7 +11,7 @@
 // import { useTranslation } from "react-i18next";
 // import { useGetFamilies } from "~/services/families";
 
-// const FormElementIndexScreen = () => {
+const FormElementIndexScreen = () => {
 //   const { formId, project_id, source_module_id, project_module_id, family_id } =
 //     useLocalSearchParams<{
 //       formId: string;
@@ -107,6 +107,6 @@
 //       </View>
 //     </SafeAreaView>
 //   );
-// };
+};
 
-// export default FormElementIndexScreen;
+export default FormElementIndexScreen;

@@ -22,7 +22,7 @@
 // import { fetchFormByProjectAndModuleFromRemote, useGetFormByProjectAndModule } from "~/services/formElements";
 // import { useGetAllModules } from "~/services/project";
 
-// const ProjectFormsScreen = () => {
+const ProjectFormsScreen = () => {
 //   const { modId, project_id } = useLocalSearchParams<{
 //     modId: string;
 //     project_id: string;
@@ -248,6 +248,6 @@
 //       />
 //     </SafeAreaView>
 //   );
-// };
+};
 
-// export default ProjectFormsScreen;
+ export default ProjectFormsScreen;

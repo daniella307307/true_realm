@@ -36,7 +36,7 @@
 //   created_at: string;
 // }
 
-// const PostScreen: React.FC = () => {
+const PostScreen = () => {
 //   const { t } = useTranslation();
 //   const router = useRouter();
 //   const { isConnected } = useNetworkStatus();
@@ -433,6 +433,7 @@
 //       <Toast />
 //     </SafeAreaView>
 //   );
-// };
+};
 
-// export default PostScreen;
+export default PostScreen;
+

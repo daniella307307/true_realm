@@ -33,7 +33,7 @@
 //   type: string;
 // }
 
-// const ScoreDetailsScreen = () => {
+const ScoreDetailsScreen = () => {
 //   const { t, i18n } = useTranslation();
 //   const { score_data, date, form_id } = useLocalSearchParams<{
 //     score_data: string;
@@ -179,6 +179,6 @@
 //       </ScrollView>
 //     </SafeAreaView>
 //   );
-// };
+};
 
-// export default ScoreDetailsScreen;
+export default ScoreDetailsScreen;

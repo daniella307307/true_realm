@@ -46,7 +46,7 @@ export async function fetchFormByProjectFromRemote(
 
 // ---------------- HELPER: DEDUPLICATE FORMS ----------------
 function deduplicateForms(forms: IExistingForm[]): IExistingForm[] {
-  const uniqueMap = new Map<number, IExistingForm>();
+  const uniqueMap = new Map<string, IExistingForm>();
   
   forms.forEach((form) => {
     const existing = uniqueMap.get(form.id);
@@ -329,7 +329,7 @@ export function useGetFormsByProject(
 
 // ---------------- USE GET FORM BY ID (OFFLINE-FIRST) ----------------
 export function useGetFormById(
-  formId: number,
+  formId: string,
   projectModuleId?: number,
   sourceModuleId?: number,
   projectId?: number
@@ -359,7 +359,7 @@ export function useGetFormById(
         // Find form by ID with optional strict matching
         const found = dedupedForms.find((f) => {
           // Always match form ID
-          if (f.id !== formId) return false;
+          if (f.id !== formId.toString()) return false;
 
           // Optional strict matching
           if (projectModuleId !== undefined && f.project_module_id !== projectModuleId)
@@ -403,7 +403,7 @@ export function useGetFormById(
     const allForms = await getAll<IExistingForm>("Surveys");
     const dedupedForms = deduplicateForms(allForms);
     const found = dedupedForms.find((f) => {
-      if (f.id !== formId) return false;
+      if (f.id !== formId.toString()) return false;
       if (projectModuleId !== undefined && f.project_module_id !== projectModuleId)
         return false;
       if (sourceModuleId !== undefined && f.source_module_id !== sourceModuleId)

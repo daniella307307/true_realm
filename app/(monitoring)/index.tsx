@@ -21,7 +21,7 @@
 // import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 // import { useGetMonitoringModules } from "~/services/monitoring/monitoring-module";
 
-// const MonitoringScreen = () => {
+const MonitoringScreen = () => {
 //   const { t, i18n } = useTranslation();
 
 //   // For monitoring project, we use a fixed project ID of 3
@@ -170,6 +170,6 @@
 //       </View>
 //     </SafeAreaView>
 //   );
-// };
+};
 
-// export default MonitoringScreen;
+export default MonitoringScreen;

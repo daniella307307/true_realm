@@ -13,7 +13,7 @@
 // import { useGetMonitoringFormById } from "~/services/monitoring/monitoring-forms";
 // import { useGetFamilies } from "~/services/families";
 
-// const MonitoringFormElementScreen = () => {
+const MonitoringFormElementScreen = () => {
 //   const { formId, project_id, monitoring_module_id, family_id } = useLocalSearchParams<{
 //     formId: string;
 //     project_id: string;
@@ -140,6 +140,6 @@
 //       </View>
 //     </SafeAreaView>
 //   );
-// };
+ };
 
-// export default MonitoringFormElementScreen;
+export default MonitoringFormElementScreen;

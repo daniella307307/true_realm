@@ -26,26 +26,73 @@ export interface SurveySubmission {
   updated_at?: string;
 }
 
-// Single, consistent table definition
+// // Single, consistent table definition
+// export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
+//   CREATE TABLE IF NOT EXISTS SurveySubmissions (
+//     _id TEXT PRIMARY KEY,
+//     id INTEGER,
+//     organization TEXT,
+//     creator TEXT,
+//     department TEXT,
+//     data TEXT,
+//     form TEXT,
+//     form_id TEXT,
+//     status TEXT,
+//     submissionType TEXT,
+//     attachments TEXT,
+//     answers TEXT NOT NULL,
+//     form_data TEXT NOT NULL,
+//     location TEXT NOT NULL,
+//     sync_data TEXT NOT NULL,
+//     name TEXT,
+//     project_id INTEGER,
+//     name_kin TEXT,
+//     slug TEXT,
+//     json2 TEXT,
+//     post_data TEXT,
+//     loads TEXT,
+//     fetch_data TEXT,
+//     is_primary BOOLEAN,
+//     table_name TEXT,
+//     survey_status TEXT,
+//     created_by_user_id INTEGER,
+//     sync_status BOOLEAN,
+//     sync_reason TEXT,
+//     sync_attempts INTEGER,
+//     sync_type TEXT,
+//     created_at TEXT,
+//     updated_at TEXT
+//   );
+// `;
+// schemas/surveySubmissions.schema.ts
+// ONLY contains table schema - no imports, no dependencies
+
 export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
   CREATE TABLE IF NOT EXISTS SurveySubmissions (
     _id TEXT PRIMARY KEY,
     id INTEGER,
-    answers TEXT NOT NULL,
-    form_data TEXT NOT NULL,
-    location TEXT NOT NULL,
-    sync_data TEXT NOT NULL,
+    answers TEXT,
+    form_data TEXT,
+    location TEXT,
+    table_name TEXT,
     name TEXT,
-    project_id INTEGER,
     name_kin TEXT,
     slug TEXT,
     json2 TEXT,
     post_data TEXT,
     loads TEXT,
-    fetch_data TEXT,
+    time_spent TEXT,
+    user_id INTEGER,
     is_primary BOOLEAN,
-    table_name TEXT,
-    survey_status TEXT,
+    project_module_id INTEGER,
+    source_module_id INTEGER,
+    project_id INTEGER,
+    survey_status INTEGER,
+    fetch_data TEXT,
+    prev_id TEXT,
+    order_list INTEGER,
+    survey_id INTEGER,
+    sync_data TEXT,
     created_by_user_id INTEGER,
     sync_status BOOLEAN,
     sync_reason TEXT,
@@ -54,6 +101,10 @@ export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
     created_at TEXT,
     updated_at TEXT
   );
+
+  CREATE INDEX IF NOT EXISTS idx_survey_user ON SurveySubmissions(created_by_user_id);
+  CREATE INDEX IF NOT EXISTS idx_survey_sync ON SurveySubmissions(sync_status);
+  CREATE INDEX IF NOT EXISTS idx_survey_remote_id ON SurveySubmissions(id);
 `;
 
 // Helper functions for working with SurveySubmissions

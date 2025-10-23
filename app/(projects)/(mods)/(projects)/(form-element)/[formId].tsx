@@ -82,10 +82,10 @@
 //   const parsedParams = useMemo(() => {
 //     const { formId, project_module_id, source_module_id, project_id } = params;
 //     return {
-//       pid: formId ? parseInt(formId, 10) : NaN,
-//       pmid: project_module_id ? parseInt(project_module_id, 10) : undefined,
-//       smid: source_module_id ? parseInt(source_module_id, 10) : undefined,
-//       projId: project_id ? parseInt(project_id, 10) : undefined,
+//       pid: formId,
+//       pmid:formId? parseInt(project_module_id, 10) : undefined,
+//       smid:formId ? parseInt(source_module_id, 10) : undefined,
+//       projId: formId ? parseInt(project_id, 10) : undefined,
 //     };
 //   }, [params]);
 
@@ -128,7 +128,7 @@
 //       try {
 //         setLoadingStep("Checking cached assets...");
         
-//         const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
+//         const jsPath = `${FileSystem.cacheDirectory}f.js`;
 //         const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
 //         const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
 
@@ -162,7 +162,7 @@
 //           ];
 //            const assets = [
 //             { require: require("~/assets/formio/formio.full.min.css"), filename: "formio.full.min.css" },
-//             { require: require("~/assets/formio/formio.full.min.js"), filename: "formio.full.min.js" },
+//             { require: require("~/assets/formio/f.js"), filename: "f.js" },
 //             { require: require("~/assets/formio/bootstrap.min.css"), filename: "bootstrap.min.css" }
 //           ];
 
@@ -263,8 +263,8 @@
 //   }, []);
 
 //   const parsedForm = useMemo(() => {
-//     if (!regularForm?.json2) {
-//       console.log('No form json2 available');
+//     if (!regularForm?.json) {
+//       console.log('No form json available');
 //       return null;
 //     }
 
@@ -272,12 +272,12 @@
 //       console.log('Parsing form JSON...');
 //       let baseForm;
       
-//       if (typeof regularForm.json2 === "string") {
-//         baseForm = JSON.parse(regularForm.json2);
-//       } else if (typeof regularForm.json2 === "object") {
-//         baseForm = JSON.parse(JSON.stringify(regularForm.json2));
+//       if (typeof regularForm.json === "string") {
+//         baseForm = JSON.parse(regularForm.json);
+//       } else if (typeof regularForm.json === "object") {
+//         baseForm = JSON.parse(JSON.stringify(regularForm.json));
 //       } else {
-//         console.error('Invalid json2 format:', typeof regularForm.json2);
+//         console.error('Invalid json format:', typeof regularForm.json);
 //         return null;
 //       }
       
@@ -290,7 +290,7 @@
 //       console.error("Failed to parse form JSON:", err);
 //       return null;
 //     }
-//   }, [regularForm?.json2]);
+//   }, [regularForm?.json]);
 
 //   const fields = useMemo(() => {
 //     if (!parsedForm?.components) return [];
@@ -462,7 +462,7 @@
 //         : 1;
 
 //       // Check if cached files exist
-//       const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
+//       const jsPath = `${FileSystem.cacheDirectory}f.js`;
 //       const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
 //       const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
 
@@ -829,9 +829,6 @@
 //   );
 // }
 
-// export default ProjectFormElementScreen;
-
-
 import { SafeAreaView, View, ActivityIndicator, Text } from "react-native";
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { WebView } from "react-native-webview";
@@ -845,7 +842,6 @@ import { useAuth } from "~/lib/hooks/useAuth";
 import Toast from "react-native-toast-message";
 import { useSQLite } from "~/providers/RealContextProvider";
 import * as FileSystem from "expo-file-system";
-import { Asset } from "expo-asset";
 import { saveSurveySubmissionToAPI } from "~/services/survey-submission";
 
 function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any {
@@ -917,10 +913,10 @@ function ProjectFormElementScreen(): React.JSX.Element {
   const parsedParams = useMemo(() => {
     const { formId, project_module_id, source_module_id, project_id } = params;
     return {
-      pid: formId ? parseInt(formId, 10) : NaN,
-      pmid: project_module_id ? parseInt(project_module_id, 10) : undefined,
-      smid: source_module_id ? parseInt(source_module_id, 10) : undefined,
-      projId: project_id ? parseInt(project_id, 10) : undefined,
+      pid: formId || '',
+      pmid: project_module_id ? parseInt(String(project_module_id), 10) : undefined,
+      smid: source_module_id ? parseInt(String(source_module_id), 10) : undefined,
+      projId: project_id ? parseInt(String(project_id), 10) : undefined,
     };
   }, [params]);
 
@@ -936,11 +932,12 @@ function ProjectFormElementScreen(): React.JSX.Element {
   const [timeSpent, setTimeSpent] = useState<number>(0);
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [loadingStep, setLoadingStep] = useState("Initializing...");
-  const [html, setHtml] = useState<string | null>(null);
+  const [assetError, setAssetError] = useState<string | null>(null);
   const isSubmittingRef = useRef(false);
   const networkCheckMountedRef = useRef(true);
   const lastNetworkCheckRef = useRef(0);
   const assetsLoadedRef = useRef(false);
+  const networkStatusInitialized = useRef(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -950,105 +947,40 @@ function ProjectFormElementScreen(): React.JSX.Element {
     return () => clearInterval(interval);
   }, [formStartTime]);
 
-  // Check if files already exist in document directory
-  const checkExistingFiles = async () => {
-    try {
-      const jsPath = `${FileSystem.documentDirectory}formio.full.min.js`;
-      const cssPath = `${FileSystem.documentDirectory}formio.full.min.css`;
-      const bootstrapPath = `${FileSystem.documentDirectory}bootstrap.min.css`;
-
-      const [jsInfo, cssInfo, bootstrapInfo] = await Promise.all([
-        FileSystem.getInfoAsync(jsPath),
-        FileSystem.getInfoAsync(cssPath),
-        FileSystem.getInfoAsync(bootstrapPath),
-      ]);
-
-      return jsInfo.exists && cssInfo.exists && bootstrapInfo.exists;
-    } catch {
-      return false;
-    }
-  };
-
-  // Copy bundled assets to document directory
-  const copyBundledAssets = async () => {
-    const assets = [
-      { require: require("~/assets/formio/formio.full.min.js"), filename: "formio.full.min.js" },
-      { require: require("~/assets/formio/formio.full.min.css"), filename: "formio.full.min.css" },
-      { require: require("~/assets/formio/bootstrap.min.css"), filename: "bootstrap.min.css" },
-    ];
-
-    for (const assetInfo of assets) {
-      const asset = Asset.fromModule(assetInfo.require);
-      await asset.downloadAsync();
-
-      const destinationPath = `${FileSystem.documentDirectory}${assetInfo.filename}`;
-      if (!asset.localUri) {
-        throw new Error(`Asset localUri is null for ${assetInfo.filename}`);
-      }
-
-      await FileSystem.copyAsync({
-        from: asset.localUri,
-        to: destinationPath,
-      });
-    }
-  };
-
-  // Setup and load assets to filesystem
-  const setupAndLoadAssets = async () => {
-    try {
-      setLoadingStep("Checking cached assets...");
-      
-      if (await checkExistingFiles()) {
-        console.log("Using existing assets from filesystem");
-        setAssetsReady(true);
-        return;
-      }
-
-      setLoadingStep("Copying assets to device...");
-      await copyBundledAssets();
-      console.log("Assets copied successfully");
-      setAssetsReady(true);
-    } catch (error) {
-      console.error("Error in setupAndLoadAssets:", error);
-      setAssetsReady(true); // Continue anyway, will use CDN
-    } finally {
-      setLoadingStep("");
-    }
-  };
-
-  // Download and setup assets on mount
+  // Initial network check - runs once on mount
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    const initAssets = async () => {
-      if (assetsLoadedRef.current) {
-        setAssetsReady(true);
-        return;
-      }
-
+    const initialNetworkCheck = async () => {
       try {
-        await setupAndLoadAssets();
-        if (isMounted) {
-          assetsLoadedRef.current = true;
+        const isConnected = await checkNetworkConnection();
+        if (mounted) {
+          setIsOnline(isConnected);
+          networkStatusInitialized.current = true;
+          console.log("Initial network status:", isConnected ? "Online" : "Offline");
         }
       } catch (error) {
-        console.error("Failed to setup assets:", error);
-        if (isMounted) {
-          assetsLoadedRef.current = true;
-          setAssetsReady(true);
+        console.warn("Error checking initial network status:", error);
+        if (mounted) {
+          setIsOnline(false);
+          networkStatusInitialized.current = true;
         }
       }
     };
 
-    initAssets();
+    initialNetworkCheck();
 
     return () => {
-      isMounted = false;
+      mounted = false;
     };
   }, []);
 
-  // Network checking effect
+  // Periodic network checking effect - only runs after initial check
   useEffect(() => {
+    if (!networkStatusInitialized.current) {
+      return;
+    }
+
     networkCheckMountedRef.current = true;
     let intervalId: number | null = null;
 
@@ -1086,8 +1018,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
         console.warn("Error checking network status:", error);
       }
     };
-
-    checkConnectivity();
     
     intervalId = setInterval(() => {
       if (networkCheckMountedRef.current) {
@@ -1101,11 +1031,132 @@ function ProjectFormElementScreen(): React.JSX.Element {
         clearInterval(intervalId);
       }
     };
-  }, []);
+  }, [networkStatusInitialized.current]);
+
+  // Download and cache FormIO assets
+  useEffect(() => {
+    if (!networkStatusInitialized.current) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const downloadAndCacheAssets = async () => {
+      if (assetsLoadedRef.current) {
+        console.log("Assets already loaded, skipping");
+        if (isMounted) {
+          setAssetsReady(true);
+        }
+        return;
+      }
+
+      try {
+        setLoadingStep("Checking cached assets...");
+        
+        const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
+        const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
+        const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
+
+        // Check if cached files exist
+        const [jsInfo, cssInfo, bootstrapInfo] = await Promise.all([
+          FileSystem.getInfoAsync(jsPath),
+          FileSystem.getInfoAsync(cssPath),
+          FileSystem.getInfoAsync(bootstrapPath),
+        ]);
+
+        const allExist = jsInfo.exists && cssInfo.exists && bootstrapInfo.exists;
+
+        if (allExist) {
+          console.log("✅ Using cached assets");
+          if (isMounted) {
+            assetsLoadedRef.current = true;
+            setAssetsReady(true);
+            setLoadingStep("");
+          }
+          return;
+        }
+
+        // If files don't exist and we're offline, we can't proceed
+        if (!isOnline) {
+          console.error("❌ Offline and no cached assets available");
+          if (isMounted) {
+            setAssetError("Form assets not available offline. Please connect to the internet to download required files.");
+            setLoadingStep("");
+          }
+          return;
+        }
+
+        setLoadingStep("Downloading FormIO assets...");
+        console.log("📥 Downloading FormIO assets from CDN...");
+        
+        // Download assets from CDN
+        const downloads = [
+          {
+            url: "https://cdn.form.io/formiojs/formio.full.min.js",
+            path: jsPath,
+            name: "FormIO JS"
+          },
+          {
+            url: "https://cdn.form.io/formiojs/formio.full.min.css",
+            path: cssPath,
+            name: "FormIO CSS"
+          },
+          {
+            url: "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
+            path: bootstrapPath,
+            name: "Bootstrap CSS"
+          },
+        ];
+
+        const results = await Promise.allSettled(
+          downloads.map(({ url, path, name }) =>
+            FileSystem.downloadAsync(url, path).then(() => ({ name, success: true }))
+          )
+        );
+
+        // Check if all downloads succeeded
+        const allSucceeded = results.every(result => result.status === 'fulfilled');
+        
+        if (!allSucceeded) {
+          const failed = results
+            .map((result, index) => result.status === 'rejected' ? downloads[index].name : null)
+            .filter(Boolean);
+          
+          console.error("❌ Failed to download assets:", failed);
+          
+          if (isMounted) {
+            setAssetError(`Failed to download required assets: ${failed.join(', ')}. Please check your internet connection.`);
+            setLoadingStep("");
+          }
+          return;
+        }
+
+        console.log("✅ Assets downloaded successfully");
+
+        if (isMounted) {
+          assetsLoadedRef.current = true;
+          setAssetsReady(true);
+          setLoadingStep("");
+        }
+      } catch (error) {
+        console.error("❌ Error with assets:", error);
+        if (isMounted) {
+          setAssetError("Failed to load form assets. Please check your internet connection and try again.");
+          setLoadingStep("");
+        }
+      }
+    };
+
+    downloadAndCacheAssets();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOnline, networkStatusInitialized.current]);
 
   const parsedForm = useMemo(() => {
-    if (!regularForm?.json2) {
-      console.log('No form json2 available');
+    if (!regularForm?.json) {
+      console.log('No form json available');
       return null;
     }
 
@@ -1113,12 +1164,12 @@ function ProjectFormElementScreen(): React.JSX.Element {
       console.log('Parsing form JSON...');
       let baseForm;
       
-      if (typeof regularForm.json2 === "string") {
-        baseForm = JSON.parse(regularForm.json2);
-      } else if (typeof regularForm.json2 === "object") {
-        baseForm = JSON.parse(JSON.stringify(regularForm.json2));
+      if (typeof regularForm.json === "string") {
+        baseForm = JSON.parse(regularForm.json);
+      } else if (typeof regularForm.json === "object") {
+        baseForm = JSON.parse(JSON.stringify(regularForm.json));
       } else {
-        console.error('Invalid json2 format:', typeof regularForm.json2);
+        console.error('Invalid json format:', typeof regularForm.json);
         return null;
       }
       
@@ -1131,7 +1182,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
       console.error("Failed to parse form JSON:", err);
       return null;
     }
-  }, [regularForm?.json2]);
+  }, [regularForm?.json]);
 
   const fields = useMemo(() => {
     if (!parsedForm?.components) return [];
@@ -1242,6 +1293,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
 
         switch (message.type) {
           case "FORM_READY":
+            console.log("✅ Form is ready and displayed");
             setLoading(false);
             break;
             
@@ -1289,8 +1341,13 @@ function ProjectFormElementScreen(): React.JSX.Element {
   );
 
   const formHtml = useMemo(() => {
-    if (!parsedForm || !assetsReady) {
-      console.log('Cannot generate HTML - form or assets not ready');
+    if (!parsedForm) {
+      console.log('Cannot generate HTML - form not ready');
+      return "";
+    }
+
+    if (!assetsReady) {
+      console.log('Cannot generate HTML - assets not ready');
       return "";
     }
 
@@ -1302,11 +1359,12 @@ function ProjectFormElementScreen(): React.JSX.Element {
         ? parsedForm.components.length 
         : 1;
 
-      const jsPath = `${FileSystem.documentDirectory}formio.full.min.js`;
-      const cssPath = `${FileSystem.documentDirectory}formio.full.min.css`;
-      const bootstrapPath = `${FileSystem.documentDirectory}bootstrap.min.css`;
-
       console.log('Generating form HTML with', totalPages, 'pages');
+
+      // Use cached files if available
+      const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
+      const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
+      const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
 
       return `
     <!DOCTYPE html>
@@ -1315,8 +1373,8 @@ function ProjectFormElementScreen(): React.JSX.Element {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
         <title>Form</title>
-        <link href="${cssPath}" rel="stylesheet">
-        <link href="${bootstrapPath}" rel="stylesheet">
+        <link href="${cssPath}" rel="stylesheet" onerror="this.href='https://cdn.form.io/formiojs/formio.full.min.css'">
+        <link href="${bootstrapPath}" rel="stylesheet" onerror="this.href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css'">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
           :root {
@@ -1425,11 +1483,27 @@ function ProjectFormElementScreen(): React.JSX.Element {
           
           .loading {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 300px;
             font-size: 18px;
             color: var(--primary-color);
+          }
+          
+          .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+          }
+          
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
           }
         </style>
       </head>
@@ -1445,7 +1519,10 @@ function ProjectFormElementScreen(): React.JSX.Element {
               <div class="custom-progress-bar" id="progress-bar" style="width: 0%"></div>
             </div>
           </div>
-          <div id="loading" class="loading">Loading form...</div>
+          <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <div>Loading form...</div>
+          </div>
           <div id="formio" style="display: none;"></div>
         </div>
         <script>
@@ -1463,7 +1540,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
             originalError.apply(console, args);
           };
         </script>
-        <script src="${jsPath}"></script>
+        <script src="${jsPath}" onerror="this.src='https://cdn.form.io/formiojs/formio.full.min.js'"></script>
         <script>
           (function() {
             const loadingEl = document.getElementById('loading');
@@ -1471,7 +1548,8 @@ function ProjectFormElementScreen(): React.JSX.Element {
             const TOTAL_PAGES = ${totalPages};
             let formInitialized = false;
             let initAttempts = 0;
-            const MAX_INIT_ATTEMPTS = 20;
+            const MAX_INIT_ATTEMPTS = 30;
+            const RETRY_DELAY = 500;
             
             function postMessage(data) {
               try {
@@ -1491,22 +1569,26 @@ function ProjectFormElementScreen(): React.JSX.Element {
                 return;
               }
               
-              if (typeof Formio === 'undefined' || !window.Formio) {
+              if (typeof Formio === 'undefined' || !window.Formio || !window.Formio.createForm) {
                 initAttempts++;
+                console.log('Formio not ready, attempt ' + initAttempts + '/' + MAX_INIT_ATTEMPTS);
+                
                 if (initAttempts < MAX_INIT_ATTEMPTS) {
-                  console.warn('Formio not ready, retrying... Attempt ' + initAttempts);
-                  setTimeout(initializeForm, 500);
+                  setTimeout(initializeForm, RETRY_DELAY);
                   return;
                 } else {
-                  throw new Error('Formio library failed to load after multiple attempts');
+                  const errorMsg = 'FormIO library failed to load. Please check your internet connection.';
+                  console.error(errorMsg);
+                  loadingEl.innerHTML = '<div style="color: red; padding: 20px; text-align: center;">' + errorMsg + '</div>';
+                  postMessage({ type: 'FORM_ERROR', error: errorMsg });
+                  return;
                 }
               }
               
               formInitialized = true;
+              console.log('✅ Formio loaded successfully, initializing form...');
               
               try {
-                console.log('Initializing form...');
-
                 const formSchema = ${escapedFormJson};
                 
                 const form = await Formio.createForm(formioEl, formSchema, {
@@ -1521,7 +1603,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
                   }
                 });
 
-                console.log('Form created');
+                console.log('✅ Form created successfully');
                 
                 loadingEl.style.display = 'none';
                 formioEl.style.display = 'block';
@@ -1568,21 +1650,21 @@ function ProjectFormElementScreen(): React.JSX.Element {
                 });
 
                 postMessage({ type: 'FORM_READY' });
-                console.log('Form ready');
+                console.log('✅ Form ready and displayed');
                 
               } catch (error) {
-                console.error('Form init error:', error);
-                loadingEl.innerHTML = '<div style="color: red; padding: 20px;">Error: ' + error.message + '</div>';
+                console.error('❌ Form initialization error:', error);
+                loadingEl.innerHTML = '<div style="color: red; padding: 20px; text-align: center;">Error: ' + error.message + '</div>';
                 postMessage({ type: 'FORM_ERROR', error: error.message });
               }
             }
 
             function waitForFormio() {
+              console.log('Waiting for page to load...');
               if (typeof window.Formio !== 'undefined' && window.Formio && window.Formio.createForm) {
-                console.log('Formio is ready');
+                console.log('✅ Formio detected, initializing...');
                 initializeForm();
               } else {
-                console.log('Waiting for Formio to load...');
                 setTimeout(waitForFormio, 200);
               }
             }
@@ -1603,11 +1685,41 @@ function ProjectFormElementScreen(): React.JSX.Element {
     }
   }, [parsedForm, regularForm?.name, assetsReady]);
 
-  if (isLoading || !assetsReady) {
+  // Show error if assets couldn't be loaded
+  if (assetError) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <HeaderNavigation title={t("FormElementPage.title")} showLeft showRight />
+        <View className="flex-1 items-center justify-center px-6">
+          <View className="items-center">
+            <Text className="text-6xl mb-4">📡</Text>
+            <Text className="text-xl font-bold text-gray-800 text-center mb-2">
+              Assets Not Available
+            </Text>
+            <Text className="text-gray-600 text-center mb-6">
+              {assetError}
+            </Text>
+            <View className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <Text className="text-sm text-blue-800 text-center">
+                💡 Tip: Connect to the internet and reload this form to download required assets for offline use.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading || !assetsReady || !networkStatusInitialized.current) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#A23A91" />
         <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text>
+        {!isOnline && (
+          <Text className="mt-2 text-sm text-amber-600">
+            Offline - checking cached assets...
+          </Text>
+        )}
       </View>
     );
   }

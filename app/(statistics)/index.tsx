@@ -7,7 +7,7 @@
 // import FormNavigation from "~/components/ui/form-navigation";
 // import { router } from "expo-router";
 
-// const StatisticsScreen = () => {
+const StatisticsScreen = () => {
 //   const { t } = useTranslation();
 //   const [selectedIzu, setSelectedIzu] = useState<Izus | undefined>(undefined);
 
@@ -34,6 +34,6 @@
 //       />
 //     </SafeAreaView>
 //   );
-// };
+};
 
-// export default StatisticsScreen;
+export default StatisticsScreen;

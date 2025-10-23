@@ -23,7 +23,7 @@
 // import { useGetFormByProjectAndModule } from "~/services/formElements";
 
 
-// const FamiliesPage = () => {
+ const FamiliesPage = () => {
 //   const { t, i18n } = useTranslation();
 //   const insets = useSafeAreaInsets();
 //   const { control, watch } = useForm({
@@ -256,6 +256,6 @@
 
 //     </SafeAreaView>
 //   );
-// };
+ };
 
-// export default FamiliesPage;
+ export default FamiliesPage;

@@ -21,7 +21,7 @@
 // import { NotFound } from "~/components/ui/not-found";
 // import { useGetMonitoringModules } from "~/services/monitoring/monitoring-module";
 
-// const MonitoringFormsScreen = () => {
+const MonitoringFormsScreen = () => {
 //   const { modId, project_id } = useLocalSearchParams<{
 //     modId: string;
 //     project_id: string;
@@ -169,6 +169,6 @@
 //       />
 //     </SafeAreaView>
 //   );
-// };
+};
 
-// export default MonitoringFormsScreen; 
+export default MonitoringFormsScreen; 

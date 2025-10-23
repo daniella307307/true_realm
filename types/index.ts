@@ -742,10 +742,15 @@ export interface FormField {
 }
 
 export interface IExistingForm {
+  title: any;
+  id:string;
+  status: string;
+  metadata: any;
+  department: string;
+  organization: string;
   description: string;
   project_id: number;
   source_module_id: number;
-  id: number;
   parent_id?: number;
   name: string;
   name_kin?: string;
@@ -753,6 +758,7 @@ export interface IExistingForm {
   json?: string | null;
   json2: string | any;
   json2_bkp?: string | null;
+  formDefinition: string | null,
   survey_status: number;
   module_id?: number | null;
   is_primary: number;

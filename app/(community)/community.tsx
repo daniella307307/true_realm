@@ -34,7 +34,7 @@
 // import Toast from "react-native-toast-message";
 // import { useSQLite } from "~/providers/RealContextProvider";
 
-// const CommunityScreen: React.FC = () => {
+const CommunityScreen= () => {
 //   const [modalVisible, setModalVisible] = useState(false);
 //   const [reportText, setReportText] = useState("");
 //   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
@@ -451,6 +451,6 @@
 //       <Toast />
 //     </SafeAreaView>
 //   );
-// };
+ };
 
-// export default CommunityScreen;
+export default CommunityScreen;

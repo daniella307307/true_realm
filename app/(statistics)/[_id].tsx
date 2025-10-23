@@ -27,7 +27,7 @@
 //   };
 // }
 
-// const IzuIndexStatisticsScreen = () => {
+ const IzuIndexStatisticsScreen = () => {
 //   const { t } = useTranslation();
 //   const { _id, izu_name, izucode } = useLocalSearchParams<{
 //     _id: string;
@@ -313,6 +313,6 @@
 //       </ScrollView>
 //     </SafeAreaView>
 //   );
-// };
+};
 
-// export default IzuIndexStatisticsScreen;
+ export default IzuIndexStatisticsScreen;

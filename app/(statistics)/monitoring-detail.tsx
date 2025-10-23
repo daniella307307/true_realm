@@ -9,7 +9,7 @@
 // import { format } from "date-fns";
 // import React from 'react';
 
-// const MonitoringDetailScreen = () => {
+const MonitoringDetailScreen = () => {
 //   const { t, i18n } = useTranslation();
 //   const { type, submissions: submissionsJson } = useLocalSearchParams<{
 //     type: 'visits' | 'risk';
@@ -199,6 +199,6 @@
 //       </ScrollView>
 //     </SafeAreaView>
 //   );
-// };
+ };
 
-// export default MonitoringDetailScreen; 
+export default MonitoringDetailScreen; 

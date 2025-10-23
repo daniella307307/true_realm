@@ -137,12 +137,12 @@ export const CustomDrawer: React.FC<CustomDrawerProps> = ({
             </TouchableOpacity>
 
             {/* Change Language */}
-            <TouchableOpacity
+            {/* <TouchableOpacity
               className="p-4 border-b border-gray-200"
               onPress={() => setLanguageModalVisible(true)}
             >
               <Text className="text-lg">{t("SettingsPage.change_language")}</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity
               className="p-4 border-b border-gray-200"
               onPress={() => {
@@ -153,14 +153,14 @@ export const CustomDrawer: React.FC<CustomDrawerProps> = ({
               <Text className="text-lg">{t("SettingsPage.sync")}</Text>
             </TouchableOpacity>
             {/* Change Font Size */}
-            <TouchableOpacity
+            {/* <TouchableOpacity
               className="p-4 border-b border-gray-200"
               onPress={() => setFontSizeModalVisible(true)}
             >
               <Text className="text-lg">
                 {t("SettingsPage.change_font_size")}
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             {/* Logout */}
             <TouchableOpacity

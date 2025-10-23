@@ -1,19 +1,17 @@
+// survey-submission.ts - REFACTORED to break circular dependencies
+
 import { FormField, ISurveySubmission, SyncType } from "~/types";
 import { isOnline } from "./network";
 import { baseInstance } from "~/utils/axios";
-import { useSQLite } from "~/providers/RealContextProvider";
-import { useMemo, useCallback, useState, useEffect } from "react";
-import { useAuth } from "~/lib/hooks/useAuth";
-import { useDataSync } from "./dataSync";
 import Toast from "react-native-toast-message";
 import { router } from "expo-router";
-import { useTranslation } from "react-i18next";
 import { TFunction } from "i18next";
 
 
+
 export interface SurveySubmission {
-  _id?: string; // Local SQLite ID
-  id?: number; // Remote server ID
+  _id?: string;
+  id?: number;
   answers: { [key: string]: string | number | boolean | null };
   form_data: { [key: string]: string | number | boolean | null };
   location: { [key: string]: string | number | boolean | null };
@@ -32,7 +30,6 @@ export interface SurveySubmission {
 // ============================================================================
 
 export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
-
   CREATE TABLE IF NOT EXISTS SurveySubmissions (
     _id TEXT PRIMARY KEY,
     id INTEGER,
@@ -67,18 +64,15 @@ export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
     updated_at TEXT
   );
 
-
   CREATE INDEX IF NOT EXISTS idx_survey_user ON SurveySubmissions(created_by_user_id);
   CREATE INDEX IF NOT EXISTS idx_survey_sync ON SurveySubmissions(sync_status);
   CREATE INDEX IF NOT EXISTS idx_survey_remote_id ON SurveySubmissions(id);
 `;
+
 // ============================================================================
-// UTILITY FUNCTIONS
+// UTILITY FUNCTIONS (Pure functions - no dependencies)
 // ============================================================================
 
-/**
- * Safely parse JSON from SQLite TEXT fields
- */
 function safeParseJSON(data: any): any {
   if (!data) return {};
   if (typeof data === 'string') {
@@ -92,26 +86,17 @@ function safeParseJSON(data: any): any {
   return data;
 }
 
-/**
- * Clean undefined values and convert to null
- */
 function cleanObject(obj: Record<string, any>): Record<string, any> {
   return Object.fromEntries(
     Object.entries(obj || {}).map(([k, v]) => [k, v === undefined ? null : v])
   );
 }
 
-/**
- * Generate unique local ID
- */
 function generateLocalId(): string {
   return `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-/**
- * Convert SQLite row to SurveySubmission object
- */
-function parseSQLiteRow(row: any): SurveySubmission {
+export function parseSQLiteRow(row: any): SurveySubmission {
   return {
     _id: row._id,
     id: row.id,
@@ -129,10 +114,7 @@ function parseSQLiteRow(row: any): SurveySubmission {
   };
 }
 
-/**
- * Convert SurveySubmission to SQLite row
- */
-function toSQLiteRow(submission: SurveySubmission): Record<string, any> {
+export function toSQLiteRow(submission: SurveySubmission): Record<string, any> {
   return {
     _id: submission._id,
     id: submission.id || null,
@@ -151,12 +133,9 @@ function toSQLiteRow(submission: SurveySubmission): Record<string, any> {
 }
 
 // ============================================================================
-// CORE FUNCTIONS
+// CORE BUSINESS LOGIC (Pure functions)
 // ============================================================================
 
-/**
- * Create a survey submission structure from form data
- */
 export const createSurveySubmission = (
   formData: Record<string, any>,
   fields: FormField[],
@@ -165,7 +144,6 @@ export const createSurveySubmission = (
   try {
     let answers;
     
-    // Extract answers from form fields
     if (fields.length > 0) {
       answers = Object.fromEntries(
         fields
@@ -239,9 +217,10 @@ export const createSurveySubmission = (
   }
 };
 
-/**
- * Save survey submission to API
- */
+// ============================================================================
+// DATABASE OPERATIONS (Accept dependencies as parameters)
+// ============================================================================
+
 export const saveSurveySubmissionToAPI = async (
   create: any,
   formData: Record<string, any>,
@@ -280,7 +259,6 @@ export const saveSurveySubmissionToAPI = async (
       }
     }
 
-    // Create submission object
     const submission = createSurveySubmission(formData, fields, userId);
     const isConnected = await isOnline();
 
@@ -294,18 +272,15 @@ export const saveSurveySubmissionToAPI = async (
           visibilityTime: 2000,
         });
 
-        // Prepare API payload
         const apiData = {
           ...formData,
           ...submission.form_data,
           ...submission.location,
         };
 
-        // Submit to API
         const response = await baseInstance.post(apiUrl, apiData);
 
         if (response.data?.result?.id) {
-          // Update with server ID
           submission.id = response.data.result.id;
           submission.sync_status = 1;
           submission.sync_reason = "Successfully synced";
@@ -331,8 +306,6 @@ export const saveSurveySubmissionToAPI = async (
         }
       } catch (error: any) {
         console.error("API submission failed:", error);
-        
-        // Save locally
         await create("SurveySubmissions", toSQLiteRow(submission));
         
         Toast.show({
@@ -345,7 +318,6 @@ export const saveSurveySubmissionToAPI = async (
         router.push("/(history)/realmDbViewer");
       }
     } else {
-      // Offline - save locally
       await create("SurveySubmissions", toSQLiteRow(submission));
       
       Toast.show({
@@ -369,10 +341,6 @@ export const saveSurveySubmissionToAPI = async (
   }
 };
 
-/**
- * Sync pending submissions to server - COMPATIBLE WITH SYNC PAGE
- * This version works with both useSQLite hook and direct query/update functions
- */
 export const syncPendingSubmissions = async (
   getAll: any,
   update: any,
@@ -397,16 +365,13 @@ export const syncPendingSubmissions = async (
       return { synced: 0, failed: 0, errors: [] };
     }
 
-    // Get all submissions
     const allSubmissions = await getAll("SurveySubmissions");
     const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
     
-    // Filter pending submissions
     let pendingSubmissions = parsedSubmissions.filter(
       (s: SurveySubmission) => !s.sync_status || s.sync_status === 0
     );
 
-    // If userId provided, filter by user
     if (userId) {
       pendingSubmissions = pendingSubmissions.filter(
         (s: SurveySubmission) => s.created_by_user_id === userId
@@ -436,19 +401,15 @@ export const syncPendingSubmissions = async (
       try {
         console.log(`🔄 Syncing submission ${submission._id}...`);
 
-        // Prepare API payload
         const apiData = {
           ...submission.answers,
           ...submission.form_data,
           ...submission.location,
         };
 
-        console.log("📤 Sending to API:", JSON.stringify(apiData, null, 2));
-
         const response = await baseInstance.post("/submissions", apiData);
 
         if (response.data?.result?.id) {
-          // Update with server ID and mark as synced
           await update("SurveySubmissions", submission._id!, {
             id: response.data.result.id,
             sync_status: 1,
@@ -458,7 +419,7 @@ export const syncPendingSubmissions = async (
           });
           
           synced++;
-          console.log(`✅ Synced submission ${submission._id} with server ID ${response.data.result.id}`);
+          console.log(`✅ Synced submission ${submission._id}`);
         } else {
           throw new Error("No ID returned from API");
         }
@@ -467,7 +428,6 @@ export const syncPendingSubmissions = async (
         const errorMsg = error?.response?.data?.message || error.message;
         errors.push(`${submission._id}: ${errorMsg}`);
         
-        // Update failed attempt
         await update("SurveySubmissions", submission._id!, {
           sync_status: 0,
           sync_reason: `Failed: ${errorMsg}`,
@@ -475,11 +435,10 @@ export const syncPendingSubmissions = async (
           updated_at: new Date().toISOString(),
         });
         
-        console.error(`❌ Failed to sync ${submission._id}:`, error?.response?.data || error.message);
+        console.error(`❌ Failed to sync ${submission._id}:`, error);
       }
     }
 
-    // Show results
     if (t) {
       if (synced > 0 && failed === 0) {
         Toast.show({
@@ -508,7 +467,6 @@ export const syncPendingSubmissions = async (
       }
     }
 
-    console.log(`✅ Sync complete: ${synced} synced, ${failed} failed`);
     return { synced, failed, errors };
   } catch (error) {
     console.error("❌ Error during sync:", error);
@@ -520,9 +478,6 @@ export const syncPendingSubmissions = async (
   }
 };
 
-/**
- * Get pending submissions count for a user
- */
 export const getPendingSubmissionsCount = async (
   query: any,
   userId: number
@@ -539,15 +494,11 @@ export const getPendingSubmissionsCount = async (
   }
 };
 
-/**
- * Fetch submissions from remote API
- */
 export async function fetchSurveySubmissionsFromRemote(userId: number) {
   try {
     const res = await baseInstance.get("/forms");
     const submissions = Array.isArray(res.data?.data) ? res.data.data : [];
     
-    // Filter by user
     const userSubmissions = submissions.filter(
       (s: any) => s.created_by_user_id === userId || s.form_data?.user_id === userId
     );
@@ -558,11 +509,8 @@ export async function fetchSurveySubmissionsFromRemote(userId: number) {
     console.error("❌ Failed to fetch submissions:", error);
     throw error;
   }
-};
+}
 
-/**
- * Transform API response to our format
- */
 export const transformApiSurveySubmissions = (apiResponses: any[]) => {
   return apiResponses.map((response) => {
     const jsonData = typeof response.json === "string" 
@@ -629,88 +577,4 @@ export const transformApiSurveySubmissions = (apiResponses: any[]) => {
   });
 };
 
-// ============================================================================
-// REACT HOOKS
-// ============================================================================
 
-/**
- * Hook to get all survey submissions with auto-sync
- */
-export const useGetAllSurveySubmissions = (forceSync: boolean = false) => {
-  const { user } = useAuth({});
-  const { getAll, update, create } = useSQLite();
-  const { t } = useTranslation();
-  const [submissions, setSubmissions] = useState<SurveySubmission[]>([]);
-  const [isOffline, setIsOffline] = useState(false);
-
-  const userId = user?.id || user?.json?.id;
-
-  const { syncStatus, refresh } = useDataSync([
-    {
-      key: `surveySubmissions-${userId}`,
-      fetchFn: async () => fetchSurveySubmissionsFromRemote(userId),
-      tableName: "SurveySubmissions",
-      transformData: transformApiSurveySubmissions,
-      staleTime: 5 * 60 * 1000,
-      forceSync,
-    },
-  ]);
-
-  const loadFromSQLite = useCallback(async () => {
-    try {
-      const rows = await getAll("SurveySubmissions");
-      const parsed = rows.map(parseSQLiteRow);
-      const userRows = parsed.filter(
-        (s: SurveySubmission) => s.created_by_user_id === userId
-      );
-      setSubmissions(userRows);
-      console.log(`📀 Loaded ${userRows.length} submissions from SQLite`);
-    } catch (err) {
-      console.error("❌ Failed to load submissions:", err);
-    }
-  }, [getAll, userId]);
-
-  useEffect(() => {
-    loadFromSQLite();
-  }, [loadFromSQLite]);
-
-  useEffect(() => {
-    const trySync = async () => {
-      const online = await isOnline();
-      setIsOffline(!online);
-      
-      if (online) {
-        await refresh(`surveySubmissions-${userId}`, forceSync);
-        await loadFromSQLite();
-      }
-    };
-
-    trySync();
-  }, [refresh, loadFromSQLite, forceSync, userId]);
-
-  const manualSync = useCallback(async () => {
-    const online = await isOnline();
-    if (!online) {
-      console.warn("📴 Cannot sync while offline");
-      return { synced: 0, failed: 0, errors: [] };
-    }
-
-    console.log("🔄 Manual sync triggered...");
-    
-    const syncResult = await syncPendingSubmissions(getAll, update, t, userId);
-    await refresh(`surveySubmissions-${userId}`, true);
-    await loadFromSQLite();
-    
-    console.log(`✅ Manual sync complete`);
-    return syncResult;
-  }, [getAll, update, refresh, loadFromSQLite, userId, t]);
-
-  return {
-    submissions,
-    isLoading: syncStatus[`surveySubmissions-${userId}`]?.isLoading || false,
-    error: syncStatus[`surveySubmissions-${userId}`]?.error || null,
-    lastSyncTime: syncStatus[`surveySubmissions-${userId}`]?.lastSyncTime || null,
-    isOffline,
-    refresh: manualSync,
-  };
-};

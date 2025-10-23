@@ -30,7 +30,7 @@
 // import { zodResolver } from "@hookform/resolvers/zod";
 // import { NotFound } from "~/components/ui/not-found";
 
-// const ProjectFormsScreen = () => {
+ const ProjectFormsScreen = () => {
 //   const { modId, project_id, source_module_id, project_module_id } =
 //     useLocalSearchParams<{
 //       modId: string;
@@ -240,6 +240,6 @@
 //       />
 //     </SafeAreaView>
 //   );
-// };
+ };
 
-// export default ProjectFormsScreen;
+ export default ProjectFormsScreen;

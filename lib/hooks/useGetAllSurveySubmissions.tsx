@@ -1,58 +1,95 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useSQLite } from "~/providers/RealContextProvider";
-import { ISurveySubmission } from "~/types"; // Make sure this type matches your SQLite SurveySubmission
+import { useAuth } from "~/lib/hooks/useAuth";
+import { useDataSync } from "~/services/dataSync";
+import { isOnline } from "~/services/network";
+import {
+  SurveySubmission,
+  parseSQLiteRow,
+  syncPendingSubmissions,
+  fetchSurveySubmissionsFromRemote,
+  transformApiSurveySubmissions,
+} from "~/services/survey-submission";
 
-// Convert SQLite row to submission object
-function sqliteRowToSubmission(row: any): ISurveySubmission {
-return {
-  id: row.id,
-  survey_id: row.survey_id,
-  user_id: row.user_id,
-  responses: row.responses ? JSON.parse(row.responses) : {},
-  status: row.status,
-  created_at: row.created_at,
-  updated_at: row.updated_at,
-  answers: {},
-  form_data: {},
-  location: {},
-  sync_data: {}
-};
-}
+/**
+ * Hook to get all survey submissions with auto-sync
+ */
+export const useGetAllSurveySubmissions = (forceSync: boolean = false) => {
+  const { user } = useAuth({});
+  const { getAll, update, create } = useSQLite();
+  const { t } = useTranslation();
+  const [submissions, setSubmissions] = useState<SurveySubmission[]>([]);
+  const [isOffline, setIsOffline] = useState(false);
 
-// Convert submission object to SQLite row
-function submissionToSQLiteRow(submission: ISurveySubmission) {
-  return {
-    id: submission.id,
-    survey_id: submission.survey_id,
-    user_id: submission.user_id,
-    responses: JSON.stringify(submission.responses || {}),
-    status: submission.status || 0,
-    created_at: submission.created_at || new Date().toISOString(),
-    updated_at: submission.updated_at || new Date().toISOString(),
-  };
-}
+  const userId = user?.id || user?.json?.id;
 
-export const useGetAllSurveySubmissions = () => {
-  const { getAll } = useSQLite();
-  const [submissions, setSubmissions] = useState<ISurveySubmission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { syncStatus, refresh } = useDataSync([
+    {
+      key: `surveySubmissions-${userId}`,
+      fetchFn: async () => fetchSurveySubmissionsFromRemote(userId),
+      tableName: "SurveySubmissions",
+      transformData: transformApiSurveySubmissions,
+      staleTime: 5 * 60 * 1000,
+      forceSync,
+    },
+  ]);
 
-  const loadSubmissions = async () => {
-    setIsLoading(true);
+  const loadFromSQLite = useCallback(async () => {
     try {
-      const rows = await getAll<any>("SurveySubmissions"); // Table name
-      const loaded = rows.map(sqliteRowToSubmission);
-      setSubmissions(loaded);
-    } catch (error) {
-      console.error("Error loading survey submissions:", error);
-    } finally {
-      setIsLoading(false);
+      const rows = await getAll("SurveySubmissions");
+      const parsed = rows.map(parseSQLiteRow);
+      const userRows = parsed.filter(
+        (s: SurveySubmission) => s.created_by_user_id === userId
+      );
+      setSubmissions(userRows);
+      console.log(`Loaded ${userRows.length} submissions from SQLite`);
+    } catch (err) {
+      console.error("Failed to load submissions:", err);
     }
-  };
+  }, [getAll, userId]);
 
   useEffect(() => {
-    loadSubmissions();
-  }, []);
+    loadFromSQLite();
+  }, [loadFromSQLite]);
 
-  return { submissions, isLoading, refresh: loadSubmissions };
+  useEffect(() => {
+    const trySync = async () => {
+      const online = await isOnline();
+      setIsOffline(!online);
+      
+      if (online) {
+        await refresh(`surveySubmissions-${userId}`, forceSync);
+        await loadFromSQLite();
+      }
+    };
+
+    trySync();
+  }, [refresh, loadFromSQLite, forceSync, userId]);
+
+  const manualSync = useCallback(async () => {
+    const online = await isOnline();
+    if (!online) {
+      console.warn("Cannot sync while offline");
+      return { synced: 0, failed: 0, errors: [] };
+    }
+
+    console.log("Manual sync triggered...");
+    
+    const syncResult = await syncPendingSubmissions(getAll, update, t, userId);
+    await refresh(`surveySubmissions-${userId}`, true);
+    await loadFromSQLite();
+    
+    console.log(`Manual sync complete`);
+    return syncResult;
+  }, [getAll, update, refresh, loadFromSQLite, userId, t]);
+
+  return {
+    submissions,
+    isLoading: syncStatus[`surveySubmissions-${userId}`]?.isLoading || false,
+    error: syncStatus[`surveySubmissions-${userId}`]?.error || null,
+    lastSyncTime: syncStatus[`surveySubmissions-${userId}`]?.lastSyncTime || null,
+    isOffline,
+    refresh: manualSync,
+  };
 };

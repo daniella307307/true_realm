@@ -20,7 +20,7 @@
 // import HeaderNavigation from "~/components/ui/header";
 // import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 // import { useGetAllLocallyCreatedIzus } from "~/services/izus";
-// const HistoryProjectScreen = () => {
+const HistoryProjectScreen = () => {
 //   const storedProjects = useGetAllProjects();
 
 //   const { submissions: surveySubmissions, isLoading: isLoadingSubmissions } =
@@ -336,6 +336,6 @@
 //       </View>
 //     </SafeAreaView>
 //   );
-// };
+ };
 
-// export default HistoryProjectScreen;
+ export default HistoryProjectScreen;
