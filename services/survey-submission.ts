@@ -1,34 +1,3 @@
-// survey-submission.ts - REFACTORED to break circular dependencies
-
-import { FormField, ISurveySubmission, SyncType } from "~/types";
-import { isOnline } from "./network";
-import { baseInstance } from "~/utils/axios";
-import Toast from "react-native-toast-message";
-import { router } from "expo-router";
-import { TFunction } from "i18next";
-
-
-
-export interface SurveySubmission {
-  _id?: string;
-  id?: number;
-  answers: { [key: string]: string | number | boolean | null };
-  form_data: { [key: string]: string | number | boolean | null };
-  location: { [key: string]: string | number | boolean | null };
-  sync_data: { [key: string]: string | number | boolean | null | Date };
-  created_by_user_id?: number;
-  sync_status?: boolean | number | null;
-  sync_reason?: string;
-  sync_attempts?: number;
-  sync_type?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// ============================================================================
-// DATABASE SCHEMA
-// ============================================================================
-
 export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
   CREATE TABLE IF NOT EXISTS SurveySubmissions (
     _id TEXT PRIMARY KEY,
@@ -69,71 +38,617 @@ export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
   CREATE INDEX IF NOT EXISTS idx_survey_remote_id ON SurveySubmissions(id);
 `;
 
-// ============================================================================
-// UTILITY FUNCTIONS (Pure functions - no dependencies)
-// ============================================================================
-
-function safeParseJSON(data: any): any {
-  if (!data) return {};
-  if (typeof data === 'string') {
-    try {
-      return JSON.parse(data);
-    } catch (error) {
-      console.warn('Failed to parse JSON:', error);
-      return {};
-    }
+export const getPendingSubmissionsCount = async (
+  query: any,
+  userId: number
+): Promise<number> => {
+  try {
+    const result = await query(
+      `SELECT COUNT(*) as count FROM SurveySubmissions WHERE sync_status = 0 AND created_by_user_id = ?`,
+      [userId]
+    );
+    return result[0]?.count || 0;
+  } catch (error) {
+    console.error("Error getting pending count:", error);
+    return 0;
   }
-  return data;
+};
+
+// ============================================================================
+// IMPORTS & TYPES (Add these at the top of your file)
+// ============================================================================
+import { isOnline } from "./network";
+import { baseInstance } from "~/utils/axios";
+import Toast from "react-native-toast-message";
+import { router } from "expo-router";
+import { TFunction } from "i18next";
+
+interface FormField {
+  key: string;
+  type: string;
+  // ... other field properties
 }
 
-function cleanObject(obj: Record<string, any>): Record<string, any> {
+export interface SurveySubmission {
+  _id?: string;
+  id?: string | null;
+  data: Record<string, any>;
+  form_data: Record<string, any>;
+  location: Record<string, any>;
+  sync_data?: Record<string, any>;
+  created_by_user_id: number;
+  sync_status: number;
+  sync_reason: string;
+  sync_attempts: number;
+  created_at: string;
+  updated_at: string;
+  is_modified: boolean;
+  needs_update_sync: boolean;
+  last_modified_at?: string;
+  form?: any;
+}
+
+enum SyncType {
+  survey_submissions = 'survey_submissions'
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+const generateLocalId = (): string => {
+  return `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+const cleanObject = (obj: Record<string, any>): Record<string, any> => {
   return Object.fromEntries(
-    Object.entries(obj || {}).map(([k, v]) => [k, v === undefined ? null : v])
+    Object.entries(obj).filter(([_, v]) => v !== undefined && v !== null)
   );
-}
+};
 
-function generateLocalId(): string {
-  return `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-export function parseSQLiteRow(row: any): SurveySubmission {
+export const parseSQLiteRow = (row: any): SurveySubmission => {
   return {
-    _id: row._id,
-    id: row.id,
-    answers: safeParseJSON(row.answers),
-    form_data: safeParseJSON(row.form_data),
-    location: safeParseJSON(row.location),
-    sync_data: safeParseJSON(row.sync_data),
-    created_by_user_id: row.created_by_user_id,
-    sync_status: row.sync_status,
-    sync_reason: row.sync_reason,
-    sync_attempts: row.sync_attempts || 0,
-    sync_type: row.sync_type,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
+    ...row,
+    data: typeof row.answers === 'string' ? JSON.parse(row.answers) : row.data,
+    form_data: typeof row.form_data === 'string' ? JSON.parse(row.form_data) : row.form_data,
+    location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
+    sync_data: typeof row.sync_data === 'string' ? JSON.parse(row.sync_data) : row.sync_data,
+    is_modified: Boolean(row.is_modified),
+    needs_update_sync: Boolean(row.needs_update_sync),
   };
-}
+};
 
-export function toSQLiteRow(submission: SurveySubmission): Record<string, any> {
+const toSQLiteRow = (submission: SurveySubmission): Record<string, any> => {
   return {
     _id: submission._id,
-    id: submission.id || null,
-    answers: JSON.stringify(submission.answers || {}),
-    form_data: JSON.stringify(submission.form_data || {}),
-    location: JSON.stringify(submission.location || {}),
-    sync_data: JSON.stringify(submission.sync_data || {}),
+    id: submission.id,
+    answers: JSON.stringify(submission.data),
+    form_data: JSON.stringify(submission.form_data),
+    location: JSON.stringify(submission.location),
+    sync_data: submission.sync_data ? JSON.stringify(submission.sync_data) : null,
     created_by_user_id: submission.created_by_user_id,
     sync_status: submission.sync_status ? 1 : 0,
-    sync_reason: submission.sync_reason || null,
-    sync_attempts: submission.sync_attempts || 0,
-    sync_type: submission.sync_type || null,
-    created_at: submission.created_at || new Date().toISOString(),
-    updated_at: submission.updated_at || new Date().toISOString(),
+    sync_reason: submission.sync_reason,
+    sync_attempts: submission.sync_attempts,
+    created_at: submission.created_at,
+    updated_at: submission.updated_at,
+    is_modified: submission.is_modified ? 1 : 0,
+    needs_update_sync: submission.needs_update_sync ? 1 : 0,
+    last_modified_at: submission.last_modified_at || null,
   };
-}
+};
+
+const prepareApiPayload = (submission: SurveySubmission, formId: string) => {
+  return {
+    form: formId,
+    data: submission.data,
+    location: submission.location,
+    metadata: {
+      ...submission.form_data,
+      time_spent_filling_the_form: submission.form_data.time_spent_filling_the_form,
+      submitted_at: submission.created_at,
+    },
+  };
+};
 
 // ============================================================================
-// CORE BUSINESS LOGIC (Pure functions)
+// UPDATE SUBMISSION LOCALLY
+// ============================================================================
+
+// Fixed version of updateSurveySubmissionLocally
+export const updateSurveySubmissionLocally = async (
+  getAll: any,  // ✅ Changed parameter name from 'update' to 'getAll'
+  update: any,  // ✅ Added proper 'update' parameter
+  submissionId: string,
+  updatedData: Partial<SurveySubmission>,
+  userId: number
+): Promise<void> => {
+  try {
+    console.log(`Updating submission ${submissionId} locally...`);
+
+    const updatePayload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+      is_modified: 1,
+      last_modified_at: new Date().toISOString(),
+    };
+
+    // Update data fields if provided
+    if (updatedData.data) {
+      updatePayload.answers = JSON.stringify(updatedData.data);
+    }
+
+    // Update form_data if provided
+    if (updatedData.form_data) {
+      updatePayload.form_data = JSON.stringify(updatedData.form_data);
+    }
+
+    // Update location if provided
+    if (updatedData.location) {
+      updatePayload.location = JSON.stringify(updatedData.location);
+    }
+
+    // Mark as needing update sync if it already has a remote ID
+    const allSubmissions = await getAll("SurveySubmissions");  // ✅ Now using correct getAll
+    const submission = allSubmissions.find((s: any) => s._id === submissionId);
+    
+    if (submission && submission.id) {
+      updatePayload.needs_update_sync = 1;
+      updatePayload.sync_reason = "Modified - needs sync";
+    }
+
+    await update("SurveySubmissions", submissionId, updatePayload);  // ✅ Now using correct update
+    
+    console.log(`✅ Submission ${submissionId} updated locally`);
+  } catch (error) {
+    console.error("Error updating submission locally:", error);
+    throw error;
+  }
+};
+
+// ============================================================================
+// UPDATE SUBMISSION ON SERVER
+// ============================================================================
+
+export const updateSurveySubmissionOnServer = async (
+  submission: SurveySubmission,
+  t: TFunction
+): Promise<boolean> => {
+  try {
+    if (!submission.id) {
+      throw new Error("Cannot update submission without remote ID");
+    }
+
+    const formId = submission.form_data?.survey_id || submission.form_data?.form;
+    if (!formId) {
+      throw new Error("No form ID found in submission");
+    }
+
+    const apiPayload = prepareApiPayload(submission, formId);
+    const apiUrl = `/submissions/${submission.id}`;
+
+    console.log(`Updating submission ${submission.id} on server...`);
+    console.log("Update payload:", JSON.stringify(apiPayload, null, 2));
+
+    const response = await baseInstance.put(apiUrl, apiPayload);
+
+    if (response.data?.submission) {
+      console.log(`✅ Submission ${submission.id} updated on server`);
+      return true;
+    } else {
+      throw new Error("Invalid response from server");
+    }
+  } catch (error: any) {
+    console.error(`❌ Failed to update submission ${submission.id}:`, error);
+    console.error("Error response:", error.response?.data);
+    throw error;
+  }
+};
+
+// ============================================================================
+// SYNC MODIFIED SUBMISSIONS
+// ============================================================================
+
+export const syncModifiedSubmissions = async (
+  getAll: any,
+  update: any,
+  t?: TFunction,
+  userId?: number
+): Promise<{ synced: number; failed: number; errors: string[] }> => {
+  console.log("Starting sync of modified submissions...");
+  
+  try {
+    const isConnected = await isOnline();
+    if (!isConnected) {
+      console.log("Offline - skipping sync");
+      if (t) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.network.title"),
+          text2: t("Alerts.error.network.offline"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+      }
+      return { synced: 0, failed: 0, errors: [] };
+    }
+
+    const allSubmissions = await getAll("SurveySubmissions");
+    const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
+    
+    let modifiedSubmissions = parsedSubmissions.filter(
+      (s: SurveySubmission) => 
+        s.needs_update_sync && 
+        s.id && // Only sync if it has a remote ID
+        (s.is_modified || s.needs_update_sync)
+    );
+
+    if (userId) {
+      modifiedSubmissions = modifiedSubmissions.filter(
+        (s: SurveySubmission) => s.created_by_user_id === userId
+      );
+    }
+    
+    console.log(`Found ${modifiedSubmissions.length} modified submissions to sync`);
+    
+    if (modifiedSubmissions.length === 0) {
+      if (t) {
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.info.title"),
+          text2: "No modified submissions to sync",
+          position: "top",
+          visibilityTime: 3000,
+        });
+      }
+      return { synced: 0, failed: 0, errors: [] };
+    }
+
+    let synced = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const submission of modifiedSubmissions) {
+      try {
+        await updateSurveySubmissionOnServer(submission, t!);
+        
+        await update("SurveySubmissions", submission._id!, {
+          sync_status: 1,
+          needs_update_sync: 0,
+          is_modified: 0,
+          sync_reason: "Successfully updated on server",
+          sync_attempts: (submission.sync_attempts || 0) + 1,
+          updated_at: new Date().toISOString(),
+        });
+        
+        synced++;
+        console.log(`✅ Synced modified submission ${submission._id}`);
+      } catch (error: any) {
+        failed++;
+        const errorMsg = error?.response?.data?.message || error.message;
+        errors.push(`${submission._id}: ${errorMsg}`);
+        
+        await update("SurveySubmissions", submission._id!, {
+          sync_reason: `Update failed: ${errorMsg}`,
+          sync_attempts: (submission.sync_attempts || 0) + 1,
+          updated_at: new Date().toISOString(),
+        });
+        
+        console.error(`❌ Failed to sync modified submission ${submission._id}:`, error);
+      }
+    }
+
+    if (t) {
+      if (synced > 0 && failed === 0) {
+        Toast.show({
+          type: "success",
+          text1: t("Alerts.success.title"),
+          text2: `${synced} updates synced successfully`,
+          position: "top",
+          visibilityTime: 4000,
+        });
+      } else if (synced > 0 && failed > 0) {
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.info.title"),
+          text2: `${synced} synced, ${failed} failed`,
+          position: "top",
+          visibilityTime: 4000,
+        });
+      } else if (failed > 0) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: `${failed} updates failed to sync`,
+          position: "top",
+          visibilityTime: 4000,
+        });
+      }
+    }
+
+    return { synced, failed, errors };
+  } catch (error) {
+    console.error("❌ Error during modified submissions sync:", error);
+    return { 
+      synced: 0, 
+      failed: 0, 
+      errors: [error instanceof Error ? error.message : 'Unknown error'] 
+    };
+  }
+};
+
+// ============================================================================
+// SYNC PENDING SUBMISSIONS (NEW SUBMISSIONS)
+// ============================================================================
+
+export const syncPendingSubmissions = async (
+  getAll: any,
+  update: any,
+  t?: TFunction,
+  userId?: number
+): Promise<{ synced: number; failed: number; errors: string[] }> => {
+  console.log("Starting sync of pending submissions...");
+  
+  try {
+    const isConnected = await isOnline();
+    if (!isConnected) {
+      console.log("Offline - skipping sync");
+      if (t) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.network.title"),
+          text2: t("Alerts.error.network.offline"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+      }
+      return { synced: 0, failed: 0, errors: [] };
+    }
+
+    const allSubmissions = await getAll("SurveySubmissions");
+    const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
+    
+    let pendingSubmissions = parsedSubmissions.filter(
+      (s: SurveySubmission) => !s.sync_status || s.sync_status === 0
+    );
+
+    if (userId) {
+      pendingSubmissions = pendingSubmissions.filter(
+        (s: SurveySubmission) => s.created_by_user_id === userId
+      );
+    }
+    
+    console.log(`Found ${pendingSubmissions.length} pending submissions to sync`);
+    
+    if (pendingSubmissions.length === 0) {
+      return { synced: 0, failed: 0, errors: [] };
+    }
+
+    let synced = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (const submission of pendingSubmissions) {
+      try {
+        console.log(`Syncing submission ${submission._id}...`);
+
+        const formId = submission.form_data?.survey_id || submission.form_data?.form;
+        if (!formId) {
+          throw new Error("No form ID found in submission");
+        }
+
+        const apiPayload = prepareApiPayload(submission, formId);
+        const apiUrl = `/submissions/${formId}/submit`;
+
+        console.log("Syncing to:", apiUrl);
+        console.log("Payload:", JSON.stringify(apiPayload, null, 2));
+
+        const response = await baseInstance.post(apiUrl, apiPayload);
+        
+        if (response.data?.submission?._id) {
+          await update("SurveySubmissions", submission._id!, {
+            id: response.data.submission._id,
+            sync_status: 1,
+            sync_reason: "Successfully synced",
+            sync_attempts: (submission.sync_attempts || 0) + 1,
+            updated_at: new Date().toISOString(),
+          });
+          
+          synced++;
+          console.log(`✅ Synced submission ${submission._id}`);
+        } else {
+          throw new Error("No ID returned from API");
+        }
+      } catch (error: any) {
+        failed++;
+        const errorMsg = error?.response?.data?.message || error.message;
+        errors.push(`${submission._id}: ${errorMsg}`);
+        
+        await update("SurveySubmissions", submission._id!, {
+          sync_status: 0,
+          sync_reason: `Failed: ${errorMsg}`,
+          sync_attempts: (submission.sync_attempts || 0) + 1,
+          updated_at: new Date().toISOString(),
+        });
+        
+        console.error(`❌ Failed to sync ${submission._id}:`, error);
+      }
+    }
+
+    // Show toast notification for results
+    if (t) {
+      if (synced > 0 && failed === 0) {
+        Toast.show({
+          type: "success",
+          text1: t("Alerts.success.title"),
+          text2: `${synced} submissions synced successfully`,
+          position: "top",
+          visibilityTime: 4000,
+        });
+      } else if (synced > 0 && failed > 0) {
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.info.title"),
+          text2: `${synced} synced, ${failed} failed`,
+          position: "top",
+          visibilityTime: 4000,
+        });
+      } else if (failed > 0) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: `${failed} submissions failed to sync`,
+          position: "top",
+          visibilityTime: 4000,
+        });
+      }
+    }
+
+    return { synced, failed, errors };
+  } catch (error) {
+    console.error("❌ Error during pending submissions sync:", error);
+    return { 
+      synced: 0, 
+      failed: 0, 
+      errors: [error instanceof Error ? error.message : 'Unknown error'] 
+    };
+  }
+};
+
+// ============================================================================
+// COMPLETE SYNC (NEW + MODIFIED)
+// ============================================================================
+
+export const syncAllPendingChanges = async (
+  getAll: any,
+  update: any,
+  create: any,
+  t?: TFunction,
+  userId?: number
+): Promise<{ 
+  newSynced: number; 
+  newFailed: number; 
+  updatesSynced: number; 
+  updatesFailed: number; 
+  errors: string[] 
+}> => {
+  console.log("Starting complete sync of all pending changes...");
+  
+  try {
+    const isConnected = await isOnline();
+    if (!isConnected) {
+      console.log("Offline - skipping sync");
+      if (t) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.network.title"),
+          text2: t("Alerts.error.network.offline"),
+          position: "top",
+          visibilityTime: 4000,
+        });
+      }
+      return { 
+        newSynced: 0, 
+        newFailed: 0, 
+        updatesSynced: 0, 
+        updatesFailed: 0, 
+        errors: [] 
+      };
+    }
+
+    // Sync new submissions first
+    const newResults = await syncPendingSubmissions(getAll, update, t, userId);
+    
+    // Then sync modified submissions
+    const updateResults = await syncModifiedSubmissions(getAll, update, t, userId);
+
+    const totalSynced = newResults.synced + updateResults.synced;
+    const totalFailed = newResults.failed + updateResults.failed;
+    const allErrors = [...newResults.errors, ...updateResults.errors];
+
+    if (t && (totalSynced > 0 || totalFailed > 0)) {
+      if (totalSynced > 0 && totalFailed === 0) {
+        Toast.show({
+          type: "success",
+          text1: t("Alerts.success.title"),
+          text2: `${totalSynced} changes synced successfully`,
+          position: "top",
+          visibilityTime: 4000,
+        });
+      } else if (totalSynced > 0 && totalFailed > 0) {
+        Toast.show({
+          type: "info",
+          text1: t("Alerts.info.title"),
+          text2: `${totalSynced} synced, ${totalFailed} failed`,
+          position: "top",
+          visibilityTime: 4000,
+        });
+      } else if (totalFailed > 0) {
+        Toast.show({
+          type: "error",
+          text1: t("Alerts.error.title"),
+          text2: `${totalFailed} changes failed to sync`,
+          position: "top",
+          visibilityTime: 4000,
+        });
+      }
+    }
+
+    return {
+      newSynced: newResults.synced,
+      newFailed: newResults.failed,
+      updatesSynced: updateResults.synced,
+      updatesFailed: updateResults.failed,
+      errors: allErrors,
+    };
+  } catch (error) {
+    console.error("❌ Error during complete sync:", error);
+    return { 
+      newSynced: 0, 
+      newFailed: 0, 
+      updatesSynced: 0, 
+      updatesFailed: 0, 
+      errors: [error instanceof Error ? error.message : 'Unknown error'] 
+    };
+  }
+};
+
+// ============================================================================
+// GET PENDING CHANGES COUNT
+// ============================================================================
+
+export const getPendingChangesCount = async (
+  query: any,
+  userId: number
+): Promise<{ newSubmissions: number; modifiedSubmissions: number; total: number }> => {
+  try {
+    const newResult = await query(
+      `SELECT COUNT(*) as count FROM SurveySubmissions 
+       WHERE sync_status = 0 AND created_by_user_id = ?`,
+      [userId]
+    );
+    
+    const modifiedResult = await query(
+      `SELECT COUNT(*) as count FROM SurveySubmissions 
+       WHERE needs_update_sync = 1 AND id IS NOT NULL AND created_by_user_id = ?`,
+      [userId]
+    );
+    
+    const newCount = newResult[0]?.count || 0;
+    const modifiedCount = modifiedResult[0]?.count || 0;
+    
+    return {
+      newSubmissions: newCount,
+      modifiedSubmissions: modifiedCount,
+      total: newCount + modifiedCount,
+    };
+  } catch (error) {
+    console.error("Error getting pending changes count:", error);
+    return { newSubmissions: 0, modifiedSubmissions: 0, total: 0 };
+  }
+};
+
+// ============================================================================
+// CREATE SURVEY SUBMISSION
 // ============================================================================
 
 export const createSurveySubmission = (
@@ -173,7 +688,7 @@ export const createSurveySubmission = (
     return {
       _id: localId,
       id: formData.id || null,
-      answers: cleanObject(answers),
+      data: cleanObject(answers),
       form_data: cleanObject({
         time_spent_filling_the_form: formData.time_spent_filling_the_form,
         user_id: userId,
@@ -210,6 +725,9 @@ export const createSurveySubmission = (
       sync_attempts: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      is_modified: false,
+      needs_update_sync: false,
+      form: undefined
     };
   } catch (error) {
     console.error("Error creating survey submission:", error);
@@ -218,7 +736,7 @@ export const createSurveySubmission = (
 };
 
 // ============================================================================
-// DATABASE OPERATIONS (Accept dependencies as parameters)
+// SAVE SURVEY SUBMISSION TO API
 // ============================================================================
 
 export const saveSurveySubmissionToAPI = async (
@@ -232,7 +750,6 @@ export const saveSurveySubmissionToAPI = async (
   try {
     console.log("Saving survey submission...", formData);
 
-    // Check for duplicates if needed
     if (formData.source_module_id && formData.source_module_id !== 22) {
       const allSubmissions = await create.getAll("SurveySubmissions");
       const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
@@ -260,7 +777,7 @@ export const saveSurveySubmissionToAPI = async (
     }
 
     const submission = createSurveySubmission(formData, fields, userId);
-    const isConnected = await isOnline();
+    const isConnected = isOnline();
 
     if (isConnected) {
       try {
@@ -272,16 +789,19 @@ export const saveSurveySubmissionToAPI = async (
           visibilityTime: 2000,
         });
 
-        const apiData = {
-          ...formData,
-          ...submission.form_data,
-          ...submission.location,
-        };
+        const formIdMatch = apiUrl.match(/\/submissions\/([^\/]+)\/submit/);
+        const formId = formIdMatch ? formIdMatch[1] : formData.survey_id;
 
-        const response = await baseInstance.post(apiUrl, apiData);
+        const apiPayload = prepareApiPayload(submission, formId);
 
-        if (response.data?.result?.id) {
-          submission.id = response.data.result.id;
+        console.log("API Payload:", JSON.stringify(apiPayload, null, 2));
+
+        const response = await baseInstance.post(apiUrl, apiPayload);
+
+        console.log("API Response:", response.data);
+
+        if (response.data?.submission?._id) {
+          submission.id = response.data.submission._id;
           submission.sync_status = 1;
           submission.sync_reason = "Successfully synced";
           submission.sync_attempts = 1;
@@ -306,6 +826,8 @@ export const saveSurveySubmissionToAPI = async (
         }
       } catch (error: any) {
         console.error("API submission failed:", error);
+        console.error("Error response:", error.response?.data);
+        
         await create("SurveySubmissions", toSQLiteRow(submission));
         
         Toast.show({
@@ -340,241 +862,3 @@ export const saveSurveySubmissionToAPI = async (
     });
   }
 };
-
-export const syncPendingSubmissions = async (
-  getAll: any,
-  update: any,
-  t?: TFunction,
-  userId?: number
-): Promise<{ synced: number; failed: number; errors: string[] }> => {
-  console.log("🔄 Starting sync of pending submissions...");
-  
-  try {
-    const isConnected = await isOnline();
-    if (!isConnected) {
-      console.log("📴 Offline - skipping sync");
-      if (t) {
-        Toast.show({
-          type: "error",
-          text1: t("Alerts.error.network.title"),
-          text2: t("Alerts.error.network.offline"),
-          position: "top",
-          visibilityTime: 4000,
-        });
-      }
-      return { synced: 0, failed: 0, errors: [] };
-    }
-
-    const allSubmissions = await getAll("SurveySubmissions");
-    const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
-    
-    let pendingSubmissions = parsedSubmissions.filter(
-      (s: SurveySubmission) => !s.sync_status || s.sync_status === 0
-    );
-
-    if (userId) {
-      pendingSubmissions = pendingSubmissions.filter(
-        (s: SurveySubmission) => s.created_by_user_id === userId
-      );
-    }
-    
-    console.log(`📊 Found ${pendingSubmissions.length} pending submissions to sync`);
-    
-    if (pendingSubmissions.length === 0) {
-      if (t) {
-        Toast.show({
-          type: "info",
-          text1: t("Alerts.info.title"),
-          text2: t("Alerts.info.no_pending"),
-          position: "top",
-          visibilityTime: 4000,
-        });
-      }
-      return { synced: 0, failed: 0, errors: [] };
-    }
-
-    let synced = 0;
-    let failed = 0;
-    const errors: string[] = [];
-
-    for (const submission of pendingSubmissions) {
-      try {
-        console.log(`🔄 Syncing submission ${submission._id}...`);
-
-        const apiData = {
-          ...submission.answers,
-          ...submission.form_data,
-          ...submission.location,
-        };
-
-        const response = await baseInstance.post("/submissions", apiData);
-
-        if (response.data?.result?.id) {
-          await update("SurveySubmissions", submission._id!, {
-            id: response.data.result.id,
-            sync_status: 1,
-            sync_reason: "Successfully synced",
-            sync_attempts: (submission.sync_attempts || 0) + 1,
-            updated_at: new Date().toISOString(),
-          });
-          
-          synced++;
-          console.log(`✅ Synced submission ${submission._id}`);
-        } else {
-          throw new Error("No ID returned from API");
-        }
-      } catch (error: any) {
-        failed++;
-        const errorMsg = error?.response?.data?.message || error.message;
-        errors.push(`${submission._id}: ${errorMsg}`);
-        
-        await update("SurveySubmissions", submission._id!, {
-          sync_status: 0,
-          sync_reason: `Failed: ${errorMsg}`,
-          sync_attempts: (submission.sync_attempts || 0) + 1,
-          updated_at: new Date().toISOString(),
-        });
-        
-        console.error(`❌ Failed to sync ${submission._id}:`, error);
-      }
-    }
-
-    if (t) {
-      if (synced > 0 && failed === 0) {
-        Toast.show({
-          type: "success",
-          text1: t("Alerts.success.title"),
-          text2: `${synced} ${t("Sync.submissionsSynced") || "submissions synced"}`,
-          position: "top",
-          visibilityTime: 4000,
-        });
-      } else if (synced > 0 && failed > 0) {
-        Toast.show({
-          type: "info",
-          text1: t("Alerts.info.title"),
-          text2: `${synced} synced, ${failed} failed`,
-          position: "top",
-          visibilityTime: 4000,
-        });
-      } else if (failed > 0) {
-        Toast.show({
-          type: "error",
-          text1: t("Alerts.error.title"),
-          text2: `${failed} ${t("Sync.submissionsFailed") || "submissions failed"}`,
-          position: "top",
-          visibilityTime: 4000,
-        });
-      }
-    }
-
-    return { synced, failed, errors };
-  } catch (error) {
-    console.error("❌ Error during sync:", error);
-    return { 
-      synced: 0, 
-      failed: 0, 
-      errors: [error instanceof Error ? error.message : 'Unknown error'] 
-    };
-  }
-};
-
-export const getPendingSubmissionsCount = async (
-  query: any,
-  userId: number
-): Promise<number> => {
-  try {
-    const result = await query(
-      `SELECT COUNT(*) as count FROM SurveySubmissions WHERE sync_status = 0 AND created_by_user_id = ?`,
-      [userId]
-    );
-    return result[0]?.count || 0;
-  } catch (error) {
-    console.error("Error getting pending count:", error);
-    return 0;
-  }
-};
-
-export async function fetchSurveySubmissionsFromRemote(userId: number) {
-  try {
-    const res = await baseInstance.get("/forms");
-    const submissions = Array.isArray(res.data?.data) ? res.data.data : [];
-    
-    const userSubmissions = submissions.filter(
-      (s: any) => s.created_by_user_id === userId || s.form_data?.user_id === userId
-    );
-    
-    console.log(`✅ Fetched ${userSubmissions.length} submissions for user ${userId}`);
-    return userSubmissions;
-  } catch (error) {
-    console.error("❌ Failed to fetch submissions:", error);
-    throw error;
-  }
-}
-
-export const transformApiSurveySubmissions = (apiResponses: any[]) => {
-  return apiResponses.map((response) => {
-    const jsonData = typeof response.json === "string" 
-      ? JSON.parse(response.json) 
-      : response.json;
-
-    const metadataFields = [
-      "table_name", "project_module_id", "source_module_id", "project_id",
-      "survey_id", "post_data", "cohorts", "province", "district", "sector",
-      "cell", "village", "izucode", "family", "province_name", "district_name",
-      "sector_name", "cell_name", "village_name", "izu_name", "familyID",
-      "hh_head_fullname", "enrollment_date"
-    ];
-
-    const answers: Record<string, any> = {};
-    Object.keys(jsonData).forEach((key) => {
-      if (!metadataFields.includes(key)) {
-        answers[key] = jsonData[key];
-      }
-    });
-
-    return {
-      _id: `remote-${response.id}`,
-      id: response.id,
-      answers,
-      form_data: {
-        time_spent_filling_the_form: null,
-        user_id: response.user_id || null,
-        table_name: jsonData.table_name || null,
-        project_module_id: jsonData.project_module_id || response.project_module_id || null,
-        source_module_id: jsonData.source_module_id || response.module_id || null,
-        project_id: jsonData.project_id || response.project_id || null,
-        survey_id: jsonData.survey_id || response.curr_form_id || null,
-        post_data: jsonData.post_data || null,
-        izucode: jsonData.izucode || null,
-        family: jsonData.family || response.families_id || null,
-        form_status: "followup",
-        cohort: jsonData.cohorts || response.cohort || null,
-      },
-      location: {
-        province: jsonData.province || response.province || null,
-        district: jsonData.district || response.district || null,
-        sector: jsonData.sector || response.sector || null,
-        cell: jsonData.cell || response.cell || null,
-        village: jsonData.village || response.village || null,
-      },
-      sync_data: {
-        sync_status: true,
-        sync_reason: "From API",
-        sync_attempts: 1,
-        last_sync_attempt: new Date(response.updated_at || response.created_at).toISOString(),
-        submitted_at: new Date(response.recorded_on || response.created_at).toISOString(),
-        sync_type: SyncType.survey_submissions,
-        created_by_user_id: response.user_id || null,
-      },
-      created_by_user_id: response.user_id,
-      sync_status: 1,
-      sync_reason: "From API",
-      sync_attempts: 1,
-      sync_type: SyncType.survey_submissions,
-      created_at: response.created_at,
-      updated_at: response.updated_at,
-    };
-  });
-};
-
-

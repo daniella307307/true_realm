@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
-import { useGetAllProjects } from "~/services/project";
+import { useGetAllForms } from "~/services/project";
 import { syncPendingSubmissions, getPendingSubmissionsCount } from "~/services/survey-submission";
 // import { useGetStakeholders } from "~/services/stakeholders";
 import HeaderNavigation from "~/components/ui/header";
@@ -103,7 +103,7 @@ const SyncPage = () => {
   // const { syncTemporaryIzus } = useSyncIzus();
 
   // Service hooks
-  const { refresh: refreshProjects } = useGetAllProjects(true);
+   const { refresh: refreshProjects } = useGetAllForms(true);
   // const { refresh: refreshStakeholders } = useGetStakeholders(true);
   // useGetIzus(true);
   useGetForms(true);
@@ -115,10 +115,10 @@ const SyncPage = () => {
   const [forceRefresh, setForceRefresh] = useState<number>(0);
 
   const [pendingSurveySubmissionsCount, setPendingSurveySubmissionsCount] = useState(0);
-  const [pendingFamiliesCount, setPendingFamiliesCount] = useState(0);
+  // const [pendingFamiliesCount, setPendingFamiliesCount] = useState(0);
   const [pendingIzusCount, setPendingIzusCount] = useState(0);
-  const [pendingMonitoringResponsesCount, setPendingMonitoringResponsesCount] = useState(0);
-  const [pendingFollowupsCount, setPendingFollowupsCount] = useState(0);
+  // const [pendingMonitoringResponsesCount, setPendingMonitoringResponsesCount] = useState(0);
+  // const [pendingFollowupsCount, setPendingFollowupsCount] = useState(0);
 
   // ===== Count pending items =====
   const updateSubmissionCounts = useCallback(async () => {
@@ -130,11 +130,11 @@ const SyncPage = () => {
       setPendingSurveySubmissionsCount(surveyCount);
 
       // Families count
-      const familiesResult = await query(
-        `SELECT COUNT(*) as count FROM Families WHERE sync_status = 0 AND created_by_user_id = ?`,
-        [user.id]
-      );
-      setPendingFamiliesCount(familiesResult[0]?.count || 0);
+      // const familiesResult = await query(
+      //   `SELECT COUNT(*) as count FROM Families WHERE sync_status = 0 AND created_by_user_id = ?`,
+      //   [user.id]
+      // );
+      // setPendingFamiliesCount(familiesResult[0]?.count || 0);
 
       // Izus count
       const izusResult = await query(
@@ -144,20 +144,20 @@ const SyncPage = () => {
       setPendingIzusCount(izusResult[0]?.count || 0);
 
       // Monitoring Responses count
-      const responsesResult = await query(
-        `SELECT COUNT(*) as count FROM MonitoringResponses WHERE sync_status = 0 AND created_by_user_id = ?`,
-        [user.id]
-      );
-      setPendingMonitoringResponsesCount(responsesResult[0]?.count || 0);
+      // const responsesResult = await query(
+      //   `SELECT COUNT(*) as count FROM MonitoringResponses WHERE sync_status = 0 AND created_by_user_id = ?`,
+      //   [user.id]
+      // );
+      // setPendingMonitoringResponsesCount(responsesResult[0]?.count || 0);
 
-      // Followups count
-      const followupsResult = await query(
-        `SELECT COUNT(*) as count FROM FollowUps WHERE sync_status = 0 AND created_by_user_id = ?`,
-        [user.id]
-      );
-      setPendingFollowupsCount(followupsResult[0]?.count || 0);
+      // // Followups count
+      // const followupsResult = await query(
+      //   `SELECT COUNT(*) as count FROM FollowUps WHERE sync_status = 0 AND created_by_user_id = ?`,
+      //   [user.id]
+      // );
+      // setPendingFollowupsCount(followupsResult[0]?.count || 0);
 
-      console.log(`📊 Pending counts updated: Surveys=${surveyCount}, Families=${familiesResult[0]?.count}, Izus=${izusResult[0]?.count}`);
+      console.log(`📊 Pending counts updated: Surveys=${surveyCount}`);
     } catch (error) {
       console.error("❌ Error updating counts:", error);
     }

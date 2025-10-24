@@ -348,7 +348,7 @@ export default function LoginScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* <TouchableOpacity
+            <TouchableOpacity
               onPress={() => setLanguageModalVisible(true)}
               className="mt-4"
               disabled={isLoggingIn || isRefreshing}
@@ -356,7 +356,7 @@ export default function LoginScreen() {
               <Text className={`text-accent text-center ${(isLoggingIn || isRefreshing) ? "opacity-50" : ""}`}>
                 {t("Login.Select Language")}
               </Text>
-            </TouchableOpacity> */}
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

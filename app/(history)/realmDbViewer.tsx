@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   StyleSheet,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
@@ -15,7 +16,7 @@ import { useAuth } from "~/lib/hooks/useAuth";
 import { router } from "expo-router";
 import { useGetAllSurveySubmissions } from "~/lib/hooks/useGetAllSurveySubmissions";
 import { SurveySubmission } from "~/services/survey-submission";
-import { useGetForms } from "~/services/formElements"; // Get ALL forms instead
+import { useGetForms } from "~/services/formElements";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 
 const RealmDatabaseViewer = () => {
@@ -27,6 +28,7 @@ const RealmDatabaseViewer = () => {
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [currentView, setCurrentView] = useState<'projects' | 'submissions' | 'details'>('projects');
+  const [refreshing, setRefreshing] = useState(false);
   
   // Get user ID (handle both possible structures)
   const userId = user?.id || user?.json?.id;
@@ -40,7 +42,7 @@ const RealmDatabaseViewer = () => {
     refresh 
   } = useGetAllSurveySubmissions(false);
 
-  // Get all forms once at the top level (correct hook usage)
+  // Get all forms once at the top level
   const { forms } = useGetForms(false);
 
   // Create a lookup map for forms for efficient access
@@ -49,8 +51,9 @@ const RealmDatabaseViewer = () => {
     
     const map: Record<string, any> = {};
     forms.forEach(form => {
-      if (form?.id) {
-        map[form.id] = form;
+      if (form?.id || form?.id) {
+        const formId = form.id || form.id;
+        map[formId] = form;
       }
     });
     return map;
@@ -81,21 +84,33 @@ const RealmDatabaseViewer = () => {
 
     console.log(`Processing ${submissions.length} submissions for display`);
 
-    const grouped: Record<string, Array<SurveySubmission & { projectId: string; projectName: string }>> = {};
+    const grouped: Record<string, Array<SurveySubmission & { projectName: string; formTitle: string }>> = {};
 
     submissions.forEach((s) => {
-      // Try multiple sources for project info
-      const surveyId = s?.form_data?.survey_id;
-      console.log("Survey ID:", surveyId)
-      const projectId = surveyId || 'unknown';
+      // Try to get form ID from multiple possible locations
+      const surveyId = s.form_data?.survey_id || s.form_data?.form ;
       
-      
+      console.log("Processing submission:", {
+        submissionId: s._id,
+        surveyId: surveyId,
+        formData: s.data
+      });
+        
       const form = surveyId ? formsMap[surveyId] : null;
       
-      const projectName = String(
+      // Get form title with fallbacks
+      const formTitle = String(
         form?.title || 
-        s.form_data?.title || 
-        `${t('CommonPage.project') || 'Project'} ${projectId}`
+        form?.name ||
+        s.form_data?.title ||
+        `${t('CommonPage.form') || 'Form'} #${surveyId || 'Unknown'}`
+      );
+      
+      // Get project name with fallbacks
+      const projectName = String(
+        form?.metadata?.category ||
+        s.form_data?.project_name ||
+        formTitle
       );
       
       // Use project name as key for grouping
@@ -107,8 +122,8 @@ const RealmDatabaseViewer = () => {
       
       grouped[projectKey].push({
         ...s,
-        projectId,
         projectName,
+        formTitle,
       });
     });
 
@@ -144,6 +159,7 @@ const RealmDatabaseViewer = () => {
   };
 
   const handleRefresh = async () => {
+    setRefreshing(true);
     try {
       console.log("Refreshing submissions...");
       const result = await refresh();
@@ -161,18 +177,15 @@ const RealmDatabaseViewer = () => {
           t('CommonPage.sync_complete') || 'Sync Complete',
           messages.join('\n')
         );
-      } else {
-        Alert.alert(
-          t('CommonPage.success') || 'Success',
-          t('CommonPage.data_refreshed') || 'Data refreshed successfully'
-        );
       }
     } catch (error: any) {
-      console.error("❌ Refresh failed:", error);
+      console.error("Refresh failed:", error);
       Alert.alert(
         t('CommonPage.error') || 'Error',
         error?.message || t('CommonPage.refresh_failed') || 'Failed to refresh data'
       );
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -227,7 +240,6 @@ const RealmDatabaseViewer = () => {
   };
 
   const renderSyncBadge = (item: any) => {
-    // SQLite uses 0/1 for boolean, also check explicit true/false
     const isSynced = item.sync_status === 1 || item.sync_status === true;
     
     if (isSynced) {
@@ -251,6 +263,7 @@ const RealmDatabaseViewer = () => {
 
   const renderProjectCard = (projectName: string, submissions: any[]) => {
     const pendingCount = submissions.filter(s => !s.sync_status || s.sync_status === 0).length;
+    const syncedCount = submissions.length - pendingCount;
     
     return (
       <TouchableOpacity
@@ -262,9 +275,16 @@ const RealmDatabaseViewer = () => {
         }}
       >
         <View style={styles.projectHeader}>
-          <Text style={styles.projectTitle} numberOfLines={2}>
-            {projectName}
-          </Text>
+          <View style={styles.projectTitleContainer}>
+            <Text style={styles.projectTitle} numberOfLines={2}>
+              {projectName}
+            </Text>
+            <Text style={styles.projectSubtitle}>
+              {submissions.length} {submissions.length === 1 
+                ? t('CommonPage.submission') || 'submission'
+                : t('HistoryPageReal.submissions') || 'submissions'}
+            </Text>
+          </View>
           <View style={styles.projectBadge}>
             <Text style={styles.projectBadgeText}>
               {submissions.length}
@@ -272,16 +292,26 @@ const RealmDatabaseViewer = () => {
           </View>
         </View>
         
-        <View style={styles.projectMetaRow}>
-          <Text style={styles.projectSubtitle}>
-            {submissions.length} {submissions.length === 1 
-              ? t('CommonPage.submission') || 'submission'
-              : t('HistoryPageReal.submissions') || 'submissions'}
-          </Text>
+        <View className="flex-1 gap-y-2">
+          {syncedCount > 0 && (
+            <View style={styles.statItem}>
+              <View style={styles.statIconSuccess}>
+                <Text style={styles.statIconText}>✓</Text>
+              </View>
+              <Text style={styles.statText}>
+                {syncedCount} {t('CommonPage.synced') || 'synced'}
+              </Text>
+            </View>
+          )}
           {pendingCount > 0 && (
-            <Text style={styles.pendingText}>
-              {pendingCount} {t('CommonPage.pending_sync') || 'pending sync'}
-            </Text>
+            <View style={styles.statItem}>
+              <View style={styles.statIconPending}>
+                <Text style={styles.statIconText}>⟳</Text>
+              </View>
+              <Text style={styles.statTextPending}>
+                {pendingCount} {t('CommonPage.pending') || 'pending'}
+              </Text>
+            </View>
           )}
         </View>
         
@@ -289,7 +319,13 @@ const RealmDatabaseViewer = () => {
           <View style={styles.projectFooter}>
             <Text style={styles.projectFooterText}>
               {t('HistoryPageReal.lastSubmission') || 'Last submission'}: {submissions[0].created_at 
-                ? new Date(submissions[0].created_at).toLocaleDateString() 
+                ? new Date(submissions[0].created_at).toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
                 : t('CommonPage.not_available') || 'N/A'}
             </Text>
           </View>
@@ -299,13 +335,14 @@ const RealmDatabaseViewer = () => {
   };
 
   const renderSubmissionItem = (item: any) => {
-    const fieldCount = item.answers 
-      ? Object.keys(item.answers).filter(key => key !== 'language' && key !== 'submit').length 
+    // Use the correct property name: 'data' instead of 'answers'
+    const fieldCount = item.data 
+      ? Object.keys(item.data).filter(key => key !== 'language' && key !== 'submit').length 
       : 0;
 
     // Display either server ID or local ID
     const displayId = item.id || item._id || 'Unknown';
-    const isLocal = !item.id; // No server ID means it's local-only
+    const isLocal = !item.id;
 
     return (
       <TouchableOpacity
@@ -317,43 +354,59 @@ const RealmDatabaseViewer = () => {
         }}
       >
         <View style={styles.itemHeader}>
-          <Text style={styles.itemTitle}>
-            {t('HistoryPageReal.submission_detail') || 'Submission'} #{displayId}
-            {isLocal && ' (Local)'}
-          </Text>
-          <View style={styles.itemHeaderRight}>
-            <Text style={styles.itemBadge}>
-              {fieldCount} {t('CommonPage.fields') || 'fields'}
+          <View style={styles.itemTitleContainer}>
+            <Text style={styles.itemTitle}>
+              {item.formTitle || t('HistoryPageReal.submission_detail') || 'Submission'}
             </Text>
+            {isLocal && (
+              <View style={styles.localBadge}>
+                <Text style={styles.localBadgeText}>Local</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.itemHeaderRight}>
             {renderSyncBadge(item)}
           </View>
         </View>
         
         <View style={styles.itemMeta}>
+          <Text style={styles.itemMetaText}>
+            #{String(displayId).substring(0, 8)}...
+          </Text>
+          <Text style={styles.itemMetaDivider}>•</Text>
+          <Text style={styles.itemMetaText}>
+            {fieldCount} {fieldCount === 1 ? 'field' : 'fields'}
+          </Text>
+        </View>
+        
+        <View style={styles.itemDateContainer}>
           <Text style={styles.itemDate}>
-            {t('HistoryPageReal.createdAt') || 'Created'}: {item.created_at 
-              ? new Date(item.created_at).toLocaleDateString() 
+            {item.created_at 
+              ? new Date(item.created_at).toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
               : t('CommonPage.not_available') || 'N/A'}
           </Text>
-          {item.updated_at && item.updated_at !== item.created_at && (
-            <Text style={styles.itemDate}>
-              {t('CommonPage.updated') || 'Updated'}: {new Date(item.updated_at).toLocaleDateString()}
-            </Text>
-          )}
         </View>
         
         {fieldCount > 0 && (
           <View style={styles.previewContainer}>
-            <Text style={styles.previewLabel}>
-              {t('CommonPage.preview') || 'Preview'}:
-            </Text>
-            {Object.entries(item.answers)
+            {Object.entries(item.data)
               .filter(([key]) => key !== 'language' && key !== 'submit')
               .slice(0, 2)
               .map(([key, value]) => (
-              <Text key={key} style={styles.previewText} numberOfLines={1}>
-                {formatFieldName(key)}: {formatValue(value)}
-              </Text>
+              <View key={key} style={styles.previewRow}>
+                <Text style={styles.previewKey} numberOfLines={1}>
+                  {formatFieldName(key)}:
+                </Text>
+                <Text style={styles.previewValue} numberOfLines={1}>
+                  {formatValue(value)}
+                </Text>
+              </View>
             ))}
             {fieldCount > 2 && (
               <Text style={styles.moreText}>
@@ -381,7 +434,17 @@ const RealmDatabaseViewer = () => {
         </View>
       )}
       
-      <ScrollView style={styles.projectsList}>
+      <ScrollView 
+        style={styles.projectsList}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={["#A23A91"]}
+            tintColor="#A23A91"
+          />
+        }
+      >
         {Object.keys(submissionsByProject).length > 0 ? (
           <>
             {Object.entries(submissionsByProject).map(([projectName, submissions], index, array) => (
@@ -396,22 +459,9 @@ const RealmDatabaseViewer = () => {
         ) : (
           <View style={styles.emptyState}>
             <EmptyDynamicComponent message={t('HistoryPageReal.no_submissions') || 'No submissions found'}/>
-            {/* <Text style={styles.emptyText}>
-              {t('HistoryPageReal.no_submissions') || 'No submissions found'}
-            </Text>*/}
             <Text style={styles.emptySubText}>
               {t('HistoryPageReal.no_submissions_description') || 'Submit a form to see it here'}
-            </Text> 
-            {/* {!isLoading && (
-              <TouchableOpacity 
-                style={styles.refreshButton}
-                onPress={handleRefresh}
-              >
-                <Text style={styles.refreshButtonText}>
-                   {t('CommonPage.refresh') || 'Refresh'}
-                </Text>
-              </TouchableOpacity>
-            )} */}
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -423,18 +473,19 @@ const RealmDatabaseViewer = () => {
       <HeaderNavigation 
         showLeft={true} 
         title={selectedProject || t('HistoryPageReal.submissions') || 'Submissions'}
-       
       />
       
-      {/* {isOffline && (
-        <View style={styles.offlineBanner}>
-          <Text style={styles.offlineText}>
-            {t('CommonPage.offline_mode') || 'Offline Mode'}
-          </Text>
-        </View>
-      )} */}
-      
-      <ScrollView style={styles.listContainer}>
+      <ScrollView 
+        style={styles.listContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={["#A23A91"]}
+            tintColor="#A23A91"
+          />
+        }
+      >
         {selectedProject && submissionsByProject[selectedProject] ? (
           <>
             <View style={styles.listHeader}>
@@ -460,72 +511,114 @@ const RealmDatabaseViewer = () => {
   );
 
   const renderDetailView = () => {
-    if (!selectedItem) return null;
+  if (!selectedItem) return null;
 
-    const displayId = selectedItem.id || selectedItem._id || 'Unknown';
-    const isLocal = !selectedItem.id;
+  const displayId = selectedItem.id || selectedItem._id || 'Unknown';
+  const isLocal = !selectedItem.id;
+  const canEdit = true; 
 
-    return (
-      <SafeAreaView style={styles.container}>
-        <HeaderNavigation
-          showLeft={true}
-          title={t('HistoryPageReal.submission_detail') || 'Details'}
-          showRight={true}
-        />
+  return (
+    <SafeAreaView style={styles.container}>
+      <HeaderNavigation
+        showLeft={true}
+        title={t('HistoryPageReal.submission_detail') || 'Details'}
+        showRight={true}
+      />
 
-        <ScrollView style={styles.detailScrollView}>
-          <View style={styles.detailHeader}>
-            <View style={styles.detailTitleRow}>
-              <Text style={styles.detailTitle}>
-                {t('HistoryPageReal.submission_detail') || 'Submission'} #{displayId}
-                {isLocal && ' (Local)'}
-              </Text>
-              {renderSyncBadge(selectedItem)}
-            </View>
-            
-            <Text style={styles.detailSubtitle}>
-              {t('CommonPage.project') || 'Project'}: {selectedItem.projectName || selectedItem.form_data?.project_id || t('CommonPage.unknown') || 'Unknown'}
+      <ScrollView style={styles.detailScrollView}>
+        <View style={styles.detailHeader}>
+          <View style={styles.detailTitleRow}>
+            <Text style={styles.detailTitle}>
+              {selectedItem.formTitle || t('HistoryPageReal.submission_detail') || 'Submission'}
             </Text>
-            
-            {(!selectedItem.sync_status || selectedItem.sync_status === 0) && selectedItem.sync_reason && (
-              <View style={styles.syncReasonContainer}>
-                <Text style={styles.syncReasonText}>
-                  {t('CommonPage.sync_reason') || 'Sync status'}: {selectedItem.sync_reason}
-                </Text>
-                {selectedItem.sync_attempts > 0 && (
-                  <Text style={styles.syncAttemptsText}>
-                    {t('CommonPage.sync_attempts') || 'Attempts'}: {selectedItem.sync_attempts}
-                  </Text>
-                )}
+            {renderSyncBadge(selectedItem)}
+          </View>
+          
+          <View style={styles.detailIdRow}>
+            <Text style={styles.detailId}>
+              #{String(displayId).substring(0, 12)}...
+            </Text>
+            {isLocal && (
+              <View style={styles.localBadgeLarge}>
+                <Text style={styles.localBadgeTextLarge}>Local Only</Text>
               </View>
             )}
-            
-            <View style={styles.timestampContainer}>
-              <Text style={styles.timestamp}>
-                {t('HistoryPageReal.createdAt') || 'Created'}: {selectedItem.created_at 
-                  ? new Date(selectedItem.created_at).toLocaleString() 
-                  : t('CommonPage.not_available') || 'N/A'}
+          </View>
+          
+          <Text style={styles.detailSubtitle}>
+            {t('CommonPage.project') || 'Project'}: {selectedItem.projectName || t('CommonPage.unknown') || 'Unknown'}
+          </Text>
+          
+          {(!selectedItem.sync_status || selectedItem.sync_status === 0) && selectedItem.sync_reason && (
+            <View style={styles.syncReasonContainer}>
+              <Text style={styles.syncReasonLabel}>
+                ⚠️ {t('CommonPage.sync_status') || 'Sync Status'}
               </Text>
-              {selectedItem.updated_at && selectedItem.updated_at !== selectedItem.created_at && (
-                <Text style={styles.timestamp}>
-                  {t('CommonPage.updated') || 'Updated'}: {new Date(selectedItem.updated_at).toLocaleString()}
+              <Text style={styles.syncReasonText}>
+                {selectedItem.sync_reason}
+              </Text>
+              {selectedItem.sync_attempts > 0 && (
+                <Text style={styles.syncAttemptsText}>
+                  {selectedItem.sync_attempts} {t('CommonPage.sync_attempts') || 'sync attempts'}
                 </Text>
               )}
             </View>
+          )}
+          
+          <View style={styles.timestampContainer}>
+            <View style={styles.timestampRow}>
+              <Text style={styles.timestampLabel}>
+                {t('HistoryPageReal.createdAt') || 'Created'}:
+              </Text>
+              <Text style={styles.timestamp}>
+                {selectedItem.created_at 
+                  ? new Date(selectedItem.created_at).toLocaleString() 
+                  : t('CommonPage.not_available') || 'N/A'}
+              </Text>
+            </View>
+            {selectedItem.updated_at && selectedItem.updated_at !== selectedItem.created_at && (
+              <View style={styles.timestampRow}>
+                <Text style={styles.timestampLabel}>
+                  {t('CommonPage.updated') || 'Updated'}:
+                </Text>
+                <Text style={styles.timestamp}>
+                  {new Date(selectedItem.updated_at).toLocaleString()}
+                </Text>
+              </View>
+            )}
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {t('CommonPage.form_answers') || 'Form Answers'}
-            </Text>
-            <View style={styles.sectionContent}>
-              {renderFormData(selectedItem.answers)}
-            </View>
+         
+{canEdit && (
+  <TouchableOpacity
+    style={styles.editButton}
+    onPress={() => {
+      router.push({
+  pathname: "/(projects)/(mods)/(projects)/(edit-submission)/[submissionId]",
+  params: { submissionId: selectedItem._id }
+});
+    }}
+  >
+    <Text style={styles.editButtonText}>
+       {t('CommonPage.edit') || 'Edit Submission'}
+    </Text>
+  </TouchableOpacity>
+)}
+
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {t('CommonPage.form_answers') || 'Form Answers'}
+          </Text>
+          <View style={styles.sectionContent}>
+            {renderFormData(selectedItem.data)}
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  };
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
 
   if (isLoading && submissions.length === 0) {
     return (
@@ -594,7 +687,7 @@ const RealmDatabaseViewer = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#f8f9fa",
   },
   loadingContainer: {
     flex: 1,
@@ -606,6 +699,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     marginTop: 12,
+    fontWeight: "500",
   },
   offlineBanner: {
     backgroundColor: "#FFA500",
@@ -619,72 +713,144 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     backgroundColor: "#A23A91",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 8,
     alignSelf: "center",
-    marginVertical: 12,
+    marginTop: 16,
     minWidth: 120,
     alignItems: "center",
+    shadowColor: "#A23A91",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   refreshButtonText: {
     color: "white",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
   },
   projectsList: {
     flex: 1,
     padding: 16,
   },
-  projectCard: {
+  summaryCard: {
     backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 0,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#e9ecef",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    color: "#6c757d",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  summaryCount: {
+    fontSize: 48,
+    fontWeight: "700",
+    color: "#A23A91",
+    marginVertical: 8,
+  },
+  summarySubtext: {
+    fontSize: 14,
+    color: "#6c757d",
+  },
+  projectCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
   },
   projectHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  projectTitleContainer: {
+    flex: 1,
+    marginRight: 12,
   },
   projectTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#212529",
-    flex: 1,
-    marginRight: 12,
+    marginBottom: 4,
+  },
+  projectSubtitle: {
+    fontSize: 13,
+    color: "#6c757d",
+    fontWeight: "500",
   },
   projectBadge: {
     backgroundColor: "#A23A91",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 40,
+    alignItems: "center",
   },
   projectBadgeText: {
     color: "white",
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
   },
-  projectMetaRow: {
+  statsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    gap: 16,
     marginBottom: 12,
   },
-  projectSubtitle: {
-    fontSize: 14,
-    color: "#6c757d",
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  pendingText: {
+  statIconSuccess: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#28a745",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statIconPending: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFA500",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statIconText: {
+    color: "white",
     fontSize: 12,
+    fontWeight: "700",
+  },
+  statText: {
+    fontSize: 13,
+    color: "#28a745",
+    fontWeight: "600",
+  },
+  statTextPending: {
+    fontSize: 13,
     color: "#FFA500",
     fontWeight: "600",
   },
@@ -692,17 +858,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#f1f3f4",
     paddingTop: 12,
-    marginTop: 12,
   },
   projectFooterText: {
     fontSize: 12,
-    color: "#495057",
+    color: "#6c757d",
     fontWeight: "500",
   },
   projectDivider: {
     height: 1,
     backgroundColor: "#dee2e6",
-    marginVertical: 16,
+    marginVertical: 8,
   },
   listContainer: {
     flex: 1,
@@ -710,6 +875,7 @@ const styles = StyleSheet.create({
   },
   listHeader: {
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   listHeaderText: {
     fontSize: 16,
@@ -914,6 +1080,116 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     textAlign: "center",
     marginTop: 8,
+  },
+ 
+itemMetaText: {
+  fontSize: 12,
+  color: "#6c757d",
+  fontWeight: "500",
+},
+itemMetaDivider: {
+  fontSize: 12,
+  color: "#6c757d",
+  marginHorizontal: 6,
+},
+itemDateContainer: {
+  marginBottom: 8,
+},
+previewRow: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  marginBottom: 6,
+},
+previewKey: {
+  fontSize: 12,
+  color: "#495057",
+  fontWeight: "600",
+  flex: 1,
+  marginRight: 8,
+},
+previewValue: {
+  fontSize: 12,
+  color: "#6c757d",
+  flex: 2,
+  textAlign: "right",
+},
+detailIdRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 8,
+  gap: 8,
+},
+detailId: {
+  fontSize: 14,
+  color: "#6c757d",
+  fontFamily: "monospace",
+  fontWeight: "500",
+},
+localBadgeLarge: {
+  backgroundColor: "#6c757d",
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  borderRadius: 12,
+},
+localBadgeTextLarge: {
+  color: "white",
+  fontSize: 10,
+  fontWeight: "600",
+},
+syncReasonLabel: {
+  fontSize: 12,
+  fontWeight: "600",
+  color: "#856404",
+  marginBottom: 4,
+},
+timestampRow: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 4,
+},
+timestampLabel: {
+  fontSize: 12,
+  color: "#495057",
+  fontWeight: "600",
+  minWidth: 60,
+},
+itemTitleContainer: {
+  flex: 1,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 8,
+},
+localBadge: {
+  backgroundColor: "#6c757d",
+  paddingHorizontal: 6,
+  paddingVertical: 2,
+  borderRadius: 8,
+},
+localBadgeText: {
+  color: "white",
+  fontSize: 9,
+  fontWeight: "600",
+},
+editButton: {
+    backgroundColor: "#A23A91",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#A23A91",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  editButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 
