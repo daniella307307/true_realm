@@ -81,7 +81,6 @@ const FormsScreen = () => {
     const isRiskManagement =
       item.title.toLowerCase().includes("risk of harm management") ||
       item.metadata?.category?.toLowerCase().includes("risk");
-      console.log(item.id);
     if (isRiskManagement) return null;
 
     return (
@@ -147,7 +146,7 @@ const FormsScreen = () => {
       <EmptyDynamicComponent
         message={
           searchQuery
-            ? t("Forms.no_forms_found") || "No forms found"
+            ? t("FormPage.no_forms_found") || "No forms found"
             : t("ProjectPage.empty_projects") || "No projects yet"
         }
       />

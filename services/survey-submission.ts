@@ -157,8 +157,8 @@ const prepareApiPayload = (submission: SurveySubmission, formId: string) => {
 
 // Fixed version of updateSurveySubmissionLocally
 export const updateSurveySubmissionLocally = async (
-  getAll: any,  // ✅ Changed parameter name from 'update' to 'getAll'
-  update: any,  // ✅ Added proper 'update' parameter
+  getAll: any, 
+  update: any,  
   submissionId: string,
   updatedData: Partial<SurveySubmission>,
   userId: number
@@ -172,22 +172,18 @@ export const updateSurveySubmissionLocally = async (
       last_modified_at: new Date().toISOString(),
     };
 
-    // Update data fields if provided
     if (updatedData.data) {
       updatePayload.answers = JSON.stringify(updatedData.data);
     }
 
-    // Update form_data if provided
     if (updatedData.form_data) {
       updatePayload.form_data = JSON.stringify(updatedData.form_data);
     }
 
-    // Update location if provided
     if (updatedData.location) {
       updatePayload.location = JSON.stringify(updatedData.location);
     }
 
-    // Mark as needing update sync if it already has a remote ID
     const allSubmissions = await getAll("SurveySubmissions");  // ✅ Now using correct getAll
     const submission = allSubmissions.find((s: any) => s._id === submissionId);
     
@@ -198,7 +194,7 @@ export const updateSurveySubmissionLocally = async (
 
     await update("SurveySubmissions", submissionId, updatePayload);  // ✅ Now using correct update
     
-    console.log(`✅ Submission ${submissionId} updated locally`);
+    console.log(`Submission ${submissionId} updated locally`);
   } catch (error) {
     console.error("Error updating submission locally:", error);
     throw error;
@@ -224,7 +220,7 @@ export const updateSurveySubmissionOnServer = async (
     }
 
     const apiPayload = prepareApiPayload(submission, formId);
-    const apiUrl = `/submissions/${submission.id}`;
+    const apiUrl = `/submissions/forms/${formId}/submissions/${submission.id}`;
 
     console.log(`Updating submission ${submission.id} on server...`);
     console.log("Update payload:", JSON.stringify(apiPayload, null, 2));
@@ -232,13 +228,13 @@ export const updateSurveySubmissionOnServer = async (
     const response = await baseInstance.put(apiUrl, apiPayload);
 
     if (response.data?.submission) {
-      console.log(`✅ Submission ${submission.id} updated on server`);
+      console.log(`Submission ${submission.id} updated on server`);
       return true;
     } else {
       throw new Error("Invalid response from server");
     }
   } catch (error: any) {
-    console.error(`❌ Failed to update submission ${submission.id}:`, error);
+    console.error(`Failed to update submission ${submission.id}:`, error);
     console.error("Error response:", error.response?.data);
     throw error;
   }
@@ -321,7 +317,7 @@ export const syncModifiedSubmissions = async (
         });
         
         synced++;
-        console.log(`✅ Synced modified submission ${submission._id}`);
+        console.log(`Synced modified submission ${submission._id}`);
       } catch (error: any) {
         failed++;
         const errorMsg = error?.response?.data?.message || error.message;
@@ -333,7 +329,7 @@ export const syncModifiedSubmissions = async (
           updated_at: new Date().toISOString(),
         });
         
-        console.error(`❌ Failed to sync modified submission ${submission._id}:`, error);
+        console.error(`Failed to sync modified submission ${submission._id}:`, error);
       }
     }
 
@@ -367,7 +363,7 @@ export const syncModifiedSubmissions = async (
 
     return { synced, failed, errors };
   } catch (error) {
-    console.error("❌ Error during modified submissions sync:", error);
+    console.error("Error during modified submissions sync:", error);
     return { 
       synced: 0, 
       failed: 0, 
@@ -601,7 +597,7 @@ export const syncAllPendingChanges = async (
       errors: allErrors,
     };
   } catch (error) {
-    console.error("❌ Error during complete sync:", error);
+    console.error("Error during complete sync:", error);
     return { 
       newSynced: 0, 
       newFailed: 0, 

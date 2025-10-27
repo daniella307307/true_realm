@@ -179,7 +179,8 @@
     "monitoring_title": "Amafishi yo kugenzura",
     "module_not_found": "Ikiganiro ntikibonetse",
     "module_not_found_description": "Ikiganiro uri gushaka ntikibaho",
-    "available_forms": "Amafishi ahari ni"
+    "available_forms": "Amafishi ahari ni",
+    "no_forms_found":"Nta fishi zabonetse"
   },
   "FormElementPage": {
     "title": "Ibibazo by'ifishi",

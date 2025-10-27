@@ -216,7 +216,8 @@
     "monitoring_title": "Monitoring Forms",
     "module_not_found": "Module Not Found",
     "module_not_found_description": "The module you are looking for does not exist",
-    "available_forms": "Available Forms"
+    "available_forms": "Available Forms",
+    "no_forms_found":"No form found"
   },
   "FormElementPage": {
     "title": "Form Questions",
