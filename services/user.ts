@@ -47,9 +47,7 @@ export async function userLogin(values: ILoginDetails) {
     }, null, 2));
     
     return response.data;
-  } catch (error) {
-
-    console.error("Login failed after retries:", error);
+  } catch (error) { 
     throw error;
   }
 }

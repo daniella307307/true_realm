@@ -67,20 +67,20 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       const token = await AsyncStorage.getItem("tknToken");
       const hasValidAuth = !!(token && user);
       console.log("[Auth] Checking auth status - Token:", !!token, "User:", !!user);
-      
+
       setAuthenticationStatus(hasValidAuth);
 
       if (token && !user) {
         console.log("[Auth] Token exists but no user - setting loading");
         setIsLoading(true);
       }
-      
+
       if (!token && user) {
         console.log("[Auth] No token but user exists - logging out");
         await mainStore.logout();
         setAuthenticationStatus(false);
       }
-      
+
       if (user?.userstatus === 0) {
         console.log("[Auth] User status is 0 - logging out");
         await mainStore.logout();
@@ -101,11 +101,11 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     mainStore.logout();
     setAuthenticationStatus(false);
     onLogout?.();
-    console.log("🚀 file: useAuth.tsx, fn: logout , line 14");
-    
+    console.log("file: useAuth.tsx, fn: logout , line 14");
+
     // Clear the stored token
     await AsyncStorage.removeItem("tknToken");
-    
+
     // Navigate to login screen
     router.replace("/(user-management)/login");
   };
@@ -118,7 +118,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     onError: (error) => {
       logoutUser();
     },
-  });
+    });
 
   const _updatePasswordAuth = useMutation<
     { message: string },
@@ -186,13 +186,11 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       setIsLoggingIn(true);
       setIsLoading(true);
 
-      // Clean up any existing authentication state first
       await logoutUser();
 
-      // Store login identifier for validation later
       lastLoginIdentifier.current = loginDetails.identifier;
 
-      // Add logging to see login details
+
       console.log(
         "Attempting login with credentials:",
         loginDetails.identifier
@@ -208,35 +206,50 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       });
     },
     onError: (error) => {
-      console.log("🚀 file: useAuth.tsx, fn: onError , line 123", error);
+      const status = error.response?.status;
+      const serverMessage = error.response?.data?.message;
+      const isNetworkError = !error.response;
 
-      // Create a detailed error string for debugging
+      let userFriendlyMessage = "An unknown error occurred. Please try again.";
+
+      if (isNetworkError) {
+        userFriendlyMessage = "Network error. Please check your internet connection.";
+      } else if (status === 400 && serverMessage?.toLowerCase().includes("invalid")) {
+        userFriendlyMessage = "Invalid email or password. Please double-check your credentials.";
+      } else if (status === 401) {
+        userFriendlyMessage = "Unauthorized. Please verify your credentials or contact support.";
+      } else if (status === 500) {
+        userFriendlyMessage = "Server error. Please try again later.";
+      } else if (serverMessage) {
+        userFriendlyMessage = serverMessage;
+      }
+
       const errorDetails = JSON.stringify(
         {
           message: error.message,
           response: error.response?.data,
-          status: error.response?.status,
+          status,
         },
         null,
         2
       );
 
       console.log("Detailed error:", errorDetails);
-      Alert.alert("Login Error", error.message || "Unknown error occurred");
-
       Toast.show({
-        text1: t("Auth.login_failed"),
-        text2: error.message || "Unknown error occurred",
+        text1: "Login Failed",
+        text2: userFriendlyMessage,
         type: "error",
         position: "bottom",
         visibilityTime: 6000,
         autoHide: true,
         topOffset: 30,
       });
+
       setIsLoggingIn(false);
       setIsLoading(false);
       logoutUser();
     },
+
     onSuccess: async (data) => {
       if (data?.token) {
         // Log the exact login response data to see what's coming from the server
@@ -253,7 +266,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
                 existing_code: data?.user?.existing_code,
                 nationalID: data?.user?.nationalID,
                 firstName: data?.user?.firstName,
-                lastName:data?.user?.lastName,
+                lastName: data?.user?.lastName,
                 gender: data?.user?.gender,
                 email: data?.user?.email,
                 dob: data?.user?.dob,
@@ -272,7 +285,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
 
         // First completely clear any existing tokens to prevent collisions
         await AsyncStorage.removeItem("tknToken");
-        await AsyncStorage.setItem("userId",data.user.id.toString());
+        await AsyncStorage.setItem("userId", data.user.id.toString());
         // Now store the new token
         const tokenStoredInCookie = await storeTokenInAsynStorage(data.token);
         if (!tokenStoredInCookie) {
@@ -309,7 +322,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
                 user: {
                   id: profileData.id,
                   firstName: profileData.firstName,
-                  lastName:profileData.lastName,
+                  lastName: profileData.lastName,
                   email: profileData.email,
                   position: profileData.position,
                   is_password_changed: profileData.is_password_changed,
@@ -334,10 +347,10 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
             setIsLoading(false);
 
             console.log("is_password_changed: ", profileData.is_password_changed);
-            
+
             // First call onLogin to handle data sync
             await onLogin?.(profileData);
-            
+
             // Then handle navigation based on password status
             if (profileData.is_password_changed === 0) {
               console.log(t("Auth.password_needs_change"));

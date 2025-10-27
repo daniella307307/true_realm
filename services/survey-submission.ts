@@ -29,6 +29,9 @@ export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
     sync_reason TEXT,
     sync_attempts INTEGER,
     sync_type TEXT,
+    is_modified BOOLEAN,
+    needs_update_sync BOOLEAN,
+    last_modified_at TEXT,
     created_at TEXT,
     updated_at TEXT
   );
@@ -149,6 +152,89 @@ const prepareApiPayload = (submission: SurveySubmission, formId: string) => {
       submitted_at: submission.created_at,
     },
   };
+};
+
+export async function fetchSurveySubmissionsFromRemote(userId: number) {
+  try {
+    const res = await baseInstance.get("/forms");
+    const submissions = Array.isArray(res.data?.data) ? res.data.data : [];
+    
+    const userSubmissions = submissions.filter(
+      (s: any) => s.created_by_user_id === userId || s.form_data?.user_id === userId
+    );
+    
+    console.log(`✅ Fetched ${userSubmissions.length} submissions for user ${userId}`);
+    return userSubmissions;
+  } catch (error) {
+    console.error("❌ Failed to fetch submissions:", error);
+    throw error;
+  }
+}
+
+export const transformApiSurveySubmissions = (apiResponses: any[]) => {
+  return apiResponses.map((response) => {
+    const jsonData = typeof response.json === "string" 
+      ? JSON.parse(response.json) 
+      : response.json;
+
+    const metadataFields = [
+      "table_name", "project_module_id", "source_module_id", "project_id",
+      "survey_id", "post_data", "cohorts", "province", "district", "sector",
+      "cell", "village", "izucode", "family", "province_name", "district_name",
+      "sector_name", "cell_name", "village_name", "izu_name", "familyID",
+      "hh_head_fullname", "enrollment_date"
+    ];
+
+    const answers: Record<string, any> = {};
+    Object.keys(jsonData).forEach((key) => {
+      if (!metadataFields.includes(key)) {
+        answers[key] = jsonData[key];
+      }
+    });
+
+    return {
+      _id: `remote-${response.id}`,
+      id: response.id,
+      answers,
+      form_data: {
+        time_spent_filling_the_form: null,
+        user_id: response.user_id || null,
+        table_name: jsonData.table_name || null,
+        project_module_id: jsonData.project_module_id || response.project_module_id || null,
+        source_module_id: jsonData.source_module_id || response.module_id || null,
+        project_id: jsonData.project_id || response.project_id || null,
+        survey_id: jsonData.survey_id || response.curr_form_id || null,
+        post_data: jsonData.post_data || null,
+        izucode: jsonData.izucode || null,
+        family: jsonData.family || response.families_id || null,
+        form_status: "followup",
+        cohort: jsonData.cohorts || response.cohort || null,
+      },
+      location: {
+        province: jsonData.province || response.province || null,
+        district: jsonData.district || response.district || null,
+        sector: jsonData.sector || response.sector || null,
+        cell: jsonData.cell || response.cell || null,
+        village: jsonData.village || response.village || null,
+      },
+      sync_data: {
+        sync_status: true,
+        sync_reason: "From API",
+        sync_attempts: 1,
+        last_sync_attempt: new Date(response.updated_at || response.created_at).toISOString(),
+        submitted_at: new Date(response.recorded_on || response.created_at).toISOString(),
+        sync_type: SyncType.survey_submissions,
+        created_by_user_id: response.user_id || null,
+      },
+      created_by_user_id: response.user_id,
+      sync_status: 1,
+      sync_reason: "From API",
+      sync_attempts: 1,
+      sync_type: SyncType.survey_submissions,
+      created_at: response.created_at,
+      updated_at: response.updated_at,
+    };
+  });
 };
 
 // ============================================================================
