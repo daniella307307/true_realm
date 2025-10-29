@@ -33,10 +33,10 @@ export default function LoginScreen() {
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [splashHidden, setSplashHidden] = useState(false);
   const [isNetworkAvailable, setIsNetworkAvailable] = useState(true);
-  
+
   // Access app data context for centralized data management
   const { refreshAllData, isRefreshing } = useAppData();
-  
+
   // Get network status
   const { isConnected } = useNetworkStatus();
 
@@ -45,7 +45,7 @@ export default function LoginScreen() {
     const checkNetwork = async () => {
       const networkAvailable = await checkNetworkConnection();
       setIsNetworkAvailable(networkAvailable);
-      
+
       if (!networkAvailable) {
         Toast.show({
           type: "error",
@@ -56,7 +56,7 @@ export default function LoginScreen() {
         });
       }
     };
-    
+
     checkNetwork();
   }, [isConnected]);
 
@@ -72,7 +72,7 @@ export default function LoginScreen() {
         setSplashHidden(true);
       }
     };
-    
+
     hideSplash();
   }, []);
 
@@ -97,10 +97,10 @@ export default function LoginScreen() {
           position: "top",
           autoHide: false,
         });
-        
+
         // Use the centralized data refresh function
         await refreshAllData();
-        
+
         console.log("Data sync completed");
         Toast.hide();
         Toast.show({
@@ -109,7 +109,7 @@ export default function LoginScreen() {
           text2: t("Login.loginSuccess", "Login successful"),
           position: "bottom",
         });
-        
+
         // Navigation is handled in useAuth based on is_password_changed
         // No navigation here to avoid conflicts
       } catch (error) {
@@ -151,7 +151,7 @@ export default function LoginScreen() {
       });
       return;
     }
-    
+
     console.log("Login attempt with:", data.identifier);
     login(data);
   };
@@ -159,7 +159,7 @@ export default function LoginScreen() {
   const changeLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
     setLanguageModalVisible(false);
-    
+
     Toast.show({
       type: "success",
       text1: t("Login.languageChanged"),
@@ -171,7 +171,7 @@ export default function LoginScreen() {
   const retryConnection = async () => {
     const networkAvailable = await checkNetworkConnection();
     setIsNetworkAvailable(networkAvailable);
-    
+
     if (networkAvailable) {
       Toast.show({
         type: "success",
@@ -201,8 +201,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView className="flex-1 justify-center items-center flex-col gap-y-12 p-8 bg-background">
-      <Logo size={100}/> 
-      
+      <Logo size={100}/>
       {/* Show offline warning if network is not available */}
       {!isNetworkAvailable && (
         <View className="bg-red-100 p-4 rounded-lg w-full flex-col items-center justify-between">
@@ -212,7 +211,7 @@ export default function LoginScreen() {
               {t("Login.offline")}
             </Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={retryConnection}
             className="bg-red-600 px-3 py-1 rounded-md"
           >
@@ -222,13 +221,13 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       )}
-      
-      <KeyboardAvoidingView 
-        className="w-full" 
+
+      <KeyboardAvoidingView
+        className="w-full"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
         >
@@ -245,9 +244,8 @@ export default function LoginScreen() {
               }) => (
                 <>
                   <View
-                    className={`flex flex-row h-16 items-center w-full border ${
-                      error ? "border-primary" : "border-border"
-                    } rounded-lg overflow-hidden`}
+                    className={`flex flex-row h-16 items-center w-full border ${error ? "border-primary" : "border-border"
+                      } rounded-lg overflow-hidden`}
                   >
                     <TextInput
                       className="flex-1 px-4"
@@ -282,9 +280,8 @@ export default function LoginScreen() {
               }) => (
                 <>
                   <View
-                    className={`flex flex-row h-16 items-center w-full border ${
-                      error ? "border-primary" : "border-border"
-                    } rounded-lg overflow-hidden`}
+                    className={`flex flex-row h-16 items-center w-full border ${error ? "border-primary" : "border-border"
+                      } rounded-lg overflow-hidden`}
                   >
                     <TextInput
                       className="flex-1 px-4"
@@ -331,15 +328,15 @@ export default function LoginScreen() {
               disabled={isLoggingIn || isRefreshing || !isNetworkAvailable}
             >
               <Text className="text-white font-semibold">
-                {isLoggingIn 
-                  ? t("Login.loggingIn") 
-                  : isRefreshing 
-                    ? t("Login.syncingData") 
+                {isLoggingIn
+                  ? t("Login.loggingIn")
+                  : isRefreshing
+                    ? t("Login.syncingData")
                     : t("Login.login")}
               </Text>
             </Button>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               onPress={() => router.push("/forgot-password")}
               disabled={isLoggingIn || isRefreshing}
             >
@@ -362,6 +359,7 @@ export default function LoginScreen() {
       </KeyboardAvoidingView>
 
       {/* Language Selection Modal */}
+      {/* Language Selection Modal */}
       <Modal
         transparent={true}
         visible={languageModalVisible}
@@ -371,43 +369,63 @@ export default function LoginScreen() {
         <TouchableWithoutFeedback
           onPress={() => setLanguageModalVisible(false)}
         >
-          <View className="flex-1 justify-center items-center bg-black bg-opacity-50" />
-        </TouchableWithoutFeedback>
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <TouchableWithoutFeedback>
+              <View className="mx-4 bg-white p-6 rounded-2xl max-w-md w-full shadow-2xl border border-gray-100">
+                {/* Header */}
+                <View className="mb-6">
+                  <Text className="text-2xl font-bold text-center text-gray-900">
+                    {t("Login.Select Language")}
+                  </Text>
+                  <Text className="text-sm text-gray-500 text-center mt-2">
+                    {t("Login.choose_language")}
+                  </Text>
+                </View>
 
-        <View className="absolute top-1/3 left-4 right-4 bg-white p-6 rounded-lg max-w-md mx-auto shadow-lg">
-          <Text className="text-lg mb-4 text-center font-bold">
-            {t("Login.Select Language")}
-          </Text>
+                {/* Language Options */}
+                <View className="gap-3">
+                  <TouchableOpacity
+                    onPress={() => changeLanguage("en-US")}
+                    className="border-2 border-blue-100 py-4 px-5 rounded-xl active:bg-blue-100 active:border-blue-200 flex-row items-center justify-between"
+                    activeOpacity={0.7}
+                  >
+                    <View className="flex-row items-center">
+                     
+                      <Text className="text-gray-900 text-lg font-semibold">
+                        English
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
 
-          <View className="space-y-4">
-            <TouchableOpacity 
-              onPress={() => changeLanguage("en-US")}
-              className="bg-slate-50 py-3 rounded-lg active:bg-slate-100"
-            >
-              <Text className="text-center text-lg font-semibold">
-                English
-              </Text>
-            </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => changeLanguage("rw-RW")}
+                    className="border-2 border-orange-100 py-4 px-5 rounded-xl active:bg-orange-100 active:border-orange-200 flex-row items-center justify-between"
+                    activeOpacity={0.7}
+                  >
+                    <View className="flex-row items-center">
+                      
+                      <Text className="text-gray-900 text-lg font-semibold">
+                        Kinyarwanda
+                      </Text>
+                    </View>
+                    
+                  </TouchableOpacity>
+                </View>
 
-            <TouchableOpacity
-              onPress={() => changeLanguage("rw-RW")}
-              className="bg-slate-50 py-3 rounded-lg active:bg-slate-100"
-            >
-              <Text className="text-center text-lg font-semibold">
-                Kinyarwanda
-              </Text>
-            </TouchableOpacity>
+                {/* Close Button */}
+                <TouchableOpacity
+                  onPress={() => setLanguageModalVisible(false)}
+                  className="mt-6 py-3 bg-red-100 rounded-xl active:bg-gray-200"
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-center text-gray-700 font-semibold text-base">
+                    {t("Close")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-          
-          <TouchableOpacity
-            onPress={() => setLanguageModalVisible(false)}
-            className="mt-6"
-          >
-            <Text className="text-center text-accent font-semibold">
-              {t("Close")}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
   );

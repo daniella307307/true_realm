@@ -4,6 +4,7 @@ import {
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
+  TouchableOpacity,
   Image,
 } from "react-native";
 import React, { useEffect, useState } from "react";
@@ -13,12 +14,13 @@ import { useAuth } from "~/lib/hooks/useAuth";
 import { useSQLite } from "~/providers/RealContextProvider";
 import { useGetLocationByVillageIdOffline } from "~/services/locations";
 import { User } from "~/types";
+import { TabBarIcon } from "~/components/ui/tabbar-icon";
 
 // Local User type (from SQLite)
 interface LocalUser {
   id: number;
   firstName: string;
-  lastName:string;
+  lastName: string;
   email: string;
   telephone: string;
   user_code: string;
@@ -31,10 +33,12 @@ interface LocalUser {
 const SettingsScreen = () => {
   const { t } = useTranslation();
   const { user: authUser } = useAuth({});
-  const { query,db,create } = useSQLite();
+  const { query, db, create } = useSQLite();
 
   const [user, setUser] = useState<LocalUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { logout } = useAuth({});
   // useEffect(() => {
   //   const saveUser = async()=>{
   //     try{
@@ -48,16 +52,16 @@ const SettingsScreen = () => {
   //       if(existingUsers.length == 0){
   //         // Update existing user
   //         savedUser = await create<User>("Izu",{
-           
+
   //         } as User);
   //       }else{
-          
+
   //       }
   //       setUser(savedUser as LocalUser);
   //       if(loadingUser){
   //         setLoadingUser(false);
   //       }
-       
+
   //     }catch(error){
   //       console.error("Error saving user to SQLite:", error);
   //     }
@@ -111,7 +115,7 @@ const SettingsScreen = () => {
       <Text className="text-gray-600">{label}</Text>
       {isLoading ? (
         <View className="mt-2 p-2 flex items-center justify-center">
-          <ActivityIndicator size="small" color="#4B5563" />
+          <ActivityIndicator size="large" color="#4B5563" />
         </View>
       ) : Array.isArray(value) ? (
         <View className="flex flex-row flex-wrap gap-2 mt-2">
@@ -150,9 +154,9 @@ const SettingsScreen = () => {
         showsVerticalScrollIndicator={false}
         className="bg-white p-4 rounded-lg shadow-md"
       >
-        <Text className="text-lg font-semibold mb-2">
+        {/* <Text className="text-lg font-semibold mb-2">
           {t("SettingsPage.account_details")}
-        </Text>
+        </Text> */}
 
         <View className="items-center justify-center w-full h-40">
           {user?.picture ? (
@@ -167,15 +171,44 @@ const SettingsScreen = () => {
               </Text>
             </View>
           )}
-         
+
         </View>
         <View>
-           <InfoItem
+          <InfoItem
             label={t("SettingsPage.name")}
-            value={user?.firstName +" "+ user?.lastName || ""}
+            value={user?.firstName + " " + user?.lastName || ""}
           />
-        <InfoItem label={t("SettingsPage.email")} value={user?.email || ""} />
+          <InfoItem label={t("SettingsPage.email")} value={user?.email || ""} />
         </View>
+        <TouchableOpacity
+  onPress={() => logout()}
+  className="bg-orange-900 p-5 rounded-2xl border border-orange-200 shadow-sm"
+  
+>
+  <View className="flex-row items-center justify-between">
+    <View className="flex-row items-center flex-1">
+      <View className="w-10 h-10 bg-orange-200/30 rounded-xl items-center justify-center">
+        <TabBarIcon 
+          name="logout" 
+          family="MaterialCommunityIcons" 
+          color="orange" 
+          size={24} 
+        />
+      </View>
+      <Text className="text-orange-900 text-lg font-semibold ml-4">
+        {t("SettingsPage.logout")}
+      </Text>
+    </View>
+    <TabBarIcon 
+      name="chevron-right" 
+      family="MaterialCommunityIcons" 
+      color="orange" 
+      size={20} 
+    />
+  </View>
+</TouchableOpacity>
+
+
         {/* <InfoItem label={t("SettingsPage.phone")} value={user?.telephone || ""} />
         <InfoItem label={t("SettingsPage.user_code")} value={user?.user_code || ""} />
         <InfoItem label={t("SettingsPage.date_of_enrollment")} value={user?.date_enrollment || ""} /> */}

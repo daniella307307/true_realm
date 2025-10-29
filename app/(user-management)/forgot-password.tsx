@@ -170,18 +170,17 @@ export default function ForgotScreen() {
         >
           <View className="flex-1 justify-between items-center flex-col px-8">
             <View className="w-full flex-col items-center justify-start gap-y-8">
-              <Logo size={84}/>
-              {/* <VideoPlayer /> */}
-              <View>
-                <Text className="mb-2 text-base text-center font-semibold text-[#050F2B]">
+              <Logo size={100} className="mt-4"/>
+              <View className="flex-1 gap-y-4">
+                <Text className="mb-4 text-base text-center font-semibold text-[#050F2B]">
                   {t("ForgotPassword.title")}
                 </Text>
-                <Text className="text-[#6E7191] text-xs text-center font-italic">
+                <Text className="text-[#6E7191] text-sm font-light text-center">
                   {t("ForgotPassword.description")}
                 </Text>
               </View>
 
-              <View className="w-full">
+              <View className="w-full mt-4">
                 <View className="mb-4">
                   <Text className="mb-2 text-xs font-medium text-[#050F2B]">
                     {t("ForgotPassword.email")}

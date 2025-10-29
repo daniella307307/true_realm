@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { SplashScreen } from "expo-router";
@@ -21,8 +22,6 @@ import { useProtectedNavigation } from "~/utils/navigation";
 import { router } from "expo-router";
 import { useAppData } from "~/providers/AppProvider";
 import { useSQLite } from "~/providers/RealContextProvider";
-import { useGetAllSurveySubmissions } from "~/lib/hooks/useGetAllSurveySubmissions";
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,173 +31,108 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { useGetAllForms } from "~/services/project";
-
-
 
 function HomeScreen(): React.JSX.Element {
   const [splashHidden, setSplashHidden] = useState(false);
   const [showSyncWarning, setShowSyncWarning] = useState(false);
   const [unsyncedCount, setUnsyncedCount] = useState(0);
+  const [syncedCount, setSyncedCount] = useState(0);
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  
   const { user } = useAuth({
     onLogout: () => {
       router.push("/(user-management)/login");
     },
   });
+  
   const { getAll } = useSQLite();
   const { t } = useTranslation();
   const { navigateTo } = useProtectedNavigation();
-  const { isDataLoaded, isRefreshing, refreshAllData , formsCount, submissionsCount } = useAppData();
+  const { isDataLoaded, isRefreshing, refreshAllData, formsCount, submissionsCount } = useAppData();
 
-
-  // Get the screen width dynamically
   const { width } = useWindowDimensions();
-
-  // Check if the screen width is less than 375px for list view
   const isSmallScreen = width < 375;
 
-  // Calculate item width for grid view (only used when width >= 375)
-  const itemWidth = (width - 48) / 2; // 2 columns for normal phones with padding
-
-  // Project IDs for navigation
   const HOUSEHOLD_ENROLLMENT_ID = 5;
   const IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID = 8;
   const IZU_AT_VILLAGE_DEMOGRAPHICS_ID = 6;
   const IZU_CELL_TELEPHONE_SUPERVISION_ID = 11;
   const IZU_SECTOR_TELEPHONE_SUPERVISION_ID = 12;
-
   const IZU_MONITORING_ID = 10;
 
   // Check for unsynced data
   const checkUnsyncedData = async () => {
     if (!user?.id) return;
 
-    // const unsyncedFamilies = await getAll('Families', 'sync_status == false AND created_by_user_id == ?', [user.id]);
-    // const unsyncedFamiliesCount = unsyncedFamilies.length;
-    // const unsyncedFollowups = await getAll('FollowUps','sync_status == false AND created_by_user_id == ?', [user.id]);
-    // const unsyncedFollowupsCount = unsyncedFollowups.length;
-
-    // const unsyncedResponses = await getAll('MonitoringResponses', 'sync_status == false AND created_by_user_id == ?', [user.id]);
-    // const unsyncedResponsesCount = unsyncedResponses.length;
-
-    const unsyncedSubmissions = await getAll('SurveySubmissions', 'sync_status == false AND created_by_user_id == ?', [user.id]);
-    const unsyncedSubmissionsCount = unsyncedSubmissions.length;
-
-    // const unsyncedIzus = await getAll('Users', 'sync_status == false AND created_by_user_id == ?', [user.id]);
-    // const unsyncedIzusCount = unsyncedIzus.length;
-
-    const total = unsyncedSubmissionsCount;
-    setUnsyncedCount(total);
-    setShowSyncWarning(total > 0);
+    const unsyncedSubmissions = await getAll(
+      'SurveySubmissions',
+      'sync_status == false AND created_by_user_id == ?',
+      [user.id]
+    );
+    const syncedSubmissions = await getAll(
+      'SurveySubmissions',
+      'sync_status == true AND created_by_user_id == ?',
+      [user.id]
+    );
+    
+    const unsyncedCount = unsyncedSubmissions.length;
+    const syncedCount = syncedSubmissions.length;
+    
+    setUnsyncedCount(unsyncedCount);
+    setSyncedCount(syncedCount);
+    setShowSyncWarning(unsyncedCount > 0);
   };
+  
 
   // Dynamic links based on user role
   const getActiveLinks = () => {
     const baseLinks = [
-      // {
-      //   icon: <TabBarIcon name="family-restroom" family="MaterialIcons" />,
-      //   title: t("HomePage.families"),
-      //   route: "/(families)/",
-      // },
-      // {
-      //   icon: <TabBarIcon name="home" family="Entypo" />,
-      //   title: t("HomePage.household_enrollment"),
-      //   route: `/(projects)/(mods)/(projects)/${HOUSEHOLD_ENROLLMENT_ID}`,
-      // },
-
-      // {
-      //   icon: <TabBarIcon name="chart-simple" family="FontAwesome6" />,
-      //   title: t("HomePage.statistics"),
-      //   route: "/(statistics)/",
-      // },
-      // {
-      //   icon: <TabBarIcon name="account-star" family="MaterialCommunityIcons" />,
-      //   title: t("HomePage.IZU_Monitoring"),
-      //   route: `/(monitoring)/`,
-      // },
-      // {
-      //   icon: <TabBarIcon name="video" family="Entypo" />,
-      //   title: t("HomePage.videos"),
-      //   route: "/(videos)/video",
-      // },
-
       {
         icon: <TabBarIcon name="project" family="Octicons" />,
         title: t("HomePage.projects"),
         route: "/(projects)/project",
+        color: "bg-blue-50",
+        borderColor: "border-blue-200",
+        iconColor: "#00227c",
       },
       {
-        icon: (
-          <TabBarIcon name="calendar-month" family="MaterialCommunityIcons" />
-        ),
+        icon: <TabBarIcon name="calendar-month" family="MaterialCommunityIcons" />,
         title: t("HomePage.history"),
         route: "/(history)/realmDbViewer",
+        color: "bg-orange-50",
+        borderColor: "border-orange-200",
+        iconColor: "#ec7414",
       },
-      // {
-      //   icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
-      //   title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
-      //   route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
-      // },
-      // {
-      //   icon: <TabBarIcon name="chat" family="Entypo" />,
-      //   title: t("HomePage.community"),
-      //   route: "/(community)/community",
-      // },
       {
         icon: <TabBarIcon name="settings" family="Ionicons" />,
         title: t("HomePage.settings"),
         route: "/(settings)/",
+        color: "bg-blue-50",
+        borderColor: "border-blue-200",
+        iconColor: "#001a5e",
       },
     ];
 
-    // Add Sector Coordinator Demographics for users with position 13
-    // if (user?.position === 13) {
-    // baseLinks.push({
-    //   icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
-    //   title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
-    //   route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
-    // });
-    // }
-
-    // Add Village Demographics for users with position 7
-    // if (user?.position === 7) {
-    //   baseLinks.push({
-    //     icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
-    //     title: t("HomePage.IZU_At_Village_Demographics"),
-    //     route: `/(projects)/(mods)/(projects)/${IZU_AT_VILLAGE_DEMOGRAPHICS_ID}`,
-    //   });
-    // }
-
-    // Add IZU Sector Telephone Supervision for users with position 13
-    // if (user?.position === 14) {
-    //   baseLinks.push({
-    //     icon: <TabBarIcon name="phone" family="FontAwesome6" />,
-    //     title: t("HomePage.IZU_Sector_Telephone_Supervision"),
-    //     route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_TELEPHONE_SUPERVISION_ID}`,
-    //   });
-    // }
-
-    // Add IZU Cell Telephone Supervision for users with position 7 0791774091
-    // if (user?.position === 13) {
-    // baseLinks.push({
-    //   icon: <TabBarIcon name="phone" family="FontAwesome6" />,
-    //   title: t("HomePage.IZU_Cell_Telephone_Supervision"),
-    //   route: `/(projects)/(mods)/(projects)/${IZU_CELL_TELEPHONE_SUPERVISION_ID}`,
-    // });
-    // }
     return baseLinks;
   };
 
   const activeLinks = getActiveLinks();
 
   useEffect(() => {
-    // When data is loaded for the first time, hide the splash screen
     const hideSplash = async () => {
       if (isDataLoaded && !splashHidden) {
         try {
           await SplashScreen.hideAsync();
           setSplashHidden(true);
+          
+          // Fade in animation
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }).start();
+          
           console.log("App loaded - Home screen displayed with data");
         } catch (error) {
           console.error("Error hiding splash screen:", error);
@@ -209,7 +143,6 @@ function HomeScreen(): React.JSX.Element {
     hideSplash();
   }, [isDataLoaded, splashHidden]);
 
-  // Check for unsynced data when the component mounts and when data is refreshed
   useEffect(() => {
     if (isDataLoaded && !isRefreshing) {
       (async () => {
@@ -218,12 +151,10 @@ function HomeScreen(): React.JSX.Element {
     }
   }, [isDataLoaded, isRefreshing, user?.id]);
 
-  // On demand refresh when user pulls to refresh
   const onRefresh = React.useCallback(() => {
     refreshAllData();
   }, [refreshAllData]);
 
-  // Handle navigation with PIN protection when needed
   const handleNavigation = (route: string) => {
     if (!isDataLoaded || isRefreshing) {
       Alert.alert(t("HomePage.wait"), t("HomePage.data_refreshing"), [
@@ -234,52 +165,17 @@ function HomeScreen(): React.JSX.Element {
     navigateTo(route);
   };
 
-  // Render list view for small screens
-  const renderListView = () => (
-    <View className="px-4">
-      {activeLinks.map((link, index) => (
-        <TouchableOpacity
-          onPress={() => handleNavigation(link.route)}
-          key={index}
-          className={`flex flex-row items-center bg-[#A23A910D] border border-[#0000001A] mb-3 py-4 px-4 rounded-xl ${!isDataLoaded || isRefreshing ? "opacity-50" : ""
-            }`}
-          disabled={!isDataLoaded || isRefreshing}
-        >
-          <View className="mr-4">{link.icon}</View>
-          <Text className="text-sm font-semibold text-gray-600 flex-1">
-            {link.title}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
-  // Render grid view for normal screens
-  const renderGridView = () => (
-    <View className="flex-row flex-wrap justify-between px-4">
-      {activeLinks.map((link, index) => (
-        <TouchableOpacity
-          onPress={() => handleNavigation(link.route)}
-          key={index}
-          style={{ width: itemWidth }}
-          className={`flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl ${!isDataLoaded || isRefreshing ? "opacity-50" : ""
-            }`}
-          disabled={!isDataLoaded || isRefreshing}
-        >
-          <>{link.icon}</>
-          <Text className="text-sm font-semibold flex-1 w-full flex-row flex text-center text-gray-600 px-1 pt-4">
-            {link.title}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
+  // Calculate sync percentage
+  const totalSubmissions = syncedCount + unsyncedCount;
+  const syncPercentage = totalSubmissions > 0 
+    ? Math.round((syncedCount / totalSubmissions) * 100) 
+    : 0;
 
   // Show loading screen when data is being loaded initially
   if (!isDataLoaded && !splashHidden) {
     return (
       <SafeAreaView className="flex-1 bg-white justify-center items-center">
-        <ActivityIndicator size="large" color="#A23A91" />
+        <ActivityIndicator size="large" color="#00227c" />
         <Text className="mt-4 text-base text-gray-600">
           {t("HomePage.loading_data")}
         </Text>
@@ -288,124 +184,244 @@ function HomeScreen(): React.JSX.Element {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <HeaderNavigation
-        showLeft={false}
-        showRight={true}
-      // showLogo={true}
-      // logoSize={32}
-      />
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation showLeft={false} showRight={true} />
+      
       <ScrollView
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh}
+            tintColor="#00227c"
+            colors={["#00227c", "#ec7414"]}
+          />
         }
+        showsVerticalScrollIndicator={false}
       >
-        <View className="p-6">
-          <Text className="text-2xl font-bold">
-            {t("HomePage.title") + user?.lastName}
-          </Text>
-          {/* <Text className="text-lg text-[#71717A]">
-            {t("HomePage.description")}
-          </Text> */}
-        </View>
-        {/* Show loading indicator if data is being refreshed */}
-        {isRefreshing && (
-          <View className="p-4">
-            <Text className="text-center text-gray-500">
-              {t("HomePage.loading_data")}
+        <Animated.View style={{ opacity: fadeAnim }}>
+          {/* Welcome Section */}
+          <View className="px-6 pt-4 pb-6">
+            <Text className="text-3xl font-bold text-gray-900">
+              {t("HomePage.title")} {user?.firstName}!
             </Text>
           </View>
-        )}
 
-        {/* Sync Warning */}
-        {showSyncWarning && !isRefreshing && (
-          <TouchableOpacity
-            onPress={() => setShowSyncModal(true)}
-            className="mx-4 mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200"
-          >
-            <Text className="text-yellow-800 font-medium">
-              {t("HomePage.sync_warning")}
+          {/* Sync Warning Banner */}
+          {showSyncWarning && !isRefreshing && (
+            <TouchableOpacity
+              onPress={() => setShowSyncModal(true)}
+              className="mx-6 mb-6 p-4 bg-orange-50 rounded-2xl border-2 border-orange-200 flex-row items-center"
+              activeOpacity={0.7}
+            >
+              <View className="w-10 h-10 bg-orange-500 rounded-full items-center justify-center mr-3">
+                <TabBarIcon name="cloud-upload" family="Ionicons" color="white" size={20} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-orange-900 font-bold text-base">
+                  {unsyncedCount} {t("History.pending")}
+                </Text>
+                <Text className="text-orange-700 text-sm">
+                  {t("HomePage.tap_to_sync")}
+                </Text>
+              </View>
+              <TabBarIcon name="chevron-right" family="Entypo" color="#ea580c" size={20} />
+            </TouchableOpacity>
+          )}
+
+          {/* Stats Overview */}
+          {isDataLoaded && !isRefreshing && (
+            <View className="px-6 mb-6">
+              {/* Primary Stats Row */}
+              <View className="flex-row gap-3 mb-3">
+                <TouchableOpacity
+                  onPress={() => handleNavigation("/(projects)/project")}
+                  className="flex-1 bg-primary/10 p-5 rounded-2xl border border-blue-200 shadow-sm"
+                  activeOpacity={0.8}
+                >
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View className="w-12 h-12 bg-primary/20 rounded-xl items-center justify-center">
+                      <TabBarIcon name="file-document-multiple" family="MaterialCommunityIcons" color="white" size={22} />
+                    </View>
+                    <View className="bg-white/20 px-3 py-1 rounded-full">
+                      <Text className="text-gray-600  text-xs font-semibold">
+                        {t("HomePage.active_forms")}
+                      </Text>
+                    </View>
+                  </View>
+                 
+                  <Text className="text-gray-600 text-4xl text-center font-bold">
+                    {formsCount}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleNavigation("/(history)/realmDbViewer")}
+                  className="flex-1 bg-orange-200/10 p-5 rounded-2xl border border-orange-200 shadow-sm"
+                  activeOpacity={0.8}
+                >
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View className="w-12 h-12 bg-orange-200/30 rounded-xl items-center justify-center">
+                      <TabBarIcon name="chart-bar" family="MaterialCommunityIcons" color="white" size={24} />
+                    </View>
+                    <View className="bg-white/20 px-3 py-1 rounded-full">
+                      <Text className="text-gray-600 text-xs font-semibold">
+                        {t("HistoryPage.title")}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text className="text-gray-600 text-4xl text-center font-bold">
+                    {submissionsCount}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Sync Status Card */}
+              <View className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                <View className="flex-1 justify-between  gap-y-4 mb-4">
+                  <View>
+                    <Text className="text-gray-900 text-lg font-bold">
+                      {t("HomePage.sync_status")}
+                    </Text>
+                    <Text className="text-gray-500 text-sm mt-1">
+                      {syncPercentage}% {t("History.synced")}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleNavigation("/(settings)/sync")}
+                    className="bg-blue-50 px-4 py-2 rounded-xl flex-row items-center"
+                    activeOpacity={0.7}
+                  >
+                    <TabBarIcon name="sync" family="MaterialCommunityIcons" color="#00227c" size={16} />
+                    <Text className="text-[#00227c] font-semibold ml-2 text-sm">
+                      {t("HomePage.sync_now")}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Progress Bar */}
+                <View className="bg-gray-100 h-3 rounded-full overflow-hidden mb-4">
+                  <View 
+                    className="bg-gradient-to-r from-[#00227c] to-[#001a5e] h-full rounded-full"
+                    style={{ width: `${syncPercentage}%` }}
+                  />
+                </View>
+
+                {/* Sync Details */}
+                <View className="flex-row justify-between">
+                  <View className="flex-1 flex-row items-center">
+                    <View className="w-8 h-8 bg-green-100 rounded-lg items-center justify-center mr-2">
+                      <TabBarIcon name="check-circle" family="MaterialCommunityIcons" color="#16a34a" size={16} />
+                    </View>
+                    <View>
+                      <Text className="text-gray-500 text-xs">
+                        {t("HomePage.synced")}
+                      </Text>
+                      <Text className="text-gray-900 font-bold text-base">
+                        {syncedCount}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="w-px bg-gray-200 mx-3" />
+
+                  <View className="flex-1 flex-row items-center">
+                    <View className="w-8 h-8 bg-orange-100 rounded-lg items-center justify-center mr-2">
+                      <TabBarIcon name="clock-outline" family="MaterialCommunityIcons" color="#ea580c" size={16} />
+                    </View>
+                    <View>
+                      <Text className="text-gray-500 text-xs">
+                        {t("History.pending")}
+                      </Text>
+                      <Text className="text-gray-900 font-bold text-base">
+                        {unsyncedCount}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Quick Actions */}
+          <View className="px-6 mb-6">
+            <Text className="text-gray-900 text-xl font-bold mb-4">
+              {t("HomePage.quick_actions")}
             </Text>
-          </TouchableOpacity>
-        )}
-
-
-
-        {/* {isDataLoaded ? renderGridView() : (
-          <View className="flex-1 justify-center items-center p-8">
-            <ActivityIndicator size="large" color="#A23A91" />
-            <Text className="text-center mt-4 text-gray-600">
-              {t("HomePage.loading_data")}
-            </Text>
-          </View>
-        )} */}
-        {isDataLoaded && !isRefreshing && (
-          <View className="mx-4 mb-10 flex-row gap-3">
-            <View className="flex-1 bg-purple-50 p-2 rounded-xl border border-purple-100">
-               <TabBarIcon name="project" family="Octicons" />
-               <Text className="text-2xl text-purple-700 mt-2 font-bold">
-                {t("HomePage.available_forms") || "Available Forms"}
-              </Text>
-              <Text className="text-2xl font-bold text-purple-900 mt-2">
-                {formsCount}
-              </Text>
             
+            <View className="gap-3">
+              {activeLinks.map((link, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleNavigation(link.route)}
+                  className={`flex-row items-center justify-between ${link.color} p-4 rounded-2xl border ${link.borderColor} ${
+                    !isDataLoaded || isRefreshing ? "opacity-50" : ""
+                  }`}
+                  disabled={!isDataLoaded || isRefreshing}
+                  activeOpacity={0.7}
+                >
+                  <View className="flex-row items-center flex-1">
+                    <View 
+                      className="w-12 h-12 rounded-xl items-center justify-center mr-4"
+                      style={{ backgroundColor: link.iconColor + '15' }}
+                    >
+                      {React.cloneElement(link.icon, { 
+                        color: link.iconColor,
+                        size: 24 
+                      })}
+                    </View>
+                    <Text className="text-gray-900 text-base font-semibold flex-1">
+                      {link.title}
+                    </Text>
+                  </View>
+                  <TabBarIcon name="chevron-right" family="Entypo" color="#9ca3af" size={20} />
+                </TouchableOpacity>
+              ))}
             </View>
+          </View>
 
-            <View className="flex-1 gap-y-4 bg-blue-50 p-2 rounded-xl border border-blue-100">
-              <Text className="text-sm text-blue-700 mt-2">
-                {t("HomePage.total_submissions") || "Total Submissions"}
+          {/* Loading State */}
+          {!isDataLoaded && (
+            <View className="flex-1 justify-center items-center p-8">
+              <ActivityIndicator size="large" color="#00227c" />
+              <Text className="text-center mt-4 text-gray-600">
+                {t("HomePage.loading_data")}
               </Text>
-              <Text className="text-2xl font-bold text-blue-900 mt-2">
-                {submissionsCount}
-              </Text>
-              
             </View>
-          </View>
-        )}
-        {/* Conditionally render list or grid view based on screen width */}
-        {isDataLoaded ? (
-          renderListView()
-        ) : (
-          <View className="flex-1 justify-center items-center p-8">
-            <ActivityIndicator size="large" color="#A23A91" />
-            <Text className="text-center mt-4 text-gray-600">
-              {t("HomePage.loading_data")}
-            </Text>
-          </View>
-        )}
+          )}
+        </Animated.View>
       </ScrollView>
-
-      {/* Blur overlay when refreshing */}
-      {isRefreshing && (
-        <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
-      )}
-
       {/* Sync Warning Modal */}
       <AlertDialog open={showSyncModal} onOpenChange={setShowSyncModal}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("HomePage.sync_required")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("HomePage.sync_description")}
+            <View className="w-16 h-16 bg-orange-100 rounded-full items-center justify-center mb-4 self-center">
+              <TabBarIcon name="cloud-upload" family="Ionicons" color="#ea580c" size={32} />
+            </View>
+            <AlertDialogTitle className="text-center text-xl">
+              {t("HomePage.sync_required")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-gray-600">
+              {t("HomePage.sync_description") || 
+                `You have ${unsyncedCount} unsynced submissions. Sync now to backup your data.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col gap-2">
             <AlertDialogAction
               onPress={() => {
                 setShowSyncModal(false);
                 navigateTo("/(settings)/sync");
               }}
+              className="bg-[#00227c] w-full py-4 rounded-xl"
             >
-              <Text className="text-white">
-                {t("HomePage.go_to_sync")}
+              <Text className="text-white font-semibold">
+                {t("HomePage.sync_now")}
               </Text>
             </AlertDialogAction>
             <AlertDialogAction
-              className="bg-gray-100"
+              className="bg-gray-100 w-full py-4 rounded-xl"
               onPress={() => setShowSyncModal(false)}
             >
-              <Text className="text-gray-900">
+              <Text className="text-blue-900 font-semibold">
                 {t("HomePage.cancel")}
               </Text>
             </AlertDialogAction>
@@ -414,6 +430,6 @@ function HomeScreen(): React.JSX.Element {
       </AlertDialog>
     </SafeAreaView>
   );
-};
+}
 
 export default HomeScreen;

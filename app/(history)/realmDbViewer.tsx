@@ -440,8 +440,8 @@ const RealmDatabaseViewer = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            colors={["#A23A91"]}
-            tintColor="#A23A91"
+            colors={["#00227c"]}
+            tintColor="#00227c"
           />
         }
       >
@@ -481,8 +481,8 @@ const RealmDatabaseViewer = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            colors={["#A23A91"]}
-            tintColor="#A23A91"
+            colors={["#00227c"]}
+            tintColor="#00227c"
           />
         }
       >
@@ -623,7 +623,7 @@ const RealmDatabaseViewer = () => {
   if (isLoading && submissions.length === 0) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#A23A91" />
+        <ActivityIndicator size="large" color="#00227c" />
         <Text style={styles.loadingText}>
           {t('CommonPage.loading') || 'Loading...'}
         </Text>
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   refreshButton: {
-    backgroundColor: "#A23A91",
+    backgroundColor: "#00227c",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     minWidth: 120,
     alignItems: "center",
-    shadowColor: "#A23A91",
+    shadowColor: "#00227c",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
   summaryCount: {
     fontSize: 48,
     fontWeight: "700",
-    color: "#A23A91",
+    color: "#00227c",
     marginVertical: 8,
   },
   summarySubtext: {
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   projectBadge: {
-    backgroundColor: "#A23A91",
+    backgroundColor: "#00227c",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -965,7 +965,7 @@ const styles = StyleSheet.create({
   },
   moreText: {
     fontSize: 11,
-    color: "#A23A91",
+    color: "#00227c",
     fontStyle: "italic",
     marginTop: 2,
   },
@@ -1173,14 +1173,14 @@ localBadgeText: {
   fontWeight: "600",
 },
 editButton: {
-    backgroundColor: "#A23A91",
+    backgroundColor: "#00227c",
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 12,
     marginTop: 16,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#A23A91",
+    shadowColor: "#00227c",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,

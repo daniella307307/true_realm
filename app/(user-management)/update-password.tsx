@@ -134,7 +134,7 @@ export default function UpdatePasswordScreen() {
         showLeft={false}
         showRight={false}
         showLogo={true}
-        logoSize={32}
+        logoSize={78}
       />
       <View>
         <Text className="text-2xl font-bold text-center">

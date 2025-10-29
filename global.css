@@ -5,60 +5,57 @@
 @layer base {
   :root {
     --background: 0 0% 100%; /* White */
-    --foreground: 0 0% 5%; /* Black */
+    --foreground: 0 0% 5%; /* black */
     --card: 0 0% 100%; /* White */
-    --card-foreground: 0 0% 5%; /* Black */
+    --card-foreground: 0 0% 100%; /* white */
     --popover: 0 0% 100%; /* White */
-    --popover-foreground: 0 0% 5%; /* Black */
-    --primary: #00227c; /* #   */
-    --primary-foreground: #001a5e; /* Light variation close to #A23A91 */
-    --secondary: #001a5e; /* Lightened accent of primary */
-    --secondary-foreground: #eff6ff; /* Darkened accent for contrast */
-    --muted: 0 0% 93%; /* Light gray for muted content */
-    --muted-foreground: 0 0% 55%; /* Medium gray */
-    --accent: 312 40% 45%; /* Slightly different shade of #A23A91 */
+    --popover-foreground: 0 0% 100%; /* Black */
+    --primary: 218 100% 24%; /* #00227c - Primary Blue */
+    --primary-foreground: 210 100% 97%; /* #eff6ff - Light Blue */
+    --secondary: 218 100% 18%; /* #001a5e - Accent Blue */
+    --secondary-foreground: 210 100% 97%; /* #eff6ff - Light Blue */
+    --muted: 210 40% 96%; /* Light blue tinted gray */
+    --muted-foreground: 218 15% 45%; /* Blue-tinted medium gray */
+    --accent: 27 88% 50%; /* #ec7414 - Primary Orange */
     --accent-foreground: 0 0% 98%; /* White for readability */
     --destructive: 0 72% 51%; /* Red for destructive actions */
     --destructive-foreground: 0 0% 98%; /* White */
-    --border: 0 0% 48%; /* #797979 */
-    --input: 0 0% 0% / 0%; /* Transparent blending with background */
-    --ring: 312 54% 40%; /* Matches primary (#A23A91) */
-    --primary-blue: #00227c;
-    --primary-orange: #ec7414;
-    --accent-blue: #001a5e;
-    --accent-orange: #ff8c2e;
-    --light-blue: #eff6ff;
-    --light-orange: #fff7ed;
+    --border: 218 20% 70%; /* Blue-tinted border */
+    --input: 0 0% 0% / 0%; /* Transparent */
+    --ring: 218 100% 24%; /* Matches primary blue */
+    --primary-blue: 218 100% 24%; /* #00227c */
+    --primary-orange: 27 88% 50%; /* #ec7414 */
+    --accent-blue: 218 100% 18%; /* #001a5e */
+    --accent-orange: 29 100% 59%; /* #ff8c2e */
+    --light-blue: 210 100% 97%; /* #eff6ff */
+    --light-orange: 36 100% 97%; /* #fff7ed */
   }
 
   .dark:root {
-    --primary-blue: #00227c;
-    --primary-orange: #ec7414;
-    --accent-blue: #001a5e;
-    --accent-orange: #ff8c2e;
-    --light-blue: #eff6ff;
-    --light-orange: #fff7ed;
-    --background: 0 0% 100%; /* White */
-    --foreground: 0 0% 5%; /* Black */
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 0 0% 5%; /* Black */
-    --popover: 0 0% 100%; /* White */
-    --popover-foreground: 0 0% 5%; /* Black */
-    --primary: #00227c; /* #A23A91 */
-    --primary-foreground:  #eff6ff; /* Light variation close to #A23A91 */
-    --secondary: #001a5e; /* Lightened accent of primary */
-    --secondary-foreground: #fff7ed; /* Darkened accent for contrast */
-    --muted: 0 0% 93%; /* Light gray for muted content */
-    --muted-foreground: 0 0% 55%; /* Medium gray */
-    --accent: 312 40% 45%; /* Slightly different shade of #A23A91 */
-    --accent-foreground: 0 0% 98%; /* White for readability */
-    --destructive: 0 72% 51%; /* Red for destructive actions */
+    --primary-blue: 218 100% 24%; /* #00227c */
+    --primary-orange: 27 88% 50%; /* #ec7414 */
+    --accent-blue: 218 100% 18%; /* #001a5e */
+    --accent-orange: 29 100% 59%; /* #ff8c2e */
+    --light-blue: 210 100% 97%; /* #eff6ff */
+    --light-orange: 36 100% 97%; /* #fff7ed */
+    --background: 218 25% 8%; /* Dark blue-tinted background */
+    --foreground: 0 0% 98%; /* Near white */
+    --card: 218 20% 12%; /* Dark blue card */
+    --card-foreground: 0 0% 98%; /* Near white */
+    --popover: 218 20% 12%; /* Dark blue popover */
+    --popover-foreground: 0 0% 98%; /* Near white */
+    --primary: 218 100% 24%; /* #00227c - Primary Blue */
+    --primary-foreground: 210 100% 97%; /* #eff6ff - Light Blue */
+    --secondary: 218 100% 18%; /* #001a5e - Accent Blue */
+    --secondary-foreground: 36 100% 97%; /* #fff7ed - Light Orange */
+    --muted: 218 20% 20%; /* Dark blue-tinted muted */
+    --muted-foreground: 218 10% 65%; /* Light blue-tinted gray */
+    --accent: 27 88% 50%; /* #ec7414 - Primary Orange */
+    --accent-foreground: 0 0% 98%; /* White */
+    --destructive: 0 72% 51%; /* Red */
     --destructive-foreground: 0 0% 98%; /* White */
-    --border: 0 0% 48%; /* #797979 */
-    --input: 0 0% 0% / 0%; /* Transparent blending with background */
-    --ring: 312 54% 40%; /* Matches primary (#A23A91) */
+    --border: 218 20% 25%; /* Dark blue border */
+    --input: 0 0% 0% / 0%; /* Transparent */
+    --ring: 27 88% 50%; /* Orange ring for dark mode */
   }
 }
-
-
-

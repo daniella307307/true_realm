@@ -88,7 +88,7 @@ const FormsScreen = () => {
         onPress={() => router.push(
           `/(projects)/(mods)/(projects)/(form-element)/${item.id}`
         )}
-        className="p-4 border border-gray-200 mb-4 rounded-xl"
+        className="p-4 border border-blue-100 mb-4 rounded-xl"
       >
         <View className="flex flex-row pr-4 items-center justify-between">
           <View className="flex flex-row items-center flex-1">
@@ -96,7 +96,7 @@ const FormsScreen = () => {
               name="description"
               family="MaterialIcons"
               size={24}
-              color="#71717A"
+              color="#00227c"
             />
             <View className="ml-4 flex-1">
               <Text className="text-lg font-semibold">{item.title}</Text>
@@ -112,7 +112,7 @@ const FormsScreen = () => {
               <TabBarIcon
                 name="schedule"
                 family="MaterialIcons"
-                size={16}
+                size={18}
                 color="#71717A"
               />
               <Text className="text-xs text-gray-500 ml-1">

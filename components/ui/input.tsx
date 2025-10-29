@@ -12,7 +12,7 @@ const CustomInput = ({ control, name, placeholder, secureTextEntry = false, keyb
         <View className="mb-4">
           <TextInput
             className={`w-full px-4 py-5 bg-background border rounded-lg ${
-              error ? "border-primary" : "border-gray-200"
+              error ? "border-[#00227c]" : "border-[#00227c]"
             }`}
             placeholder={placeholder}
             secureTextEntry={secureTextEntry}

@@ -29,7 +29,7 @@
       "icon": "./assets/images/logo-header.png",
       "bundleIdentifier": "com.afriqollect.mobile",
       "splash": {
-        "image": "./assets/images/logo-icon.png",
+        "image": "./assets/images/logo-header.png",
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       }

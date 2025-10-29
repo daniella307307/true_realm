@@ -370,7 +370,7 @@ const handleSyncNow = async () => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#A23A91" />
+        <ActivityIndicator size="large" color="#00227c" />
         <Text style={styles.loadingText}>
           {t("CommonPage.loading") || "Loading..."}
         </Text>
@@ -632,8 +632,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   switchOptionActive: {
-    borderColor: "#A23A91",
-    backgroundColor: "#A23A91",
+    borderColor: "#00227c",
+    backgroundColor: "#00227c",
   },
   switchOptionText: {
     fontSize: 14,
@@ -675,12 +675,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   buttonPrimary: {
-    backgroundColor: "#A23A91",
+    backgroundColor: "#00227c",
   },
   buttonSecondary: {
     backgroundColor: "white",
     borderWidth: 2,
-    borderColor: "#A23A91",
+    borderColor: "#00227c",
   },
   buttonDisabled: {
     backgroundColor: "#cccccc",
@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   buttonSecondaryText: {
-    color: "#A23A91",
+    color: "#00227c",
     fontSize: 16,
     fontWeight: "600",
   },

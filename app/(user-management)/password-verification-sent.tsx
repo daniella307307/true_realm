@@ -157,7 +157,7 @@ const PasswordVerificationScreen: React.FC = () => {
     });
   };
   return (
-    <SafeAreaView className="flex-1 h-screen bg-white">
+    <SafeAreaView className="flex-1  h-screen bg-white">
       <HeaderNavigation
         title={t("PasswordVerification.headerTitle", "Verify Code")}
         showLeft={true}

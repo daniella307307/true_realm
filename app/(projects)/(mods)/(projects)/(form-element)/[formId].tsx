@@ -548,9 +548,9 @@ function ProjectFormElementScreen(): React.JSX.Element {
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
           :root {
-            --primary-color: #A23A91;
-            --primary-light: #c864b5;
-            --primary-dark: #7d2c6d;
+            --primary-color: #00227c;
+            --primary-light: #1d4097ff;
+            --primary-dark: #001a5e;
           }
           body { 
             margin: 0; 
@@ -871,7 +871,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
             </Text>
             <View className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <Text className="text-sm text-blue-800 text-center">
-                💡 Tip: Connect to the internet and reload this form to download required assets for offline use.
+                Tip: Connect to the internet and reload this form to download required assets for offline use.
               </Text>
             </View>
           </View>
@@ -883,7 +883,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
   if (isLoading || !assetsReady || !networkStatusInitialized.current) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#A23A91" />
+        <ActivityIndicator size="large" color="#00227c" />
         <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text>
         {!isOnline && (
           <Text className="mt-2 text-sm text-amber-600">
@@ -932,18 +932,18 @@ function ProjectFormElementScreen(): React.JSX.Element {
       />
       {loading && (
         <View className="absolute inset-0 items-center justify-center bg-white bg-opacity-95">
-          <ActivityIndicator size="large" color="#A23A91" />
-          <Text className="mt-3 text-gray-600 font-medium">Loading form...</Text>
-          <Text className="mt-2 text-sm text-gray-500">
+          <ActivityIndicator size="large" color="#00227c" />
+          <Text className="mt-3 text-gray-600 font-medium">{t("FormElementPage.loading_form")}</Text>
+          {/* <Text className="mt-2 text-sm text-gray-500">
             {isOnline ? "Loading from server..." : "Loading from cache..."}
-          </Text>
+          </Text> */}
         </View>
       )}
       {isSubmitting && (
-        <View className="absolute inset-0 items-center justify-center bg-black bg-opacity-50">
+        <View className="absolute inset-0 items-center justify-center bg-background bg-opacity-50">
           <View className="bg-white p-6 rounded-lg items-center">
-            <ActivityIndicator size="large" color="#A23A91" />
-            <Text className="mt-3 text-gray-700 font-medium">Saving submission...</Text>
+            <ActivityIndicator size="large" color="#00227c" />
+            <Text className="mt-3 text-gray-700 font-medium">{t("FormElementPage.save")}</Text>
           </View>
         </View>
       )}
