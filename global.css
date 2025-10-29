@@ -10,10 +10,10 @@
     --card-foreground: 0 0% 5%; /* Black */
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 0 0% 5%; /* Black */
-    --primary: 312 54% 40%; /* #   */
-    --primary-foreground: 312 54% 95%; /* Light variation close to #A23A91 */
-    --secondary: 312 54% 95%; /* Lightened accent of primary */
-    --secondary-foreground: 312 54% 40%; /* Darkened accent for contrast */
+    --primary: #00227c; /* #   */
+    --primary-foreground: #001a5e; /* Light variation close to #A23A91 */
+    --secondary: #001a5e; /* Lightened accent of primary */
+    --secondary-foreground: #eff6ff; /* Darkened accent for contrast */
     --muted: 0 0% 93%; /* Light gray for muted content */
     --muted-foreground: 0 0% 55%; /* Medium gray */
     --accent: 312 40% 45%; /* Slightly different shade of #A23A91 */
@@ -23,19 +23,31 @@
     --border: 0 0% 48%; /* #797979 */
     --input: 0 0% 0% / 0%; /* Transparent blending with background */
     --ring: 312 54% 40%; /* Matches primary (#A23A91) */
+    --primary-blue: #00227c;
+    --primary-orange: #ec7414;
+    --accent-blue: #001a5e;
+    --accent-orange: #ff8c2e;
+    --light-blue: #eff6ff;
+    --light-orange: #fff7ed;
   }
 
   .dark:root {
+    --primary-blue: #00227c;
+    --primary-orange: #ec7414;
+    --accent-blue: #001a5e;
+    --accent-orange: #ff8c2e;
+    --light-blue: #eff6ff;
+    --light-orange: #fff7ed;
     --background: 0 0% 100%; /* White */
     --foreground: 0 0% 5%; /* Black */
     --card: 0 0% 100%; /* White */
     --card-foreground: 0 0% 5%; /* Black */
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 0 0% 5%; /* Black */
-    --primary: 312 54% 40%; /* #A23A91 */
-    --primary-foreground: 312 54% 95%; /* Light variation close to #A23A91 */
-    --secondary: 312 54% 95%; /* Lightened accent of primary */
-    --secondary-foreground: 312 54% 40%; /* Darkened accent for contrast */
+    --primary: #00227c; /* #A23A91 */
+    --primary-foreground:  #eff6ff; /* Light variation close to #A23A91 */
+    --secondary: #001a5e; /* Lightened accent of primary */
+    --secondary-foreground: #fff7ed; /* Darkened accent for contrast */
     --muted: 0 0% 93%; /* Light gray for muted content */
     --muted-foreground: 0 0% 55%; /* Medium gray */
     --accent: 312 40% 45%; /* Slightly different shade of #A23A91 */
@@ -47,3 +59,6 @@
     --ring: 312 54% 40%; /* Matches primary (#A23A91) */
   }
 }
+
+
+

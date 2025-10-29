@@ -341,8 +341,9 @@ function HomeScreen(): React.JSX.Element {
         )} */}
         {isDataLoaded && !isRefreshing && (
           <View className="mx-4 mb-10 flex-row gap-3">
-            <View className="flex-1 gap-y-4 bg-purple-50 p-2 rounded-xl border border-purple-100">
-               <Text className="text-sm text-purple-700 mt-2">
+            <View className="flex-1 bg-purple-50 p-2 rounded-xl border border-purple-100">
+               <TabBarIcon name="project" family="Octicons" />
+               <Text className="text-2xl text-purple-700 mt-2 font-bold">
                 {t("HomePage.available_forms") || "Available Forms"}
               </Text>
               <Text className="text-2xl font-bold text-purple-900 mt-2">

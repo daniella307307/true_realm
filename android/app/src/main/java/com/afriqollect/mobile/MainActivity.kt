@@ -1,4 +1,4 @@
-package com.sugiramuryango.mobile
+package com.afriqollect.mobile
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

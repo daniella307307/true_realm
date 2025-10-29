@@ -1,4 +1,4 @@
-package com.sugiramuryango.mobile
+package com.afriqollect.mobile
 
 import android.app.Application
 import android.content.res.Configuration

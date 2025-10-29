@@ -1,6 +1,6 @@
 import React from "react";
-import { View, Image, StyleSheet } from "react-native";
-
+import { View, StyleSheet } from "react-native";
+import { Image } from "expo-image";
 import { Text } from "./ui/text";
 
 const Logo = ({
@@ -19,13 +19,13 @@ const Logo = ({
       } ${className}`}
     >
       <Image
-        source={require("../assets/images/logo-header.jpg")}
+        source={require("../assets/images/logo-header.png")}
         style={
           horizontal
             ? [styles.horizontalLogo, { height: size * 1.5 }] // slightly taller for banners
             : [styles.squareLogo, { width: size, height: size }]
         }
-        resizeMode={horizontal ? "cover" : "contain"}
+        contentFit={horizontal ? "cover" : "contain"}
       />
 
       {/* Optional text under vertical logo */}
