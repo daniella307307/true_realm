@@ -19,12 +19,16 @@ type AppDataContextType = {
   isDataLoaded: boolean;
   isRefreshing: boolean;
   refreshAllData: () => Promise<void>;
+  formsCount: number;
+  submissionsCount: number;
 };
 
 const AppDataContext = createContext<AppDataContextType>({
   isDataLoaded: false,
   isRefreshing: false,
   refreshAllData: async () => {},
+  formsCount: 0,
+  submissionsCount: 0,
 });
 
 export const useAppData = () => useContext(AppDataContext);
@@ -36,6 +40,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [formsCount, setFormsCount] = useState(0);
+const [submissionsCount, setSubmissionsCount] = useState(0);
   const { isLoggedIn, user } = useAuth({});
   const { isReady: isSQLiteReady } = useSQLite();
   const izusHook = useGetIzus(false);
@@ -174,6 +180,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsDataLoaded(true);
     } finally {
       setIsRefreshing(false);
+      setFormsCount(projectsHook.forms.length || 0);
+      setSubmissionsCount(surveySubmissionsHook.submissions.length || 0);
     }
   }, [
     isRefreshing,
@@ -191,6 +199,8 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     surveySubmissionsHook,
     // monitoringResponsesHook,
     // followUpsHook,
+    formsCount,
+    submissionsCount,
   ]);
 
   // Initialize data when user logs in AND SQLite is ready
@@ -226,11 +236,13 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     initializeData();
   }, [isLoggedIn, isSQLiteReady, hasInitialized, isRefreshing, refreshAllData]);
-
+  
   const contextValue: AppDataContextType = {
     isDataLoaded,
     isRefreshing,
     refreshAllData,
+    formsCount,
+    submissionsCount
   };
 
   return (

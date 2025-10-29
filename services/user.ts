@@ -53,26 +53,26 @@ export async function userLogin(values: ILoginDetails) {
 }
 
 // FIXED: Removed "use" prefix - this is NOT a Hook, it's a regular async function
-// export async function getCurrentLoggedInProfile(id:string) {
-//   console.log("Fetching current user profile...");
-//   try {
-//     // Use fetchWithRetry for better reliability
-//     const res = await fetchWithRetry(() => baseInstance.get<User>(`/users/${id}`));
+export async function getCurrentLoggedInProfile(id:string) {
+  console.log("Fetching current user profile...");
+  try {
+    // Use fetchWithRetry for better reliability
+    const res = await fetchWithRetry(() => baseInstance.get<User>(`/users/${id}`));
     
-//     console.log("Profile API headers:", JSON.stringify(res.config?.headers, null, 2));
-//     console.log("Profile API response status:", res.status);
-//     console.log("Profile user email from API:", res.data.email);
-//     return res.data;
-//   } catch (error) {
-//     console.error("Error fetching profile:", error);
-//     throw error;
-//   }
-// }
+    console.log("Profile API headers:", JSON.stringify(res.config?.headers, null, 2));
+    console.log("Profile API response status:", res.status);
+    console.log("Profile user email from API:", res.data.email);
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    throw error;
+  }
+}
 
-export async function requestPasswordReset(id: string) {
+export async function requestPasswordReset(email: string) {
   try {
     const res = await fetchWithRetry(() => 
-      baseInstance.post<IResponse<{}>>(`/users/${id}/reset-password`)
+      baseInstance.post<IResponse<{}>>(`/auth/forgot-password`,{ email })
     );
     console.log(res.data);
     return res.data;
@@ -85,24 +85,26 @@ export async function requestPasswordReset(id: string) {
 export async function verifyPasswordReset(email: string, verification_code: string) {
   try {
     const res = await fetchWithRetry(() =>
-      baseInstance.post<ILoginResponse>(`/user/verify-reset-code`, {
+      baseInstance.post<ILoginResponse>(`/auth/verify-reset-code`, {
         email,
-        verification_code,
+        passcode: verification_code,
       })
     );
+    //console.log(res.data);
     return res.data;
+    
   } catch (error) {
     console.error("Verification code validation failed:", error);
     throw error;
   }
 }
 
-export async function updatePassword(password: string, email: string): Promise<{ message: string }> {
+export async function updatePassword(newPassword: string, email: string,verifyToken:string): Promise<{ message: string }> {
   try {
     const res = await fetchWithRetry(() => 
-      baseInstance.post<IResponse<{ message: string }>>(`/user/update-password`, { 
-        password,
-        email 
+      baseInstance.post<IResponse<{ message: string }>>(`/auth/reset-password`, { 
+        newPassword,
+        verifyToken, 
       })
     );
     console.log("Password update response:", res.data);

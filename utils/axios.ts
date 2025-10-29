@@ -33,6 +33,9 @@ const publicRoutes = [
   "/auth/login",
   "/user/reset-password",
   "/user/verify-reset-code",
+  "/auth/reset-password",
+  "/auth/verify-reset-code",
+  "/auth/forgot-password",
 ];
 
 const baseInstance = axios.create({

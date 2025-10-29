@@ -37,7 +37,8 @@ type UpdatePasswordForm = z.infer<typeof updatePasswordSchema>;
 
 export default function UpdatePasswordScreen() {
   const { t } = useTranslation();
-  const { identifier } = useLocalSearchParams<{ identifier: string }>();
+  const { email } = useLocalSearchParams<{ email: string }>();
+  const { verifyToken } = useLocalSearchParams<{ verifyToken: string }>();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [isNetworkAvailable, setIsNetworkAvailable] = useState(true);
@@ -45,7 +46,7 @@ export default function UpdatePasswordScreen() {
 
   // Redirect if no identifier is provided
   useEffect(() => {
-    if (!identifier) {
+    if (!email || !verifyToken ) {
       Toast.show({
         type: "error",
         text1: t("UpdatePassword.error"),
@@ -55,7 +56,7 @@ export default function UpdatePasswordScreen() {
       });
       router.replace("/(user-management)/login");
     }
-  }, [identifier]);
+  }, [email]);
 
   // Check network on component mount
   useEffect(() => {
@@ -113,7 +114,7 @@ export default function UpdatePasswordScreen() {
       return;
     }
 
-    if (!identifier) {
+    if (!email || !verifyToken) {
       Toast.show({
         type: "error",
         text1: t("UpdatePassword.error"),
@@ -124,7 +125,7 @@ export default function UpdatePasswordScreen() {
       return;
     }
 
-    updatePasswordAuth({ password: data.password, identifier });
+    updatePasswordAuth({ newPassword: data.password, identifier:email,verifyToken:verifyToken  });
   };
 
   return (

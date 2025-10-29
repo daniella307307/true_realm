@@ -21,6 +21,7 @@ import { useProtectedNavigation } from "~/utils/navigation";
 import { router } from "expo-router";
 import { useAppData } from "~/providers/AppProvider";
 import { useSQLite } from "~/providers/RealContextProvider";
+import { useGetAllSurveySubmissions } from "~/lib/hooks/useGetAllSurveySubmissions";
 
 import {
   AlertDialog,
@@ -31,10 +32,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import { useGetAllForms } from "~/services/project";
 
 
 
-function HomeScreen(): React.JSX.Element{
+function HomeScreen(): React.JSX.Element {
   const [splashHidden, setSplashHidden] = useState(false);
   const [showSyncWarning, setShowSyncWarning] = useState(false);
   const [unsyncedCount, setUnsyncedCount] = useState(0);
@@ -47,7 +49,8 @@ function HomeScreen(): React.JSX.Element{
   const { getAll } = useSQLite();
   const { t } = useTranslation();
   const { navigateTo } = useProtectedNavigation();
-  const { isDataLoaded, isRefreshing, refreshAllData } = useAppData();
+  const { isDataLoaded, isRefreshing, refreshAllData , formsCount, submissionsCount } = useAppData();
+
 
   // Get the screen width dynamically
   const { width } = useWindowDimensions();
@@ -103,7 +106,7 @@ function HomeScreen(): React.JSX.Element{
       //   title: t("HomePage.household_enrollment"),
       //   route: `/(projects)/(mods)/(projects)/${HOUSEHOLD_ENROLLMENT_ID}`,
       // },
-     
+
       // {
       //   icon: <TabBarIcon name="chart-simple" family="FontAwesome6" />,
       //   title: t("HomePage.statistics"),
@@ -119,13 +122,13 @@ function HomeScreen(): React.JSX.Element{
       //   title: t("HomePage.videos"),
       //   route: "/(videos)/video",
       // },
-      
+
       {
         icon: <TabBarIcon name="project" family="Octicons" />,
         title: t("HomePage.projects"),
         route: "/(projects)/project",
       },
-       {
+      {
         icon: (
           <TabBarIcon name="calendar-month" family="MaterialCommunityIcons" />
         ),
@@ -151,11 +154,11 @@ function HomeScreen(): React.JSX.Element{
 
     // Add Sector Coordinator Demographics for users with position 13
     // if (user?.position === 13) {
-      // baseLinks.push({
-      //   icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
-      //   title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
-      //   route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
-      // });
+    // baseLinks.push({
+    //   icon: <TabBarIcon name="account-group" family="MaterialCommunityIcons" />,
+    //   title: t("HomePage.IZU_Sector_Coordinator_Demographics"),
+    //   route: `/(projects)/(mods)/(projects)/${IZU_SECTOR_COORDINATOR_DEMOGRAPHICS_ID}`,
+    // });
     // }
 
     // Add Village Demographics for users with position 7
@@ -178,11 +181,11 @@ function HomeScreen(): React.JSX.Element{
 
     // Add IZU Cell Telephone Supervision for users with position 7 0791774091
     // if (user?.position === 13) {
-      // baseLinks.push({
-      //   icon: <TabBarIcon name="phone" family="FontAwesome6" />,
-      //   title: t("HomePage.IZU_Cell_Telephone_Supervision"),
-      //   route: `/(projects)/(mods)/(projects)/${IZU_CELL_TELEPHONE_SUPERVISION_ID}`,
-      // });
+    // baseLinks.push({
+    //   icon: <TabBarIcon name="phone" family="FontAwesome6" />,
+    //   title: t("HomePage.IZU_Cell_Telephone_Supervision"),
+    //   route: `/(projects)/(mods)/(projects)/${IZU_CELL_TELEPHONE_SUPERVISION_ID}`,
+    // });
     // }
     return baseLinks;
   };
@@ -238,9 +241,8 @@ function HomeScreen(): React.JSX.Element{
         <TouchableOpacity
           onPress={() => handleNavigation(link.route)}
           key={index}
-          className={`flex flex-row items-center bg-[#A23A910D] border border-[#0000001A] mb-3 py-4 px-4 rounded-xl ${
-            !isDataLoaded || isRefreshing ? "opacity-50" : ""
-          }`}
+          className={`flex flex-row items-center bg-[#A23A910D] border border-[#0000001A] mb-3 py-4 px-4 rounded-xl ${!isDataLoaded || isRefreshing ? "opacity-50" : ""
+            }`}
           disabled={!isDataLoaded || isRefreshing}
         >
           <View className="mr-4">{link.icon}</View>
@@ -260,9 +262,8 @@ function HomeScreen(): React.JSX.Element{
           onPress={() => handleNavigation(link.route)}
           key={index}
           style={{ width: itemWidth }}
-          className={`flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl ${
-            !isDataLoaded || isRefreshing ? "opacity-50" : ""
-          }`}
+          className={`flex flex-col bg-[#A23A910D] border border-[#0000001A] items-center mb-4 py-6 rounded-xl ${!isDataLoaded || isRefreshing ? "opacity-50" : ""
+            }`}
           disabled={!isDataLoaded || isRefreshing}
         >
           <>{link.icon}</>
@@ -291,8 +292,8 @@ function HomeScreen(): React.JSX.Element{
       <HeaderNavigation
         showLeft={false}
         showRight={true}
-        // showLogo={true}
-        // logoSize={32}
+      // showLogo={true}
+      // logoSize={32}
       />
       <ScrollView
         refreshControl={
@@ -328,10 +329,9 @@ function HomeScreen(): React.JSX.Element{
           </TouchableOpacity>
         )}
 
-        {/* Conditionally render list or grid view based on screen width */}
-        {/* {isDataLoaded ? (
-          isSmallScreen ? renderListView() : renderGridView()
-        ) : (
+
+
+        {/* {isDataLoaded ? renderGridView() : (
           <View className="flex-1 justify-center items-center p-8">
             <ActivityIndicator size="large" color="#A23A91" />
             <Text className="text-center mt-4 text-gray-600">
@@ -339,8 +339,33 @@ function HomeScreen(): React.JSX.Element{
             </Text>
           </View>
         )} */}
+        {isDataLoaded && !isRefreshing && (
+          <View className="mx-4 mb-10 flex-row gap-3">
+            <View className="flex-1 gap-y-4 bg-purple-50 p-2 rounded-xl border border-purple-100">
+               <Text className="text-sm text-purple-700 mt-2">
+                {t("HomePage.available_forms") || "Available Forms"}
+              </Text>
+              <Text className="text-2xl font-bold text-purple-900 mt-2">
+                {formsCount}
+              </Text>
+            
+            </View>
 
-         {isDataLoaded ? renderGridView() : (
+            <View className="flex-1 gap-y-4 bg-blue-50 p-2 rounded-xl border border-blue-100">
+              <Text className="text-sm text-blue-700 mt-2">
+                {t("HomePage.total_submissions") || "Total Submissions"}
+              </Text>
+              <Text className="text-2xl font-bold text-blue-900 mt-2">
+                {submissionsCount}
+              </Text>
+              
+            </View>
+          </View>
+        )}
+        {/* Conditionally render list or grid view based on screen width */}
+        {isDataLoaded ? (
+          renderListView()
+        ) : (
           <View className="flex-1 justify-center items-center p-8">
             <ActivityIndicator size="large" color="#A23A91" />
             <Text className="text-center mt-4 text-gray-600">

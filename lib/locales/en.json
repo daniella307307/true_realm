@@ -107,6 +107,8 @@
   "HomePage": {
     "title": "Hello, ",
     "wait": "Please wait",
+    "available_forms":"Forms",
+    "total_submissions":"Total submissions",
     "data_refreshing": "Data is refreshing",
     "ok": "OK",
     "description": "How can we help you today",
@@ -633,6 +635,7 @@
     "family": "Family",
     "offline_mode":"Offline Mode",
     "retry":"Ongera ugerageze",
+    "error_occurred":"An error occured",
     "synced":"Synced",
     "project":"Form",
     "error_occured":"An error occurred",

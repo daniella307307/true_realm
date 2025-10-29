@@ -166,7 +166,7 @@ export async function fetchSurveySubmissionsFromRemote(userId: number) {
     console.log(`✅ Fetched ${userSubmissions.length} submissions for user ${userId}`);
     return userSubmissions;
   } catch (error) {
-    console.error("❌ Failed to fetch submissions:", error);
+    console.error("Failed to fetch submissions:", error);
     throw error;
   }
 }
@@ -471,7 +471,7 @@ export const syncPendingSubmissions = async (
   console.log("Starting sync of pending submissions...");
   
   try {
-    const isConnected = await isOnline();
+    const isConnected =isOnline();
     if (!isConnected) {
       console.log("Offline - skipping sync");
       if (t) {

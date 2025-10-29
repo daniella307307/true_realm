@@ -39,7 +39,7 @@
         "foregroundImage": "./assets/images/africollectLogo.jpg",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.sugiramuryango.mobile",
+      "package": "com.afriqollect.mobile",
       "splash": {
         "image": "./assets/images/afri-splash.png",
         "resizeMode": "contain",

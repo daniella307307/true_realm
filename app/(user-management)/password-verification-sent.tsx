@@ -14,14 +14,14 @@ import { useTranslation } from "react-i18next";
 import HeaderNavigation from "~/components/ui/header";
 import { useMutation } from "@tanstack/react-query";
 import {
-  // getCurrentLoggedInProfile,
+  getCurrentLoggedInProfile,
   verifyPasswordReset,
 } from "~/services/user";
 import { storeTokenInAsynStorage, useAuth } from "~/lib/hooks/useAuth";
 import { setAuthenticationStatus } from "~/utils/axios";
 import { useMainStore } from "~/lib/store/main";
 
-const CELL_COUNT = 4;
+const CELL_COUNT = 6;
 
 const maskEmail = (email: string | undefined | string[]): string => {
   if (typeof email !== "string" || !email) {
@@ -64,40 +64,43 @@ const PasswordVerificationScreen: React.FC = () => {
     mutationFn: ({ identifier, code }: { identifier: string; code: string }) =>
       verifyPasswordReset(identifier, code),
     onSuccess: async (data) => {
-      if (data?.token) {
+      if (data?.verifyToken) {
         Toast.show({
           text1: "Loading essential data...",
           type: "success",
         });
-        const tokenStoredInCookie = await storeTokenInAsynStorage(data.token);
-        if (!tokenStoredInCookie) throw new Error("Auth Token was not stored.");
+        // const tokenStoredInCookie = await storeTokenInAsynStorage(data.token);
+        // if (!tokenStoredInCookie) throw new Error("Auth Token was not stored.");
 
-        setAuthenticationStatus(true);
-        console.log("Logged in user id:",authUser.id)
+        // setAuthenticationStatus(true);
+        // console.log("Logged in user id:",authUser.id)
         // const profileData = await getCurrentLoggedInProfile(authUser.id.toString());
         // if (!profileData) {
         //   Toast.show({ text1: "Profile fetch failed", type: "error" });
         //   setAuthenticationStatus(false);
         //   return;
         // }
-        const didStoreUserInfo = mainStore.login({ userAccount: data?.user });
-        if (didStoreUserInfo) {
-          Toast.show({
-            text1: "Login successful",
-            type: "success",
-            position: "bottom",
-            visibilityTime: 3000,
-            autoHide: true,
-            topOffset: 30,
-          });
-          setIsLoggingIn(false);
-          setLoading(false);
-        }
-        router.push("/(home)/home")
+        // const didStoreUserInfo = mainStore.login({ userAccount: data?.user });
+        // if (didStoreUserInfo) {
+        //   Toast.show({
+        //     text1: "Login successful",
+        //     type: "success",
+        //     position: "bottom",
+        //     visibilityTime: 3000,
+        //     autoHide: true,
+        //     topOffset: 30,
+        //   });
+        //   setIsLoggingIn(false);
+        //   setLoading(false);
+        // }
+         router.push({
+          pathname: "/(user-management)/update-password",
+          params: { verifyToken: data?.verifyToken, email: email },
+        });
       }
     },
     onError: (error) => {
-      console.log("🚀 file: useAuth.tsx, fn: onError , line 123", error);
+      console.log(" file: useAuth.tsx, fn: onError , line 123", error);
 
       // Create a detailed error string for debugging
       const errorDetails = JSON.stringify(
@@ -135,7 +138,7 @@ const PasswordVerificationScreen: React.FC = () => {
       setError(
         t(
           "PasswordVerification.invalidCodeLength",
-          "Please enter a 4-digit code."
+          "Please enter a 6-digit code."
         )
       );
       return;
@@ -150,7 +153,7 @@ const PasswordVerificationScreen: React.FC = () => {
 
     verificationMutation.mutate({
       identifier: email,
-      code,
+      code:code.trim(),
     });
   };
   return (
@@ -170,7 +173,7 @@ const PasswordVerificationScreen: React.FC = () => {
         <Text className="font-quicksandMedium text-slate-600 mb-6">
           {t(
             "PasswordVerification.description",
-            "Enter the 4-digit code sent to {email}",
+            "Enter the 6-digit code sent to {email}",
             { email: maskEmail(email) }
           )}
         </Text>

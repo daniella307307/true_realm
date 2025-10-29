@@ -78,10 +78,10 @@ export async function fetchFormsFromRemote(): Promise<IExistingForm[]> {
       }
     }
     
-    if (!res) {
-      console.error('[fetchFormsFromRemote] All endpoints failed');
-      return [];
-    }
+    // if (!res) {
+    //   console.error('[fetchFormsFromRemote] All endpoints failed');
+    //   return [];
+    // }
     
     console.log('[fetchFormsFromRemote] Response status:', res.status);
     console.log('[fetchFormsFromRemote] Response headers:', res.headers);
@@ -390,3 +390,5 @@ export function useGetFormsByFilter(
     refresh,
   };
 }
+
+

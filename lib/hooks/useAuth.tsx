@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import {
   updatePassword,
-  // getCurrentLoggedInProfile,
+  getCurrentLoggedInProfile,
   userLogin,
   userLogout,
 } from "~/services/user";
@@ -123,16 +123,17 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const _updatePasswordAuth = useMutation<
     { message: string },
     AxiosError<IResponseError>,
-    { password: string; identifier: string }
+    { newPassword: string; identifier: string,verifyToken:string }
   >({
     mutationFn: async ({
-      password,
+      newPassword,
       identifier,
+      verifyToken,
     }): Promise<{ message: string }> => {
-      const result = await updatePassword(password, identifier);
+      const result = await updatePassword(newPassword, identifier,verifyToken);
       return result;
     },
-    onMutate: async ({ password }) => {
+    onMutate: async ({ newPassword }) => {
       setIsUpdatingPassword(true);
       Toast.show({
         text1: t("Auth.updating_password"),
