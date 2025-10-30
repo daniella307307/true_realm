@@ -109,37 +109,7 @@ const cleanObject = (obj: Record<string, any>): Record<string, any> => {
   );
 };
 
-export const parseSQLiteRow = (row: any): SurveySubmission => {
-  return {
-    ...row,
-    data: typeof row.answers === 'string' ? JSON.parse(row.answers) : row.data,
-    form_data: typeof row.form_data === 'string' ? JSON.parse(row.form_data) : row.form_data,
-    location: typeof row.location === 'string' ? JSON.parse(row.location) : row.location,
-    sync_data: typeof row.sync_data === 'string' ? JSON.parse(row.sync_data) : row.sync_data,
-    is_modified: Boolean(row.is_modified),
-    needs_update_sync: Boolean(row.needs_update_sync),
-  };
-};
 
-const toSQLiteRow = (submission: SurveySubmission): Record<string, any> => {
-  return {
-    _id: submission._id,
-    id: submission.id,
-    answers: JSON.stringify(submission.data),
-    form_data: JSON.stringify(submission.form_data),
-    location: JSON.stringify(submission.location),
-    sync_data: submission.sync_data ? JSON.stringify(submission.sync_data) : null,
-    created_by_user_id: submission.created_by_user_id,
-    sync_status: submission.sync_status ? 1 : 0,
-    sync_reason: submission.sync_reason,
-    sync_attempts: submission.sync_attempts,
-    created_at: submission.created_at,
-    updated_at: submission.updated_at,
-    is_modified: submission.is_modified ? 1 : 0,
-    needs_update_sync: submission.needs_update_sync ? 1 : 0,
-    last_modified_at: submission.last_modified_at || null,
-  };
-};
 
 const prepareApiPayload = (submission: SurveySubmission, formId: string) => {
   return {
@@ -154,23 +124,211 @@ const prepareApiPayload = (submission: SurveySubmission, formId: string) => {
   };
 };
 
-export async function fetchSurveySubmissionsFromRemote(userId: number) {
+/**
+ * Fetch submissions from API and transform to local SQLite format
+ * Maps the 'data' field to 'answers' column properly
+ */
+export const fetchSurveySubmissionsFromRemote = async (userId?: string): Promise<any[]> => {
   try {
-    const res = await baseInstance.get("/forms");
-    const submissions = Array.isArray(res.data?.data) ? res.data.data : [];
+    console.log("Fetching survey submissions from remote API...");
+    const res = await baseInstance.get("/submissions/filter");
     
-    const userSubmissions = submissions.filter(
-      (s: any) => s.created_by_user_id === userId || s.form_data?.user_id === userId
-    );
-    
-    console.log(`✅ Fetched ${userSubmissions.length} submissions for user ${userId}`);
-    return userSubmissions;
-  } catch (error) {
-    console.error("Failed to fetch submissions:", error);
-    throw error;
-  }
-}
+    const submissions = Array.isArray(res.data?.data?.submissions) 
+      ? res.data.data.submissions 
+      : [];
+   
+    console.log(`Received ${submissions.length} submissions from API`);
 
+    // Optional: filter by userId if provided
+    const filteredSubmissions = userId
+      ? submissions.filter((sub: any) => sub.submitter?._id === userId)
+      : submissions;
+
+    console.log(`Filtered to ${filteredSubmissions.length} submissions for user ${userId}`);
+
+    // Transform submissions into SQLite row format (not SurveySubmission format)
+    // This ensures the column names match the database schema
+    const transformed = filteredSubmissions.map((sub: any) => {
+      const data = sub.data ?? {};
+      const form = sub.form ?? {};
+      const submitter = sub.submitter ?? {};
+
+      const formData = {
+        survey_id: form._id ?? null,
+        user_id: submitter._id ?? null,
+        table_name: form.title ?? null,
+        project_module_id: null,
+        source_module_id: null,
+        project_id: null,
+        post_data: null,
+        izucode: null,
+        family: null,
+        form_status: sub.status ?? "submitted",
+        cohorts: null,
+      };
+
+      const syncData = {
+        sync_status: true,
+        sync_reason: "From API",
+        sync_attempts: 1,
+        last_sync_attempt: new Date(sub.updatedAt ?? sub.createdAt).toISOString(),
+        submitted_at: new Date(sub.createdAt ?? Date.now()).toISOString(),
+        sync_type: "survey_submissions",
+        created_by_user_id: submitter._id ?? null,
+      };
+
+      // Return SQLite row format with correct column names
+      return {
+        _id: `remote-${sub._id}`,
+        id: sub._id,
+        answers: JSON.stringify(data), // ✅ Use 'answers' not 'data'
+        form_data: JSON.stringify(formData),
+        location: JSON.stringify({}),
+        sync_data: JSON.stringify(syncData),
+        created_by_user_id: submitter._id ?? null,
+        sync_status: 1,
+        sync_reason: "From API",
+        sync_attempts: 1,
+        created_at: sub.createdAt ?? new Date().toISOString(),
+        updated_at: sub.updatedAt ?? new Date().toISOString(),
+        is_modified: 0,
+        needs_update_sync: 0,
+        last_modified_at: null,
+        // Add other columns that might be in your schema
+        table_name: null,
+        name: null,
+        name_kin: null,
+        slug: null,
+        json2: null,
+        post_data: null,
+        loads: null,
+        time_spent: null,
+        user_id: null,
+        is_primary: 0,
+        project_module_id: null,
+        source_module_id: null,
+        project_id: null,
+        survey_status: null,
+        fetch_data: null,
+        prev_id: null,
+        order_list: null,
+        survey_id: null,
+        sync_type: "survey_submissions",
+      };
+    });
+
+    console.log(`Transformed ${transformed.length} submissions`);
+    return transformed;
+  } catch (error) {
+    console.error("Failed to fetch and transform submissions:", error);
+    return [];
+  }
+};
+
+/**
+ * Updated toSQLiteRow that properly maps data to answers column
+ */
+export const toSQLiteRow = (submission: SurveySubmission): Record<string, any> => {
+  const safeStringify = (value: any): string => {
+    if (value === null || value === undefined) {
+      return JSON.stringify({});
+    }
+    if (typeof value === 'string') {
+      try {
+        return JSON.stringify(JSON.parse(value));
+      } catch {
+        return JSON.stringify({});
+      }
+    }
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return JSON.stringify({});
+  };
+
+  return {
+    _id: submission._id,
+    id: submission.id,
+    answers: safeStringify(submission.data), // ✅ Map data to answers
+    form_data: safeStringify(submission.form_data),
+    location: safeStringify(submission.location),
+    sync_data: safeStringify(submission.sync_data),
+    created_by_user_id: submission.created_by_user_id,
+    sync_status: submission.sync_status ? 1 : 0,
+    sync_reason: submission.sync_reason || "",
+    sync_attempts: submission.sync_attempts || 0,
+    created_at: submission.created_at || new Date().toISOString(),
+    updated_at: submission.updated_at || new Date().toISOString(),
+    is_modified: submission.is_modified ? 1 : 0,
+    needs_update_sync: submission.needs_update_sync ? 1 : 0,
+    last_modified_at: submission.last_modified_at || null,
+    // Add other columns with null defaults
+    table_name: null,
+    name: null,
+    name_kin: null,
+    slug: null,
+    json2: null,
+    post_data: null,
+    loads: null,
+    time_spent: null,
+    user_id: null,
+    is_primary: 0,
+    project_module_id: null,
+    source_module_id: null,
+    project_id: null,
+    survey_status: null,
+    fetch_data: null,
+    prev_id: null,
+    order_list: null,
+    survey_id: null,
+    sync_type: submission.sync_data?.sync_type || "survey_submissions",
+  };
+};
+
+/**
+ * Updated parseSQLiteRow - maps answers column back to data field
+ */
+export const parseSQLiteRow = (row: any): SurveySubmission => {
+  const safeParse = (value: any) => {
+    if (value === null || value === undefined) {
+      return {};
+    }
+    
+    if (typeof value === 'object') {
+      return value;
+    }
+    
+    if (typeof value === 'string') {
+      if (value.trim() === '') {
+        return {};
+      }
+      
+      try {
+        return JSON.parse(value);
+      } catch (err) {
+        console.warn("Failed to parse JSON string:", value.substring(0, 50) + "...");
+        return {};
+      }
+    }
+    
+    return {};
+  };
+
+  return {
+    ...row,
+    data: safeParse(row.answers), // ✅ Map answers to data
+    form_data: safeParse(row.form_data),
+    location: safeParse(row.location),
+    sync_data: safeParse(row.sync_data),
+    is_modified: Boolean(row.is_modified),
+    needs_update_sync: Boolean(row.needs_update_sync),
+  };
+};
+
+/**
+ * Transform API responses to SQLite row format (not SurveySubmission format)
+ * This ensures column names match the database schema
+ */
 export const transformApiSurveySubmissions = (apiResponses: any[]) => {
   return apiResponses.map((response) => {
     const jsonData = typeof response.json === "string" 
@@ -185,57 +343,88 @@ export const transformApiSurveySubmissions = (apiResponses: any[]) => {
       "hh_head_fullname", "enrollment_date"
     ];
 
-    const answers: Record<string, any> = {};
+    const answersData: Record<string, any> = {};
     Object.keys(jsonData).forEach((key) => {
       if (!metadataFields.includes(key)) {
-        answers[key] = jsonData[key];
+        answersData[key] = jsonData[key];
       }
     });
 
+    const formData = {
+      time_spent_filling_the_form: null,
+      user_id: response.user_id || null,
+      table_name: jsonData.table_name || null,
+      project_module_id: jsonData.project_module_id || response.project_module_id || null,
+      source_module_id: jsonData.source_module_id || response.module_id || null,
+      project_id: jsonData.project_id || response.project_id || null,
+      survey_id: jsonData.survey_id || response.curr_form_id || null,
+      post_data: jsonData.post_data || null,
+      izucode: jsonData.izucode || null,
+      family: jsonData.family || response.families_id || null,
+      form_status: "followup",
+      cohort: jsonData.cohorts || response.cohort || null,
+    };
+
+    const locationData = {
+      province: jsonData.province || response.province || null,
+      district: jsonData.district || response.district || null,
+      sector: jsonData.sector || response.sector || null,
+      cell: jsonData.cell || response.cell || null,
+      village: jsonData.village || response.village || null,
+    };
+
+    const syncData = {
+      sync_status: true,
+      sync_reason: "From API",
+      sync_attempts: 1,
+      last_sync_attempt: new Date(response.updated_at || response.created_at).toISOString(),
+      submitted_at: new Date(response.recorded_on || response.created_at).toISOString(),
+      sync_type: "survey_submissions",
+      created_by_user_id: response.user_id || null,
+    };
+
+    // Return SQLite row format with correct column names
     return {
       _id: `remote-${response.id}`,
       id: response.id,
-      answers,
-      form_data: {
-        time_spent_filling_the_form: null,
-        user_id: response.user_id || null,
-        table_name: jsonData.table_name || null,
-        project_module_id: jsonData.project_module_id || response.project_module_id || null,
-        source_module_id: jsonData.source_module_id || response.module_id || null,
-        project_id: jsonData.project_id || response.project_id || null,
-        survey_id: jsonData.survey_id || response.curr_form_id || null,
-        post_data: jsonData.post_data || null,
-        izucode: jsonData.izucode || null,
-        family: jsonData.family || response.families_id || null,
-        form_status: "followup",
-        cohort: jsonData.cohorts || response.cohort || null,
-      },
-      location: {
-        province: jsonData.province || response.province || null,
-        district: jsonData.district || response.district || null,
-        sector: jsonData.sector || response.sector || null,
-        cell: jsonData.cell || response.cell || null,
-        village: jsonData.village || response.village || null,
-      },
-      sync_data: {
-        sync_status: true,
-        sync_reason: "From API",
-        sync_attempts: 1,
-        last_sync_attempt: new Date(response.updated_at || response.created_at).toISOString(),
-        submitted_at: new Date(response.recorded_on || response.created_at).toISOString(),
-        sync_type: SyncType.survey_submissions,
-        created_by_user_id: response.user_id || null,
-      },
+      answers: JSON.stringify(answersData), // ✅ Use 'answers' column
+      form_data: JSON.stringify(formData),
+      location: JSON.stringify(locationData),
+      sync_data: JSON.stringify(syncData),
       created_by_user_id: response.user_id,
       sync_status: 1,
       sync_reason: "From API",
       sync_attempts: 1,
-      sync_type: SyncType.survey_submissions,
+      sync_type: "survey_submissions",
       created_at: response.created_at,
       updated_at: response.updated_at,
+      is_modified: 0,
+      needs_update_sync: 0,
+      last_modified_at: null,
+      // Other schema columns
+      table_name: jsonData.table_name || null,
+      name: null,
+      name_kin: null,
+      slug: null,
+      json2: null,
+      post_data: jsonData.post_data || null,
+      loads: null,
+      time_spent: null,
+      user_id: response.user_id,
+      is_primary: 0,
+      project_module_id: jsonData.project_module_id || response.project_module_id || null,
+      source_module_id: jsonData.source_module_id || response.module_id || null,
+      project_id: jsonData.project_id || response.project_id || null,
+      survey_status: null,
+      fetch_data: null,
+      prev_id: null,
+      order_list: null,
+      survey_id: jsonData.survey_id || response.curr_form_id || null,
     };
   });
 };
+
+
 
 // ============================================================================
 // UPDATE SUBMISSION LOCALLY
@@ -821,6 +1010,89 @@ export const createSurveySubmission = (
 // SAVE SURVEY SUBMISSION TO API
 // ============================================================================
 
+const showToast = (type: string, title: string, message: string) => {
+  Toast.show({
+    type,
+    text1: title,
+    text2: message,
+    position: "top",
+    visibilityTime: 3000,
+  });
+};
+const handleApiError = async (create: any, submission: any, error: any, t: TFunction) => {
+  console.error("API submission failed:", error);
+  const statusCode = error.response?.status;
+  const isUnauthorized = statusCode === 401 || statusCode === 403;
+
+  if (isUnauthorized) {
+    showToast("error", t("Alerts.error.title"), t("Alerts.error.submission.unauthorized"));
+    return;
+  }
+
+  // Save locally for retry
+  await create("SurveySubmissions", toSQLiteRow(submission));
+  showToast("info", t("Alerts.info.saved_locally"), t("Alerts.submitting.offline"));
+  router.push("/(history)/realmDbViewer");
+};
+const handleOfflineSubmission = async (create: any, submission: any, t: TFunction) => {
+  await create("SurveySubmissions", toSQLiteRow(submission));
+  showToast("info", t("Alerts.info.offline_mode"), t("Alerts.info.will_sync"));
+  router.push("/(history)/realmDbViewer");
+};
+
+
+const handleOnlineSubmission = async (
+  create: any,
+  apiUrl: string,
+  submission: any,
+  formData: Record<string, any>,
+  t: TFunction
+) => {
+  showToast("info", t("Alerts.saving.survey"), t("Alerts.submitting.server"));
+
+  const formIdMatch = apiUrl.match(/\/submissions\/([^\/]+)\/submit/);
+  const formId = formIdMatch ? formIdMatch[1] : formData.survey_id;
+  const apiPayload = prepareApiPayload(submission, formId);
+
+  try {
+    const response = await baseInstance.post(apiUrl, apiPayload);
+    const id = response.data?.submission?._id;
+
+    if (!id) throw new Error("No ID returned from API");
+
+    submission.id = id;
+    submission.sync_status = 1;
+    submission.sync_reason = "Successfully synced";
+    submission.sync_attempts = 1;
+    submission.sync_data = { ...submission.sync_data, sync_status: true, sync_reason: "Successfully synced" };
+
+    await create("SurveySubmissions", toSQLiteRow(submission));
+
+    showToast("success", t("Alerts.success.title"), t("Alerts.success.survey"));
+    router.push("/(history)/realmDbViewer");
+
+  } catch (error: any) {
+    await handleApiError(create, submission, error, t);
+  }
+};
+
+const checkDuplicateSubmission = async (create: any, formData: Record<string, any>) => {
+  if (!formData.source_module_id || formData.source_module_id === 22) return false;
+  const allSubmissions = await create.getAll("SurveySubmissions");
+  const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
+
+  return parsedSubmissions.some(submission => {
+    const fd = submission.form_data;
+    return (
+      fd?.survey_id === formData.survey_id &&
+      fd?.source_module_id === formData.source_module_id &&
+      fd?.izucode === formData.izucode &&
+      fd?.family === formData.family
+    );
+  });
+};
+
+
 export const saveSurveySubmissionToAPI = async (
   create: any,
   formData: Record<string, any>,
@@ -832,115 +1104,24 @@ export const saveSurveySubmissionToAPI = async (
   try {
     console.log("Saving survey submission...", formData);
 
-    if (formData.source_module_id && formData.source_module_id !== 22) {
-      const allSubmissions = await create.getAll("SurveySubmissions");
-      const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
-      
-      const isDuplicate = parsedSubmissions.some(
-        (submission) => {
-          const fd = submission.form_data;
-          return fd?.survey_id === formData.survey_id &&
-                 fd?.source_module_id === formData.source_module_id &&
-                 fd?.izucode === formData.izucode &&
-                 fd?.family === formData.family;
-        }
-      );
-
-      if (isDuplicate) {
-        Toast.show({
-          type: "error",
-          text1: t("Alerts.error.title"),
-          text2: t("Alerts.error.duplicate.survey"),
-          position: "top",
-          visibilityTime: 4000,
-        });
-        return;
-      }
+    const isDuplicate = await checkDuplicateSubmission(create, formData);
+    if (isDuplicate) {
+      showToast("error", t("Alerts.error.title"), t("Alerts.error.duplicate.survey"));
+      return;
     }
 
     const submission = createSurveySubmission(formData, fields, userId);
     const isConnected = isOnline();
 
     if (isConnected) {
-      try {
-        Toast.show({
-          type: "info",
-          text1: t("Alerts.saving.survey"),
-          text2: t("Alerts.submitting.server"),
-          position: "top",
-          visibilityTime: 2000,
-        });
-
-        const formIdMatch = apiUrl.match(/\/submissions\/([^\/]+)\/submit/);
-        const formId = formIdMatch ? formIdMatch[1] : formData.survey_id;
-
-        const apiPayload = prepareApiPayload(submission, formId);
-
-        console.log("API Payload:", JSON.stringify(apiPayload, null, 2));
-
-        const response = await baseInstance.post(apiUrl, apiPayload);
-
-        console.log("API Response:", response.data);
-
-        if (response.data?.submission?._id) {
-          submission.id = response.data.submission._id;
-          submission.sync_status = 1;
-          submission.sync_reason = "Successfully synced";
-          submission.sync_attempts = 1;
-          submission.sync_data = {
-            ...submission.sync_data,
-            sync_status: true,
-            sync_reason: "Successfully synced",
-          };
-
-          await create("SurveySubmissions", toSQLiteRow(submission));
-
-          Toast.show({
-            type: "success",
-            text1: t("Alerts.success.title"),
-            text2: t("Alerts.success.survey"),
-            position: "top",
-            visibilityTime: 3000,
-          });
-          router.push("/(history)/realmDbViewer");
-        } else {
-          throw new Error("No ID returned from API");
-        }
-      } catch (error: any) {
-        console.error("API submission failed:", error);
-        console.error("Error response:", error.response?.data);
-        
-        await create("SurveySubmissions", toSQLiteRow(submission));
-        
-        Toast.show({
-          type: "info",
-          text1: t("Alerts.info.saved_locally"),
-          text2: t("Alerts.submitting.offline"),
-          position: "top",
-          visibilityTime: 3000,
-        });
-        router.push("/(history)/realmDbViewer");
-      }
+      await handleOnlineSubmission(create, apiUrl, submission, formData, t);
     } else {
-      await create("SurveySubmissions", toSQLiteRow(submission));
-      
-      Toast.show({
-        type: "info",
-        text1: t("Alerts.info.offline_mode"),
-        text2: t("Alerts.info.will_sync"),
-        position: "top",
-        visibilityTime: 3000,
-      });
-      router.push("/(history)/realmDbViewer");
+      await handleOfflineSubmission(create, submission, t);
     }
+
   } catch (error: any) {
     console.error("Error in saveSurveySubmissionToAPI:", error);
-    Toast.show({
-      type: "error",
-      text1: t("Alerts.error.title"),
-      text2: t("Alerts.error.submission.unexpected"),
-      position: "top",
-      visibilityTime: 4000,
-    });
+    showToast("error", t("Alerts.error.title"), t("Alerts.error.submission.unexpected"));
   }
 };
+

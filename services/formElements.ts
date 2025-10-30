@@ -4,6 +4,7 @@ import { baseInstance } from "~/utils/axios";
 import { useDataSync } from "./dataSync";
 import { I4BaseFormat, IExistingForm } from "~/types";
 import { checkNetworkConnection } from "~/utils/networkHelpers";
+import { FetchFormsResult, IFormResponse, IFormsApiResponse } from "./project";
 
 // ---------------- FETCH FROM API ----------------
 export async function fetchFormsFromRemote(): Promise<IExistingForm[]> {
@@ -12,34 +13,16 @@ export async function fetchFormsFromRemote(): Promise<IExistingForm[]> {
     const data = res.data?.data;
     
     // Ensure we always return an array
-    if (!data) return [];
+    if (!data){
+      console.warn('[fetchFormsFromRemote] No data in response');
+      return [];
+    };
     if (Array.isArray(data)) return data;
     
     console.warn('[fetchFormsFromRemote] Unexpected data format:', typeof data);
     return [];
   } catch (error) {
     console.error('[fetchFormsFromRemote] Error:', error);
-    return [];
-  }
-}
-
-export async function fetchFormByProjectFromRemote(
-  projectId: number
-): Promise<IExistingForm[]> {
-  try {
-    const res = await baseInstance.get<I4BaseFormat<IExistingForm[]>>(
-      `/forms`
-    );
-    const data = res.data?.data;
-    
-    // Ensure we always return an array
-    if (!data) return [];
-    if (Array.isArray(data)) return data;
-    
-    console.warn(`[fetchFormByProjectFromRemote] Unexpected data format for project ${projectId}:`, typeof data);
-    return [];
-  } catch (error) {
-    console.error(`[fetchFormByProjectFromRemote] Error for project ${projectId}:`, error);
     return [];
   }
 }
@@ -59,10 +42,7 @@ function deduplicateForms(forms: IExistingForm[]): IExistingForm[] {
       const currentTime = form.updated_at ? new Date(form.updated_at).getTime() : 0;
       
       if (currentTime > existingTime) {
-        // console.warn(`Replacing duplicate form ID ${form.id} with newer version`);
         uniqueMap.set(form.id, form);
-      } else {
-        // console.warn(`Skipping duplicate form ID ${form.id}`);
       }
     }
   });
@@ -70,9 +50,135 @@ function deduplicateForms(forms: IExistingForm[]): IExistingForm[] {
   return Array.from(uniqueMap.values());
 }
 
-// ---------------- USE GET ALL FORMS (OFFLINE-FIRST) ----------------
+// ---------------- FETCH FROM API ----------------
+// Update fetchFormByProjectFromRemote to return proper result even for empty arrays
+export async function fetchFormByProjectFromRemote(): Promise<FetchFormsResult> {
+  try {
+    console.log('[fetchFormsFromRemote] Starting fetch...');
+    console.log('[fetchFormsFromRemote] BaseURL:', baseInstance.defaults.baseURL);
+    
+    const endpoints = ["/forms"];
+    let res: any = null;
+    let successEndpoint = "";
+    
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`[fetchFormsFromRemote] Trying endpoint: ${endpoint}`);
+        res = await baseInstance.get<IFormsApiResponse>(endpoint);
+        successEndpoint = endpoint;
+        console.log(`[fetchFormsFromRemote] Success with endpoint: ${endpoint}`);
+        break;
+      } catch (err: any) {
+        console.log(`[fetchFormsFromRemote] Failed with ${endpoint}: ${err.response?.status || err.message}`);
+        
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          return { forms: [], statusCode: err.response.status };
+        }
+        continue;
+      }
+    }
+    
+    if (!res) {
+      console.error('[fetchFormsFromRemote] All endpoints failed');
+      return { forms: [] };
+    }
+    
+    console.log('[fetchFormsFromRemote] Response status:', res.status);
+    console.log('[fetchFormsFromRemote] Response data:', JSON.stringify(res.data).substring(0, 500));
+    
+    const data = res.data;
+    
+    if (!data) {
+      console.warn('[fetchFormsFromRemote] No data in response');
+      return { forms: [], statusCode: res.status };
+    }
+
+    let formsArray: IFormResponse[] = [];
+
+    // Check different response structures
+    if (data.success && Array.isArray(data.forms)) {
+      console.log('[fetchFormsFromRemote] Found forms in data.forms');
+      formsArray = data.forms;
+    }
+    else if ('data' in data) {
+      const nestedData = (data as any).data;
+      if (Array.isArray(nestedData)) {
+        console.log('[fetchFormsFromRemote] Found forms in data.data (array)');
+        formsArray = nestedData;
+      } else if (nestedData && typeof nestedData === 'object' && 'data' in nestedData) {
+        console.log('[fetchFormsFromRemote] Found forms in data.data.data');
+        formsArray = (nestedData as any).data;
+      }
+    }
+    else if (Array.isArray(data)) {
+      console.log('[fetchFormsFromRemote] Response is direct array');
+      formsArray = data as any;
+    }
+
+    // CRITICAL: Return statusCode even for empty arrays
+    if (!Array.isArray(formsArray) || formsArray.length === 0) {
+      console.warn('[fetchFormsFromRemote] Empty forms array - returning with status code');
+      return { forms: [], statusCode: res.status };
+    }
+
+    const forms: IExistingForm[] = formsArray.map(form => ({
+      _id: form._id,
+      id: form._id || (form as any).id,
+      title: form.title,
+      name: form.title,
+      description: form.description || '',
+      status: form.status,
+      organization: form.organization || '',
+      department: form.department || '',
+      metadata: form.metadata || {},
+     
+      json2: form.formDefinition || {},
+      json: JSON.stringify(form.formDefinition || {}),
+      formDefinition: JSON.stringify(form.formDefinition || {}),
+      
+      project_id: 0,
+      source_module_id: 0,
+      project_module_id: 0,
+      module_id: null,
+      parent_id: undefined,
+      
+      survey_status: form.status === 'published' ? 1 : 0,
+      is_primary: 1,
+      order_list: 0,
+      name_kin: undefined,
+      slug: null,
+      json2_bkp: null,
+      table_name: undefined,
+      post_data: undefined,
+      fetch_data: null,
+      loads: null,
+      prev_id: null,
+      
+      created_at: form.createdAt,
+      updated_at: form.updatedAt,
+    }));
+    
+    console.log(`[fetchFormsFromRemote] Successfully mapped ${forms.length} forms`);
+    return { forms, statusCode: res.status };
+  } catch (error: any) {
+    console.error('[fetchFormsFromRemote] Error:', error);
+    
+    if (error.response) {
+      console.error('[fetchFormsFromRemote] Error status:', error.response.status);
+      return { forms: [], statusCode: error.response.status };
+    } else if (error.request) {
+      console.error('[fetchFormsFromRemote] No response received');
+    } else {
+      console.error('[fetchFormsFromRemote] Error message:', error.message);
+    }
+    
+    return { forms: [] };
+  }
+}
+
+// Update useGetForms to handle the empty response properly
 export function useGetForms(forceSync: boolean = false) {
-  const { getAll } = useSQLite();
+  const { getAll, deleteAll } = useSQLite();
   const [storedForms, setStoredForms] = useState<IExistingForm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
@@ -83,9 +189,18 @@ export function useGetForms(forceSync: boolean = false) {
     {
       key: "forms",
       fetchFn: async () => {
-        const data = await fetchFormsFromRemote();
-        console.log(`[useDataSync] forms fetched: ${data?.length || 0} records`);
-        return data;
+        const result = await fetchFormByProjectFromRemote();
+        console.log(`[useDataSync] forms fetched: ${result.forms?.length || 0} records, status: ${result.statusCode}`);
+        
+        // CRITICAL: If server returns empty with success status, clear local DB
+        if (result.forms.length === 0 && 
+            result.statusCode && 
+            result.statusCode >= 200 && 
+            result.statusCode < 300) {
+          console.warn('[useDataSync] Server returned 0 forms with success status - will trigger DB clear');
+        }
+        
+        return result.forms;
       },
       tableName: "Surveys",
       staleTime: 5 * 60 * 1000,
@@ -109,7 +224,7 @@ export function useGetForms(forceSync: boolean = false) {
         if (isMounted) {
           setStoredForms(dedupedLocalForms);
           setDataSource("local");
-          setIsLoading(false); // Show local data immediately
+          setIsLoading(false);
           console.log(`Loaded ${dedupedLocalForms.length} forms from local SQLite`);
         }
 
@@ -121,13 +236,28 @@ export function useGetForms(forceSync: boolean = false) {
           console.log("Online — syncing forms from remote in background...");
           
           try {
-            // Trigger background sync (this will update SQLite)
+            const remoteResult = await fetchFormByProjectFromRemote();
+            
+            // SECURITY CHECK: Clear local DB if server returns empty with success
+            if (remoteResult.forms.length === 0 && 
+                remoteResult.statusCode && 
+                remoteResult.statusCode >= 200 && 
+                remoteResult.statusCode < 300) {
+              console.warn('[SECURITY] Remote returned 0 forms with successful status. Clearing local database.');
+              await deleteAll("Surveys");
+              
+              if (isMounted) {
+                setStoredForms([]);
+                setDataSource("remote");
+                console.log('✅ Local forms database cleared for security');
+              }
+              return;
+            }
+            
+            // Normal sync for non-empty or error responses
             await syncRefresh("forms", forceSync);
-
-            // Wait for sync to complete
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            // Reload from SQLite after sync
             const syncedForms = await getAll<IExistingForm>("Surveys");
             const dedupedSyncedForms = deduplicateForms(syncedForms);
 
@@ -138,7 +268,6 @@ export function useGetForms(forceSync: boolean = false) {
             }
           } catch (syncErr) {
             console.warn("Background sync failed, continuing with local data:", syncErr);
-            // Keep local data, don't set error since we have valid local data
           }
         }
       } catch (err) {
@@ -156,9 +285,8 @@ export function useGetForms(forceSync: boolean = false) {
     return () => {
       isMounted = false;
     };
-  }, [getAll, syncRefresh, forceSync]);
+  }, [getAll, deleteAll, syncRefresh, forceSync]);
 
-  // Already deduped in the effect, but keep for safety
   const uniqueForms = useMemo(() => {
     return deduplicateForms(storedForms);
   }, [storedForms]);
@@ -169,6 +297,21 @@ export function useGetForms(forceSync: boolean = false) {
     
     if (online) {
       try {
+        const remoteResult = await fetchFormByProjectFromRemote();
+        
+        // SECURITY CHECK on refresh
+        if (remoteResult.forms.length === 0 && 
+            remoteResult.statusCode && 
+            remoteResult.statusCode >= 200 && 
+            remoteResult.statusCode < 300) {
+          console.warn('[SECURITY] Remote returned 0 forms with successful status. Clearing local database.');
+          await deleteAll("Surveys");
+          setStoredForms([]);
+          setDataSource("remote");
+          console.log('✅ Local forms database cleared for security on refresh');
+          return;
+        }
+        
         await syncRefresh("forms", true);
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (syncErr) {
@@ -180,7 +323,7 @@ export function useGetForms(forceSync: boolean = false) {
     const dedupedForms = deduplicateForms(forms);
     setStoredForms(dedupedForms);
     setDataSource(online ? "remote" : "local");
-  }, [getAll, syncRefresh]);
+  }, [getAll, deleteAll, syncRefresh]);
 
   return {
     forms: uniqueForms,
@@ -212,7 +355,7 @@ export function useGetFormsByProject(
       ? [
           {
             key: `forms-${projectId}`,
-            fetchFn: () => fetchFormByProjectFromRemote(projectId),
+            fetchFn: () => fetchFormByProjectFromRemote(),
             tableName: "Surveys",
             staleTime: 5 * 60 * 1000,
             forceSync,
@@ -441,3 +584,6 @@ function filterForms(
 
   return filtered;
 }
+
+
+

@@ -87,15 +87,8 @@ const RealmDatabaseViewer = () => {
     const grouped: Record<string, Array<SurveySubmission & { projectName: string; formTitle: string }>> = {};
 
     submissions.forEach((s) => {
-      // Try to get form ID from multiple possible locations
-      const surveyId = s.form_data?.survey_id || s.form_data?.form ;
-      
-      console.log("Processing submission:", {
-        submissionId: s._id,
-        surveyId: surveyId,
-        formData: s.data
-      });
-        
+    
+      const surveyId = s.form_data?.survey_id || s.form_data?.form ;  
       const form = surveyId ? formsMap[surveyId] : null;
       
       // Get form title with fallbacks

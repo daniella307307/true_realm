@@ -17,6 +17,8 @@ import Slider from "@react-native-community/slider";
 import { useFontSize } from "~/providers/FontSizeContext";
 import { Text } from "./text";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSQLite } from "~/providers/RealContextProvider";
+import { IExistingForm } from "~/types";
 
 const DRAWER_WIDTH = Dimensions.get("window").width * 0.7;
 
@@ -34,7 +36,7 @@ export const CustomDrawer: React.FC<CustomDrawerProps> = ({
   const { fontSize, setFontSize } = useFontSize();
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-
+  const { query } = useSQLite();
   // State for modals
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [fontSizeModalVisible, setFontSizeModalVisible] = useState(false);
@@ -93,7 +95,7 @@ export const CustomDrawer: React.FC<CustomDrawerProps> = ({
     AsyncStorage.setItem("language", lang);
     setLanguageModalVisible(false);
   };
-
+  
   return (
     <Modal
       visible={isOpen}
@@ -165,9 +167,9 @@ export const CustomDrawer: React.FC<CustomDrawerProps> = ({
             {/* Logout */}
             <TouchableOpacity
               className="p-4 border-b border-gray-200"
-              onPress={() => logout()}
+              onPress={()=>logout()}
             >
-              <Text className="text-lg text-red-500">{t("SettingsPage.logout")}</Text>
+              <Text className="text-lg text-orange-500">{t("SettingsPage.logout")}</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>

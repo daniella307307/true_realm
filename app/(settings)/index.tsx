@@ -181,32 +181,32 @@ const SettingsScreen = () => {
           <InfoItem label={t("SettingsPage.email")} value={user?.email || ""} />
         </View>
         <TouchableOpacity
-  onPress={() => logout()}
-  className="bg-orange-900 p-5 rounded-2xl border border-orange-200 shadow-sm"
-  
->
-  <View className="flex-row items-center justify-between">
-    <View className="flex-row items-center flex-1">
-      <View className="w-10 h-10 bg-orange-200/30 rounded-xl items-center justify-center">
-        <TabBarIcon 
-          name="logout" 
-          family="MaterialCommunityIcons" 
-          color="orange" 
-          size={24} 
-        />
-      </View>
-      <Text className="text-orange-900 text-lg font-semibold ml-4">
-        {t("SettingsPage.logout")}
-      </Text>
-    </View>
-    <TabBarIcon 
-      name="chevron-right" 
-      family="MaterialCommunityIcons" 
-      color="orange" 
-      size={20} 
-    />
-  </View>
-</TouchableOpacity>
+          onPress={() => logout()}
+          className="bg-orange-200 p-2 rounded-2xl border border-orange-200 shadow-sm"
+
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center flex-1">
+              <View className="w-10 h-10 bg-orange-200/30 rounded-xl items-center justify-center">
+                <TabBarIcon
+                  name="logout"
+                  family="MaterialCommunityIcons"
+                  color="orange"
+                  size={24}
+                />
+              </View>
+              <Text className="text-orange-900 text-lg font-semibold ml-4">
+                {t("SettingsPage.logout")}
+              </Text>
+            </View>
+            <TabBarIcon
+              name="chevron-right"
+              family="MaterialCommunityIcons"
+              color="orange"
+              size={20}
+            />
+          </View>
+        </TouchableOpacity>
 
 
         {/* <InfoItem label={t("SettingsPage.phone")} value={user?.telephone || ""} />

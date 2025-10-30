@@ -45,7 +45,7 @@ const [submissionsCount, setSubmissionsCount] = useState(0);
   const { isLoggedIn, user } = useAuth({});
   const { isReady: isSQLiteReady } = useSQLite();
   const izusHook = useGetIzus(false);
-  const projectsHook = useGetAllForms(false);
+  // const projectsHook = useGetAllForms(false);
   // const familiesHook = useGetFamilies(false);
   const formsHook = useGetForms(false);
   // const postsHook = useGetAllPosts(false);
@@ -76,12 +76,12 @@ const [submissionsCount, setSubmissionsCount] = useState(0);
 
       // Batch 1: Critical data (with 200ms delays between each)
       console.log("Batch 1: Loading critical data...");
-      try {
-        await projectsHook?.refresh?.();
-        await delay(200);
-      } catch (error) {
-        console.error("Error loading projects:", error);
-      }
+      // try {
+      //   await projectsHook?.refresh?.();
+      //   await delay(200);
+      // } catch (error) {
+      //   console.error("Error loading projects:", error);
+      // }
       
       try {
         await formsHook?.refresh?.();
@@ -180,14 +180,14 @@ const [submissionsCount, setSubmissionsCount] = useState(0);
       setIsDataLoaded(true);
     } finally {
       setIsRefreshing(false);
-      setFormsCount(projectsHook.forms.length || 0);
+      setFormsCount(formsHook.forms.length || 0);
       setSubmissionsCount(surveySubmissionsHook.submissions.length || 0);
     }
   }, [
     isRefreshing,
     isSQLiteReady,
     izusHook,
-    projectsHook,
+    // projectsHook,
     // familiesHook,
     formsHook,
     // postsHook,
