@@ -6,16 +6,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import {
   updatePassword,
-  getCurrentLoggedInProfile,
   userLogin,
   userLogout,
 } from "~/services/user";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setAuthenticationStatus } from "~/utils/axios";
-import { Alert } from "react-native";
 import { useSQLite } from "~/providers/RealContextProvider";
 import { useTranslation } from "react-i18next";
+import { getPendingChangesCount } from "~/services/survey-submission";
 
 export type AuthOptions = {
   onLogin?: (data: User) => void;
@@ -32,6 +31,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
   const [authChecked, setAuthChecked] = useState(false);
   const lastLoginIdentifier = useRef<string | null>(null);
   const sqlite = useSQLite();
+  const { query } = sqlite;
   const { t } = useTranslation();
   const isLoggedIn = useMemo(async () => {
     try {
@@ -55,7 +55,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         setAuthChecked(true);
       } catch (error) {
         console.error("[Auth] Error in checkLoginStatus:", error);
-        setAuthChecked(true); // Still mark as checked even on error
+        setAuthChecked(true);
       }
     };
 
@@ -77,13 +77,13 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
 
       if (!token && user) {
         console.log("[Auth] No token but user exists - logging out");
-        await mainStore.logout();
+        mainStore.logout();
         setAuthenticationStatus(false);
       }
 
       if (user?.userstatus === 0) {
         console.log("[Auth] User status is 0 - logging out");
-        await mainStore.logout();
+        mainStore.logout();
         setAuthenticationStatus(false);
       }
     } catch (error) {
@@ -94,43 +94,144 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     }
   };
 
+  const _userLogout = useMutation<{}, AxiosError<IResponseError>>({
+    mutationFn: async () => {
+      // Check if user exists
+      if (!user?.id) {
+        throw new Error("User ID not found");
+      }
+      if (!query) {
+        console.error("SQLite query function not available");
+        throw new Error("Database not ready. Please try again.");
+      }
+
+      console.log("Checking pending changes for user:", user.id);
+
+      try {
+        // Check for pending changes using SQLite query
+        const pendingChanges = await getPendingChangesCount(query, user.id);
+
+        console.log("Pending changes count:", pendingChanges);
+
+        if (pendingChanges.total > 0) {
+          // Show detailed pending changes message
+          const details = [];
+          if (pendingChanges.newSubmissions > 0) {
+            details.push(`${pendingChanges.newSubmissions} new submission(s)`);
+          }
+          if (pendingChanges.modifiedSubmissions > 0) {
+            details.push(`${pendingChanges.modifiedSubmissions} modified submission(s)`);
+          }
+          const message = `Cannot logout. You have ${pendingChanges.total} pending change(s): ${details.join(" and ")}. Please sync your changes before logging out.`;
+
+          console.warn(message);
+          Toast.show({
+            type: "error",
+            text1: t("Login.Logout.logout_prevented"),
+            text2: t("Login.Logout.pending_sync", { count: pendingChanges.total }),
+            visibilityTime: 5000,
+            position: "top",
+          });
+
+          throw new Error("Pending changes exist. Logout aborted.");
+        }
+
+        // Only proceed with logout API call if no pending changes
+        console.log("No pending changes found, proceeding with logout");
+        return userLogout();
+      } catch (error: any) {
+        // Re-throw the error to be handled by onError
+        console.error("Error during logout:", error);
+        throw error;
+      }
+    },
+
+    onSuccess: async () => {
+      console.log("Logout API successful, clearing local data");
+      // Only clear data after successful API logout
+      await logoutUser();
+
+      Toast.show({
+        text1: t("Login.Logout.Success"),
+        text2: t("Login.Logout.Success"),
+        type: "success",
+        position: "bottom",
+        visibilityTime: 3000,
+        autoHide: true,
+        topOffset: 30,
+      });
+    },
+
+    onError: (error: any) => {
+      console.error("Logout failed:", error);
+
+      // Don't show error toast if it's the pending changes error
+      // (already shown in mutationFn)
+      if (error.message && !error.message.includes("Pending changes exist")) {
+        Toast.show({
+          text1: t("Auth.logout_failed"),
+          text2: error.message || "Unknown error occurred",
+          type: "error",
+          position: "bottom",
+          visibilityTime: 6000,
+          autoHide: true,
+          topOffset: 30,
+        });
+      }
+    },
+  });
+
+  // ============================================
+  // Additional: Check SQLite is properly initialized
+  // ============================================
+
+  // At the top of your useAuth hook, add this useEffect to verify SQLite:
+
+  useEffect(() => {
+    console.log("SQLite status in useAuth:", {
+      hasQuery: !!query,
+      queryType: typeof query,
+      hasSQLite: !!sqlite,
+    });
+  }, [query, sqlite]);
+
+  // ============================================
+  // Updated _userLogout mutation in useAuth.tsx
+  // ============================================
+
   const logoutUser = async () => {
-    // Ensure token is completely cleared
+    console.log("Clearing local data and navigating to login");
+
+    // Clear all local data
     queryClient.clear();
     queryClient.invalidateQueries();
     mainStore.logout();
     setAuthenticationStatus(false);
     onLogout?.();
-    console.log("file: useAuth.tsx, fn: logout , line 14");
 
-    // Clear the stored token
+    // Clear the stored token and userId
     await AsyncStorage.removeItem("tknToken");
+    await AsyncStorage.removeItem("userId");
 
     // Navigate to login screen
     router.replace("/(user-management)/login");
   };
 
-  const _userLogout = useMutation<{}, AxiosError<IResponseError>>({
-    mutationFn: () => userLogout(sqlite),
-    onMutate: () => {
-      logoutUser();
-    },
-    onError: (error) => {
-      logoutUser();
-    },
-    });
-
+  // Trigger logout
+  const handleLogout = () => {
+    _userLogout.mutate();
+  };
   const _updatePasswordAuth = useMutation<
     { message: string },
     AxiosError<IResponseError>,
-    { newPassword: string; identifier: string,verifyToken:string }
+    { newPassword: string; identifier: string, verifyToken: string }
   >({
     mutationFn: async ({
       newPassword,
       identifier,
       verifyToken,
     }): Promise<{ message: string }> => {
-      const result = await updatePassword(newPassword, identifier,verifyToken);
+      const result = await updatePassword(newPassword, identifier, verifyToken);
       return result;
     },
     onMutate: async ({ newPassword }) => {
@@ -191,12 +292,6 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
 
       lastLoginIdentifier.current = loginDetails.identifier;
 
-
-      console.log(
-        "Attempting login with credentials:",
-        loginDetails.identifier
-      );
-
       Toast.show({
         text1: t("Auth.logging_in"),
         type: "success",
@@ -206,44 +301,53 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         topOffset: 30,
       });
     },
-    onError: (error) => {
-      const status = error.response?.status;
-      const serverMessage = error.response?.data?.message;
-      const isNetworkError = !error.response;
+    onError: (error: unknown) => {
+      // Log everything for debugging
+      console.log("onError called with:", error);
+
+      const axiosError = error as AxiosError<IResponseError>;
+      const status = axiosError.response?.status;
+      const responseData = axiosError.response?.data as any;
+
+      // Extract server message more safely
+      const serverMessage =
+        responseData?.message ||
+        responseData?.error ||
+        responseData?.errors?.[0]?.message ||
+        null;
 
       let userFriendlyMessage = "An unknown error occurred. Please try again.";
 
-      if (isNetworkError) {
-        userFriendlyMessage = "Network error. Please check your internet connection.";
-      } else if (status === 400 && serverMessage?.toLowerCase().includes("invalid")) {
-        userFriendlyMessage = "Invalid email or password. Please double-check your credentials.";
+      if (status === 400 && serverMessage) {
+        userFriendlyMessage = serverMessage;
       } else if (status === 401) {
-        userFriendlyMessage = "Unauthorized. Please verify your credentials or contact support.";
+        userFriendlyMessage = "Invalid credentials. Please try again.";
       } else if (status === 500) {
         userFriendlyMessage = "Server error. Please try again later.";
       } else if (serverMessage) {
         userFriendlyMessage = serverMessage;
       }
 
-      const errorDetails = JSON.stringify(
-        {
-          message: error.message,
-          response: error.response?.data,
-          status,
-        },
-        null,
-        2
+      console.error(
+        "Detailed error in onError:",
+        JSON.stringify(
+          {
+            message: axiosError.message,
+            responseData,
+            status,
+            stack: (axiosError as any).stack,
+          },
+          null,
+          2
+        )
       );
 
-      console.log("Detailed error:", errorDetails);
       Toast.show({
         text1: "Login Failed",
         text2: userFriendlyMessage,
         type: "error",
-        position: "bottom",
+        position: "top",
         visibilityTime: 6000,
-        autoHide: true,
-        topOffset: 30,
       });
 
       setIsLoggingIn(false);
@@ -251,34 +355,9 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       logoutUser();
     },
 
+
     onSuccess: async (data) => {
       if (data?.token) {
-        // Log the exact login response data to see what's coming from the server
-        console.log(
-          "LOGIN RESPONSE DATA:",
-          JSON.stringify(
-            {
-              token: data.token,
-              name: data.name,
-              role: data.role,
-              user: {
-                id: data?.user?.id,
-                user_code: data?.user?.user_code,
-                existing_code: data?.user?.existing_code,
-                nationalID: data?.user?.nationalID,
-                firstName: data?.user?.firstName,
-                lastName: data?.user?.lastName,
-                gender: data?.user?.gender,
-                email: data?.user?.email,
-                dob: data?.user?.dob,
-                date_enrollment: data?.user?.date_enrollment,
-              },
-            },
-            null,
-            2
-          )
-        );
-
         Toast.show({
           text1: t("Auth.loading_essential_data"),
           type: "success",
@@ -304,37 +383,19 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
 
         try {
           console.log("Fetching user profile with token...");
-          const userId = await AsyncStorage.getItem("userId");
           // const profileData = await getCurrentLoggedInProfile(userId);
 
-          // if (!profileData) {
-          //   Toast.show({ text1: t("Auth.profile_fetch_failed"), type: "error" });
-          //   await logoutUser();
-          //   return;
-          // }
+
           const profileData = data?.user;
+          if (!profileData) {
+            Toast.show({ text1: t("Auth.profile_fetch_failed"), type: "error" });
+            await logoutUser();
+            return;
+          }
           const didStoreUserInfo = mainStore.login({
             userAccount: data?.user,
           });
-          console.log(
-            "User info stored in state:",
-            JSON.stringify(
-              {
-                user: {
-                  id: profileData.id,
-                  firstName: profileData.firstName,
-                  lastName: profileData.lastName,
-                  email: profileData.email,
-                  position: profileData.position,
-                  is_password_changed: profileData.is_password_changed,
-                },
-                didStoreUserInfo,
-              },
-              null,
-              2
-            )
-          );
-          console.log("didStoreUserInfo", didStoreUserInfo);
+        
           if (didStoreUserInfo) {
             Toast.show({
               text1: t("Auth.login_success"),
@@ -347,10 +408,9 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
             setIsLoggingIn(false);
             setIsLoading(false);
 
-            console.log("is_password_changed: ", profileData.is_password_changed);
 
             // First call onLogin to handle data sync
-            await onLogin?.(profileData);
+            onLogin?.(profileData);
 
             // Then handle navigation based on password status
             if (profileData.is_password_changed === 0) {

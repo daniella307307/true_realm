@@ -5,7 +5,7 @@ import { useDataSync } from "./dataSync";
 import { I4BaseFormat, IExistingForm } from "~/types";
 import { checkNetworkConnection } from "~/utils/networkHelpers";
 import { FetchFormsResult, IFormResponse, IFormsApiResponse } from "./project";
-
+import { useAuth } from "~/lib/hooks/useAuth";
 // ---------------- FETCH FROM API ----------------
 export async function fetchFormsFromRemote(): Promise<IExistingForm[]> {
   try {
@@ -84,7 +84,7 @@ export async function fetchFormByProjectFromRemote(): Promise<FetchFormsResult> 
     }
     
     console.log('[fetchFormsFromRemote] Response status:', res.status);
-    console.log('[fetchFormsFromRemote] Response data:', JSON.stringify(res.data).substring(0, 500));
+    
     
     const data = res.data;
     
@@ -97,21 +97,17 @@ export async function fetchFormByProjectFromRemote(): Promise<FetchFormsResult> 
 
     // Check different response structures
     if (data.success && Array.isArray(data.forms)) {
-      console.log('[fetchFormsFromRemote] Found forms in data.forms');
       formsArray = data.forms;
     }
     else if ('data' in data) {
       const nestedData = (data as any).data;
       if (Array.isArray(nestedData)) {
-        console.log('[fetchFormsFromRemote] Found forms in data.data (array)');
         formsArray = nestedData;
       } else if (nestedData && typeof nestedData === 'object' && 'data' in nestedData) {
-        console.log('[fetchFormsFromRemote] Found forms in data.data.data');
         formsArray = (nestedData as any).data;
       }
     }
     else if (Array.isArray(data)) {
-      console.log('[fetchFormsFromRemote] Response is direct array');
       formsArray = data as any;
     }
 
@@ -184,6 +180,7 @@ export function useGetForms(forceSync: boolean = false) {
   const [isOffline, setIsOffline] = useState(false);
   const [dataSource, setDataSource] = useState<"local" | "remote" | "pending">("pending");
   const [error, setError] = useState<Error | null>(null);
+  const { isLoggedIn } = useAuth({});
 
   const { syncStatus, refresh: syncRefresh } = useDataSync<IExistingForm>([
     {
@@ -231,8 +228,8 @@ export function useGetForms(forceSync: boolean = false) {
         // STEP 2: Check network and sync in background
         const online = await checkNetworkConnection();
         setIsOffline(!online);
-
-        if (online && isMounted) {
+        const loginStatus = await Promise.resolve(isLoggedIn);
+        if (online && isMounted && loginStatus) {
           console.log("Online — syncing forms from remote in background...");
           
           try {
@@ -249,7 +246,7 @@ export function useGetForms(forceSync: boolean = false) {
               if (isMounted) {
                 setStoredForms([]);
                 setDataSource("remote");
-                console.log('✅ Local forms database cleared for security');
+                console.log('Local forms database cleared for security');
               }
               return;
             }

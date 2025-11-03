@@ -13,7 +13,7 @@ export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
     post_data TEXT,
     loads TEXT,
     time_spent TEXT,
-    user_id INTEGER,
+    user_id TEXT,
     is_primary BOOLEAN,
     project_module_id INTEGER,
     source_module_id INTEGER,
@@ -24,7 +24,7 @@ export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
     order_list INTEGER,
     survey_id INTEGER,
     sync_data TEXT,
-    created_by_user_id INTEGER,
+    created_by_user_id TEXT,
     sync_status BOOLEAN,
     sync_reason TEXT,
     sync_attempts INTEGER,
@@ -65,11 +65,11 @@ import { baseInstance } from "~/utils/axios";
 import Toast from "react-native-toast-message";
 import { router } from "expo-router";
 import { TFunction } from "i18next";
+import { useAuth } from "~/lib/hooks/useAuth";
 
 interface FormField {
   key: string;
   type: string;
-  // ... other field properties
 }
 
 export interface SurveySubmission {
@@ -79,7 +79,7 @@ export interface SurveySubmission {
   form_data: Record<string, any>;
   location: Record<string, any>;
   sync_data?: Record<string, any>;
-  created_by_user_id: number;
+  created_by_user_id: string;
   sync_status: number;
   sync_reason: string;
   sync_attempts: number;
@@ -128,8 +128,12 @@ const prepareApiPayload = (submission: SurveySubmission, formId: string) => {
  * Fetch submissions from API and transform to local SQLite format
  * Maps the 'data' field to 'answers' column properly
  */
-export const fetchSurveySubmissionsFromRemote = async (userId?: string): Promise<any[]> => {
+export const fetchSurveySubmissionsFromRemote = async (userId?: string,isLoggedIn?:boolean): Promise<any[]> => {
+ if(!isLoggedIn){
+    return [];
+  }
   try {
+     
     console.log("Fetching survey submissions from remote API...");
     const res = await baseInstance.get("/submissions/filter");
     
@@ -140,22 +144,22 @@ export const fetchSurveySubmissionsFromRemote = async (userId?: string): Promise
     console.log(`Received ${submissions.length} submissions from API`);
 
     // Optional: filter by userId if provided
-    const filteredSubmissions = userId
-      ? submissions.filter((sub: any) => sub.submitter?._id === userId)
-      : submissions;
+    // const filteredSubmissions = userId
+    //   ? submissions.filter((sub: any) => sub.submitter?._id === userId)
+    //   : submissions;
 
-    console.log(`Filtered to ${filteredSubmissions.length} submissions for user ${userId}`);
+    // console.log(`Filtered to ${filteredSubmissions.length} submissions for user ${userId}`);
 
     // Transform submissions into SQLite row format (not SurveySubmission format)
     // This ensures the column names match the database schema
-    const transformed = filteredSubmissions.map((sub: any) => {
+    const transformed = submissions.map((sub: any) => {
       const data = sub.data ?? {};
       const form = sub.form ?? {};
       const submitter = sub.submitter ?? {};
 
       const formData = {
         survey_id: form._id ?? null,
-        user_id: submitter._id ?? null,
+        user_id: submitter.id ?? null,
         table_name: form.title ?? null,
         project_module_id: null,
         source_module_id: null,
@@ -174,7 +178,7 @@ export const fetchSurveySubmissionsFromRemote = async (userId?: string): Promise
         last_sync_attempt: new Date(sub.updatedAt ?? sub.createdAt).toISOString(),
         submitted_at: new Date(sub.createdAt ?? Date.now()).toISOString(),
         sync_type: "survey_submissions",
-        created_by_user_id: submitter._id ?? null,
+        created_by_user_id: submitter.id ?? null,
       };
 
       // Return SQLite row format with correct column names
@@ -185,7 +189,7 @@ export const fetchSurveySubmissionsFromRemote = async (userId?: string): Promise
         form_data: JSON.stringify(formData),
         location: JSON.stringify({}),
         sync_data: JSON.stringify(syncData),
-        created_by_user_id: submitter._id ?? null,
+        created_by_user_id: submitter.id ?? null,
         sync_status: 1,
         sync_reason: "From API",
         sync_attempts: 1,
@@ -245,7 +249,7 @@ export const toSQLiteRow = (submission: SurveySubmission): Record<string, any> =
     }
     return JSON.stringify({});
   };
-
+  
   return {
     _id: submission._id,
     id: submission.id,
@@ -555,7 +559,7 @@ export const syncModifiedSubmissions = async (
 
     if (userId) {
       modifiedSubmissions = modifiedSubmissions.filter(
-        (s: SurveySubmission) => s.created_by_user_id === userId
+        (s: SurveySubmission) => String(s.created_by_user_id) === String(userId)
       );
     }
     
@@ -684,7 +688,7 @@ export const syncPendingSubmissions = async (
 
     if (userId) {
       pendingSubmissions = pendingSubmissions.filter(
-        (s: SurveySubmission) => s.created_by_user_id === userId
+        (s: SurveySubmission) => String(s.created_by_user_id) === String(userId)
       );
     }
     
@@ -741,7 +745,7 @@ export const syncPendingSubmissions = async (
           updated_at: new Date().toISOString(),
         });
         
-        console.error(`❌ Failed to sync ${submission._id}:`, error);
+        console.error(`Failed to sync ${submission._id}:`, error);
       }
     }
 
@@ -776,7 +780,7 @@ export const syncPendingSubmissions = async (
 
     return { synced, failed, errors };
   } catch (error) {
-    console.error("❌ Error during pending submissions sync:", error);
+    console.error("Error during pending submissions sync:", error);
     return { 
       synced: 0, 
       failed: 0, 
@@ -987,10 +991,10 @@ export const createSurveySubmission = (
         sync_attempts: 0,
         last_sync_attempt: new Date().toISOString(),
         submitted_at: new Date().toISOString(),
-        created_by_user_id: userId,
+        created_by_user_id: String(userId),
         sync_type: SyncType.survey_submissions,
       }),
-      created_by_user_id: userId,
+      created_by_user_id: String(userId),
       sync_status: 0,
       sync_reason: "Pending sync",
       sync_attempts: 0,

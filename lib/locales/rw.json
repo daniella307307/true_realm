@@ -36,6 +36,17 @@
       "passwordDigit": "Ijambo ry'ibanga rigomba kugira umubare nibura umwe",
       "identifierRequired": "Imeri cyangwa nimero ya telefoni irakenewe",
       "invalidIdentifier": "Imeri cyangwa nimero ya telefoni yanditswe nabi"
+    },
+    "Logout":{
+      "Error":"Ikibazo mu gusohoka",
+      "Try_Again":"Ongera ugerageze",
+      "Logging_out":"gusohoka...",
+      "Success":"Gusohoka byagenze neza",
+      "Session_Expired_Title":"Igihe cyo kwinjira kirarangiye",
+      "Session_Expired_Message":"Uragomba kongera kwinjira kugirango ukomeze ukoresha porogaramu",
+      "Go_to_Login":"Jya ku rubuga rwo kwinjira",
+      "pending_sync":"Guhuza biracyategereje",
+      "logout_prevented":"Gusohoka birabujijwe"
     }
   },
   "ForgotPassword": {

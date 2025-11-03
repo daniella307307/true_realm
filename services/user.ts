@@ -3,6 +3,7 @@ import Toast from "react-native-toast-message";
 import { ILoginDetails, ILoginResponse, IResponse, User } from "~/types";
 import { baseInstance } from "~/utils/axios";
 import { fetchWithRetry, checkNetworkConnection, showNetworkErrorAlert } from "~/utils/networkHelpers";
+import { getPendingChangesCount } from "./survey-submission";
 
 // export async function userLogout(sqlite: any | null) {
 //   // Proceed with the logout API call
@@ -11,71 +12,16 @@ import { fetchWithRetry, checkNetworkConnection, showNetworkErrorAlert } from "~
 //   return res.data;
 // }
 
-export async function userLogout(sqlite: any | null) {
-  try {
-    console.log("Logging out user...");
-
-    //Call API logout endpoint
+export async function userLogout() {
+  try { 
+    // Only call API logout if no pending changes
     const res = await fetchWithRetry(() =>
       baseInstance.post<IResponse<{}>>("/auth/logout")
     );
-    console.log("Logout API success:", res.data);
-
-    //Clear local SQLite tables
-    if (sqlite) {
-      console.log("Clearing all user data from SQLite...");
-
-      // Tables that contain user-specific or syncable data
-      const tablesToClear = [
-        "SurveySubmissions",
-        "Surveys",
-        "Project"
-      ];
-
-      await sqlite.transaction(async () => {
-        for (const table of tablesToClear) {
-          try {
-            await sqlite.deleteAll(table);
-            console.log(`Cleared table: ${table}`);
-          } catch (err) {
-            console.warn(`Could not clear table ${table}:`, err);
-          }
-        }
-      });
-
-      console.log("All local tables cleared.");
-    } else {
-      console.warn("No SQLite instance provided to userLogout.");
-    }
-
-    // Optional: clear AsyncStorage
-    try {
-      await AsyncStorage.clear();
-      console.log("Cleared AsyncStorage data.");
-    } catch (error) {
-      console.warn("Could not clear AsyncStorage:", error);
-    }
-
-    //Success toast
-    Toast.show({
-      type: "success",
-      text1: "Logout Successful",
-      text2: "All local data has been cleared.",
-      position: "top",
-      visibilityTime: 3000,
-    });
-
-    return res.data;
+    
+    return res;
   } catch (error) {
-    console.error("Logout failed:", error);
-
-    Toast.show({
-      type: "error",
-      text1: "Logout Failed",
-      text2: "Could not complete logout. Please try again.",
-      position: "top",
-    });
-
+    console.error("API logout failed:", error);
     throw error;
   }
 }
@@ -104,6 +50,7 @@ export async function userLogin(values: ILoginDetails) {
         }
       )
     );
+
     
     console.log("Login API raw response:", JSON.stringify({
       token: response.data.token,
@@ -118,10 +65,15 @@ export async function userLogin(values: ILoginDetails) {
     }, null, 2));
     
     return response.data;
-  } catch (error) { 
-    throw error;
+  } catch (error: any) {
+  if (!error?.response) {
+    console.error(" Raw error (non-Axios):", error);
   }
-}
+
+  throw error;
+}}
+
+
 
 // FIXED: Removed "use" prefix - this is NOT a Hook, it's a regular async function
 export async function getCurrentLoggedInProfile(id:string) {

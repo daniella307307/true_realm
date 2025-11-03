@@ -208,15 +208,6 @@ const [submissionsCount, setSubmissionsCount] = useState(0);
     const initializeData = async () => {
       try {
         const loginStatus = await Promise.resolve(isLoggedIn);
-        
-        console.log(" Checking initialization conditions:", {
-          loginStatus,
-          isSQLiteReady,
-          hasInitialized,
-          isRefreshing,
-          isDataLoaded
-        });
-
         if (loginStatus && isSQLiteReady && !hasInitialized && !isRefreshing) {
           console.log(" All conditions met, starting initial data load");
           setHasInitialized(true);
