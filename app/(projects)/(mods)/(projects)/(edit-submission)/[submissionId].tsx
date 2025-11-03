@@ -1,723 +1,8 @@
-// import React, { useState, useEffect, useMemo } from "react";
-// import {
-//   View,
-//   Text,
-//   ScrollView,
-//   TouchableOpacity,
-//   Alert,
-//   SafeAreaView,
-//   StyleSheet,
-//   ActivityIndicator,
-//   TextInput,
-// } from "react-native";
-// import HeaderNavigation from "~/components/ui/header";
-// import { useTranslation } from "react-i18next";
-// import { useAuth } from "~/lib/hooks/useAuth";
-// import { router, useLocalSearchParams } from "expo-router";
-// import { useSQLite } from "~/providers/RealContextProvider";
-// import { 
-//   updateSurveySubmissionLocally, 
-//   updateSurveySubmissionOnServer,
-//   parseSQLiteRow,
-//   SurveySubmission 
-// } from "~/services/survey-submission";
-// import Toast from "react-native-toast-message";
-// import { checkNetworkConnection } from "~/utils/networkHelpers";
-
-// const EditSubmissionScreen = () => {
-//   const { t } = useTranslation();
-//   const { user } = useAuth({});
-//   const params = useLocalSearchParams<{ submissionId: string }>();
-//   const { getAll, update } = useSQLite();
-  
-//   const [submission, setSubmission] = useState<SurveySubmission | null>(null);
-//   const [editedData, setEditedData] = useState<Record<string, any>>({});
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [isSaving, setIsSaving] = useState(false);
-//   const [isOnline, setIsOnline] = useState(true);
-//   const [hasChanges, setHasChanges] = useState(false);
-  
-//   const userId = user?.id || user?.json?.id;
-
-//   // Load submission
-//   useEffect(() => {
-//     const loadSubmission = async () => {
-//       try {
-//         setIsLoading(true);
-//         const allSubmissions = await getAll("SurveySubmissions");
-//         const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
-        
-//         const found = parsedSubmissions.find(
-//           (s: SurveySubmission) => s._id === params.submissionId
-//         );
-        
-//         if (found) {
-//           setSubmission(found);
-//           setEditedData({ ...found.data });
-//         } else {
-//           Alert.alert(
-//             t("CommonPage.error") || "Error",
-//             "Submission not found",
-//             [{ text: t("CommonPage.ok") || "OK", onPress: () => router.back() }]
-//           );
-//         }
-//       } catch (error) {
-//         console.error("Error loading submission:", error);
-//         Alert.alert(
-//           t("CommonPage.error") || "Error",
-//           "Failed to load submission",
-//           [{ text: t("CommonPage.ok") || "OK", onPress: () => router.back() }]
-//         );
-//       } finally {
-//         setIsLoading(false);
-//       }
-//     };
-
-//     loadSubmission();
-//   }, [params.submissionId]);
-
-//   // Check network status
-//   useEffect(() => {
-//     const checkNetwork = async () => {
-//       const connected = await checkNetworkConnection();
-//       setIsOnline(connected);
-//     };
-    
-//     checkNetwork();
-//     const interval = setInterval(checkNetwork, 30000);
-    
-//     return () => clearInterval(interval);
-//   }, []);
-
-//   // Track changes
-//   useEffect(() => {
-//     if (!submission) return;
-    
-//     const changed = Object.keys(editedData).some(
-//       key => JSON.stringify(editedData[key]) !== JSON.stringify(submission.data[key])
-//     );
-    
-//     setHasChanges(changed);
-//   }, [editedData, submission]);
-
-//   const handleFieldChange = (key: string, value: any) => {
-//     setEditedData(prev => ({ ...prev, [key]: value }));
-//   };
-//   // In EditSubmissionScreen.tsx
-
-// const handleSaveLocally = async () => {
-//   if (!submission || !userId) return;
-
-//   try {
-//     setIsSaving(true);
-
-//     // ✅ Pass both getAll and update functions
-//     await updateSurveySubmissionLocally(
-//       getAll,      // ✅ First parameter: getAll
-//       update,      // ✅ Second parameter: update
-//       submission._id!,
-//       { data: editedData },
-//       userId
-//     );
-
-//     Toast.show({
-//       type: "success",
-//       text1: t("Alerts.success.title") || "Success",
-//       text2: "Changes saved locally",
-//       position: "top",
-//       visibilityTime: 3000,
-//     });
-
-//     // Refresh submission data
-//     const allSubmissions = await getAll("SurveySubmissions");
-//     const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
-//     const updated = parsedSubmissions.find((s: SurveySubmission) => s._id === submission._id);
-    
-//     if (updated) {
-//       setSubmission(updated);
-//       setEditedData({ ...updated.data });
-//       setHasChanges(false);
-//     }
-
-//     router.back();
-//   } catch (error) {
-//     console.error("Error saving locally:", error);
-//     Toast.show({
-//       type: "error",
-//       text1: t("Alerts.error.title") || "Error",
-//       text2: "Failed to save changes",
-//       position: "top",
-//       visibilityTime: 4000,
-//     });
-//   } finally {
-//     setIsSaving(false);
-//   }
-// };
-
-// const handleSyncNow = async () => {
-//   if (!submission || !userId) return;
-
-//   if (!isOnline) {
-//     Toast.show({
-//       type: "error",
-//       text1: t("Alerts.error.network.title") || "Network Error",
-//       text2: "You are offline. Changes will sync when online.",
-//       position: "top",
-//       visibilityTime: 4000,
-//     });
-//     return;
-//   }
-
-//   if (!submission.id) {
-//     Toast.show({
-//       type: "error",
-//       text1: t("CommonPage.error") || "Error",
-//       text2: "Cannot sync: No remote ID. This submission needs to be created first.",
-//       position: "top",
-//       visibilityTime: 4000,
-//     });
-//     return;
-//   }
-
-//   try {
-//     setIsSaving(true);
-
-//     // ✅ Save locally first with both parameters
-//     await updateSurveySubmissionLocally(
-//       getAll,      // ✅ First parameter: getAll
-//       update,      // ✅ Second parameter: update
-//       submission._id!,
-//       { data: editedData },
-//       userId
-//     );
-
-//     // Get updated submission
-//     const allSubmissions = await getAll("SurveySubmissions");
-//     const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
-//     const updatedSubmission = parsedSubmissions.find(
-//       (s: SurveySubmission) => s._id === submission._id
-//     );
-
-//     if (!updatedSubmission) {
-//       throw new Error("Failed to find updated submission");
-//     }
-
-//     // Sync to server
-//     Toast.show({
-//       type: "info",
-//       text1: "Syncing...",
-//       text2: "Uploading changes to server",
-//       position: "top",
-//       visibilityTime: 2000,
-//     });
-
-//     await updateSurveySubmissionOnServer(updatedSubmission, t);
-
-//     // Mark as synced
-//     await update("SurveySubmissions", submission._id!, {
-//       sync_status: 1,
-//       needs_update_sync: 0,
-//       is_modified: 0,
-//       sync_reason: "Successfully updated on server",
-//       updated_at: new Date().toISOString(),
-//     });
-
-//     Toast.show({
-//       type: "success",
-//       text1: t("Alerts.success.title") || "Success",
-//       text2: "Changes synced successfully",
-//       position: "top",
-//       visibilityTime: 3000,
-//     });
-
-//     router.back();
-//   } catch (error: any) {
-//     console.error("Error syncing:", error);
-//     Toast.show({
-//       type: "error",
-//       text1: t("Alerts.error.title") || "Error",
-//       text2: error?.response?.data?.message || "Failed to sync changes",
-//       position: "top",
-//       visibilityTime: 4000,
-//     });
-//   } finally {
-//     setIsSaving(false);
-//   }
-// };
-//   const handleSaveAndSync = async () => {
-//     if (isOnline && submission?.id) {
-//       Alert.alert(
-//         "Sync Now?",
-//         "Do you want to sync these changes to the server immediately?",
-//         [
-//           {
-//             text: "Save Locally",
-//             onPress: handleSaveLocally,
-//             style: "cancel",
-//           },
-//           {
-//             text: "Save & Sync",
-//             onPress: handleSyncNow,
-//           },
-//         ]
-//       );
-//     } else {
-//       handleSaveLocally();
-//     }
-//   };
-
-//   const renderField = (key: string, value: any) => {
-//     const fieldValue = editedData[key] ?? value;
-
-//     if (typeof fieldValue === "boolean") {
-//       return (
-//         <View key={key} style={styles.fieldContainer}>
-//           <Text style={styles.fieldLabel}>{formatFieldName(key)}</Text>
-//           <View style={styles.switchContainer}>
-//             <TouchableOpacity
-//               style={[
-//                 styles.switchOption,
-//                 fieldValue === true && styles.switchOptionActive,
-//               ]}
-//               onPress={() => handleFieldChange(key, true)}
-//             >
-//               <Text
-//                 style={[
-//                   styles.switchOptionText,
-//                   fieldValue === true && styles.switchOptionTextActive,
-//                 ]}
-//               >
-//                 {t("CommonPage.yes") || "Yes"}
-//               </Text>
-//             </TouchableOpacity>
-//             <TouchableOpacity
-//               style={[
-//                 styles.switchOption,
-//                 fieldValue === false && styles.switchOptionActive,
-//               ]}
-//               onPress={() => handleFieldChange(key, false)}
-//             >
-//               <Text
-//                 style={[
-//                   styles.switchOptionText,
-//                   fieldValue === false && styles.switchOptionTextActive,
-//                 ]}
-//               >
-//                 {t("CommonPage.no") || "No"}
-//               </Text>
-//             </TouchableOpacity>
-//           </View>
-//         </View>
-//       );
-//     }
-
-//     if (Array.isArray(fieldValue)) {
-//       return (
-//         <View key={key} style={styles.fieldContainer}>
-//           <Text style={styles.fieldLabel}>{formatFieldName(key)}</Text>
-//           <TextInput
-//             style={styles.textInput}
-//             value={fieldValue.join(", ")}
-//             onChangeText={(text) =>
-//               handleFieldChange(
-//                 key,
-//                 text.split(",").map((item) => item.trim())
-//               )
-//             }
-//             placeholder="Enter comma-separated values"
-//             multiline
-//           />
-//         </View>
-//       );
-//     }
-
-//     if (typeof fieldValue === "number") {
-//       return (
-//         <View key={key} style={styles.fieldContainer}>
-//           <Text style={styles.fieldLabel}>{formatFieldName(key)}</Text>
-//           <TextInput
-//             style={styles.textInput}
-//             value={String(fieldValue)}
-//             onChangeText={(text) => handleFieldChange(key, Number(text) || 0)}
-//             keyboardType="numeric"
-//             placeholder="Enter number"
-//           />
-//         </View>
-//       );
-//     }
-
-//     return (
-//       <View key={key} style={styles.fieldContainer}>
-//         <Text style={styles.fieldLabel}>{formatFieldName(key)}</Text>
-//         <TextInput
-//           style={styles.textInput}
-//           value={String(fieldValue || "")}
-//           onChangeText={(text) => handleFieldChange(key, text)}
-//           placeholder="Enter value"
-//           multiline
-//         />
-//       </View>
-//     );
-//   };
-
-//   const formatFieldName = (key: string) => {
-//     return key
-//       .replace(/_/g, " ")
-//       .replace(/\b\w/g, (l) => l.toUpperCase())
-//       .trim();
-//   };
-
-//   if (isLoading) {
-//     return (
-//       <SafeAreaView style={styles.loadingContainer}>
-//         <ActivityIndicator size="large" color="#00227c" />
-//         <Text style={styles.loadingText}>
-//           {t("CommonPage.loading") || "Loading..."}
-//         </Text>
-//       </SafeAreaView>
-//     );
-//   }
-
-//   if (!submission) {
-//     return (
-//       <SafeAreaView style={styles.container}>
-//         <HeaderNavigation
-//           showLeft={true}
-//           title={t("CommonPage.error") || "Error"}
-//         />
-//         <View style={styles.emptyState}>
-//           <Text style={styles.emptyText}>Submission not found</Text>
-//         </View>
-//       </SafeAreaView>
-//     );
-//   }
-
-//   return (
-//     <SafeAreaView style={styles.container}>
-//       <HeaderNavigation
-//         showLeft={true}
-//         title={t("Edit Submission") || "Edit Submission"}
-//         showRight={true}
-//       />
-
-//       {!isOnline && (
-//         <View style={styles.offlineBanner}>
-//           <Text style={styles.offlineText}>
-//             📴 {t("CommonPage.offline_mode") || "Offline Mode"}
-//           </Text>
-//         </View>
-//       )}
-
-//       {submission.is_modified && (
-//         <View style={styles.modifiedBanner}>
-//           <Text style={styles.modifiedText}>
-//             ⚠️ This submission has unsaved changes
-//           </Text>
-//         </View>
-//       )}
-
-//       <ScrollView style={styles.scrollView}>
-//         <View style={styles.header}>
-//           <Text style={styles.title}>
-//             {submission.form_data?.survey_id
-//               ? `Form #${submission.form_data.survey_id}`
-//               : "Survey Submission"}
-//           </Text>
-//           <View style={styles.statusContainer}>
-//             {submission.sync_status ? (
-//               <View style={styles.statusBadgeSuccess}>
-//                 <Text style={styles.statusBadgeText}>✓ Synced</Text>
-//               </View>
-//             ) : (
-//               <View style={styles.statusBadgePending}>
-//                 <Text style={styles.statusBadgeText}>⟳ Pending</Text>
-//               </View>
-//             )}
-//             {submission.needs_update_sync && (
-//               <View style={styles.statusBadgeWarning}>
-//                 <Text style={styles.statusBadgeText}>⚠ Needs Sync</Text>
-//               </View>
-//             )}
-//           </View>
-//         </View>
-
-//         <View style={styles.section}>
-//           <Text style={styles.sectionTitle}>Form Fields</Text>
-//           <View style={styles.sectionContent}>
-//             {Object.entries(submission.data)
-//               .filter(([key]) => key !== "language" && key !== "submit")
-//               .map(([key, value]) => renderField(key, value))}
-//           </View>
-//         </View>
-
-//         {submission.location &&
-//           Object.keys(submission.location).some((k) => submission.location[k]) && (
-//             <View style={styles.section}>
-//               <Text style={styles.sectionTitle}>Location Information</Text>
-//               <View style={styles.sectionContent}>
-//                 {Object.entries(submission.location)
-//                   .filter(([_, value]) => value != null)
-//                   .map(([key, value]) => (
-//                     <View key={key} style={styles.infoRow}>
-//                       <Text style={styles.infoLabel}>{formatFieldName(key)}:</Text>
-//                       <Text style={styles.infoValue}>{String(value)}</Text>
-//                     </View>
-//                   ))}
-//               </View>
-//             </View>
-//           )}
-//       </ScrollView>
-
-//       <View style={styles.footer}>
-//         <TouchableOpacity
-//           style={[styles.button, styles.buttonSecondary]}
-//           onPress={() => router.back()}
-//           disabled={isSaving}
-//         >
-//           <Text style={styles.buttonSecondaryText}>
-//             {t("CommonPage.cancel") || "Cancel"}
-//           </Text>
-//         </TouchableOpacity>
-
-//         <TouchableOpacity
-//           style={[
-//             styles.button,
-//             styles.buttonPrimary,
-//             (!hasChanges || isSaving) && styles.buttonDisabled,
-//           ]}
-//           onPress={handleSaveAndSync}
-//           disabled={!hasChanges || isSaving}
-//         >
-//           {isSaving ? (
-//             <ActivityIndicator size="small" color="white" />
-//           ) : (
-//             <Text style={styles.buttonPrimaryText}>
-//               {isOnline && submission.id
-//                 ? t("Save & Sync") || "Save & Sync"
-//                 : t("CommonPage.save") || "Save"}
-//             </Text>
-//           )}
-//         </TouchableOpacity>
-//       </View>
-//     </SafeAreaView>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: "#f8f9fa",
-//   },
-//   loadingContainer: {
-//     flex: 1,
-//     justifyContent: "center",
-//     alignItems: "center",
-//     backgroundColor: "#f8f9fa",
-//   },
-//   loadingText: {
-//     fontSize: 16,
-//     color: "#666",
-//     marginTop: 12,
-//     fontWeight: "500",
-//   },
-//   offlineBanner: {
-//     backgroundColor: "#FFA500",
-//     padding: 12,
-//     alignItems: "center",
-//   },
-//   offlineText: {
-//     color: "white",
-//     fontSize: 13,
-//     fontWeight: "600",
-//   },
-//   modifiedBanner: {
-//     backgroundColor: "#fff3cd",
-//     padding: 12,
-//     alignItems: "center",
-//   },
-//   modifiedText: {
-//     color: "#856404",
-//     fontSize: 13,
-//     fontWeight: "600",
-//   },
-//   scrollView: {
-//     flex: 1,
-//   },
-//   header: {
-//     backgroundColor: "white",
-//     padding: 20,
-//     borderBottomWidth: 1,
-//     borderBottomColor: "#e9ecef",
-//   },
-//   title: {
-//     fontSize: 20,
-//     fontWeight: "700",
-//     color: "#212529",
-//     marginBottom: 12,
-//   },
-//   statusContainer: {
-//     flexDirection: "row",
-//     gap: 8,
-//   },
-//   statusBadgeSuccess: {
-//     backgroundColor: "#28a745",
-//     paddingHorizontal: 12,
-//     paddingVertical: 6,
-//     borderRadius: 12,
-//   },
-//   statusBadgePending: {
-//     backgroundColor: "#FFA500",
-//     paddingHorizontal: 12,
-//     paddingVertical: 6,
-//     borderRadius: 12,
-//   },
-//   statusBadgeWarning: {
-//     backgroundColor: "#dc3545",
-//     paddingHorizontal: 12,
-//     paddingVertical: 6,
-//     borderRadius: 12,
-//   },
-//   statusBadgeText: {
-//     color: "white",
-//     fontSize: 12,
-//     fontWeight: "600",
-//   },
-//   section: {
-//     margin: 16,
-//   },
-//   sectionTitle: {
-//     fontSize: 18,
-//     fontWeight: "700",
-//     color: "#212529",
-//     marginBottom: 12,
-//   },
-//   sectionContent: {
-//     backgroundColor: "white",
-//     borderRadius: 12,
-//     padding: 16,
-//     borderWidth: 1,
-//     borderColor: "#e9ecef",
-//   },
-//   fieldContainer: {
-//     marginBottom: 20,
-//   },
-//   fieldLabel: {
-//     fontSize: 14,
-//     fontWeight: "600",
-//     color: "#495057",
-//     marginBottom: 8,
-//   },
-//   textInput: {
-//     borderWidth: 1,
-//     borderColor: "#dee2e6",
-//     borderRadius: 8,
-//     padding: 12,
-//     fontSize: 14,
-//     color: "#212529",
-//     backgroundColor: "white",
-//     minHeight: 44,
-//   },
-//   switchContainer: {
-//     flexDirection: "row",
-//     gap: 8,
-//   },
-//   switchOption: {
-//     flex: 1,
-//     paddingVertical: 12,
-//     paddingHorizontal: 16,
-//     borderRadius: 8,
-//     borderWidth: 2,
-//     borderColor: "#dee2e6",
-//     backgroundColor: "white",
-//     alignItems: "center",
-//   },
-//   switchOptionActive: {
-//     borderColor: "#00227c",
-//     backgroundColor: "#00227c",
-//   },
-//   switchOptionText: {
-//     fontSize: 14,
-//     fontWeight: "600",
-//     color: "#6c757d",
-//   },
-//   switchOptionTextActive: {
-//     color: "white",
-//   },
-//   infoRow: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     paddingVertical: 8,
-//     borderBottomWidth: 1,
-//     borderBottomColor: "#f1f3f4",
-//   },
-//   infoLabel: {
-//     fontSize: 14,
-//     fontWeight: "600",
-//     color: "#495057",
-//   },
-//   infoValue: {
-//     fontSize: 14,
-//     color: "#212529",
-//   },
-//   footer: {
-//     flexDirection: "row",
-//     padding: 16,
-//     backgroundColor: "white",
-//     borderTopWidth: 1,
-//     borderTopColor: "#e9ecef",
-//     gap: 12,
-//   },
-//   button: {
-//     flex: 1,
-//     paddingVertical: 14,
-//     borderRadius: 8,
-//     alignItems: "center",
-//     justifyContent: "center",
-//   },
-//   buttonPrimary: {
-//     backgroundColor: "#00227c",
-//   },
-//   buttonSecondary: {
-//     backgroundColor: "white",
-//     borderWidth: 2,
-//     borderColor: "#00227c",
-//   },
-//   buttonDisabled: {
-//     backgroundColor: "#cccccc",
-//     opacity: 0.6,
-//   },
-//   buttonPrimaryText: {
-//     color: "white",
-//     fontSize: 16,
-//     fontWeight: "600",
-//   },
-//   buttonSecondaryText: {
-//     color: "#00227c",
-//     fontSize: 16,
-//     fontWeight: "600",
-//   },
-//   emptyState: {
-//     flex: 1,
-//     justifyContent: "center",
-//     alignItems: "center",
-//     padding: 32,
-//   },
-//   emptyText: {
-//     fontSize: 16,
-//     color: "#6c757d",
-//     textAlign: "center",
-//   },
-// });
-
-// export default EditSubmissionScreen;
-
-
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   View,
   Text,
   SafeAreaView,
-  StyleSheet,
   ActivityIndicator,
   Alert,
 } from "react-native";
@@ -728,11 +13,11 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "~/lib/hooks/useAuth";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSQLite } from "~/providers/RealContextProvider";
-import { 
-  updateSurveySubmissionLocally, 
+import {
+  updateSurveySubmissionLocally,
   updateSurveySubmissionOnServer,
   parseSQLiteRow,
-  SurveySubmission 
+  SurveySubmission
 } from "~/services/survey-submission";
 import Toast from "react-native-toast-message";
 import { checkNetworkConnection } from "~/utils/networkHelpers";
@@ -756,7 +41,7 @@ function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any
   }
 
   const components = formSchema.components;
-  
+
   const questionComponents = components.filter((comp: any) => {
     if (!comp || typeof comp !== 'object') return false;
     const excludedTypes = ['button', 'htmlelement', 'content'];
@@ -771,11 +56,11 @@ function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any
 
   const pages: any[] = [];
   const totalPages = Math.ceil(questionComponents.length / questionsPerPage);
-  
+
   for (let i = 0; i < questionComponents.length; i += questionsPerPage) {
     const pageComponents = questionComponents.slice(i, i + questionsPerPage);
     const pageNumber = Math.floor(i / questionsPerPage) + 1;
-    
+
     if (pageComponents.length > 0) {
       pages.push({
         title: `Page ${pageNumber} of ${totalPages}`,
@@ -802,7 +87,7 @@ const EditSubmissionScreen = () => {
   const { user } = useAuth({});
   const params = useLocalSearchParams<{ submissionId: string }>();
   const { getAll, update } = useSQLite();
-  
+
   const [submission, setSubmission] = useState<SurveySubmission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -811,13 +96,11 @@ const EditSubmissionScreen = () => {
   const [loadingStep, setLoadingStep] = useState("Initializing...");
   const [assetError, setAssetError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(true);
-  const [formSchema, setFormSchema] = useState<any>(null);
-  const [isSubmitting, setIssubmitting] = useState(false);
-  const [loading,setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
   const assetsLoadedRef = useRef(false);
   const networkStatusInitialized = useRef(false);
-  
+
   const userId = user?.id || user?.json?.id;
 
   // Get the original form structure
@@ -862,11 +145,11 @@ const EditSubmissionScreen = () => {
     const checkConnectivity = async () => {
       try {
         const isConnected = await checkNetworkConnection();
-        
+
         setIsOnline(prevIsOnline => {
           if (isConnected !== prevIsOnline) {
             console.log("Network status changed:", isConnected ? "Online" : "Offline");
-            
+
             Toast.show({
               type: isConnected ? "success" : "info",
               text1: isConnected ? "Back Online" : "Offline Mode",
@@ -875,14 +158,14 @@ const EditSubmissionScreen = () => {
               visibilityTime: 2000,
             });
           }
-          
+
           return isConnected;
         });
       } catch (error) {
         console.warn("Error checking network status:", error);
       }
     };
-    
+
     intervalId = setInterval(checkConnectivity, 30000);
 
     return () => {
@@ -910,7 +193,7 @@ const EditSubmissionScreen = () => {
 
       try {
         setLoadingStep("Checking cached assets...");
-        
+
         const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
         const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
         const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
@@ -944,7 +227,7 @@ const EditSubmissionScreen = () => {
 
         setLoadingStep("Downloading FormIO assets...");
         console.log("Downloading FormIO assets from CDN...");
-        
+
         const downloads = [
           {
             url: "https://cdn.form.io/formiojs/formio.full.min.js",
@@ -970,14 +253,14 @@ const EditSubmissionScreen = () => {
         );
 
         const allSucceeded = results.every(result => result.status === 'fulfilled');
-        
+
         if (!allSucceeded) {
           const failed = results
             .map((result, index) => result.status === 'rejected' ? downloads[index].name : null)
             .filter(Boolean);
-          
+
           console.error("Failed to download assets:", failed);
-          
+
           if (isMounted) {
             setAssetError(`Failed to download required assets: ${failed.join(', ')}. Please check your internet connection.`);
             setLoadingStep("");
@@ -1015,11 +298,11 @@ const EditSubmissionScreen = () => {
         setIsLoading(true);
         const allSubmissions = await getAll("SurveySubmissions");
         const parsedSubmissions = allSubmissions.map(parseSQLiteRow);
-        
+
         const found = parsedSubmissions.find(
           (s: SurveySubmission) => s._id === params.submissionId
         );
-        
+
         if (found) {
           setSubmission(found);
           console.log("Loaded submission:", found);
@@ -1039,6 +322,7 @@ const EditSubmissionScreen = () => {
         );
       } finally {
         setIsLoading(false);
+        setIsSubmitting(false);
       }
     };
 
@@ -1054,7 +338,7 @@ const EditSubmissionScreen = () => {
     try {
       console.log('Parsing form JSON...');
       let baseForm;
-      
+
       if (typeof regularForm.json === "string") {
         baseForm = JSON.parse(regularForm.json);
       } else if (typeof regularForm.json === "object") {
@@ -1063,11 +347,11 @@ const EditSubmissionScreen = () => {
         console.error('Invalid json format:', typeof regularForm.json);
         return null;
       }
-      
+
       console.log('Form parsed successfully, converting to wizard...');
       const wizardForm = convertToWizardForm(baseForm, 5);
       console.log('Wizard conversion complete');
-      
+
       return wizardForm;
     } catch (err) {
       console.error("Failed to parse form JSON:", err);
@@ -1078,7 +362,7 @@ const EditSubmissionScreen = () => {
   const handleFormSubmission = useCallback(
     async (formData: any) => {
       console.log("handleFormSubmission called with data:", formData);
-      
+
       if (isSubmittingRef.current || !submission) {
         console.warn("Already submitting or no submission, ignoring");
         return;
@@ -1086,10 +370,9 @@ const EditSubmissionScreen = () => {
 
       isSubmittingRef.current = true;
       setIsSaving(true);
-      setIssubmitting(true);
+      setIsSubmitting(true);
 
       try {
-
         // Save locally first
         await updateSurveySubmissionLocally(
           getAll,
@@ -1178,12 +461,12 @@ const EditSubmissionScreen = () => {
             console.log("Form is ready and displayed");
             setFormLoading(false);
             break;
-            
+
           case "FORM_SUBMIT":
             console.log("Form submitted");
             handleFormSubmission(message.data);
             break;
-            
+
           case "FORM_ERROR":
             console.error("Form error:", message.error);
             setFormLoading(false);
@@ -1195,7 +478,7 @@ const EditSubmissionScreen = () => {
               visibilityTime: 4000,
             });
             break;
-            
+
           case "FORM_VALIDATION_ERROR":
             Toast.show({
               type: "error",
@@ -1205,11 +488,11 @@ const EditSubmissionScreen = () => {
               visibilityTime: 3000,
             });
             break;
-            
+
           case "DEBUG":
             console.log("Debug:", message.message);
             break;
-            
+
           default:
             console.log("Unknown message:", message.type);
         }
@@ -1221,25 +504,27 @@ const EditSubmissionScreen = () => {
   );
 
   const formHtml = useMemo(() => {
-    console.log(parsedForm)
-    console.log(submission)
-    console.log("assets ready:", assetsReady);
-    if (!parsedForm || !assetsReady) {
-      console.log('Cannot generate HTML - missing requirements');
-      return "";
+    // CRITICAL FIX: Check all required conditions
+    if (!parsedForm || !submission || !assetsReady) {
+      console.log('Cannot generate HTML - missing requirements', {
+        hasParsedForm: !!parsedForm,
+        hasSubmission: !!submission,
+        assetsReady
+      });
+      return null; // Return null instead of empty string
     }
 
     try {
       const formJsonString = JSON.stringify(parsedForm);
       const escapedFormJson = formJsonString.replace(/</g, "\\u003c");
-      
+
       // Pre-fill the form with existing submission data
       const submissionData = JSON.stringify(submission.data || {});
       const escapedSubmissionData = submissionData.replace(/</g, "\\u003c");
-      
+
       const escapedFormName = (regularForm?.name || "Edit Form").replace(/'/g, "\\'");
-      const totalPages = parsedForm.display === 'wizard' && Array.isArray(parsedForm.components) 
-        ? parsedForm.components.length 
+      const totalPages = parsedForm.display === 'wizard' && Array.isArray(parsedForm.components)
+        ? parsedForm.components.length
         : 1;
 
       console.log('Generating form HTML with pre-filled data');
@@ -1372,11 +657,6 @@ const EditSubmissionScreen = () => {
         box-shadow: 0 0 0 3px rgba(0, 34, 124, 0.1);
       }
       
-      /* Highlight pre-filled fields with existing values */
-      .form-control[value]:not([value=""]) {
-        background-color: #fff3cd;
-        border-color: #ffc107;
-      }
       
       .form-check-input:checked {
         background-color: var(--primary-color);
@@ -1511,21 +791,17 @@ const EditSubmissionScreen = () => {
               }
             });
 
-            // Pre-fill form with existing data
             if (existingData && Object.keys(existingData).length > 0) {
               form.submission = {
                 data: existingData
               };
               console.log('Form pre-filled with existing data');
               
-              // Add a slight delay to ensure rendering completes
               setTimeout(() => {
-                // Add visual highlighting to pre-filled fields
                 const inputs = document.querySelectorAll('.form-control, .form-check-input, .form-select');
                 inputs.forEach(input => {
                   if (input.value && input.value !== '') {
-                    input.style.backgroundColor = '#fff3cd';
-                    input.style.borderColor = '#ffc107';
+
                   }
                 });
               }, 100);
@@ -1604,116 +880,123 @@ const EditSubmissionScreen = () => {
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', waitForFormio);
         } else {
-          else {
-                        waitForFormio();
-                      }
-                    })();
-                  </script>
-                </body>
-              </html>
-                `;
-              } catch (err) {
-                console.error('Error generating form HTML:', err);
-                return "";
-              }
-            }, [parsedForm, regularForm?.name, assetsReady]);
-          
-            // Show error if assets couldn't be loaded
-            if (assetError) {
-              return (
-                <SafeAreaView className="flex-1 bg-background">
-                  <HeaderNavigation title={t("FormElementPage.title")} showLeft showRight />
-                  <View className="flex-1 items-center justify-center px-6">
-                    <View className="items-center">
-                      <Text className="text-6xl mb-4">📡</Text>
-                      <Text className="text-xl font-bold text-gray-800 text-center mb-2">
-                        Assets Not Available
-                      </Text>
-                      <Text className="text-gray-600 text-center mb-6">
-                        {assetError}
-                      </Text>
-                      <View className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                        <Text className="text-sm text-blue-800 text-center">
-                          Tip: Connect to the internet and reload this form to download required assets for offline use.
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </SafeAreaView>
-              );
-            }
-          
-            if (isLoading || !assetsReady || !networkStatusInitialized.current) {
-              return (
-                <View className="flex-1 items-center justify-center bg-white">
-                  <ActivityIndicator size="large" color="#00227c" />
-                  <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text>
-                  {!isOnline && (
-                    <Text className="mt-2 text-sm text-amber-600">
-                      Offline - checking cached assets...
-                    </Text>
-                  )}
-                </View>
-              );
-            }
-          
-            if (!regularForm) {
-              return <NotFound title="Form not found" description="Please try again" />;
-            }
-          
-            if (!parsedForm) {
-              return <NotFound title="Form error" description="Form JSON is invalid." />;
-            }
-          
-            return (
-              <SafeAreaView className="flex-1 bg-background">
-                <HeaderNavigation title={t("FormElementPage.title")} showLeft showRight />
-                <WebView
-                  originWhitelist={["*"]}
-                  source={{ html: formHtml, baseUrl: 'about:blank' }}
-                  javaScriptEnabled={true}
-                  domStorageEnabled={true}
-                  onMessage={handleWebViewMessage}
-                  cacheEnabled={true}
-                  sharedCookiesEnabled={false}
-                  thirdPartyCookiesEnabled={false}
-                  incognito={true}
-                  allowFileAccess={true}
-                  allowFileAccessFromFileURLs={true}
-                  allowUniversalAccessFromFileURLs={true}
-                  mixedContentMode="always"
-                  onError={(syntheticEvent) => {
-                    console.warn("WebView error:", syntheticEvent.nativeEvent);
-                    setLoading(false);
-                  }}
-                  onHttpError={(syntheticEvent) => {
-                    console.warn("WebView HTTP error:", syntheticEvent.nativeEvent);
-                  }}
-                  onLoadEnd={() => {
-                    console.log("WebView loaded");
-                    setLoading(false)
-                  
-                  }}
-                />
-                {loading && (
-                  <View className="absolute inset-0 items-center justify-center bg-white bg-opacity-95">
-                    <ActivityIndicator size="large" color="#00227c" />
-                    <Text className="mt-3 text-gray-600 font-medium">{t("FormElementPage.loading_form")}</Text>
-                    {/* <Text className="mt-2 text-sm text-gray-500">
-                      {isOnline ? "Loading from server..." : "Loading from cache..."}
-                    </Text> */}
-                  </View>
-                )}
-                {isSubmitting && (
-                  <View className="absolute inset-0 items-center justify-center bg-background bg-opacity-50">
-                    <View className="bg-white p-6 rounded-lg items-center">
-                      <ActivityIndicator size="large" color="#00227c" />
-                      <Text className="mt-3 text-gray-700 font-medium">{t("FormElementPage.save")}</Text>
-                    </View>
-                  </View>
-                )}
-              </SafeAreaView>
-            );
-          }
-          
-          export default EditSubmissionScreen  ;
+          waitForFormio();
+        }
+      })();
+    </script>
+  </body>
+</html>
+`;
+    } catch (err) {
+      console.error('Error generating form HTML:', err);
+      return null;
+    }
+  }, [parsedForm, submission, regularForm?.name, assetsReady]);
+
+  // Show error if assets couldn't be loaded
+  if (assetError) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <HeaderNavigation title={t("FormElementPage.title")} showLeft showRight />
+        <View className="flex-1 items-center justify-center px-6">
+          <View className="items-center">
+            <Text className="text-6xl mb-4">📡</Text>
+            <Text className="text-xl font-bold text-gray-800 text-center mb-2">
+              Assets Not Available
+            </Text>
+            <Text className="text-gray-600 text-center mb-6">
+              {assetError}
+            </Text>
+            <View className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <Text className="text-sm text-blue-800 text-center">
+                Tip: Connect to the internet and reload this form to download required assets for offline use.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading || !assetsReady || !networkStatusInitialized.current) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#00227c" />
+        <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text>
+        {!isOnline && (
+          <Text className="mt-2 text-sm text-amber-600">
+            Offline - checking cached assets...
+          </Text>
+        )}
+      </View>
+    );
+  }
+
+  if (!parsedForm) {
+    return <NotFound title="Form error" description="Form JSON is invalid." />;
+  }
+
+  if (!submission) {
+    return <NotFound title="Submission not found" description="Please try again" />;
+  }
+
+  // CRITICAL FIX: Don't render WebView if formHtml is null
+  if (!formHtml) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#00227c" />
+        <Text className="mt-3 text-gray-600 font-medium">Preparing form...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-background">
+      <HeaderNavigation title={t("FormElementPage.title")} showLeft showRight />
+      <WebView
+        originWhitelist={["*"]}
+        source={{ html: formHtml, baseUrl: 'about:blank' }}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        onMessage={handleWebViewMessage}
+        cacheEnabled={true}
+        sharedCookiesEnabled={false}
+        thirdPartyCookiesEnabled={false}
+        incognito={true}
+        allowFileAccess={true}
+        allowFileAccessFromFileURLs={true}
+        allowUniversalAccessFromFileURLs={true}
+        mixedContentMode="always"
+        onConsoleMessage={(event) => {
+          console.log('[WebView Console]', event.nativeEvent.message);
+        }}
+        onError={(syntheticEvent) => {
+          console.warn("WebView error:", syntheticEvent.nativeEvent);
+          setFormLoading(false);
+        }}
+        onHttpError={(syntheticEvent) => {
+          console.warn("WebView HTTP error:", syntheticEvent.nativeEvent);
+        }}
+        onLoadEnd={() => {
+          console.log("WebView loaded");
+        }}
+      />
+      {formLoading && (
+        <View className="absolute inset-0 items-center justify-center bg-white bg-opacity-95">
+          <ActivityIndicator size="large" color="#00227c" />
+          <Text className="mt-3 text-gray-600 font-medium">{t("FormElementPage.loading_form")}</Text>
+        </View>
+      )}
+      {isSubmitting && (
+        <View className="absolute inset-0 items-center justify-center bg-background bg-opacity-50">
+          <View className="bg-white p-6 rounded-lg items-center">
+            <ActivityIndicator size="large" color="#00227c" />
+            <Text className="mt-3 text-gray-700 font-medium">{t("FormElementPage.save")}</Text>
+          </View>
+        </View>
+      )}
+    </SafeAreaView>
+  );
+}
+
+export default EditSubmissionScreen;
