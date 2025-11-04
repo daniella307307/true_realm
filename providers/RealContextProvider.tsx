@@ -7,6 +7,7 @@ import { CREATE_NOTIFICATIONS_TABLE } from "~/models/notifications/notifications
 import { CREATE_FAMILIES_TABLE } from "~/models/family/families";
 import { CREATE_COMMENT_TABLE } from "~/models/other/comment";
 import { CREATE_FOLLOWUPS_TABLE } from "~/models/followups/follow-up";
+import { CREATE_APPMETADATA_TABLE_SQL } from "~/models/metadata/appmetadata";
 import { CREATE_PROJECT_TABLE } from "~/models/projects/project";
 import { CREATE_COHORT_TABLE } from "~/models/cohorts/cohort";
 import { CREATE_IZU_TABLE } from "~/models/izus/izu";
@@ -93,6 +94,7 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           { name: "Sector", sql: CREATE_SECTOR_TABLE },
           { name: "District", sql: CREATE_DISTRICT_TABLE },
           { name: "Province", sql: CREATE_PROVINCE_TABLE },
+          { name: "AppMetadata", sql: CREATE_APPMETADATA_TABLE_SQL },
           //{ name: "MonitoringForms", sql: CREATE_MONITORING_FORMS_TABLE },
           //{ name: "MonitoringResponses", sql: CREATE_MONITORING_RESPONSES_TABLE },
           //{ name: "MonitoringModules", sql: CREATE_MONITORING_MODULES_TABLE },

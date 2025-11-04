@@ -6,6 +6,7 @@ import { useGetFormById } from "~/services/formElements";
 import { NotFound } from "~/components/ui/not-found";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
+import { translateFormSchema } from "~/components/utils-form/form-translation";
 import { checkNetworkConnection } from "~/utils/networkHelpers";
 import { useAuth } from "~/lib/hooks/useAuth";
 import Toast from "react-native-toast-message";
@@ -92,7 +93,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
   const { form: regularForm, isLoading } = useGetFormById(parsedParams.pid);
   
   const { user } = useAuth({});
-  const { t } = useTranslation();
+  const { t,i18n } = useTranslation();
   const { create } = useSQLite();
   const [loading, setLoading] = useState(true);
   const [assetsReady, setAssetsReady] = useState(false);
@@ -104,6 +105,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
   const [assetError, setAssetError] = useState<string | null>(null);
   const isSubmittingRef = useRef(false);
   const networkCheckMountedRef = useRef(true);
+  const currentLang = i18n.language;
   const lastNetworkCheckRef = useRef(0);
   const assetsLoadedRef = useRef(false);
   const networkStatusInitialized = useRef(false);
@@ -255,7 +257,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
           return;
         }
 
-        setLoadingStep("Downloading FormIO assets...");
+        setLoadingStep("Downloading assets...");
         console.log("Downloading FormIO assets from CDN...");
         
         // Download assets from CDN
@@ -341,9 +343,14 @@ function ProjectFormElementScreen(): React.JSX.Element {
         console.error('Invalid json format:', typeof regularForm.json);
         return null;
       }
+      let translatedForm = baseForm;
+      if(regularForm.translations){
+        console.log(`translating form to ${currentLang}...`);
+        translatedForm = translateFormSchema(baseForm, regularForm?.translations, currentLang);
+      }
       
       console.log('Form parsed successfully, converting to wizard...');
-      const wizardForm = convertToWizardForm(baseForm, 5);
+      const wizardForm = convertToWizardForm(translatedForm, 5);
       console.log('Wizard conversion complete');
       
       return wizardForm;
@@ -351,7 +358,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
       console.error("Failed to parse form JSON:", err);
       return null;
     }
-  }, [regularForm?.json]);
+  }, [regularForm?.json, regularForm?.translations, currentLang]);
 
   const fields = useMemo(() => {
     if (!parsedForm?.components) return [];

@@ -19,6 +19,7 @@ import {
   parseSQLiteRow,
   SurveySubmission
 } from "~/services/survey-submission";
+import { translateFormSchema } from "~/components/utils-form/form-translation";
 import Toast from "react-native-toast-message";
 import { checkNetworkConnection } from "~/utils/networkHelpers";
 import * as FileSystem from "expo-file-system";
@@ -83,7 +84,7 @@ function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any
 }
 
 const EditSubmissionScreen = () => {
-  const { t } = useTranslation();
+  const { t,i18n } = useTranslation();
   const { user } = useAuth({});
   const params = useLocalSearchParams<{ submissionId: string }>();
   const { getAll, update } = useSQLite();
@@ -100,6 +101,7 @@ const EditSubmissionScreen = () => {
   const isSubmittingRef = useRef(false);
   const assetsLoadedRef = useRef(false);
   const networkStatusInitialized = useRef(false);
+  const currentLang = i18n.language;
 
   const userId = user?.id || user?.json?.id;
 
@@ -347,9 +349,14 @@ const EditSubmissionScreen = () => {
         console.error('Invalid json format:', typeof regularForm.json);
         return null;
       }
-
+      let translatedForm = baseForm;
+      if(regularForm.translations){
+        console.log(`translating form to ${currentLang}...`);
+        translatedForm = translateFormSchema(baseForm, regularForm?.translations, currentLang);
+      }
+      
       console.log('Form parsed successfully, converting to wizard...');
-      const wizardForm = convertToWizardForm(baseForm, 5);
+      const wizardForm = convertToWizardForm(translatedForm, 5);
       console.log('Wizard conversion complete');
 
       return wizardForm;

@@ -9,7 +9,7 @@ import {
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 import { useGetAllForms } from "~/services/project";
-import { syncPendingSubmissions, getPendingSubmissionsCount } from "~/services/survey-submission";
+import { syncPendingSubmissions, getPendingSubmissionsCount, syncModifiedSubmissions } from "~/services/survey-submission";
 // import { useGetStakeholders } from "~/services/stakeholders";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
@@ -117,6 +117,7 @@ const SyncPage = () => {
   const [pendingSurveySubmissionsCount, setPendingSurveySubmissionsCount] = useState(0);
   // const [pendingFamiliesCount, setPendingFamiliesCount] = useState(0);
   const [pendingIzusCount, setPendingIzusCount] = useState(0);
+  const [updatedSubmissionCount, setUpdatedSubmissionCount] = useState(0);
   // const [pendingMonitoringResponsesCount, setPendingMonitoringResponsesCount] = useState(0);
   // const [pendingFollowupsCount, setPendingFollowupsCount] = useState(0);
 
@@ -128,7 +129,11 @@ const SyncPage = () => {
       // Survey Submissions count
       const surveyCount = await getPendingSubmissionsCount(query, user.id);
       setPendingSurveySubmissionsCount(surveyCount);
-
+      const updatedCountResult = await query(
+        `SELECT COUNT(*) as count FROM SurveySubmissions WHERE sync_status = 0 AND is_modified = 1 AND created_by_user_id = ?`,
+        [user.id]
+      );
+      setUpdatedSubmissionCount(updatedCountResult[0]?.count || 0);
       // Families count
       // const familiesResult = await query(
       //   `SELECT COUNT(*) as count FROM Families WHERE sync_status = 0 AND created_by_user_id = ?`,
@@ -157,9 +162,9 @@ const SyncPage = () => {
       // );
       // setPendingFollowupsCount(followupsResult[0]?.count || 0);
 
-      console.log(`📊 Pending counts updated: Surveys=${surveyCount}`);
+      console.log(`Pending counts updated: Surveys=${surveyCount}. and pendin updates =${updatedCountResult}`);
     } catch (error) {
-      console.error("❌ Error updating counts:", error);
+      console.error("Error updating counts:", error);
     }
   }, [user?.id, query]);
 
@@ -182,7 +187,7 @@ const SyncPage = () => {
     setSyncType(getSyncTypeKey("Sync.submissions", t));
 
     try {
-      console.log("🔄 Starting survey submissions sync...");
+      console.log("Starting survey submissions sync...");
       
       // Use the new syncPendingSubmissions function
       const syncResult = await syncPendingSubmissions(getAll, update, t, user.id);
@@ -212,11 +217,60 @@ const SyncPage = () => {
         showToast("info", t("Sync.info"), t("Sync.noPendingSubmissions"));
       }
 
-      console.log(`✅ Survey submissions sync complete: ${syncResult.synced} synced, ${syncResult.failed} failed`);
+      console.log(`Survey submissions sync complete: ${syncResult.synced} synced, ${syncResult.failed} failed`);
     } catch (error) {
-      console.error("❌ Error syncing survey submissions:", error);
+      console.error("Error syncing survey submissions:", error);
       showToast("error", t("Sync.error"), t("Sync.submissionsSyncFailed") || "Failed to sync submissions");
     } finally {
+      setIsSyncing(false);
+      setSyncType(null);
+      setForceRefresh((prev) => prev + 1);
+    }
+  };
+
+  const syncUpdatedSubmission = async () => {
+    if (isSyncing || !isConnected || !user?.id) {
+      showToast("error", t("Sync.networkError"), t("Sync.offlineMessage"));
+      return;
+    }
+    setIsSyncing(true);
+    setSyncType(getSyncTypeKey("Sync.updates", t));
+    try {
+      console.log("Starting updated submissions sync...");
+      const syncResult = await syncModifiedSubmissions(getAll, update, t, user.id);
+      await updateSubmissionCounts();
+      setLastSyncDate(new Date());
+      if (syncResult.synced > 0 && syncResult.failed === 0) {
+        showToast(
+          "success",
+          t("Sync.success"),
+          `${syncResult.synced} ${t("Sync.updatesSynced") || "updates synced successfully"}`
+        );
+      } else if (syncResult.synced > 0 && syncResult.failed > 0) {
+        showToast(
+          "info",
+          t("Sync.partialSuccess"),
+          `${syncResult.synced} synced, ${syncResult.failed} failed`
+        );
+      }
+      else if (syncResult.failed > 0) {
+        showToast(
+          "error",
+          t("Sync.error"),
+          `${syncResult.failed} ${t("Sync.updatesFailed") || "updates failed to sync"}`
+        );
+      }
+      else {
+        showToast("info", t("Sync.info"), t("Sync.noPendingUpdates"));
+      }
+
+      console.log(`Updated submissions sync complete: ${syncResult.synced} synced, ${syncResult.failed} failed`);
+    }
+    catch (error) {
+      console.error("Error syncing updated submissions:", error);
+      showToast("error", t("Sync.error"), t("Sync.updatesSyncFailed") || "Failed to sync updates");
+    }
+    finally {
       setIsSyncing(false);
       setSyncType(null);
       setForceRefresh((prev) => prev + 1);
@@ -340,6 +394,7 @@ const SyncPage = () => {
       
       // Sync in order
       await syncSurveySubmissions();
+      await syncUpdatedSubmission();
       // await syncFamilies();
       // await syncIzusFn();
       // await syncMonitoringResponsesFn();
@@ -364,6 +419,11 @@ const SyncPage = () => {
         name: `${t("Sync.submissions") || "Survey Submissions"} (${pendingSurveySubmissionsCount} ${t("Sync.unsent") || "unsent"})`,
         status: pendingSurveySubmissionsCount === 0 ? "nopendingsubmissions" : "notsynced",
       },
+      {
+        key: "Sync.updates",
+        name: `${t("Sync.updates") || "Submission Updates"} (${updatedSubmissionCount} ${t("Sync.unsent") || "unsent"})`,
+        status: updatedSubmissionCount === 0 ? "nopendingsubmissions" : "notsynced",
+      },
       // {
       //   key: "Sync.families",
       //   name: `${t("Sync.families") || "Families"} (${pendingFamiliesCount} ${t("Sync.unsent") || "unsent"})`,
@@ -387,6 +447,7 @@ const SyncPage = () => {
     ],
     [
       pendingSurveySubmissionsCount,
+      updatedSubmissionCount,
       // pendingFamiliesCount,
       // pendingIzusCount,
       // pendingMonitoringResponsesCount,
@@ -432,6 +493,7 @@ const SyncPage = () => {
           onPress={() => {
             if (item.key === "Sync.submissions") syncSurveySubmissions();
             // else if (item.key === "Sync.families") syncFamilies();
+            else if (item.key === "Sync.updates") syncUpdatedSubmission();
             // else if (item.key === "Sync.izus") syncIzusFn();
             // else if (item.key === "Sync.responses") syncMonitoringResponsesFn();
             // else if (item.key === "Sync.followups") syncFollowupsFn();
@@ -458,7 +520,7 @@ const SyncPage = () => {
         <View className="flex-row justify-between items-center">
           <View>
             <Text className="text-sm text-gray-600">
-              {isConnected ? "🌐 Online" : "📴 Offline"}
+              {isConnected ? `🌐 ${t("Sync.online")}` :  `📴 ${t("Sync.offline")}`}
             </Text>
             {lastSyncDate && (
               <Text className="text-xs text-gray-500 mt-1">

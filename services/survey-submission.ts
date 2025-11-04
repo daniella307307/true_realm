@@ -41,6 +41,109 @@ export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
   CREATE INDEX IF NOT EXISTS idx_survey_remote_id ON SurveySubmissions(id);
 `;
 
+// ============================================================================
+// PAGINATION TYPES & CONSTANTS
+// ============================================================================
+
+export interface PaginationMetadata {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: PaginationMetadata;
+}
+
+const ITEMS_PER_PAGE = 100;
+const CACHE_KEY_PREFIX = 'submissions_page_';
+const METADATA_KEY = 'submissions_metadata';
+
+/**
+ * Store pagination metadata in localStorage
+ */
+const savePaginationMetadata = async (
+  create: any,
+  metadata: PaginationMetadata
+): Promise<void> => {
+  try {
+    await create('AppMetadata', {
+      _id: METADATA_KEY,
+      data: JSON.stringify(metadata),
+      updated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error saving pagination metadata:', error);
+  }
+};
+
+/**
+ * Retrieve pagination metadata from localStorage
+ */
+const getPaginationMetadata = async (
+  getAll: any
+): Promise<PaginationMetadata | null> => {
+  try {
+    const allMetadata = await getAll('AppMetadata');
+    const metadata = allMetadata.find((m: any) => m._id === METADATA_KEY);
+    
+    if (metadata?.data) {
+      return JSON.parse(metadata.data);
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting pagination metadata:', error);
+    return null;
+  }
+};
+
+/**
+ * Check which pages are already cached locally
+ */
+const getCachedPages = async (getAll: any): Promise<Set<number>> => {
+  try {
+    const allMetadata = await getAll('AppMetadata');
+    const cachedPages = new Set<number>();
+    
+    allMetadata.forEach((item: any) => {
+      if (item._id?.startsWith(CACHE_KEY_PREFIX)) {
+        const pageNum = parseInt(item._id.replace(CACHE_KEY_PREFIX, ''));
+        if (!isNaN(pageNum)) {
+          cachedPages.add(pageNum);
+        }
+      }
+    });
+    
+    return cachedPages;
+  } catch (error) {
+    console.error('Error getting cached pages:', error);
+    return new Set();
+  }
+};
+
+/**
+ * Mark a page as cached
+ */
+const markPageAsCached = async (
+  create: any,
+  pageNumber: number
+): Promise<void> => {
+  try {
+    await create('AppMetadata', {
+      _id: `${CACHE_KEY_PREFIX}${pageNumber}`,
+      data: JSON.stringify({ cached: true, cachedAt: new Date().toISOString() }),
+      updated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error marking page as cached:', error);
+  }
+};
+
+
 export const getPendingSubmissionsCount = async (
   query: any,
   userId: number
@@ -57,9 +160,6 @@ export const getPendingSubmissionsCount = async (
   }
 };
 
-// ============================================================================
-// IMPORTS & TYPES (Add these at the top of your file)
-// ============================================================================
 import { isOnline } from "./network";
 import { baseInstance } from "~/utils/axios";
 import Toast from "react-native-toast-message";
@@ -95,9 +195,6 @@ enum SyncType {
   survey_submissions = 'survey_submissions'
 }
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
 
 const generateLocalId = (): string => {
   return `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -128,30 +225,158 @@ const prepareApiPayload = (submission: SurveySubmission, formId: string) => {
  * Fetch submissions from API and transform to local SQLite format
  * Maps the 'data' field to 'answers' column properly
  */
-export const fetchSurveySubmissionsFromRemote = async (userId?: string,isLoggedIn?:boolean): Promise<any[]> => {
- if(!isLoggedIn){
-    return [];
-  }
-  try {
+// export const fetchSurveySubmissionsFromRemote = async (userId?: string,isLoggedIn?:boolean): Promise<any[]> => {
+//  if(!isLoggedIn){
+//     return [];
+//   }
+//   try {
      
-    console.log("Fetching survey submissions from remote API...");
-    const res = await baseInstance.get("/submissions/filter");
+//     console.log("Fetching survey submissions from remote API...");
+//     const res = await baseInstance.get("/submissions/filter");
     
-    const submissions = Array.isArray(res.data?.data?.submissions) 
-      ? res.data.data.submissions 
-      : [];
+//     const submissions = Array.isArray(res.data?.data?.submissions) 
+//       ? res.data.data.submissions 
+//       : [];
    
-    console.log(`Received ${submissions.length} submissions from API`);
+//     console.log(`Received ${submissions.length} submissions from API`);
 
-    // Optional: filter by userId if provided
-    // const filteredSubmissions = userId
-    //   ? submissions.filter((sub: any) => sub.submitter?._id === userId)
-    //   : submissions;
+//     // Optional: filter by userId if provided
+//     // const filteredSubmissions = userId
+//     //   ? submissions.filter((sub: any) => sub.submitter?._id === userId)
+//     //   : submissions;
 
-    // console.log(`Filtered to ${filteredSubmissions.length} submissions for user ${userId}`);
+//     // console.log(`Filtered to ${filteredSubmissions.length} submissions for user ${userId}`);
 
-    // Transform submissions into SQLite row format (not SurveySubmission format)
-    // This ensures the column names match the database schema
+//     // Transform submissions into SQLite row format (not SurveySubmission format)
+//     // This ensures the column names match the database schema
+//     const transformed = submissions.map((sub: any) => {
+//       const data = sub.data ?? {};
+//       const form = sub.form ?? {};
+//       const submitter = sub.submitter ?? {};
+
+//       const formData = {
+//         survey_id: form._id ?? null,
+//         user_id: submitter.id ?? null,
+//         table_name: form.title ?? null,
+//         project_module_id: null,
+//         source_module_id: null,
+//         project_id: null,
+//         post_data: null,
+//         izucode: null,
+//         family: null,
+//         form_status: sub.status ?? "submitted",
+//         cohorts: null,
+//       };
+
+//       const syncData = {
+//         sync_status: true,
+//         sync_reason: "From API",
+//         sync_attempts: 1,
+//         last_sync_attempt: new Date(sub.updatedAt ?? sub.createdAt).toISOString(),
+//         submitted_at: new Date(sub.createdAt ?? Date.now()).toISOString(),
+//         sync_type: "survey_submissions",
+//         created_by_user_id: submitter.id ?? null,
+//       };
+
+//       // Return SQLite row format with correct column names
+//       return {
+//         _id: `remote-${sub._id}`,
+//         id: sub._id,
+//         answers: JSON.stringify(data), // ✅ Use 'answers' not 'data'
+//         form_data: JSON.stringify(formData),
+//         location: JSON.stringify({}),
+//         sync_data: JSON.stringify(syncData),
+//         created_by_user_id: submitter.id ?? null,
+//         sync_status: 1,
+//         sync_reason: "From API",
+//         sync_attempts: 1,
+//         created_at: sub.createdAt ?? new Date().toISOString(),
+//         updated_at: sub.updatedAt ?? new Date().toISOString(),
+//         is_modified: 0,
+//         needs_update_sync: 0,
+//         last_modified_at: null,
+//         // Add other columns that might be in your schema
+//         table_name: null,
+//         name: null,
+//         name_kin: null,
+//         slug: null,
+//         json2: null,
+//         post_data: null,
+//         loads: null,
+//         time_spent: null,
+//         user_id: null,
+//         is_primary: 0,
+//         project_module_id: null,
+//         source_module_id: null,
+//         project_id: null,
+//         survey_status: null,
+//         fetch_data: null,
+//         prev_id: null,
+//         order_list: null,
+//         survey_id: null,
+//         sync_type: "survey_submissions",
+//       };
+//     });
+
+//     console.log(`Transformed ${transformed.length} submissions`);
+//     return transformed;
+//   } catch (error) {
+//     console.error("Failed to fetch and transform submissions:", error);
+//     return [];
+//   }
+// };
+/**
+ * Fetch submissions from remote API with pagination
+ */
+export const fetchSubmissionsFromRemote= async (
+  page: number = 1,
+  limit: number = ITEMS_PER_PAGE,
+  userId?: string,
+  isLoggedIn?: boolean
+): Promise<PaginatedResponse<any>> => {
+  if (!isLoggedIn) {
+    return {
+      data: [],
+      pagination: {
+        currentPage: page,
+        totalPages: 0,
+        totalItems: 0,
+        itemsPerPage: limit,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    };
+  }
+
+  try {
+    console.log(`Fetching page ${page} with ${limit} items...`);
+    
+    // Make API call with pagination parameters
+    const res = await baseInstance.get('/submissions/filter', {
+      params: {
+        page,
+        limit
+      },
+    });
+
+    const submissions = Array.isArray(res.data?.data?.submissions)
+      ? res.data.data.submissions
+      : [];
+
+    // Extract pagination metadata from API response
+    const pagination: PaginationMetadata = {
+      currentPage: res.data?.data?.pagination?.currentPage || page,
+      totalPages: res.data?.data?.pagination?.totalPages || 1,
+      totalItems: res.data?.data?.pagination?.totalItems || submissions.length,
+      itemsPerPage: limit,
+      hasNextPage: res.data?.data?.pagination?.hasNextPage || false,
+      hasPreviousPage: res.data?.data?.pagination?.hasPreviousPage || false,
+    };
+
+    console.log(`Received ${submissions.length} submissions for page ${page}`);
+    console.log('Pagination:', pagination);
+
+    // Transform submissions
     const transformed = submissions.map((sub: any) => {
       const data = sub.data ?? {};
       const form = sub.form ?? {};
@@ -167,38 +392,36 @@ export const fetchSurveySubmissionsFromRemote = async (userId?: string,isLoggedI
         post_data: null,
         izucode: null,
         family: null,
-        form_status: sub.status ?? "submitted",
+        form_status: sub.status ?? 'submitted',
         cohorts: null,
       };
 
       const syncData = {
         sync_status: true,
-        sync_reason: "From API",
+        sync_reason: 'From API',
         sync_attempts: 1,
         last_sync_attempt: new Date(sub.updatedAt ?? sub.createdAt).toISOString(),
         submitted_at: new Date(sub.createdAt ?? Date.now()).toISOString(),
-        sync_type: "survey_submissions",
+        sync_type: 'survey_submissions',
         created_by_user_id: submitter.id ?? null,
       };
 
-      // Return SQLite row format with correct column names
       return {
         _id: `remote-${sub._id}`,
         id: sub._id,
-        answers: JSON.stringify(data), // ✅ Use 'answers' not 'data'
+        answers: JSON.stringify(data),
         form_data: JSON.stringify(formData),
         location: JSON.stringify({}),
         sync_data: JSON.stringify(syncData),
         created_by_user_id: submitter.id ?? null,
         sync_status: 1,
-        sync_reason: "From API",
+        sync_reason: 'From API',
         sync_attempts: 1,
         created_at: sub.createdAt ?? new Date().toISOString(),
         updated_at: sub.updatedAt ?? new Date().toISOString(),
         is_modified: 0,
         needs_update_sync: 0,
         last_modified_at: null,
-        // Add other columns that might be in your schema
         table_name: null,
         name: null,
         name_kin: null,
@@ -217,17 +440,294 @@ export const fetchSurveySubmissionsFromRemote = async (userId?: string,isLoggedI
         prev_id: null,
         order_list: null,
         survey_id: null,
-        sync_type: "survey_submissions",
+        sync_type: 'survey_submissions',
       };
     });
 
-    console.log(`Transformed ${transformed.length} submissions`);
-    return transformed;
+    return {
+      data: transformed,
+      pagination,
+    };
   } catch (error) {
-    console.error("Failed to fetch and transform submissions:", error);
-    return [];
+    console.error('Failed to fetch paginated submissions:', error);
+    return {
+      data: [],
+      pagination: {
+        currentPage: page,
+        totalPages: 0,
+        totalItems: 0,
+        itemsPerPage: limit,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    };
   }
 };
+
+// ============================================================================
+// SYNC PAGINATED SUBMISSIONS TO LOCAL DATABASE
+// ============================================================================
+
+/**
+ * Sync a specific page of submissions to local database
+ */
+export const syncPageToLocal = async (
+  create: any,
+  update: any,
+  page: number = 1,
+  userId?: string,
+  isLoggedIn?: boolean
+): Promise<{ success: boolean; itemsSynced: number; pagination: PaginationMetadata }> => {
+  try {
+    console.log(`Syncing page ${page} to local database...`);
+
+    // Fetch the page from API
+    const response = await fetchSubmissionsFromRemote(
+      page,
+      ITEMS_PER_PAGE,
+      userId,
+      isLoggedIn
+    );
+
+    if (response.data.length === 0) {
+      console.log('No submissions to sync');
+      return {
+        success: true,
+        itemsSynced: 0,
+        pagination: response.pagination,
+      };
+    }
+
+    // Store each submission in local database
+    let synced = 0;
+    for (const submission of response.data) {
+      try {
+        // Check if submission already exists
+        const exists = await update('SurveySubmissions', submission._id, submission);
+        
+        if (!exists) {
+          // Create new if doesn't exist
+          await create('SurveySubmissions', submission);
+        }
+        
+        synced++;
+      } catch (error) {
+        console.error(`Failed to store submission ${submission._id}:`, error);
+      }
+    }
+
+    // Mark this page as cached
+    await markPageAsCached(create, page);
+
+    // Save pagination metadata
+    await savePaginationMetadata(create, response.pagination);
+
+    console.log(`Successfully synced ${synced} submissions from page ${page}`);
+
+    return {
+      success: true,
+      itemsSynced: synced,
+      pagination: response.pagination,
+    };
+  } catch (error) {
+    console.error(`Error syncing page ${page}:`, error);
+    return {
+      success: false,
+      itemsSynced: 0,
+      pagination: {
+        currentPage: page,
+        totalPages: 0,
+        totalItems: 0,
+        itemsPerPage: ITEMS_PER_PAGE,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    };
+  }
+};
+
+// ============================================================================
+// INITIAL SYNC (FIRST 100 SUBMISSIONS)
+// ============================================================================
+
+/**
+ * Perform initial sync of first 100 submissions
+ */
+export const performInitialSync = async (
+  create: any,
+  update: any,
+  userId?: string,
+  isLoggedIn?: boolean
+): Promise<{ success: boolean; itemsSynced: number }> => {
+  try {
+    console.log('Starting initial sync of first 100 submissions...');
+
+    const result = await syncPageToLocal(create, update, 1, userId, isLoggedIn);
+
+    if (result.success) {
+      console.log(`Initial sync completed: ${result.itemsSynced} submissions synced`);
+      return {
+        success: true,
+        itemsSynced: result.itemsSynced,
+      };
+    }
+
+    return {
+      success: false,
+      itemsSynced: 0,
+    };
+  } catch (error) {
+    console.error('Initial sync failed:', error);
+    return {
+      success: false,
+      itemsSynced: 0,
+    };
+  }
+};
+
+// ============================================================================
+// LOAD MORE SUBMISSIONS (NEXT PAGE)
+// ============================================================================
+
+/**
+ * Load the next page of submissions
+ */
+export const loadNextPage = async (
+  create: any,
+  update: any,
+  getAll: any,
+  userId?: string,
+  isLoggedIn?: boolean
+): Promise<{
+  success: boolean;
+  itemsSynced: number;
+  pagination: PaginationMetadata | null;
+  fromCache: boolean;
+}> => {
+  try {
+    // Get current pagination metadata
+    const metadata = await getPaginationMetadata(getAll);
+    
+    if (!metadata) {
+      console.log('No metadata found, performing initial sync...');
+      const result = await performInitialSync(create, update, userId, isLoggedIn);
+      
+      // Get updated metadata after initial sync
+      const newMetadata = await getPaginationMetadata(getAll);
+      
+      return {
+        success: result.success,
+        itemsSynced: result.itemsSynced,
+        pagination: newMetadata,
+        fromCache: false,
+      };
+    }
+
+    const nextPage = metadata.currentPage + 1;
+
+    // Check if next page exists
+    if (!metadata.hasNextPage) {
+      console.log('No more pages to load');
+      return {
+        success: true,
+        itemsSynced: 0,
+        pagination: metadata,
+        fromCache: false,
+      };
+    }
+
+    // Check if this page is already cached
+    const cachedPages = await getCachedPages(getAll);
+    
+    if (cachedPages.has(nextPage)) {
+      console.log(`Page ${nextPage} already cached locally`);
+      return {
+        success: true,
+        itemsSynced: 0,
+        pagination: { ...metadata, currentPage: nextPage },
+        fromCache: true,
+      };
+    }
+
+    // Fetch and sync next page
+    const result = await syncPageToLocal(create, update, nextPage, userId, isLoggedIn);
+
+    return {
+      success: result.success,
+      itemsSynced: result.itemsSynced,
+      pagination: result.pagination,
+      fromCache: false,
+    };
+  } catch (error) {
+    console.error('Error loading next page:', error);
+    return {
+      success: false,
+      itemsSynced: 0,
+      pagination: null,
+      fromCache: false,
+    };
+  }
+};
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get current pagination status
+ */
+export const getPaginationStatus = async (
+  getAll: any
+): Promise<{
+  metadata: PaginationMetadata | null;
+  cachedPages: number[];
+  totalCached: number;
+}> => {
+  try {
+    const metadata = await getPaginationMetadata(getAll);
+    const cachedPages = await getCachedPages(getAll);
+    
+    return {
+      metadata,
+      cachedPages: Array.from(cachedPages).sort((a, b) => a - b),
+      totalCached: cachedPages.size * ITEMS_PER_PAGE,
+    };
+  } catch (error) {
+    console.error('Error getting pagination status:', error);
+    return {
+      metadata: null,
+      cachedPages: [],
+      totalCached: 0,
+    };
+  }
+};
+
+/**
+ * Clear all cached pagination data
+ */
+export const clearPaginationCache = async (
+  deleteFunc: any,
+  getAll: any
+): Promise<void> => {
+  try {
+    console.log('Clearing pagination cache...');
+    
+    const allMetadata = await getAll('AppMetadata');
+    
+    for (const item of allMetadata) {
+      if (
+        item._id === METADATA_KEY ||
+        item._id?.startsWith(CACHE_KEY_PREFIX)
+      ) {
+        await deleteFunc('AppMetadata', item._id);
+      }
+    }
+    
+    console.log('Pagination cache cleared');
+  } catch (error) {
+    console.error('Error clearing pagination cache:', error);
+  }
+}
 
 /**
  * Updated toSQLiteRow that properly maps data to answers column

@@ -742,6 +742,7 @@ export interface FormField {
 }
 
 export interface IExistingForm {
+  translations: any;
   title: any;
   id:string;
   status: string;

@@ -73,6 +73,9 @@
       },
       "router": {}
     },
-    "owner": "mitcheelariette"
+    "owner": "mitcheelariette",
+    "updates": {
+      "url": "https://u.expo.dev/a7a207c0-4b11-47f7-a8e8-09c5fa56e479"
+    }
   }
 }
