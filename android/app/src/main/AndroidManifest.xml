@@ -27,7 +27,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="africollect"/>
-        <data android:scheme="exp+africollect"/>
+        <data android:scheme="exp+afriqollect"/>
       </intent-filter>
     </activity>
   </application>

@@ -40,11 +40,6 @@ export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
   CREATE INDEX IF NOT EXISTS idx_survey_sync ON SurveySubmissions(sync_status);
   CREATE INDEX IF NOT EXISTS idx_survey_remote_id ON SurveySubmissions(id);
 `;
-
-// ============================================================================
-// PAGINATION TYPES & CONSTANTS
-// ============================================================================
-
 export interface PaginationMetadata {
   currentPage: number;
   totalPages: number;
@@ -220,114 +215,6 @@ const prepareApiPayload = (submission: SurveySubmission, formId: string) => {
     },
   };
 };
-
-/**
- * Fetch submissions from API and transform to local SQLite format
- * Maps the 'data' field to 'answers' column properly
- */
-// export const fetchSurveySubmissionsFromRemote = async (userId?: string,isLoggedIn?:boolean): Promise<any[]> => {
-//  if(!isLoggedIn){
-//     return [];
-//   }
-//   try {
-     
-//     console.log("Fetching survey submissions from remote API...");
-//     const res = await baseInstance.get("/submissions/filter");
-    
-//     const submissions = Array.isArray(res.data?.data?.submissions) 
-//       ? res.data.data.submissions 
-//       : [];
-   
-//     console.log(`Received ${submissions.length} submissions from API`);
-
-//     // Optional: filter by userId if provided
-//     // const filteredSubmissions = userId
-//     //   ? submissions.filter((sub: any) => sub.submitter?._id === userId)
-//     //   : submissions;
-
-//     // console.log(`Filtered to ${filteredSubmissions.length} submissions for user ${userId}`);
-
-//     // Transform submissions into SQLite row format (not SurveySubmission format)
-//     // This ensures the column names match the database schema
-//     const transformed = submissions.map((sub: any) => {
-//       const data = sub.data ?? {};
-//       const form = sub.form ?? {};
-//       const submitter = sub.submitter ?? {};
-
-//       const formData = {
-//         survey_id: form._id ?? null,
-//         user_id: submitter.id ?? null,
-//         table_name: form.title ?? null,
-//         project_module_id: null,
-//         source_module_id: null,
-//         project_id: null,
-//         post_data: null,
-//         izucode: null,
-//         family: null,
-//         form_status: sub.status ?? "submitted",
-//         cohorts: null,
-//       };
-
-//       const syncData = {
-//         sync_status: true,
-//         sync_reason: "From API",
-//         sync_attempts: 1,
-//         last_sync_attempt: new Date(sub.updatedAt ?? sub.createdAt).toISOString(),
-//         submitted_at: new Date(sub.createdAt ?? Date.now()).toISOString(),
-//         sync_type: "survey_submissions",
-//         created_by_user_id: submitter.id ?? null,
-//       };
-
-//       // Return SQLite row format with correct column names
-//       return {
-//         _id: `remote-${sub._id}`,
-//         id: sub._id,
-//         answers: JSON.stringify(data), // ✅ Use 'answers' not 'data'
-//         form_data: JSON.stringify(formData),
-//         location: JSON.stringify({}),
-//         sync_data: JSON.stringify(syncData),
-//         created_by_user_id: submitter.id ?? null,
-//         sync_status: 1,
-//         sync_reason: "From API",
-//         sync_attempts: 1,
-//         created_at: sub.createdAt ?? new Date().toISOString(),
-//         updated_at: sub.updatedAt ?? new Date().toISOString(),
-//         is_modified: 0,
-//         needs_update_sync: 0,
-//         last_modified_at: null,
-//         // Add other columns that might be in your schema
-//         table_name: null,
-//         name: null,
-//         name_kin: null,
-//         slug: null,
-//         json2: null,
-//         post_data: null,
-//         loads: null,
-//         time_spent: null,
-//         user_id: null,
-//         is_primary: 0,
-//         project_module_id: null,
-//         source_module_id: null,
-//         project_id: null,
-//         survey_status: null,
-//         fetch_data: null,
-//         prev_id: null,
-//         order_list: null,
-//         survey_id: null,
-//         sync_type: "survey_submissions",
-//       };
-//     });
-
-//     console.log(`Transformed ${transformed.length} submissions`);
-//     return transformed;
-//   } catch (error) {
-//     console.error("Failed to fetch and transform submissions:", error);
-//     return [];
-//   }
-// };
-/**
- * Fetch submissions from remote API with pagination
- */
 export const fetchSubmissionsFromRemote= async (
   page: number = 1,
   limit: number = ITEMS_PER_PAGE,

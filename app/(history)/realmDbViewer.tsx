@@ -93,7 +93,7 @@ const RealmDatabaseViewer = () => {
   }, [getAll, submissions.length]);
 
   useEffect(() => {
-    // Check authentication first
+    
     if (!user || !userId) {
       Alert.alert(
         t('Auth.session_expired_title') || 'Session Expired',
@@ -123,7 +123,7 @@ const RealmDatabaseViewer = () => {
       const surveyId = s.form_data?.survey_id || s.form_data?.form;
       const form = surveyId ? formsMap[surveyId] : null;
 
-      // Get form title with fallbacks
+      
       const formTitle = String(
         form?.title ||
         form?.name ||
@@ -131,7 +131,6 @@ const RealmDatabaseViewer = () => {
         `${t('CommonPage.form') || 'Form'} #${surveyId || 'Unknown'}`
       );
 
-      // Get project name with fallbacks
       const projectName = String(
         form?.metadata?.category ||
         s.form_data?.project_name ||
@@ -263,70 +262,153 @@ const RealmDatabaseViewer = () => {
   };
 
   const handleLoadMore = async () => {
-    if (loadingMore || !paginationMetadata?.hasNextPage) {
-      console.log('Cannot load more:', { loadingMore, hasNextPage: paginationMetadata?.hasNextPage });
-      return;
-    }
+  console.log('=== LOAD MORE CALLED ===');
+  console.log('loadingMore:', loadingMore);
+  console.log('hasNextPage:', paginationMetadata?.hasNextPage);
+  console.log('currentPage:', paginationMetadata?.currentPage);
+  console.log('totalPages:', paginationMetadata?.totalPages);
+  
+  if (loadingMore || !paginationMetadata?.hasNextPage) {
+    console.log('BLOCKED: Cannot load more');
+    return;
+  }
 
-    const online = isOnline();
-    if (!online) {
-      Alert.alert(
-        t('CommonPage.offline_mode') || 'Offline Mode',
-        t('CommonPage.need_internet_load_more') || 'You need an internet connection to load more submissions'
-      );
-      return;
-    }
+  const online = await isOnline(); // Make sure this is awaited
+  console.log('Online status:', online);
+  
+  if (!online) {
+    Alert.alert(
+      t('CommonPage.offline_mode') || 'Offline Mode',
+      t('CommonPage.need_internet_load_more') || 'You need an internet connection to load more submissions'
+    );
+    return;
+  }
 
-    setLoadingMore(true);
-    try {
-      console.log('Loading next page of submissions...');
+  setLoadingMore(true);
+  try {
+    console.log('Calling loadNextPage...');
 
-      const result = await loadNextPage(
-        create,
-        update,
-        getAll,
-        userIdFilter,
-        await isLoggedIn
-      );
+    const result = await loadNextPage(
+      create,
+      update,
+      getAll,
+      userIdFilter,
+      await isLoggedIn
+    );
 
-      if (result.success) {
-        // Update pagination metadata
-        if (result.pagination) {
-          setPaginationMetadata(result.pagination);
-        }
+    console.log('loadNextPage result:', result);
 
-        // Refresh the local data
-        const status = await getPaginationStatus(getAll);
-        setCachedPages(status.cachedPages);
-        setTotalCached(status.totalCached);
+    if (result.success) {
+      // Update pagination metadata
+      if (result.pagination) {
+        console.log('New pagination metadata:', result.pagination);
+        setPaginationMetadata(result.pagination);
+      }
 
-        if (result.fromCache) {
-          Alert.alert(
-            t('CommonPage.info') || 'Info',
-            t('CommonPage.loaded_from_cache') || 'Loaded from local cache'
-          );
-        } else if (result.itemsSynced > 0) {
-          Alert.alert(
-            t('CommonPage.success') || 'Success',
-            `${result.itemsSynced} ${t('CommonPage.more_submissions_loaded') || 'more submissions loaded'}`
-          );
-        }
-      } else {
+      // IMPORTANT: Force a refresh to get the new submissions
+      console.log('Refreshing submissions after load...');
+      await refresh(); // This might be missing!
+
+      // Then update pagination status
+      const status = await getPaginationStatus(getAll);
+      console.log('Updated pagination status:', status);
+      setCachedPages(status.cachedPages);
+      setTotalCached(status.totalCached);
+
+      if (result.fromCache) {
         Alert.alert(
-          t('CommonPage.error') || 'Error',
-          t('CommonPage.failed_load_more') || 'Failed to load more submissions'
+          t('CommonPage.info') || 'Info',
+          t('CommonPage.loaded_from_cache') || 'Loaded from local cache'
+        );
+      } else if (result.itemsSynced > 0) {
+        Alert.alert(
+          t('CommonPage.success') || 'Success',
+          `${result.itemsSynced} ${t('CommonPage.more_submissions_loaded') || 'more submissions loaded'}`
         );
       }
-    } catch (error: any) {
-      console.error('Error loading more submissions:', error);
+    } else {
+      console.log('loadNextPage failed:', result);
       Alert.alert(
         t('CommonPage.error') || 'Error',
-        error?.message || t('CommonPage.failed_load_more') || 'Failed to load more submissions'
+        t('CommonPage.failed_load_more') || 'Failed to load more submissions'
       );
-    } finally {
-      setLoadingMore(false);
+    }
+  } catch (error: any) {
+    console.error('Error loading more submissions:', error);
+    console.error('Error stack:', error.stack);
+    Alert.alert(
+      t('CommonPage.error') || 'Error',
+      error?.message || t('CommonPage.failed_load_more') || 'Failed to load more submissions'
+    );
+  } finally {
+    setLoadingMore(false);
+  }
+};
+
+// 2. Fix the pagination status useEffect
+useEffect(() => {
+  const loadPaginationStatus = async () => {
+    try {
+      console.log('Loading pagination status...');
+      const status = await getPaginationStatus(getAll);
+      console.log('Pagination status loaded:', status);
+      setPaginationMetadata(status.metadata);
+      setCachedPages(status.cachedPages);
+      setTotalCached(status.totalCached);
+    } catch (error) {
+      console.error('Error loading pagination status:', error);
     }
   };
+
+  if (getAll) {
+    loadPaginationStatus();
+  }
+}, [getAll, submissions]); // Changed from submissions.length to submissions
+
+// 3. Add back button handler
+const handleBack = () => {
+  if (currentView === 'details') {
+    setCurrentView('submissions');
+    setSelectedItem(null);
+  } else if (currentView === 'submissions') {
+    setCurrentView('projects');
+    setSelectedProject(null);
+    setProjectPage(1);
+  } else {
+    router.back();
+  }
+};
+
+// 4. Check if isOnline is properly awaited
+// Make sure your isOnline function returns a Promise or boolean correctly
+// If it's synchronous, remove the await:
+const online = isOnline();
+
+// 5. Add this debugging component to see pagination state
+const renderDebugInfo = () => {
+  if (__DEV__) { // Only show in development
+    return (
+      <View className="bg-yellow-100 p-2 m-4 rounded">
+        <Text className="text-xs font-mono">
+          Submissions: {submissions.length}
+        </Text>
+        <Text className="text-xs font-mono">
+          Current Page: {paginationMetadata?.currentPage || 'N/A'}
+        </Text>
+        <Text className="text-xs font-mono">
+          Total Pages: {paginationMetadata?.totalPages || 'N/A'}
+        </Text>
+        <Text className="text-xs font-mono">
+          Has Next: {paginationMetadata?.hasNextPage ? 'YES' : 'NO'}
+        </Text>
+        <Text className="text-xs font-mono">
+          Loading: {loadingMore ? 'YES' : 'NO'}
+        </Text>
+      </View>
+    );
+  }
+  return null;
+};
 
   const renderFormData = (answers: any, depth = 0) => {
     if (!answers || Object.keys(answers).length === 0) {
@@ -658,6 +740,7 @@ const RealmDatabaseViewer = () => {
         }
       >
         {renderPaginationInfo()}
+        {renderDebugInfo()}
         {selectedProject && submissionsByProject[selectedProject] ? (
           <>
             <View className="mb-4 px-1">
