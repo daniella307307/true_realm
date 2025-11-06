@@ -661,6 +661,8 @@
     "offline_mode":"Offline Mode",
     "retry":"Try Again",
     "of":"Of",
+    "load_more":"Load More",
+    "info":"Info",
     "showing":"showing",
     "error_occurred":"An error occured",
     "synced":"Synced",
