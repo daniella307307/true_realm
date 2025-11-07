@@ -75,10 +75,7 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     const initDatabase = async () => {
       try {
-        console.log("🔄 Initializing SQLite database...");
         const database = await SQLite.openDatabaseAsync("app.db");
-        console.log("✅ Database opened successfully");
-
         const tables = [
           { name: "Surveys", sql: CREATE_SURVEY_TABLE },
           // { name: "Notifications", sql: CREATE_NOTIFICATIONS_TABLE },

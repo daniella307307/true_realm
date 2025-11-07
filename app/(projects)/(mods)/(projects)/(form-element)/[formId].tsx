@@ -13,7 +13,6 @@ import Toast from "react-native-toast-message";
 import { useSQLite } from "~/providers/RealContextProvider";
 import * as FileSystem from "expo-file-system";
 import { saveSurveySubmissionToAPI } from "~/services/survey-submission";
-import { baseInstance } from "~/utils/axios";
 
 function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any {
   if (!formSchema || typeof formSchema !== 'object') {
@@ -392,168 +391,37 @@ function ProjectFormElementScreen(): React.JSX.Element {
     }
   }, []);
 
-/**
- * Upload files to the backend /api/uploads endpoint
- */
-const uploadFilesToBackend = async (fileValue: any, fieldName: string): Promise<any> => {
-  try {
-    const uploadUrl = `uploads`;
-    
-    console.log('Uploading file to:', uploadUrl);
-    console.log('File value:', JSON.stringify(fileValue, null, 2));
-
-    // Create FormData
-    const formData = new FormData();
-    
-    // Add form metadata
-    formData.append('formId', regularForm?.id || '');
-    formData.append('fieldName', fieldName);
-    
-    
-    let fileToUpload: any = null;
-    
-    // Case 1: FormIO base64 format
-    if (fileValue.storage === 'base64' && fileValue.data) {
-      // Convert base64 to blob
-      const base64Data = fileValue.data.includes(',') 
-        ? fileValue.data.split(',')[1] 
-        : fileValue.data;
-      
-      const byteCharacters = atob(base64Data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: fileValue.type || 'application/octet-stream' });
-      
-      fileToUpload = {
-        uri: URL.createObjectURL(blob),
-        type: fileValue.type || 'application/octet-stream',
-        name: fileValue.name || fileValue.originalName || 'file',
-      };
-    }
-    // Case 2: File with URI
-    else if (fileValue.uri || fileValue.url) {
-      fileToUpload = {
-        uri: fileValue.uri || fileValue.url,
-        type: fileValue.type || fileValue.mimeType || 'application/octet-stream',
-        name: fileValue.name || fileValue.fileName || 'file',
-      };
-    }
-    // Case 3: Already has proper structure
-    else if (fileValue.name && fileValue.type) {
-      fileToUpload = fileValue;
-    }
-
-    if (!fileToUpload) {
-      console.warn('Could not process file for upload:', fileValue);
-      return fileValue; // Return original if we can't process it
-    }
-
-    // Append file to FormData
-    formData.append('files', fileToUpload as any);
-
-    // Make upload request
-    const response = await baseInstance.post(uploadUrl, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    if (!response.status || response.status < 200 || response.status >= 300) {
-      const errorText = await response.data.message || 'Unknown error';
-      throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-    }
-
-    const result = await response.data;
-    console.log('Upload response:', result);
-
-    // Return the file object with backend URL
-    if (result.success && result.data) {
-      // Handle single file response
-      if (!Array.isArray(result.data)) {
-        return {
-          name: result.data.name,
-          type: result.data.type,
-          size: result.data.size,
-          url: result.data.url,
-          storage: 'url',
-          _id: result.data._id,
-        };
-      }
-      // Handle multiple files (take first one)
-      else if (result.data.length > 0) {
-        const file = result.data[0];
-        return {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          url: file.url,
-          storage: 'url',
-          _id: file._id,
-        };
-      }
-    }
-
-    throw new Error('Invalid upload response format');
-    
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    throw error;
-  }
-};
-
-const processFormDataForSubmission = async (formData: any, parentKey: string = ''): Promise<any> => {
+  const processFormDataForSubmission = async (formData: any): Promise<any> => {
   const processedData: any = {};
 
   for (const [key, value] of Object.entries(formData)) {
-    const fullKey = parentKey ? `${parentKey}.${key}` : key;
-    
     // Skip internal fields
     if (key === 'language' || key === 'submit') {
       processedData[key] = value;
       continue;
     }
 
-    // Handle file objects - upload to backend
+    // Handle file objects
     if (isFileValue(value)) {
-      try {
-        console.log(`Uploading file for field: ${fullKey}`);
-        const uploadedFile = await uploadFilesToBackend(value, fullKey);
-        processedData[key] = uploadedFile;
-      } catch (error) {
-        console.error(`Failed to upload file for ${fullKey}:`, error);
-        throw new Error(`File upload failed for ${key}: ${error.message}`);
-      }
+      processedData[key] = await processFileValue(value);
     }
     // Handle arrays that might contain files
     else if (Array.isArray(value)) {
-      const processedArray = await Promise.all(
-        value.map(async (item, index) => {
+      processedData[key] = await Promise.all(
+        value.map(async (item) => {
           if (isFileValue(item)) {
-            try {
-              console.log(`Uploading file in array for field: ${fullKey}[${index}]`);
-              return await uploadFilesToBackend(item, `${fullKey}[${index}]`);
-            } catch (error) {
-              console.error(`Failed to upload file in array for ${fullKey}[${index}]:`, error);
-              throw error;
-            }
+            return await processFileValue(item);
           }
           return item;
         })
       );
-      
-      // Only include non-empty arrays
-      const filteredArray = processedArray.filter(item => item !== null && item !== undefined);
-      processedData[key] = filteredArray.length > 0 ? filteredArray : undefined;
     }
     // Handle nested objects
     else if (value && typeof value === 'object' && !Array.isArray(value)) {
-      processedData[key] = await processFormDataForSubmission(value, fullKey);
+      processedData[key] = await processFormDataForSubmission(value);
     }
-    // Handle primitive values - skip undefined/null
-    else if (value !== undefined && value !== null) {
+    // Handle primitive values
+    else {
       processedData[key] = value;
     }
   }
@@ -568,19 +436,11 @@ const isFileValue = (value: any): boolean => {
   if (!value || typeof value !== 'object') return false;
   
   // Check for FormIO file format
-  if (value.storage && value.name && (value.url || value.data)) {
-    return true;
-  }
-  
-  // Check if it has file-like properties
-  if (value.name && (value.url || value.uri || value.data || value.path)) {
-    return true;
-  }
+  if (value.storage && value.name && value.url) return true;
   
   // Check for React Native file format
-  if (value.uri || value.path) {
-    const hasFileName = value.name || value.fileName;
-    if (hasFileName) return true;
+  if (value.uri || value.url || value.path) {
+    return true;
   }
   
   // Check for base64 format
@@ -588,41 +448,79 @@ const isFileValue = (value: any): boolean => {
     return true;
   }
   
-  // Check if object has originalName
-  if (value.originalName && (value.url || value.data)) {
-    return true;
-  }
-  
   return false;
 };
 
-// Debugging function
-const logFormDataForDebugging = (formData: any) => {
-  console.log('=== FORM DATA DEBUG ===');
-  for (const [key, value] of Object.entries(formData)) {
-    if (Array.isArray(value)) {
-      console.log(`${key} (array):`, value.length, 'items');
-      value.forEach((item, idx) => {
-        if (typeof item === 'object') {
-          console.log(`  [${idx}]:`, JSON.stringify(item, null, 2));
-        }
-      });
-    } else if (value && typeof value === 'object') {
-      console.log(`${key} (object):`, JSON.stringify(value, null, 2));
-    } else {
-      console.log(`${key}:`, value);
+/**
+ * Process a single file value to standardized format
+ */
+const processFileValue = async (fileValue: any): Promise<any> => {
+  try {
+    // If it's already in the correct format, return it
+    if (fileValue.uri && fileValue.name && fileValue.type) {
+      return {
+        uri: fileValue.uri,
+        url: fileValue.url || fileValue.uri,
+        path: fileValue.path || fileValue.uri,
+        name: fileValue.name || fileValue.fileName || 'file',
+        type: fileValue.type || fileValue.mimeType || 'application/octet-stream',
+        size: fileValue.size || 0,
+        originalData: fileValue.originalData || null
+      };
     }
+
+    // Handle FormIO file format
+    if (fileValue.storage && fileValue.name && fileValue.url) {
+      return {
+        uri: fileValue.url,
+        url: fileValue.url,
+        path: fileValue.url,
+        name: fileValue.name,
+        type: fileValue.type || 'application/octet-stream',
+        size: fileValue.size || 0,
+        storage: fileValue.storage,
+        originalData: fileValue.originalData || null
+      };
+    }
+
+    // Handle base64 format
+    if (fileValue.data && typeof fileValue.data === 'string') {
+      const base64Data = fileValue.data;
+      const matches = base64Data.match(/^data:([^;]+);base64,/);
+      const mimeType = matches ? matches[1] : 'application/octet-stream';
+      
+      return {
+        uri: base64Data,
+        url: base64Data,
+        path: base64Data,
+        name: fileValue.name || fileValue.fileName || 'file',
+        type: mimeType,
+        size: fileValue.size || 0,
+        isBase64: true,
+        originalData: base64Data
+      };
+    }
+
+    // Fallback - return as is but add required properties
+    return {
+      uri: fileValue.uri || fileValue.url || fileValue.path || '',
+      url: fileValue.url || fileValue.uri || fileValue.path || '',
+      path: fileValue.path || fileValue.uri || fileValue.url || '',
+      name: fileValue.name || fileValue.fileName || 'file',
+      type: fileValue.type || fileValue.mimeType || 'application/octet-stream',
+      size: fileValue.size || 0,
+      originalData: fileValue
+    };
+  } catch (error) {
+    console.error('Error processing file value:', error);
+    return fileValue;
   }
-  console.log('=== END DEBUG ===');
 };
 
-// Handle form submission
+// Update your handleFormSubmission function to use the processor:
 const handleFormSubmission = useCallback(
   async (formData: any) => {
     console.log("handleFormSubmission called");
-    
-    // Add debugging
-    logFormDataForDebugging(formData);
     
     if (isSubmittingRef.current) {
       console.warn("Already submitting, ignoring duplicate");
@@ -636,33 +534,13 @@ const handleFormSubmission = useCallback(
     const userId = user?.id || user?.json?.id;
 
     try {
-      // Check if we have a valid form ID
-      const formId = regularForm?.id;
-      
-      if (!formId) {
-        console.error('Form ID is missing!');
-        Toast.show({
-          type: "error",
-          text1: t("Alerts.error.title") || "Error",
-          text2: "Form ID is missing. Cannot submit.",
-          position: "top",
-          visibilityTime: 4000,
-        });
-        return;
-      }
-
-      // Process form data and upload files
-      console.log('Processing form data and uploading files...');
+     
       const processedData = await processFormDataForSubmission(formData);
-      
-      console.log('=== PROCESSED DATA (after file uploads) ===');
-      console.log(JSON.stringify(processedData, null, 2));
-      console.log('=== END PROCESSED DATA ===');
       
       const completeFormData = {
         ...processedData,
         time_spent_filling_the_form: Math.floor(finalTimeSpent / 1000),
-        survey_id: formId,
+        survey_id: regularForm?.id,
         table_name: regularForm?.table_name,
         project_module_id: parsedParams.pmid,
         source_module_id: parsedParams.smid,
@@ -670,28 +548,18 @@ const handleFormSubmission = useCallback(
         user_id: userId,
       };
       
-      const submissionUrl = `/submissions/${formId}/submit`;
-      
-      console.log('Submitting form to:', submissionUrl);
+      let formId = regularForm?.id;
 
       await saveSurveySubmissionToAPI(
         create, 
         completeFormData, 
-        submissionUrl,
+        `/forms/${formId}/submit`,
         t, 
         fields, 
         userId 
       );
 
       console.log("Submission successful");
-      
-      Toast.show({
-        type: "success",
-        text1: t("Alerts.success.title") || "Success",
-        text2: t("Alerts.success.submission") || "Form submitted successfully",
-        position: "top",
-        visibilityTime: 3000,
-      });
 
     } catch (error) {
       console.error("Submission error:", error);
@@ -699,7 +567,7 @@ const handleFormSubmission = useCallback(
       Toast.show({
         type: "error",
         text1: t("Alerts.error.title") || "Error",
-        text2: error.message || t("Alerts.error.submission.unexpected") || "Failed to save form",
+        text2: t("Alerts.error.submission.unexpected") || "Failed to save form",
         position: "top",
         visibilityTime: 4000,
       });
@@ -723,7 +591,7 @@ const handleFormSubmission = useCallback(
   ]
 );
 
-const handleWebViewMessage = useCallback(
+  const handleWebViewMessage = useCallback(
     (event: any) => {
       try {
         const message = JSON.parse(event.nativeEvent.data);
@@ -731,7 +599,7 @@ const handleWebViewMessage = useCallback(
 
         switch (message.type) {
           case "FORM_READY":
-            console.log("Form is ready and displayed");
+            console.log("✅ Form is ready and displayed");
             setLoading(false);
             break;
             
@@ -803,8 +671,7 @@ const handleWebViewMessage = useCallback(
       const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
       const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
       const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
-      const baseUrl = process.env.EXPO_PUBLIC_API_URL || '';
-      const escapedBaseUrl = baseUrl.replace(/'/g, "\\'");
+
       return `
     <!DOCTYPE html>
     <html lang="en">
@@ -828,6 +695,7 @@ const handleWebViewMessage = useCallback(
             background: #f5f5f5;
           }
           .form-container {
+            // max-width: 800px;
             margin: 20px auto;
             padding: 20px;
             background: white;
@@ -1024,10 +892,7 @@ const handleWebViewMessage = useCallback(
               }
               
               formInitialized = true;
-              console.log('Formio loaded successfully, initializing form...');
-              
-              Formio.setBaseUrl('${escapedBaseUrl}');
-             
+              console.log('✅ Formio loaded successfully, initializing form...');
               
               try {
                 const formSchema = ${escapedFormJson};
@@ -1036,19 +901,12 @@ const handleWebViewMessage = useCallback(
                   noAlerts: true,
                   readOnly: false,
                   sanitize: true,
-                  hooks : {
-                  beforeSubmit: function(submission, next) {
-                    postMessage({ type: 'DEBUG', message: 'beforeSubmit hook called' });
-                    next();
-                  },
                   buttonSettings: {
                     showCancel: false,
                     showPrevious: true,
                     showNext: true,
                     showSubmit: true
-                  },
-                  base: '',
-                  project: ''
+                  }
                 });
 
                 console.log('✅ Form created successfully');
@@ -1162,6 +1020,12 @@ const handleWebViewMessage = useCallback(
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#00227c" />
+        <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text>
+        {!isOnline && (
+          <Text className="mt-2 text-sm text-amber-600">
+            Offline - checking cached assets...
+          </Text>
+        )}
       </View>
     );
   }
@@ -1179,7 +1043,7 @@ const handleWebViewMessage = useCallback(
       <HeaderNavigation title={t("FormElementPage.title")} showLeft showRight />
       <WebView
         originWhitelist={["*"]}
-        source={{ html: formHtml, baseUrl: 'about:blank' }}
+        source={{ html: formHtml, baseUrl: `${process.env.EXPO_PUBLIC_API_URL}/api/uploads` }}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         onMessage={handleWebViewMessage}
@@ -1206,6 +1070,9 @@ const handleWebViewMessage = useCallback(
         <View className="absolute inset-0 items-center justify-center bg-white bg-opacity-95">
           <ActivityIndicator size="large" color="#00227c" />
           <Text className="mt-3 text-gray-600 font-medium">{t("FormElementPage.loading_form")}</Text>
+          {/* <Text className="mt-2 text-sm text-gray-500">
+            {isOnline ? "Loading from server..." : "Loading from cache..."}
+          </Text> */}
         </View>
       )}
       {isSubmitting && (
@@ -1221,3 +1088,5 @@ const handleWebViewMessage = useCallback(
 }
 
 export default ProjectFormElementScreen;
+
+

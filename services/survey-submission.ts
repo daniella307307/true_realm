@@ -452,7 +452,7 @@ export const performInitialSync = async (
     const result = await syncPageToLocal(create, update, 1, userId, isLoggedIn);
 
     if (result.success) {
-      console.log(`Initial sync completed: ${result.itemsSynced} submissions synced`);
+    
       return {
         success: true,
         itemsSynced: result.itemsSynced,
@@ -527,7 +527,6 @@ export const loadNextPage = async (
     const cachedPages = await getCachedPages(getAll);
     
     if (cachedPages.has(nextPage)) {
-      console.log(`Page ${nextPage} already cached locally`);
       return {
         success: true,
         itemsSynced: 0,
@@ -830,7 +829,6 @@ export const updateSurveySubmissionLocally = async (
   userId: number
 ): Promise<void> => {
   try {
-    console.log(`Updating submission ${submissionId} locally...`);
 
     const updatePayload: Record<string, any> = {
       updated_at: new Date().toISOString(),
@@ -858,9 +856,7 @@ export const updateSurveySubmissionLocally = async (
       updatePayload.sync_reason = "Modified - needs sync";
     }
 
-    await update("SurveySubmissions", submissionId, updatePayload);  // ✅ Now using correct update
-    
-    console.log(`Submission ${submissionId} updated locally`);
+    await update("SurveySubmissions", submissionId, updatePayload);  
   } catch (error) {
     console.error("Error updating submission locally:", error);
     throw error;
@@ -889,7 +885,6 @@ export const updateSurveySubmissionOnServer = async (
     const apiUrl = `/submissions/forms/${formId}/submissions/${submission.id}`;
 
     console.log(`Updating submission ${submission.id} on server...`);
-    console.log("Update payload:", JSON.stringify(apiPayload, null, 2));
 
     const response = await baseInstance.put(apiUrl, apiPayload);
 
@@ -1102,7 +1097,6 @@ export const syncPendingSubmissions = async (
         const apiUrl = `/submissions/${formId}/submit`;
 
         console.log("Syncing to:", apiUrl);
-        console.log("Payload:", JSON.stringify(apiPayload, null, 2));
 
         const response = await baseInstance.post(apiUrl, apiPayload);
         
@@ -1493,7 +1487,7 @@ export const saveSurveySubmissionToAPI = async (
   userId: number
 ): Promise<void> => {
   try {
-    console.log("Saving survey submission...", formData);
+    
 
     const isDuplicate = await checkDuplicateSubmission(create, formData);
     if (isDuplicate) {

@@ -368,8 +368,7 @@ const EditSubmissionScreen = () => {
 
   const handleFormSubmission = useCallback(
     async (formData: any) => {
-      console.log("handleFormSubmission called with data:", formData);
-
+  
       if (isSubmittingRef.current || !submission) {
         console.warn("Already submitting or no submission, ignoring");
         return;
@@ -390,13 +389,10 @@ const EditSubmissionScreen = () => {
         );
 
         console.log("Updated locally");
-
-        // If online and has remote ID, sync to server
         if (isOnline && submission.id) {
           Toast.show({
             type: "info",
-            text1: "Syncing...",
-            text2: "Uploading changes to server",
+            text1: t("Login.syncingData") || "Syncing",
             position: "top",
             visibilityTime: 2000,
           });
@@ -421,7 +417,6 @@ const EditSubmissionScreen = () => {
             Toast.show({
               type: "success",
               text1: t("Alerts.success.title") || "Success",
-              text2: "Changes synced successfully",
               position: "top",
               visibilityTime: 3000,
             });
@@ -430,7 +425,6 @@ const EditSubmissionScreen = () => {
           Toast.show({
             type: "success",
             text1: t("Alerts.success.title") || "Success",
-            text2: "Changes saved locally",
             position: "top",
             visibilityTime: 3000,
           });
@@ -513,11 +507,6 @@ const EditSubmissionScreen = () => {
   const formHtml = useMemo(() => {
     // CRITICAL FIX: Check all required conditions
     if (!parsedForm || !submission || !assetsReady) {
-      console.log('Cannot generate HTML - missing requirements', {
-        hasParsedForm: !!parsedForm,
-        hasSubmission: !!submission,
-        assetsReady
-      });
       return null; // Return null instead of empty string
     }
 
@@ -713,7 +702,6 @@ const EditSubmissionScreen = () => {
       </div>
       <div id="loading" class="loading">
         <div class="loading-spinner"></div>
-        <div>Loading form with your data...</div>
       </div>
       <div id="formio" style="display: none;"></div>
     </div>
@@ -929,19 +917,22 @@ const EditSubmissionScreen = () => {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#00227c" />
-        <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text>
+        {/* <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text> */}
         {!isOnline && (
-          <Text className="mt-2 text-sm text-amber-600">
-            Offline - checking cached assets...
-          </Text>
+          // 
+          <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+            {/* <Text className="text-sm text-yellow-800 text-center">
+              You are currently offline. Some features may be unavailable until you reconnect.
+            </Text> */}
+          </View>
         )}
       </View>
     );
   }
 
-  if (!parsedForm) {
-    return <NotFound title="Form error" description="Form JSON is invalid." />;
-  }
+  // if (!parsedForm) {
+  //   return <NotFound title="Form error" description="Form JSON is invalid." />;
+  // }
 
   if (!submission) {
     return <NotFound title="Submission not found" description="Please try again" />;
@@ -952,7 +943,7 @@ const EditSubmissionScreen = () => {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#00227c" />
-        <Text className="mt-3 text-gray-600 font-medium">Preparing form...</Text>
+         <Text className="mt-3 text-gray-600 font-medium">{t("FormElementPage.loading_form")}</Text> 
       </View>
     );
   }
