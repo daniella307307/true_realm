@@ -98,9 +98,9 @@ function SQLiteReadyGate({ children }: { children: React.ReactNode }) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
+        {/* <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
           Initializing database...
-        </Text>
+        </Text> */}
       </View>
     );
   }
@@ -171,12 +171,12 @@ function Layout() {
             try {
               debug.log('Layout', 'Initializing push notifications (online)');
               await registerForPushNotificationsAsync();
-              debug.log('Layout', '✅ Push notifications initialized');
+              debug.log('Layout', 'Push notifications initialized');
             } catch (notifError) {
-              debug.log('Layout', '⚠️ Push notification setup failed, will retry when online');
+              debug.log('Layout', 'Push notification setup failed, will retry when online');
             }
           } else {
-            debug.log('Layout', '📴 Offline - push notifications will register when online');
+            debug.log('Layout', 'eOffline - push notifications will register when online');
           }
         }
 
@@ -224,7 +224,7 @@ function Layout() {
         });
 
         setAppReady(true);
-        debug.log('Layout', '✅ App initialization completed');
+        debug.log('Layout', 'App initialization completed');
 
         return () => {
           debug.log('Layout', 'Cleaning up resources');

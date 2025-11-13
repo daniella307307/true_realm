@@ -627,7 +627,7 @@ const isFileObject = (value: any): boolean => {
           </View>
         </View>
 
-        <View className="flex-row gap-4 mb-3">
+        <View className="flex-1 gap-4 mb-3">
           {syncedCount > 0 && (
             <View className="flex-row items-center gap-1.5">
               <View className="w-5 h-5 rounded-full bg-green-500 items-center justify-center">

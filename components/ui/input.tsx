@@ -11,7 +11,7 @@ const CustomInput = ({ control, name, placeholder, secureTextEntry = false, keyb
       render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
         <View className="mb-4">
           <TextInput
-            className={`w-full px-4 py-5 bg-background border rounded-lg ${
+            className={`w-full px-4 py-5 bg-background border rounded-lg  placeholder:text-muted-foreground dark:text-foreground dark:placeholder:text-muted-foreground${
               error ? "border-[#00227c]" : "border-[#00227c]"
             }`}
             placeholder={placeholder}

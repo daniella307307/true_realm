@@ -248,7 +248,7 @@ export default function LoginScreen() {
                       } rounded-lg overflow-hidden`}
                   >
                     <TextInput
-                      className="flex-1 px-4"
+                      className="flex-1 px-4  placeholder:text-muted-foreground dark:text-foreground dark:placeholder:text-muted-foreground"
                       placeholder={t("Login.emailOrPhonePlaceholder")}
                       onBlur={onBlur}
                       onChangeText={onChange}
@@ -284,7 +284,7 @@ export default function LoginScreen() {
                       } rounded-lg overflow-hidden`}
                   >
                     <TextInput
-                      className="flex-1 px-4"
+                      className="flex-1 px-4  placeholder:text-muted-foreground dark:text-foreground dark:placeholder:text-muted-foreground"
                       placeholder={t("Login.passwordPlaceholder")}
                       secureTextEntry={!passwordVisible}
                       onBlur={onBlur}

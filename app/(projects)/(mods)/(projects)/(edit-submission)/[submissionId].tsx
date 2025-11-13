@@ -19,6 +19,7 @@ import {
   parseSQLiteRow,
   SurveySubmission
 } from "~/services/survey-submission";
+import { useMediaPicker, MediaResult } from "~/lib/hooks/useMediaPicker";
 import { translateFormSchema } from "~/components/utils-form/form-translation";
 import Toast from "react-native-toast-message";
 import { checkNetworkConnection } from "~/utils/networkHelpers";
@@ -83,12 +84,12 @@ function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any
   };
 }
 
-const EditSubmissionScreen = () => {
+function EditSubmissionScreen (): React.JSX.Element {
   const { t,i18n } = useTranslation();
   const { user } = useAuth({});
   const params = useLocalSearchParams<{ submissionId: string }>();
   const { getAll, update } = useSQLite();
-
+  const [ selectedMedia, setSelectedMedia ] = useState<MediaResult[] | null>(null);
   const [submission, setSubmission] = useState<SurveySubmission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -107,7 +108,69 @@ const EditSubmissionScreen = () => {
 
   // Get the original form structure
   const { form: regularForm } = useGetFormById(submission?.form_data?.survey_id?.toString() || '');
-
+  const { pickImage, takePhoto, pickVideo, pickMedia } = useMediaPicker();
+  const webViewRef = useRef<WebView>(null);
+  const handleMediaUpload = useCallback(async (fieldKey: string, allowMultiple: boolean = false) => {
+  try {
+    // Show options to user
+    Alert.alert(
+      'Select Media',
+      'Choose how to add media',
+      [
+        {
+          text: 'Take Photo',
+          onPress: async () => {
+            const photo = await takePhoto();
+            if (photo) {
+              // Send photo back to WebView
+              webViewRef.current?.postMessage(JSON.stringify({
+                type: 'MEDIA_SELECTED',
+                fieldKey: fieldKey,
+                media: [photo]
+              }));
+            }
+          },
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: async () => {
+            const images = await pickImage({ allowsMultipleSelection: allowMultiple });
+            if (images) {
+              webViewRef.current?.postMessage(JSON.stringify({
+                type: 'MEDIA_SELECTED',
+                fieldKey: fieldKey,
+                media: images
+              }));
+            }
+          },
+        },
+        {
+          text: 'Choose Video',
+          onPress: async () => {
+            const video = await pickVideo();
+            if (video) {
+              webViewRef.current?.postMessage(JSON.stringify({
+                type: 'MEDIA_SELECTED',
+                fieldKey: fieldKey,
+                media: [video]
+              }));
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  } catch (error) {
+    console.error('Error selecting media:', error);
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: 'Failed to select media',
+      position: 'top',
+      visibilityTime: 3000,
+    });
+  }
+}, [takePhoto, pickImage, pickVideo]);
   // Initial network check
   useEffect(() => {
     let mounted = true;
@@ -489,6 +552,10 @@ const EditSubmissionScreen = () => {
               visibilityTime: 3000,
             });
             break;
+          case "REQUEST_MEDIA":
+            console.log("Media requested for field:", message.fieldKey);
+            handleMediaUpload(message.fieldKey, message.allowMultiple);
+            break;
 
           case "DEBUG":
             console.log("Debug:", message.message);
@@ -684,6 +751,75 @@ const EditSubmissionScreen = () => {
         100% { transform: rotate(360deg); }
       }
     </style>
+    <script>
+  // Handle file input clicks
+  document.addEventListener('click', function(e) {
+    const target = e.target;
+    
+    // Check if clicked element is a file input or its label
+    const fileInput = target.matches('input[type="file"]') 
+      ? target 
+      : target.closest('label')?.querySelector('input[type="file"]');
+    
+    if (fileInput) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Get the field key from the input's name or id
+      const fieldKey = fileInput.name || fileInput.id;
+      const allowMultiple = fileInput.hasAttribute('multiple');
+      
+      // Request media from React Native
+      postMessage({
+        type: 'REQUEST_MEDIA',
+        fieldKey: fieldKey,
+        allowMultiple: allowMultiple
+      });
+      
+      return false;
+    }
+  }, true);
+  
+  // Listen for media selected from React Native
+  window.addEventListener('message', function(event) {
+    try {
+      const data = JSON.parse(event.data);
+      
+      if (data.type === 'MEDIA_SELECTED') {
+        const fieldKey = data.fieldKey;
+        const media = data.media;
+        
+        // Find the component in the form
+        const component = form.getComponent(fieldKey);
+        
+        if (component && media && media.length > 0) {
+          // Convert media to format expected by FormIO
+          const formioFiles = media.map(item => ({
+            name: item.name,
+            size: item.size || 0,
+            type: item.type.includes('image') ? 'image/jpeg' : 'video/mp4',
+            url: item.uri,
+            uri: item.uri,
+            storage: 'url',
+            originalData: item
+          }));
+          
+          // Set the value in the form
+          if (component.component.multiple) {
+            const currentValue = component.getValue() || [];
+            component.setValue([...currentValue, ...formioFiles]);
+          } else {
+            component.setValue(formioFiles[0]);
+          }
+          
+          console.log('Media added to field:', fieldKey);
+        }
+      }
+    } catch (err) {
+      console.error('Error handling message:', err);
+    }
+  });
+</script>
   </head>
   <body>
     <div class="form-container">
@@ -952,6 +1088,7 @@ const EditSubmissionScreen = () => {
     <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation title={t("FormElementPage.title")} showLeft showRight />
       <WebView
+        ref={webViewRef}
         originWhitelist={["*"]}
         source={{ html: formHtml, baseUrl: 'about:blank' }}
         javaScriptEnabled={true}
@@ -965,9 +1102,6 @@ const EditSubmissionScreen = () => {
         allowFileAccessFromFileURLs={true}
         allowUniversalAccessFromFileURLs={true}
         mixedContentMode="always"
-        onConsoleMessage={(event) => {
-          console.log('[WebView Console]', event.nativeEvent.message);
-        }}
         onError={(syntheticEvent) => {
           console.warn("WebView error:", syntheticEvent.nativeEvent);
           setFormLoading(false);

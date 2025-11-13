@@ -53,6 +53,20 @@
       "favicon": "./assets/images/logo-header.png"
     },
     "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
+          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos to your library."
+        }
+      ],
       "expo-router",
       [
         "expo-video",
@@ -68,14 +82,11 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "a7a207c0-4b11-47f7-a8e8-09c5fa56e479"
-      },
-      "router": {}
+        "projectId": "5318bd0c-a11f-44c5-add1-7b55ff2c7dba"
+      }
     },
-    "owner": "mitcheelariette",
-    "updates": {
-      "url": "https://u.expo.dev/a7a207c0-4b11-47f7-a8e8-09c5fa56e479"
-    }
+    "owner": "ganza_daniella"
   }
 }

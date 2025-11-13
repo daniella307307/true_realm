@@ -3,12 +3,6 @@ import { router } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '~/lib/hooks/useAuth';
 
-/**
- * Root app entry point
- * 
- * This component handles the initial routing based on authentication status.
- * It will redirect to either login or home based on the user's login status.
- */
 
 const debug = {
   log: (component: string, message: string, data?: any) => {

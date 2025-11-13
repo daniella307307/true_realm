@@ -160,7 +160,6 @@ import { baseInstance } from "~/utils/axios";
 import Toast from "react-native-toast-message";
 import { router } from "expo-router";
 import { TFunction } from "i18next";
-import { useAuth } from "~/lib/hooks/useAuth";
 
 interface FormField {
   key: string;
