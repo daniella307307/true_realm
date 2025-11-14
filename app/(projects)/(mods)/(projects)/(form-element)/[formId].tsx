@@ -15,6 +15,7 @@ import * as FileSystem from "expo-file-system";
 import { saveSurveySubmissionToAPI } from "~/services/survey-submission";
 import { MediaPickerButton } from "~/components/ui/MediaPickerButton";
 import { useMediaPicker, MediaResult } from "~/lib/hooks/useMediaPicker";
+import  formSchemaWithTranslations  from "~/components/utils-form/formschema";
 function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any {
   if (!formSchema || typeof formSchema !== 'object') {
     console.warn('Invalid form schema provided to convertToWizardForm');
@@ -115,7 +116,8 @@ function ProjectFormElementScreen(): React.JSX.Element {
   const webViewRef = useRef<WebView>(null);
   const handleMediaUpload = useCallback(async (fieldKey: string, allowMultiple: boolean = false) => {
     try {
-      // Show options to user
+      console.log("Media upload requested for field:", fieldKey, "Allow multiple:", allowMultiple);
+
       Alert.alert(
         'Select Media',
         'Choose how to add media',
@@ -123,40 +125,81 @@ function ProjectFormElementScreen(): React.JSX.Element {
           {
             text: 'Take Photo',
             onPress: async () => {
-              const photo = await takePhoto();
-              if (photo) {
-                // Send photo back to WebView
-                webViewRef.current?.postMessage(JSON.stringify({
-                  type: 'MEDIA_SELECTED',
-                  fieldKey: fieldKey,
-                  media: [photo]
-                }));
+              try {
+                const photo = await takePhoto();
+                console.log("Photo taken:", photo);
+                if (photo && webViewRef.current) {
+                  const message = JSON.stringify({
+                    type: 'MEDIA_SELECTED',
+                    fieldKey: fieldKey,
+                    media: [photo]
+                  });
+                  console.log("Sending photo to WebView:", message);
+                  webViewRef.current.postMessage(message);
+                }
+              } catch (error) {
+                console.error("Error taking photo:", error);
+                Toast.show({
+                  type: 'error',
+                  text1: 'Error',
+                  text2: 'Failed to take photo',
+                  position: 'top',
+                  visibilityTime: 3000,
+                });
               }
             },
           },
           {
             text: 'Choose from Gallery',
             onPress: async () => {
-              const images = await pickImage({ allowsMultipleSelection: allowMultiple });
-              if (images) {
-                webViewRef.current?.postMessage(JSON.stringify({
-                  type: 'MEDIA_SELECTED',
-                  fieldKey: fieldKey,
-                  media: images
-                }));
+              try {
+                const images = await pickImage({ allowsMultipleSelection: allowMultiple });
+                console.log("Images selected:", images);
+                if (images && images.length > 0 && webViewRef.current) {
+                  const message = JSON.stringify({
+                    type: 'MEDIA_SELECTED',
+                    fieldKey: fieldKey,
+                    media: images
+                  });
+                  console.log("Sending images to WebView:", message);
+                  webViewRef.current.postMessage(message);
+                }
+              } catch (error) {
+                console.error("Error picking images:", error);
+                Toast.show({
+                  type: 'error',
+                  text1: 'Error',
+                  text2: 'Failed to select images',
+                  position: 'top',
+                  visibilityTime: 3000,
+                });
               }
             },
           },
           {
             text: 'Choose Video',
             onPress: async () => {
-              const video = await pickVideo();
-              if (video) {
-                webViewRef.current?.postMessage(JSON.stringify({
-                  type: 'MEDIA_SELECTED',
-                  fieldKey: fieldKey,
-                  media: [video]
-                }));
+              try {
+                const video = await pickVideo();
+                console.log("Video selected:", video);
+                if (video && webViewRef.current) {
+                  const message = JSON.stringify({
+                    type: 'MEDIA_SELECTED',
+                    fieldKey: fieldKey,
+                    media: [video]
+                  });
+                  console.log("Sending video to WebView:", message);
+                  webViewRef.current.postMessage(message);
+                }
+              } catch (error) {
+                console.error("Error picking video:", error);
+                Toast.show({
+                  type: 'error',
+                  text1: 'Error',
+                  text2: 'Failed to select video',
+                  position: 'top',
+                  visibilityTime: 3000,
+                });
               }
             },
           },
@@ -164,17 +207,16 @@ function ProjectFormElementScreen(): React.JSX.Element {
         ]
       );
     } catch (error) {
-      console.error('Error selecting media:', error);
+      console.error('Error in handleMediaUpload:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to select media',
+        text2: 'Failed to open media picker',
         position: 'top',
         visibilityTime: 3000,
       });
     }
   }, [takePhoto, pickImage, pickVideo]);
-
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -184,7 +226,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
     return () => clearInterval(interval);
   }, [formStartTime]);
 
-  // Initial network check - runs once on mount
   useEffect(() => {
     let mounted = true;
 
@@ -212,7 +253,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
     };
   }, []);
 
-  // Periodic network checking effect - only runs after initial check
   useEffect(() => {
     if (!networkStatusInitialized.current) {
       return;
@@ -270,7 +310,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
     };
   }, [networkStatusInitialized.current]);
 
-  // Download and cache FormIO assets
   useEffect(() => {
     if (!networkStatusInitialized.current) {
       return;
@@ -294,7 +333,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
         const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
         const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
 
-        // Check if cached files exist
         const [jsInfo, cssInfo, bootstrapInfo] = await Promise.all([
           FileSystem.getInfoAsync(jsPath),
           FileSystem.getInfoAsync(cssPath),
@@ -313,7 +351,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
           return;
         }
 
-        // If files don't exist and we're offline, we can't proceed
         if (!isOnline) {
           console.error("Offline and no cached assets available");
           if (isMounted) {
@@ -326,7 +363,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
         setLoadingStep("Downloading assets...");
         console.log("Downloading FormIO assets from CDN...");
 
-        // Download assets from CDN
         const downloads = [
           {
             url: "https://cdn.form.io/formiojs/formio.full.min.js",
@@ -351,7 +387,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
           )
         );
 
-        // Check if all downloads succeeded
         const allSucceeded = results.every(result => result.status === 'fulfilled');
 
         if (!allSucceeded) {
@@ -409,6 +444,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
         console.error('Invalid json format:', typeof regularForm.json);
         return null;
       }
+
       let translatedForm = baseForm;
       if (regularForm.translations) {
         console.log(`translating form to ${currentLang}...`);
@@ -443,36 +479,21 @@ function ProjectFormElementScreen(): React.JSX.Element {
     }
   }, [parsedForm]);
 
-  const formatTime = useCallback((ms: number) => {
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
+  
 
-    if (hours > 0) {
-      return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds % 60}s`;
-    } else {
-      return `${seconds}s`;
-    }
-  }, []);
 
   const processFormDataForSubmission = async (formData: any): Promise<any> => {
     const processedData: any = {};
 
     for (const [key, value] of Object.entries(formData)) {
-      // Skip internal fields
       if (key === 'language' || key === 'submit') {
         processedData[key] = value;
         continue;
       }
 
-      // Handle file objects
       if (isFileValue(value)) {
         processedData[key] = await processFileValue(value);
-      }
-      // Handle arrays that might contain files
-      else if (Array.isArray(value)) {
+      } else if (Array.isArray(value)) {
         processedData[key] = await Promise.all(
           value.map(async (item) => {
             if (isFileValue(item)) {
@@ -481,13 +502,9 @@ function ProjectFormElementScreen(): React.JSX.Element {
             return item;
           })
         );
-      }
-      // Handle nested objects
-      else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      } else if (value && typeof value === 'object' && !Array.isArray(value)) {
         processedData[key] = await processFormDataForSubmission(value);
-      }
-      // Handle primitive values
-      else {
+      } else {
         processedData[key] = value;
       }
     }
@@ -495,34 +512,20 @@ function ProjectFormElementScreen(): React.JSX.Element {
     return processedData;
   };
 
-  /**
-   * Check if a value is a file object
-   */
   const isFileValue = (value: any): boolean => {
     if (!value || typeof value !== 'object') return false;
-
-    // Check for FormIO file format
     if (value.storage && value.name && value.url) return true;
-
-    // Check for React Native file format
     if (value.uri || value.url || value.path) {
       return true;
     }
-
-    // Check for base64 format
     if (value.data && typeof value.data === 'string' && value.data.startsWith('data:')) {
       return true;
     }
-
     return false;
   };
 
-  /**
-   * Process a single file value to standardized format
-   */
   const processFileValue = async (fileValue: any): Promise<any> => {
     try {
-      // If it's already in the correct format, return it
       if (fileValue.uri && fileValue.name && fileValue.type) {
         return {
           uri: fileValue.uri,
@@ -535,7 +538,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
         };
       }
 
-      // Handle FormIO file format
       if (fileValue.storage && fileValue.name && fileValue.url) {
         return {
           uri: fileValue.url,
@@ -549,7 +551,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
         };
       }
 
-      // Handle base64 format
       if (fileValue.data && typeof fileValue.data === 'string') {
         const base64Data = fileValue.data;
         const matches = base64Data.match(/^data:([^;]+);base64,/);
@@ -567,7 +568,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
         };
       }
 
-      // Fallback - return as is but add required properties
       return {
         uri: fileValue.uri || fileValue.url || fileValue.path || '',
         url: fileValue.url || fileValue.uri || fileValue.path || '',
@@ -583,7 +583,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
     }
   };
 
-  // Update your handleFormSubmission function to use the processor:
   const handleFormSubmission = useCallback(
     async (formData: any) => {
       console.log("handleFormSubmission called");
@@ -600,7 +599,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
       const userId = user?.id || user?.json?.id;
 
       try {
-
         const processedData = await processFormDataForSubmission(formData);
 
         const completeFormData = {
@@ -619,7 +617,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
         await saveSurveySubmissionToAPI(
           create,
           completeFormData,
-          `/submissions/${formId}/submit`,
+          `/forms/${formId}/submit`,
           t,
           fields,
           userId
@@ -656,16 +654,16 @@ function ProjectFormElementScreen(): React.JSX.Element {
       parsedParams.projId,
     ]
   );
-
   const handleWebViewMessage = useCallback(
     (event: any) => {
       try {
-        const message = JSON.parse(event.nativeEvent.data);
+        const messageData = event.nativeEvent.data;
+        const message = typeof messageData === 'string' ? JSON.parse(messageData) : messageData;
         console.log("WebView message:", message.type);
 
         switch (message.type) {
           case "FORM_READY":
-            console.log("✅ Form is ready and displayed");
+            console.log("Form is ready and displayed");
             setLoading(false);
             break;
 
@@ -698,13 +696,12 @@ function ProjectFormElementScreen(): React.JSX.Element {
           case "FORM_CHANGE":
             break;
 
-
-
           case "DEBUG":
             console.log("Debug:", message.message);
             break;
 
           case "REQUEST_MEDIA":
+            console.log("Media upload requested for field:", message.fieldKey, "Allow multiple:", message.allowMultiple);
             handleMediaUpload(message.fieldKey, message.allowMultiple);
             break;
 
@@ -712,12 +709,11 @@ function ProjectFormElementScreen(): React.JSX.Element {
             console.log("Unknown message:", message.type);
         }
       } catch (err) {
-        console.error("Failed to parse WebView message:", err);
+        console.error("Failed to parse WebView message:", err, "Data:", event.nativeEvent.data);
       }
     },
-    [handleFormSubmission, t]
+    [handleFormSubmission, t, handleMediaUpload]
   );
-
   const formHtml = useMemo(() => {
     if (!parsedForm) {
       console.log('Cannot generate HTML - form not ready');
@@ -739,7 +735,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
 
       console.log('Generating form HTML with', totalPages, 'pages');
 
-      // Use cached files if available
       const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
       const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
       const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
@@ -767,7 +762,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
             background: #f5f5f5;
           }
           .form-container {
-            // max-width: 800px;
             margin: 20px auto;
             padding: 20px;
             background: white;
@@ -883,61 +877,269 @@ function ProjectFormElementScreen(): React.JSX.Element {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
+
+          /* Review Page Styles */
+          .review-container {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+          }
+
+          .review-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px 8px 0 0;
+            margin: -20px -20px 20px -20px;
+          }
+
+          .review-header h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+          }
+
+          .review-section {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+
+          .review-section-title {
+            color: var(--primary-color);
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+          }
+
+          .review-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+          }
+
+          .review-item:last-child {
+            border-bottom: none;
+          }
+
+          .review-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+            font-size: 14px;
+          }
+
+          .review-value {
+            color: #212529;
+            font-size: 15px;
+            line-height: 1.5;
+            word-wrap: break-word;
+          }
+
+          .review-empty {
+            color: #6c757d;
+            font-style: italic;
+          }
+
+          .review-file {
+            display: inline-flex;
+            align-items: center;
+            background: #e7f3ff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 5px 5px 5px 0;
+            font-size: 14px;
+          }
+
+          .review-file i {
+            margin-right: 8px;
+            color: var(--primary-color);
+          }
+
+          .review-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            margin: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+
+          .review-actions {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+          }
+
+          .review-btn {
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+          }
+
+          .review-btn-submit {
+            background: #28a745;
+            color: white;
+            flex: 1;
+            min-width: 200px;
+          }
+
+          .review-btn-submit:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+          }
+
+          .review-btn-edit {
+            background: var(--primary-color);
+            color: white;
+            flex: 1;
+            min-width: 150px;
+          }
+
+          .review-btn-edit:hover {
+            background: var(--primary-dark);
+          }
+
+          .review-list {
+            padding-left: 20px;
+          }
+
+          .review-list li {
+            margin: 5px 0;
+          }
         </style>
         <script>
-  // Handle file input clicks
+  let formInstance;
   document.addEventListener('click', function(e) {
     const target = e.target;
     
-    // Check if clicked element is a file input or its label
-    const fileInput = target.matches('input[type="file"]') 
-      ? target 
-      : target.closest('label')?.querySelector('input[type="file"]');
+    // Check if clicking on file input, button, or label
+    let fileInput = null;
+    let componentElement = null;
     
-    if (fileInput) {
+    if (target.matches('input[type="file"]')) {
+      fileInput = target;
+      componentElement = target.closest('.formio-component-file');
+    } else if (target.matches('button') && target.closest('.formio-component-file')) {
+      componentElement = target.closest('.formio-component-file');
+      fileInput = componentElement.querySelector('input[type="file"]');
+    } else if (target.closest('label')) {
+      const label = target.closest('label');
+      fileInput = label.querySelector('input[type="file"]') || document.getElementById(label.getAttribute('for'));
+      if (fileInput) {
+        componentElement = fileInput.closest('.formio-component-file');
+      }
+    } else if (target.closest('.formio-component-file')) {
+      componentElement = target.closest('.formio-component-file');
+      fileInput = componentElement.querySelector('input[type="file"]');
+    }
+    
+    if (fileInput && componentElement) {
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
       
-      // Get the field key from the input's name or id
-      const fieldKey = fileInput.name || fileInput.id;
+      // Try multiple ways to get the field key
+      let fieldKey = fileInput.name || fileInput.id || fileInput.getAttribute('data-key');
+      
+      // If still no key, try to get it from the component element's ref attribute
+      if (!fieldKey && componentElement) {
+        fieldKey = componentElement.getAttribute('ref') || 
+                   componentElement.getAttribute('data-component-key') ||
+                   componentElement.id;
+      }
+      
+      // If still no key, try to find it from FormIO's component structure
+      if (!fieldKey && formInstance) {
+        const components = formInstance.components;
+        for (let comp of components) {
+          if (comp.element === componentElement || componentElement.contains(comp.element)) {
+            fieldKey = comp.component.key;
+            break;
+          }
+        }
+      }
+      
       const allowMultiple = fileInput.hasAttribute('multiple');
       
-      // Request media from React Native
-      postMessage({
-        type: 'REQUEST_MEDIA',
-        fieldKey: fieldKey,
-        allowMultiple: allowMultiple
-      });
+      console.log('File input clicked, requesting media for:', fieldKey, 'Element:', componentElement);
+      
+      if (fieldKey) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'REQUEST_MEDIA',
+          fieldKey: fieldKey,
+          allowMultiple: allowMultiple
+        }));
+      } else {
+        console.error('Could not determine field key for file input');
+      }
       
       return false;
     }
   }, true);
   
-  // Listen for media selected from React Native
+  // Handle messages from React Native
+  document.addEventListener('message', function(event) {
+    handleMediaMessage(event.data);
+  });
+  
   window.addEventListener('message', function(event) {
+    handleMediaMessage(event.data);
+  });
+  
+  function handleMediaMessage(data) {
     try {
-      const data = JSON.parse(event.data);
+      const message = typeof data === 'string' ? JSON.parse(data) : data;
       
-      if (data.type === 'MEDIA_SELECTED') {
-        const fieldKey = data.fieldKey;
-        const media = data.media;
+      if (message.type === 'MEDIA_SELECTED') {
+        const fieldKey = message.fieldKey;
+        const media = message.media;
         
-        // Find the component in the form
-        const component = form.getComponent(fieldKey);
+        console.log('Media received for field:', fieldKey, media);
+        
+        if (!formInstance) {
+          console.error('Form instance not available');
+          return;
+        }
+        
+        let component = formInstance.getComponent(fieldKey);
+        
+        if (!component) {
+         
+          let input = document.querySelector(\`input[name="\${fieldKey}"], input#\${fieldKey}\`);
+          if (input) {
+            const componentEl = input.closest('.formio-component');
+            if (componentEl) {
+              const componentKey = componentEl.getAttribute('ref');
+              component = formInstance.getComponent(componentKey);
+            }
+          }
+        }
         
         if (component && media && media.length > 0) {
-          // Convert media to format expected by FormIO
           const formioFiles = media.map(item => ({
-            name: item.name,
+            name: item.name || 'file',
             size: item.size || 0,
-            type: item.type.includes('image') ? 'image/jpeg' : 'video/mp4',
+            type: item.type || 'application/octet-stream',
             url: item.uri,
             uri: item.uri,
             storage: 'url',
             originalData: item
           }));
           
-          // Set the value in the form
+          console.log('Setting files on component:', formioFiles);
+          
           if (component.component.multiple) {
             const currentValue = component.getValue() || [];
             component.setValue([...currentValue, ...formioFiles]);
@@ -945,13 +1147,18 @@ function ProjectFormElementScreen(): React.JSX.Element {
             component.setValue(formioFiles[0]);
           }
           
-          console.log('Media added to field:', fieldKey);
+          // Trigger change event
+          component.triggerChange();
+          
+          console.log('Media successfully added to field:', fieldKey);
+        } else {
+          console.error('Component not found or no media:', fieldKey);
         }
       }
     } catch (err) {
-      console.error('Error handling message:', err);
+      console.error('Error handling media message:', err);
     }
-  });
+  }
 </script>
       </head>
       <body>
@@ -997,6 +1204,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
             let initAttempts = 0;
             const MAX_INIT_ATTEMPTS = 30;
             const RETRY_DELAY = 500;
+            let form;
             
             function postMessage(data) {
               try {
@@ -1008,6 +1216,104 @@ function ProjectFormElementScreen(): React.JSX.Element {
               } catch (err) {
                 console.error('Error posting message:', err);
               }
+            }
+
+            function formatValue(value, label) {
+              if (value === null || value === undefined || value === '') {
+                return '<span class="review-empty">Not provided</span>';
+              }
+              
+              if (Array.isArray(value)) {
+                if (value.length === 0) {
+                  return '<span class="review-empty">Not provided</span>';
+                }
+                
+                if (value[0] && (value[0].url || value[0].uri)) {
+                  let html = '<div>';
+                  value.forEach(file => {
+                    const fileName = file.name || 'File';
+                    const fileUrl = file.url || file.uri;
+                    const isImage = file.type && file.type.startsWith('image');
+                    
+                    if (isImage) {
+                      html += \`<img src="\${fileUrl}" alt="\${fileName}" class="review-image" />\`;
+                    } else {
+                      html += \`<div class="review-file"><i class="fas fa-file"></i>\${fileName}</div>\`;
+                    }
+                  });
+                  html += '</div>';
+                  return html;
+                }
+                
+                return '<ul class="review-list">' + value.map(v => '<li>' + String(v) + '</li>').join('') + '</ul>';
+              }
+              
+              if (typeof value === 'object') {
+                if (value.url || value.uri) {
+                  const fileName = value.name || 'File';
+                  const fileUrl = value.url || value.uri;
+                  const isImage = value.type && value.type.startsWith('image');
+                  
+                  if (isImage) {
+                    return \`<img src="\${fileUrl}" alt="\${fileName}" class="review-image" />\`;
+                  } else {
+                    return \`<div class="review-file"><i class="fas fa-file"></i>\${fileName}</div>\`;
+                  }
+                }
+                return '<pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">' + JSON.stringify(value, null, 2) + '</pre>';
+              }
+              
+              if (typeof value === 'boolean') {
+                return value ? '<i class="fas fa-check-circle" style="color: #28a745;"></i> Yes' : '<i class="fas fa-times-circle" style="color: #dc3545;"></i> No';
+              }
+              
+              return String(value);
+            }
+
+            function generateReviewPage(formData, components) {
+              let html = \`
+                <div class="review-container">
+                  <div class="review-header">
+                    <h3><i class="fas fa-clipboard-check"></i> Review Your Answers</h3>
+                  </div>
+                  <p style="margin-bottom: 20px; color: #6c757d;">Please review your answers carefully before submitting. You can go back to make changes if needed.</p>
+              \`;
+
+              const pages = {};
+              components.forEach((comp, index) => {
+                const pageNum = Math.floor(index / 5) + 1;
+                if (!pages[pageNum]) {
+                  pages[pageNum] = [];
+                }
+                pages[pageNum].push(comp);
+              });
+
+              Object.keys(pages).forEach(pageNum => {
+                html += \`
+                  <div class="review-section">
+                    <div class="review-section-title">
+                      <i class="fas fa-list-ul"></i> Page \${pageNum} of \${Object.keys(pages).length}
+                    </div>
+                \`;
+
+                pages[pageNum].forEach(comp => {
+                  if (comp.type === 'button' || comp.type === 'htmlelement') return;
+                  
+                  const label = comp.label || comp.key;
+                  const value = formData[comp.key];
+                  
+                  html += \`
+                    <div class="review-item">
+                      <div class="review-label">\${label}</div>
+                      <div class="review-value">\${formatValue(value, label)}</div>
+                    </div>
+                  \`;
+                });
+
+                html += '</div>';
+              });
+              html += '</div>';
+              return html;
             }
 
             async function initializeForm() {
@@ -1033,12 +1339,35 @@ function ProjectFormElementScreen(): React.JSX.Element {
               }
               
               formInitialized = true;
-              console.log('✅ Formio loaded successfully, initializing form...');
+              console.log('Formio loaded successfully, initializing form...');
               
               try {
-                const formSchema = ${escapedFormJson};
+                const formSchema = JSON.parse('${escapedFormJson}');
                 
-                const form = await Formio.createForm(formioEl, formSchema, {
+                const allComponents = [];
+                if (formSchema.display === 'wizard' && Array.isArray(formSchema.components)) {
+                  formSchema.components.forEach(page => {
+                    if (page.components) {
+                      allComponents.push(...page.components);
+                    }
+                  });
+
+                  formSchema.components.push({
+                    title: 'Review Your Answers',
+                    label: 'Review',
+                    key: 'reviewPage',
+                    type: 'panel',
+                    components: [{
+                      type: 'htmlelement',
+                      tag: 'div',
+                      content: '<div id="reviewContent"></div>',
+                      className: 'reviewSummary',
+                      key: 'reviewSummary'
+                    }]
+                  });
+                }
+
+                form = await Formio.createForm(formioEl, formSchema, {
                   noAlerts: true,
                   readOnly: false,
                   sanitize: true,
@@ -1050,8 +1379,20 @@ function ProjectFormElementScreen(): React.JSX.Element {
                   }
                 });
 
-                console.log('✅ Form created successfully');
+                window.form = form;
+                formInstance = form;
+                console.log('Form created successfully');
                 
+                form.on('nextPage', function() {
+                  if (form.page === form.pages.length - 1) {
+                    const reviewContent = document.getElementById('reviewContent');
+                    if (reviewContent) {
+                      const data = form.submission.data;
+                      reviewContent.innerHTML = generateReviewPage(data, allComponents);
+                    }
+                  }
+                });
+
                 loadingEl.style.display = 'none';
                 formioEl.style.display = 'block';
                 
@@ -1066,17 +1407,31 @@ function ProjectFormElementScreen(): React.JSX.Element {
                   
                   function updateProgress(currentPage) {
                     const pageNum = currentPage + 1;
-                    const percentage = Math.round((pageNum / TOTAL_PAGES) * 100);
+                    const percentage = Math.round((pageNum / (TOTAL_PAGES + 1)) * 100);
                     
-                    progressText.textContent = \`Page \${pageNum} of \${TOTAL_PAGES}\`;
+                    if (currentPage === form.pages.length - 1) {
+                      progressText.textContent = 'Review';
+                    } else {
+                      progressText.textContent = \`Page \${pageNum} of \${TOTAL_PAGES}\`;
+                    }
+                    
                     progressPercentage.textContent = \`\${percentage}%\`;
                     progressBar.style.width = \`\${percentage}%\`;
                   }
                   
-                  updateProgress(0);
+                  updateProgress(form.page);
                   
-                  form.on('wizardPageSelected', function(page) {
-                    updateProgress(page);
+                  form.on('wizardPageSelected', function() {
+                    updateProgress(form.page);
+                  });
+                  form.on('prevPage', function() {
+                    updateProgress(form.page);
+                  });
+                  form.on('nextPage', function() {
+                    updateProgress(form.page);
+                  });
+                  form.on('change', function() {
+                    updateProgress(form.page);
                   });
                 }
 
@@ -1097,10 +1452,10 @@ function ProjectFormElementScreen(): React.JSX.Element {
                 });
 
                 postMessage({ type: 'FORM_READY' });
-                console.log('✅ Form ready and displayed');
+                console.log('Form ready and displayed');
                 
               } catch (error) {
-                console.error('❌ Form initialization error:', error);
+                console.error('Form initialization error:', error);
                 loadingEl.innerHTML = '<div style="color: red; padding: 20px; text-align: center;">Error: ' + error.message + '</div>';
                 postMessage({ type: 'FORM_ERROR', error: error.message });
               }
@@ -1109,7 +1464,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
             function waitForFormio() {
               console.log('Waiting for page to load...');
               if (typeof window.Formio !== 'undefined' && window.Formio && window.Formio.createForm) {
-                console.log('✅ Formio detected, initializing...');
+                console.log('Formio detected, initializing...');
                 initializeForm();
               } else {
                 setTimeout(waitForFormio, 200);
@@ -1123,7 +1478,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
             }
           })();
         </script>
-        
       </body>
     </html>
       `;
@@ -1133,7 +1487,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
     }
   }, [parsedForm, regularForm?.name, assetsReady]);
 
-  // Show error if assets couldn't be loaded
   if (assetError) {
     return (
       <SafeAreaView className="flex-1 bg-background">
@@ -1163,11 +1516,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#00227c" />
         <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text>
-        {/* {!isOnline && (
-          <Text className="mt-2 text-sm text-amber-600">
-            Offline - checking cached assets...
-          </Text>
-        )} */}
       </View>
     );
   }
@@ -1188,7 +1536,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
         originWhitelist={["*"]}
         source={{ html: formHtml, baseUrl: `${process.env.EXPO_PUBLIC_API_URL}/api/uploads` }}
         javaScriptEnabled={true}
-        domStorageEnabled={true}
         onMessage={handleWebViewMessage}
         cacheEnabled={true}
         sharedCookiesEnabled={false}
@@ -1197,6 +1544,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
         allowFileAccess={true}
         allowFileAccessFromFileURLs={true}
         allowUniversalAccessFromFileURLs={true}
+        injectedJavaScript={`console.log("webview javascript injected"); window.isReactNativeWebView=true;true;`}
         mixedContentMode="always"
         onError={(syntheticEvent) => {
           console.warn("WebView error:", syntheticEvent.nativeEvent);
@@ -1213,9 +1561,6 @@ function ProjectFormElementScreen(): React.JSX.Element {
         <View className="absolute inset-0 items-center justify-center bg-white bg-opacity-95">
           <ActivityIndicator size="large" color="#00227c" />
           <Text className="mt-3 text-gray-600 font-medium">{t("FormElementPage.loading_form")}</Text>
-          {/* <Text className="mt-2 text-sm text-gray-500">
-            {isOnline ? "Loading from server..." : "Loading from cache..."}
-          </Text> */}
         </View>
       )}
       {isSubmitting && (
@@ -1231,5 +1576,3 @@ function ProjectFormElementScreen(): React.JSX.Element {
 }
 
 export default ProjectFormElementScreen;
-
-

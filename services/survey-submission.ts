@@ -237,7 +237,6 @@ export const fetchSubmissionsFromRemote= async (
   try {
     console.log(`Fetching page ${page} with ${limit} items...`);
     
-    // Make API call with pagination parameters
     const res = await baseInstance.get('/submissions/filter', {
       params: {
         page,
@@ -350,9 +349,6 @@ export const fetchSubmissionsFromRemote= async (
   }
 };
 
-// ============================================================================
-// SYNC PAGINATED SUBMISSIONS TO LOCAL DATABASE
-// ============================================================================
 
 /**
  * Sync a specific page of submissions to local database
@@ -471,9 +467,6 @@ export const performInitialSync = async (
   }
 };
 
-// ============================================================================
-// LOAD MORE SUBMISSIONS (NEXT PAGE)
-// ============================================================================
 
 /**
  * Load the next page of submissions
@@ -553,10 +546,6 @@ export const loadNextPage = async (
     };
   }
 };
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
 
 /**
  * Get current pagination status
@@ -638,7 +627,7 @@ export const toSQLiteRow = (submission: SurveySubmission): Record<string, any> =
   return {
     _id: submission._id,
     id: submission.id,
-    answers: safeStringify(submission.data), // ✅ Map data to answers
+    answers: safeStringify(submission.data), 
     form_data: safeStringify(submission.form_data),
     location: safeStringify(submission.location),
     sync_data: safeStringify(submission.sync_data),
@@ -651,7 +640,6 @@ export const toSQLiteRow = (submission: SurveySubmission): Record<string, any> =
     is_modified: submission.is_modified ? 1 : 0,
     needs_update_sync: submission.needs_update_sync ? 1 : 0,
     last_modified_at: submission.last_modified_at || null,
-    // Add other columns with null defaults
     table_name: null,
     name: null,
     name_kin: null,
@@ -813,12 +801,6 @@ export const transformApiSurveySubmissions = (apiResponses: any[]) => {
   });
 };
 
-
-
-// ============================================================================
-// UPDATE SUBMISSION LOCALLY
-// ============================================================================
-
 // Fixed version of updateSurveySubmissionLocally
 export const updateSurveySubmissionLocally = async (
   getAll: any, 
@@ -862,10 +844,6 @@ export const updateSurveySubmissionLocally = async (
   }
 };
 
-// ============================================================================
-// UPDATE SUBMISSION ON SERVER
-// ============================================================================
-
 export const updateSurveySubmissionOnServer = async (
   submission: SurveySubmission,
   t: TFunction
@@ -900,10 +878,6 @@ export const updateSurveySubmissionOnServer = async (
   }
 };
 
-// ============================================================================
-// SYNC MODIFIED SUBMISSIONS
-// ============================================================================
-
 export const syncModifiedSubmissions = async (
   getAll: any,
   update: any,
@@ -934,7 +908,7 @@ export const syncModifiedSubmissions = async (
     let modifiedSubmissions = parsedSubmissions.filter(
       (s: SurveySubmission) => 
         s.needs_update_sync && 
-        s.id && // Only sync if it has a remote ID
+        s.id && 
         (s.is_modified || s.needs_update_sync)
     );
 
@@ -1032,9 +1006,6 @@ export const syncModifiedSubmissions = async (
   }
 };
 
-// ============================================================================
-// SYNC PENDING SUBMISSIONS (NEW SUBMISSIONS)
-// ============================================================================
 
 export const syncPendingSubmissions = async (
   getAll: any,
@@ -1169,9 +1140,6 @@ export const syncPendingSubmissions = async (
   }
 };
 
-// ============================================================================
-// COMPLETE SYNC (NEW + MODIFIED)
-// ============================================================================
 
 export const syncAllPendingChanges = async (
   getAll: any,
@@ -1267,9 +1235,6 @@ export const syncAllPendingChanges = async (
   }
 };
 
-// ============================================================================
-// GET PENDING CHANGES COUNT
-// ============================================================================
 
 export const getPendingChangesCount = async (
   query: any,
@@ -1302,9 +1267,6 @@ export const getPendingChangesCount = async (
   }
 };
 
-// ============================================================================
-// CREATE SURVEY SUBMISSION
-// ============================================================================
 
 export const createSurveySubmission = (
   formData: Record<string, any>,
@@ -1389,11 +1351,6 @@ export const createSurveySubmission = (
     throw error;
   }
 };
-
-// ============================================================================
-// SAVE SURVEY SUBMISSION TO API
-// ============================================================================
-
 const showToast = (type: string, title: string, message: string) => {
   Toast.show({
     type,

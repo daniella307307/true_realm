@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { Alert, Platform } from 'react-native';
 
@@ -10,6 +11,7 @@ export interface MediaResult {
   size?: number;
   width?: number;
   height?: number;
+  mimeType?: string;
 }
 
 export const useMediaPicker = () => {
@@ -84,11 +86,12 @@ export const useMediaPicker = () => {
 
       return result.assets.map(asset => ({
         uri: asset.uri,
-        type: asset.type || 'image',
+        type: asset.mimeType || 'image/jpeg',
         name: asset.fileName || `image_${Date.now()}.jpg`,
         size: asset.fileSize,
         width: asset.width,
         height: asset.height,
+        mimeType: asset.mimeType || 'image/jpeg',
       }));
     } catch (error) {
       console.error('Error picking image:', error);
@@ -114,11 +117,12 @@ export const useMediaPicker = () => {
       const asset = result.assets[0];
       return {
         uri: asset.uri,
-        type: 'video',
+        type: asset.mimeType || 'video/mp4',
         name: asset.fileName || `video_${Date.now()}.mp4`,
         size: asset.fileSize,
         width: asset.width,
         height: asset.height,
+        mimeType: asset.mimeType || 'video/mp4',
       };
     } catch (error) {
       console.error('Error picking video:', error);
@@ -146,11 +150,12 @@ export const useMediaPicker = () => {
 
       return result.assets.map(asset => ({
         uri: asset.uri,
-        type: asset.type || 'image',
+        type: asset.mimeType || 'image/jpeg',
         name: asset.fileName || `media_${Date.now()}`,
         size: asset.fileSize,
         width: asset.width,
         height: asset.height,
+        mimeType: asset.mimeType,
       }));
     } catch (error) {
       console.error('Error picking media:', error);
@@ -175,15 +180,47 @@ export const useMediaPicker = () => {
       const asset = result.assets[0];
       return {
         uri: asset.uri,
-        type: 'image',
+        type: asset.mimeType || 'image/jpeg',
         name: asset.fileName || `photo_${Date.now()}.jpg`,
         size: asset.fileSize,
         width: asset.width,
         height: asset.height,
+        mimeType: asset.mimeType || 'image/jpeg',
       };
     } catch (error) {
       console.error('Error taking photo:', error);
       Alert.alert('Error', 'Failed to take photo');
+      return null;
+    }
+  };
+
+  // Pick document
+  const pickDocument = async (options?: {
+    allowMultiple?: boolean;
+    type?: string | string[];
+  }): Promise<MediaResult[] | null> => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: options?.type || '*/*',
+        multiple: options?.allowMultiple || false,
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return null;
+
+      // Handle both single and multiple file selection
+      const assets = result.assets || [result as any];
+      
+      return assets.map(asset => ({
+        uri: asset.uri,
+        type: asset.mimeType || 'application/octet-stream',
+        name: asset.name || `document_${Date.now()}`,
+        size: asset.size,
+        mimeType: asset.mimeType || 'application/octet-stream',
+      }));
+    } catch (error) {
+      console.error('Error picking document:', error);
+      Alert.alert('Error', 'Failed to pick document');
       return null;
     }
   };
@@ -213,6 +250,7 @@ export const useMediaPicker = () => {
     pickVideo,
     pickMedia,
     takePhoto,
+    pickDocument,
     getAlbums,
   };
 };

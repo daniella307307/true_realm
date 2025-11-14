@@ -131,6 +131,7 @@ export async function fetchFormByProjectFromRemote(): Promise<FetchFormsResult> 
       json2: form.formDefinition || {},
       json: JSON.stringify(form.formDefinition || {}),
       formDefinition: JSON.stringify(form.formDefinition || {}),
+      translations:form?.translations,
       
       project_id: 0,
       source_module_id: 0,
@@ -174,7 +175,7 @@ export async function fetchFormByProjectFromRemote(): Promise<FetchFormsResult> 
 
 // Update useGetForms to handle the empty response properly
 export function useGetForms(forceSync: boolean = false) {
-  const { getAll, deleteAll } = useSQLite();
+  const { getAll, deleteAll, create } = useSQLite();
   const [storedForms, setStoredForms] = useState<IExistingForm[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
@@ -182,6 +183,7 @@ export function useGetForms(forceSync: boolean = false) {
   const [error, setError] = useState<Error | null>(null);
   const { isLoggedIn } = useAuth({});
 
+  
   const { syncStatus, refresh: syncRefresh } = useDataSync<IExistingForm>([
     {
       key: "forms",
@@ -189,7 +191,6 @@ export function useGetForms(forceSync: boolean = false) {
         const result = await fetchFormByProjectFromRemote();
         console.log(`[useDataSync] forms fetched: ${result.forms?.length || 0} records, status: ${result.statusCode}`);
         
-        // CRITICAL: If server returns empty with success status, clear local DB
         if (result.forms.length === 0 && 
             result.statusCode && 
             result.statusCode >= 200 && 
@@ -212,8 +213,6 @@ export function useGetForms(forceSync: boolean = false) {
       try {
         setIsLoading(true);
         setError(null);
-
-        // STEP 1: Load from SQLite immediately (OFFLINE-FIRST)
         console.log("Loading forms from local SQLite...");
         const localForms = await getAll<IExistingForm>("Surveys");
         const dedupedLocalForms = deduplicateForms(localForms);
@@ -225,7 +224,6 @@ export function useGetForms(forceSync: boolean = false) {
           console.log(`Loaded ${dedupedLocalForms.length} forms from local SQLite`);
         }
 
-        // STEP 2: Check network and sync in background
         const online = await checkNetworkConnection();
         setIsOffline(!online);
         const loginStatus = await Promise.resolve(isLoggedIn);
@@ -234,8 +232,6 @@ export function useGetForms(forceSync: boolean = false) {
           
           try {
             const remoteResult = await fetchFormByProjectFromRemote();
-            
-            // SECURITY CHECK: Clear local DB if server returns empty with success
             if (remoteResult.forms.length === 0 && 
                 remoteResult.statusCode && 
                 remoteResult.statusCode >= 200 && 
@@ -251,7 +247,6 @@ export function useGetForms(forceSync: boolean = false) {
               return;
             }
             
-            // Normal sync for non-empty or error responses
             await syncRefresh("forms", forceSync);
             await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -295,8 +290,6 @@ export function useGetForms(forceSync: boolean = false) {
     if (online) {
       try {
         const remoteResult = await fetchFormByProjectFromRemote();
-        
-        // SECURITY CHECK on refresh
         if (remoteResult.forms.length === 0 && 
             remoteResult.statusCode && 
             remoteResult.statusCode >= 200 && 
@@ -305,7 +298,7 @@ export function useGetForms(forceSync: boolean = false) {
           await deleteAll("Surveys");
           setStoredForms([]);
           setDataSource("remote");
-          console.log('✅ Local forms database cleared for security on refresh');
+          console.log('Local forms database cleared for security on refresh');
           return;
         }
         
@@ -369,7 +362,6 @@ export function useGetFormsByProject(
         setIsLoading(true);
         setError(null);
 
-        // STEP 1: Load from SQLite immediately (OFFLINE-FIRST)
         console.log("Loading forms from local SQLite...");
         const allForms = await getAll<IExistingForm>("Surveys");
         const dedupedForms = deduplicateForms(allForms);
@@ -378,11 +370,10 @@ export function useGetFormsByProject(
         if (isMounted) {
           setStoredForms(filtered);
           setDataSource("local");
-          setIsLoading(false); // Show local data immediately
+          setIsLoading(false); 
           console.log(`Loaded ${filtered.length} filtered forms from local SQLite`);
         }
 
-        // STEP 2: Check network and sync in background
         const online = await checkNetworkConnection();
         setIsOffline(!online);
 
@@ -390,14 +381,10 @@ export function useGetFormsByProject(
           console.log(`Online — syncing forms for project ${projectId} in background...`);
 
           try {
-            // Trigger background sync (this will update SQLite)
             await syncRefresh(`forms-${projectId}`, forceSync);
-
-            // Wait for sync to complete
             await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Reload from SQLite after sync
             const syncedForms = await getAll<IExistingForm>("Surveys");
+            
             const dedupedSyncedForms = deduplicateForms(syncedForms);
             const filteredSynced = filterForms(dedupedSyncedForms, projectId, sourceModuleId, projectModuleId);
 

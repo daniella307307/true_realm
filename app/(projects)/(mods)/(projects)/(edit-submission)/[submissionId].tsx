@@ -101,6 +101,7 @@ function EditSubmissionScreen (): React.JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
   const assetsLoadedRef = useRef(false);
+  const [loading, setLoading] = useState(true);
   const networkStatusInitialized = useRef(false);
   const currentLang = i18n.language;
 
@@ -110,67 +111,109 @@ function EditSubmissionScreen (): React.JSX.Element {
   const { form: regularForm } = useGetFormById(submission?.form_data?.survey_id?.toString() || '');
   const { pickImage, takePhoto, pickVideo, pickMedia } = useMediaPicker();
   const webViewRef = useRef<WebView>(null);
-  const handleMediaUpload = useCallback(async (fieldKey: string, allowMultiple: boolean = false) => {
-  try {
-    // Show options to user
-    Alert.alert(
-      'Select Media',
-      'Choose how to add media',
-      [
-        {
-          text: 'Take Photo',
-          onPress: async () => {
-            const photo = await takePhoto();
-            if (photo) {
-              // Send photo back to WebView
-              webViewRef.current?.postMessage(JSON.stringify({
-                type: 'MEDIA_SELECTED',
-                fieldKey: fieldKey,
-                media: [photo]
-              }));
-            }
-          },
-        },
-        {
-          text: 'Choose from Gallery',
-          onPress: async () => {
-            const images = await pickImage({ allowsMultipleSelection: allowMultiple });
-            if (images) {
-              webViewRef.current?.postMessage(JSON.stringify({
-                type: 'MEDIA_SELECTED',
-                fieldKey: fieldKey,
-                media: images
-              }));
-            }
-          },
-        },
-        {
-          text: 'Choose Video',
-          onPress: async () => {
-            const video = await pickVideo();
-            if (video) {
-              webViewRef.current?.postMessage(JSON.stringify({
-                type: 'MEDIA_SELECTED',
-                fieldKey: fieldKey,
-                media: [video]
-              }));
-            }
-          },
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
-  } catch (error) {
-    console.error('Error selecting media:', error);
-    Toast.show({
-      type: 'error',
-      text1: 'Error',
-      text2: 'Failed to select media',
-      position: 'top',
-      visibilityTime: 3000,
-    });
-  }
-}, [takePhoto, pickImage, pickVideo]);
+ const handleMediaUpload = useCallback(async (fieldKey: string, allowMultiple: boolean = false) => {
+     try {
+       console.log("Media upload requested for field:", fieldKey, "Allow multiple:", allowMultiple);
+ 
+       Alert.alert(
+         'Select Media',
+         'Choose how to add media',
+         [
+           {
+             text: 'Take Photo',
+             onPress: async () => {
+               try {
+                 const photo = await takePhoto();
+                 console.log("Photo taken:", photo);
+                 if (photo && webViewRef.current) {
+                   const message = JSON.stringify({
+                     type: 'MEDIA_SELECTED',
+                     fieldKey: fieldKey,
+                     media: [photo]
+                   });
+                   console.log("Sending photo to WebView:", message);
+                   webViewRef.current.postMessage(message);
+                 }
+               } catch (error) {
+                 console.error("Error taking photo:", error);
+                 Toast.show({
+                   type: 'error',
+                   text1: 'Error',
+                   text2: 'Failed to take photo',
+                   position: 'top',
+                   visibilityTime: 3000,
+                 });
+               }
+             },
+           },
+           {
+             text: 'Choose from Gallery',
+             onPress: async () => {
+               try {
+                 const images = await pickImage({ allowsMultipleSelection: allowMultiple });
+                 console.log("Images selected:", images);
+                 if (images && images.length > 0 && webViewRef.current) {
+                   const message = JSON.stringify({
+                     type: 'MEDIA_SELECTED',
+                     fieldKey: fieldKey,
+                     media: images
+                   });
+                   console.log("Sending images to WebView:", message);
+                   webViewRef.current.postMessage(message);
+                 }
+               } catch (error) {
+                 console.error("Error picking images:", error);
+                 Toast.show({
+                   type: 'error',
+                   text1: 'Error',
+                   text2: 'Failed to select images',
+                   position: 'top',
+                   visibilityTime: 3000,
+                 });
+               }
+             },
+           },
+           {
+             text: 'Choose Video',
+             onPress: async () => {
+               try {
+                 const video = await pickVideo();
+                 console.log("Video selected:", video);
+                 if (video && webViewRef.current) {
+                   const message = JSON.stringify({
+                     type: 'MEDIA_SELECTED',
+                     fieldKey: fieldKey,
+                     media: [video]
+                   });
+                   console.log("Sending video to WebView:", message);
+                   webViewRef.current.postMessage(message);
+                 }
+               } catch (error) {
+                 console.error("Error picking video:", error);
+                 Toast.show({
+                   type: 'error',
+                   text1: 'Error',
+                   text2: 'Failed to select video',
+                   position: 'top',
+                   visibilityTime: 3000,
+                 });
+               }
+             },
+           },
+           { text: 'Cancel', style: 'cancel' },
+         ]
+       );
+     } catch (error) {
+       console.error('Error in handleMediaUpload:', error);
+       Toast.show({
+         type: 'error',
+         text1: 'Error',
+         text2: 'Failed to open media picker',
+         position: 'top',
+         visibilityTime: 3000,
+       });
+     }
+   }, [takePhoto, pickImage, pickVideo]);
   // Initial network check
   useEffect(() => {
     let mounted = true;
@@ -370,7 +413,6 @@ function EditSubmissionScreen (): React.JSX.Element {
 
         if (found) {
           setSubmission(found);
-          console.log("Loaded submission:", found);
         } else {
           Alert.alert(
             t("CommonPage.error") || "Error",
@@ -515,62 +557,65 @@ function EditSubmissionScreen (): React.JSX.Element {
   );
 
   const handleWebViewMessage = useCallback(
-    (event: any) => {
-      try {
-        const message = JSON.parse(event.nativeEvent.data);
-        console.log("WebView message:", message.type);
-
-        switch (message.type) {
-          case "FORM_READY":
-            console.log("Form is ready and displayed");
-            setFormLoading(false);
-            break;
-
-          case "FORM_SUBMIT":
-            console.log("Form submitted");
-            handleFormSubmission(message.data);
-            break;
-
-          case "FORM_ERROR":
-            console.error("Form error:", message.error);
-            setFormLoading(false);
-            Toast.show({
-              type: "error",
-              text1: t("Alerts.error.title") || "Error",
-              text2: message.error || "Form error",
-              position: "top",
-              visibilityTime: 4000,
-            });
-            break;
-
-          case "FORM_VALIDATION_ERROR":
-            Toast.show({
-              type: "error",
-              text1: "Validation Error",
-              text2: "Please check all required fields",
-              position: "top",
-              visibilityTime: 3000,
-            });
-            break;
-          case "REQUEST_MEDIA":
-            console.log("Media requested for field:", message.fieldKey);
-            handleMediaUpload(message.fieldKey, message.allowMultiple);
-            break;
-
-          case "DEBUG":
-            console.log("Debug:", message.message);
-            break;
-
-          default:
-            console.log("Unknown message:", message.type);
-        }
-      } catch (err) {
-        console.error("Failed to parse WebView message:", err);
-      }
-    },
-    [handleFormSubmission, t]
-  );
-
+     (event: any) => {
+       try {
+         const messageData = event.nativeEvent.data;
+         const message = typeof messageData === 'string' ? JSON.parse(messageData) : messageData;
+         console.log("WebView message:", message.type);
+ 
+         switch (message.type) {
+           case "FORM_READY":
+             console.log("Form is ready and displayed");
+             setLoading(false);
+             break;
+ 
+           case "FORM_SUBMIT":
+             handleFormSubmission(message.data);
+             break;
+ 
+           case "FORM_ERROR":
+             console.error("Form error:", message.error);
+             setLoading(false);
+             Toast.show({
+               type: "error",
+               text1: t("Alerts.error.title") || "Error",
+               text2: message.error || "Form error",
+               position: "top",
+               visibilityTime: 4000,
+             });
+             break;
+ 
+           case "FORM_VALIDATION_ERROR":
+             Toast.show({
+               type: "error",
+               text1: "Validation Error",
+               text2: "Please check all required fields",
+               position: "top",
+               visibilityTime: 3000,
+             });
+             break;
+ 
+           case "FORM_CHANGE":
+             break;
+ 
+           case "DEBUG":
+             console.log("Debug:", message.message);
+             break;
+ 
+           case "REQUEST_MEDIA":
+             console.log("Media upload requested for field:", message.fieldKey, "Allow multiple:", message.allowMultiple);
+             handleMediaUpload(message.fieldKey, message.allowMultiple);
+             break;
+ 
+           default:
+             console.log("Unknown message:", message.type);
+         }
+       } catch (err) {
+         console.error("Failed to parse WebView message:", err, "Data:", event.nativeEvent.data);
+       }
+     },
+     [handleFormSubmission, t, handleMediaUpload]
+   );
   const formHtml = useMemo(() => {
     // CRITICAL FIX: Check all required conditions
     if (!parsedForm || !submission || !assetsReady) {
@@ -751,60 +796,128 @@ function EditSubmissionScreen (): React.JSX.Element {
         100% { transform: rotate(360deg); }
       }
     </style>
-    <script>
-  // Handle file input clicks
+     <script>
+  let formInstance;
+  // Intercept file input clicks before FormIO handles them
   document.addEventListener('click', function(e) {
     const target = e.target;
     
-    // Check if clicked element is a file input or its label
-    const fileInput = target.matches('input[type="file"]') 
-      ? target 
-      : target.closest('label')?.querySelector('input[type="file"]');
+    // Check if clicking on file input, button, or label
+    let fileInput = null;
+    let componentElement = null;
     
-    if (fileInput) {
+    if (target.matches('input[type="file"]')) {
+      fileInput = target;
+      componentElement = target.closest('.formio-component-file');
+    } else if (target.matches('button') && target.closest('.formio-component-file')) {
+      componentElement = target.closest('.formio-component-file');
+      fileInput = componentElement.querySelector('input[type="file"]');
+    } else if (target.closest('label')) {
+      const label = target.closest('label');
+      fileInput = label.querySelector('input[type="file"]') || document.getElementById(label.getAttribute('for'));
+      if (fileInput) {
+        componentElement = fileInput.closest('.formio-component-file');
+      }
+    } else if (target.closest('.formio-component-file')) {
+      componentElement = target.closest('.formio-component-file');
+      fileInput = componentElement.querySelector('input[type="file"]');
+    }
+    
+    if (fileInput && componentElement) {
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
       
-      // Get the field key from the input's name or id
-      const fieldKey = fileInput.name || fileInput.id;
+      // Try multiple ways to get the field key
+      let fieldKey = fileInput.name || fileInput.id || fileInput.getAttribute('data-key');
+      
+      // If still no key, try to get it from the component element's ref attribute
+      if (!fieldKey && componentElement) {
+        fieldKey = componentElement.getAttribute('ref') || 
+                   componentElement.getAttribute('data-component-key') ||
+                   componentElement.id;
+      }
+      
+      // If still no key, try to find it from FormIO's component structure
+      if (!fieldKey && formInstance) {
+        const components = formInstance.components;
+        for (let comp of components) {
+          if (comp.element === componentElement || componentElement.contains(comp.element)) {
+            fieldKey = comp.component.key;
+            break;
+          }
+        }
+      }
+      
       const allowMultiple = fileInput.hasAttribute('multiple');
       
-      // Request media from React Native
-      postMessage({
-        type: 'REQUEST_MEDIA',
-        fieldKey: fieldKey,
-        allowMultiple: allowMultiple
-      });
+      console.log('File input clicked, requesting media for:', fieldKey, 'Element:', componentElement);
+      
+      if (fieldKey) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'REQUEST_MEDIA',
+          fieldKey: fieldKey,
+          allowMultiple: allowMultiple
+        }));
+      } else {
+        console.error('Could not determine field key for file input');
+      }
       
       return false;
     }
   }, true);
   
-  // Listen for media selected from React Native
+  // Handle messages from React Native
+  document.addEventListener('message', function(event) {
+    handleMediaMessage(event.data);
+  });
+  
   window.addEventListener('message', function(event) {
+    handleMediaMessage(event.data);
+  });
+  
+  function handleMediaMessage(data) {
     try {
-      const data = JSON.parse(event.data);
+      const message = typeof data === 'string' ? JSON.parse(data) : data;
       
-      if (data.type === 'MEDIA_SELECTED') {
-        const fieldKey = data.fieldKey;
-        const media = data.media;
+      if (message.type === 'MEDIA_SELECTED') {
+        const fieldKey = message.fieldKey;
+        const media = message.media;
         
-        // Find the component in the form
-        const component = form.getComponent(fieldKey);
+        console.log('Media received for field:', fieldKey, media);
+        
+        if (!formInstance) {
+          console.error('Form instance not available');
+          return;
+        }
+        
+        let component = formInstance.getComponent(fieldKey);
+        
+        if (!component) {
+         
+          let input = document.querySelector(\`input[name="\${fieldKey}"], input#\${fieldKey}\`);
+          if (input) {
+            const componentEl = input.closest('.formio-component');
+            if (componentEl) {
+              const componentKey = componentEl.getAttribute('ref');
+              component = formInstance.getComponent(componentKey);
+            }
+          }
+        }
         
         if (component && media && media.length > 0) {
-          // Convert media to format expected by FormIO
           const formioFiles = media.map(item => ({
-            name: item.name,
+            name: item.name || 'file',
             size: item.size || 0,
-            type: item.type.includes('image') ? 'image/jpeg' : 'video/mp4',
+            type: item.type || 'application/octet-stream',
             url: item.uri,
             uri: item.uri,
             storage: 'url',
             originalData: item
           }));
           
-          // Set the value in the form
+          console.log('Setting files on component:', formioFiles);
+          
           if (component.component.multiple) {
             const currentValue = component.getValue() || [];
             component.setValue([...currentValue, ...formioFiles]);
@@ -812,13 +925,18 @@ function EditSubmissionScreen (): React.JSX.Element {
             component.setValue(formioFiles[0]);
           }
           
-          console.log('Media added to field:', fieldKey);
+          // Trigger change event
+          component.triggerChange();
+          
+          console.log('Media successfully added to field:', fieldKey);
+        } else {
+          console.error('Component not found or no media:', fieldKey);
         }
       }
     } catch (err) {
-      console.error('Error handling message:', err);
+      console.error('Error handling media message:', err);
     }
-  });
+  }
 </script>
   </head>
   <body>
@@ -907,6 +1025,9 @@ function EditSubmissionScreen (): React.JSX.Element {
           try {
             const formSchema = ${escapedFormJson};
             const existingData = ${escapedSubmissionData};
+
+            const allComponents =[];
+            
             
             console.log('Creating form with existing data:', existingData);
             
@@ -953,20 +1074,34 @@ function EditSubmissionScreen (): React.JSX.Element {
               progressContainer.style.display = 'block';
               
               function updateProgress(currentPage) {
-                const pageNum = currentPage + 1;
-                const percentage = Math.round((pageNum / TOTAL_PAGES) * 100);
-                
-                progressText.textContent = \`Page \${pageNum} of \${TOTAL_PAGES}\`;
-                progressPercentage.textContent = \`\${percentage}%\`;
-                progressBar.style.width = \`\${percentage}%\`;
-              }
-              
-              updateProgress(0);
-              
-              form.on('wizardPageSelected', function(page) {
-                updateProgress(page);
-              });
-            }
+                    const pageNum = currentPage + 1;
+                    const percentage = Math.round((pageNum / (TOTAL_PAGES + 1)) * 100);
+                    
+                    if (currentPage === form.pages.length - 1) {
+                      progressText.textContent = 'Review';
+                    } else {
+                      progressText.textContent = \`Page \${pageNum} of \${TOTAL_PAGES}\`;
+                    }
+                    
+                    progressPercentage.textContent = \`\${percentage}%\`;
+                    progressBar.style.width = \`\${percentage}%\`;
+                  }
+                  
+                  updateProgress(form.page);
+                  
+                  form.on('wizardPageSelected', function() {
+                    updateProgress(form.page);
+                  });
+                  form.on('prevPage', function() {
+                    updateProgress(form.page);
+                  });
+                  form.on('nextPage', function() {
+                    updateProgress(form.page);
+                  });
+                  form.on('change', function() {
+                    updateProgress(form.page);
+                  });
+                }
 
             form.on('submit', function(submission) {
               console.log('Form submitted with updated data');
@@ -1102,6 +1237,7 @@ function EditSubmissionScreen (): React.JSX.Element {
         allowFileAccessFromFileURLs={true}
         allowUniversalAccessFromFileURLs={true}
         mixedContentMode="always"
+        startInLoadingState={true}
         onError={(syntheticEvent) => {
           console.warn("WebView error:", syntheticEvent.nativeEvent);
           setFormLoading(false);
@@ -1111,6 +1247,7 @@ function EditSubmissionScreen (): React.JSX.Element {
         }}
         onLoadEnd={() => {
           console.log("WebView loaded");
+          setFormLoading(false);
         }}
       />
       {formLoading && (

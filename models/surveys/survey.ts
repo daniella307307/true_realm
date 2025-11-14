@@ -34,7 +34,8 @@ export const CREATE_SURVEY_TABLE = `
     updated_at TEXT,                      
     order_list INTEGER,          
     project_module_id INTEGER,   
-    project_id INTEGER,                      
+    project_id INTEGER,      
+    translations TEXT,                
     source_module_id INTEGER    
   );
 `;

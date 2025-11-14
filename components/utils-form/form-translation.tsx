@@ -1,152 +1,117 @@
+export function translateFormSchema(formSchema: any, translations: any, lang: string): any {
+  if (!formSchema || !translations) return formSchema;
+
+  const translated = { ...formSchema };
+
+  // Title
+  if (translations.title?.[lang]) {
+    translated.title = translations.title[lang];
+  }
+
+  // Wizard pages
+  if (translated.display === "wizard") {
+    translated.components = translated.components.map((page: any, i: number) => {
+      const pageT = translations.pages?.[i] || {};
+      const newPage = { ...page };
+
+      // Translate page title
+      if (pageT.title?.[lang]) {
+        newPage.title = newPage.label = pageT.title[lang];
+      }
+
+      // Translate page components
+      newPage.components = page.components.map((cmp: any) => {
+        const cmpT = pageT.components?.find((t: any) => t.key === cmp.key) || {};
+        return translateFormComponent(cmp, cmpT, lang);
+      });
+
+      return newPage;
+    });
+
+    return translated;
+  }
+
+  // Non-wizard form
+  translated.components = translated.components.map((cmp: any) => {
+    const cmpT = translations.components?.find((t: any) => t.key === cmp.key) || {};
+    return translateFormComponent(cmp, cmpT, lang);
+  });
+
+  return translated;
+}
+
 function translateFormComponent(component: any, translations: any, currentLang: string): any {
-  if (!component || !translations) return component;
+  if (!component) return component;
+
+  // Always ensure translations object is defined
+  translations = translations || {};
 
   const translatedComponent = { ...component };
 
-  // Translate basic text fields
-  if (translations.label && translations.label[currentLang]) {
-    translatedComponent.label = translations.label[currentLang];
-  }
-  
-  if (translations.placeholder && translations.placeholder[currentLang]) {
-    translatedComponent.placeholder = translations.placeholder[currentLang];
-  }
-  
-  if (translations.description && translations.description[currentLang]) {
-    translatedComponent.description = translations.description[currentLang];
-  }
-  
-  if (translations.tooltip && translations.tooltip[currentLang]) {
-    translatedComponent.tooltip = translations.tooltip[currentLang];
-  }
+  const safe = (obj: any, key: string) =>
+    obj && obj[key] && obj[key][currentLang] ? obj[key][currentLang] : undefined;
 
-  // Translate validation messages
-  if (component.validate && translations.errorLabel) {
+  // Basic fields
+  if (safe(translations, "label")) translatedComponent.label = safe(translations, "label");
+  if (safe(translations, "placeholder")) translatedComponent.placeholder = safe(translations, "placeholder");
+  if (safe(translations, "description")) translatedComponent.description = safe(translations, "description");
+  if (safe(translations, "tooltip")) translatedComponent.tooltip = safe(translations, "tooltip");
+
+  // Validation message
+  if (component.validate && translations.errorLabel && translations.errorLabel[currentLang]) {
     translatedComponent.validate = {
       ...component.validate,
-      customMessage: translations.errorLabel[currentLang] || component.validate.customMessage
+      customMessage: translations.errorLabel[currentLang]
     };
   }
 
-  // Translate options for select, radio, checkbox components
-  if (component.values && Array.isArray(component.values) && translations.values) {
-    translatedComponent.values = component.values.map((value: any, index: number) => {
-      const valueTranslation = translations.values[index];
-      if (valueTranslation && valueTranslation[currentLang]) {
-        return {
-          ...value,
-          label: valueTranslation[currentLang]
-        };
-      }
-      return value;
+  // Select / radio / checkbox values
+  if (component.values && Array.isArray(component.values)) {
+    translatedComponent.values = component.values.map((val: any, i: number) => {
+      const t = translations.values?.[i]?.[currentLang];
+      return { ...val, label: t || val.label };
     });
   }
 
-  // Handle data object for select components
-  if (component.data?.values && Array.isArray(component.data.values) && translations.data?.values) {
+  // Data.values (select)
+  if (component.data?.values && Array.isArray(component.data.values)) {
     translatedComponent.data = {
       ...component.data,
-      values: component.data.values.map((value: any, index: number) => {
-        const valueTranslation = translations.data.values[index];
-        if (valueTranslation && valueTranslation[currentLang]) {
-          return {
-            ...value,
-            label: valueTranslation[currentLang]
-          };
-        }
-        return value;
+      values: component.data.values.map((v: any, i: number) => {
+        const t = translations.data?.values?.[i]?.[currentLang];
+        return { ...v, label: t || v.label };
       })
     };
   }
 
-  // Translate HTML content
-  if (component.type === 'htmlelement' && translations.content && translations.content[currentLang]) {
-    translatedComponent.content = translations.content[currentLang];
+  // HTML content
+  if (component.type === "htmlelement" && safe(translations, "content")) {
+    translatedComponent.content = safe(translations, "content");
   }
 
-  // Translate button text
-  if (component.type === 'button' && translations.label && translations.label[currentLang]) {
-    translatedComponent.label = translations.label[currentLang];
+  // Buttons
+  if (component.type === "button" && safe(translations, "label")) {
+    translatedComponent.label = safe(translations, "label");
   }
 
-  // Recursively translate nested components
-  if (component.components && Array.isArray(component.components)) {
+  // Nested components
+  if (Array.isArray(component.components)) {
     translatedComponent.components = component.components.map((child: any) => {
-      const childTranslations = translations.components?.find(
-        (t: any) => t.key === child.key
-      );
-      return translateFormComponent(child, childTranslations, currentLang);
+      const childT = translations.components?.find((t: any) => t.key === child.key) || {};
+      return translateFormComponent(child, childT, currentLang);
     });
   }
 
-  // Translate columns in column components
-  if (component.columns && Array.isArray(component.columns)) {
-    translatedComponent.columns = component.columns.map((column: any, colIndex: number) => ({
-      ...column,
-      components: column.components?.map((child: any) => {
-        const childTranslations = translations.columns?.[colIndex]?.components?.find(
-          (t: any) => t.key === child.key
-        );
-        return translateFormComponent(child, childTranslations, currentLang);
+  // Columns
+  if (Array.isArray(component.columns)) {
+    translatedComponent.columns = component.columns.map((col: any, i: number) => ({
+      ...col,
+      components: col.components?.map((child: any) => {
+        const childT = translations.columns?.[i]?.components?.find((t: any) => t.key === child.key) || {};
+        return translateFormComponent(child, childT, currentLang);
       })
     }));
   }
 
   return translatedComponent;
-}
-
-/**
- * Main function to translate entire form schema
- */
-export function translateFormSchema(
-  formSchema: any, 
-  translations: any, 
-  targetLanguage: string
-): any {
-  if (!formSchema || !translations) {
-    console.warn('Missing form schema or translations');
-    return formSchema;
-  }
-
-  const translatedSchema = { ...formSchema };
-
-  // Translate form title
-  if (translations.title && translations.title[targetLanguage]) {
-    translatedSchema.title = translations.title[targetLanguage];
-  }
-
-  // Translate wizard page titles (if wizard form)
-  if (formSchema.display === 'wizard' && Array.isArray(formSchema.components)) {
-    translatedSchema.components = formSchema.components.map((page: any, pageIndex: number) => {
-      const pageTranslations = translations.pages?.[pageIndex];
-      const translatedPage = { ...page };
-
-      if (pageTranslations?.title && pageTranslations.title[targetLanguage]) {
-        translatedPage.title = pageTranslations.title[targetLanguage];
-        translatedPage.label = pageTranslations.title[targetLanguage];
-      }
-
-      // Translate components within the page
-      if (page.components && Array.isArray(page.components)) {
-        translatedPage.components = page.components.map((component: any) => {
-          const componentTranslations = pageTranslations?.components?.find(
-            (t: any) => t.key === component.key
-          );
-          return translateFormComponent(component, componentTranslations, targetLanguage);
-        });
-      }
-
-      return translatedPage;
-    });
-  } else if (Array.isArray(formSchema.components)) {
-    // Regular form (not wizard)
-    translatedSchema.components = formSchema.components.map((component: any) => {
-      const componentTranslations = translations.components?.find(
-        (t: any) => t.key === component.key
-      );
-      return translateFormComponent(component, componentTranslations, targetLanguage);
-    });
-  }
-
-  return translatedSchema;
 }
