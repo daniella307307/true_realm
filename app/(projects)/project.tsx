@@ -23,7 +23,11 @@ import Toast from "react-native-toast-message";
 
 const FormsScreen = () => {
   const { forms, isLoading, refresh } = useGetAllForms();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language;
+  const normalizedLang = currentLang.split('-')[0].toLowerCase();
+
+  console.log('Current language:', currentLang, '-> normalized:', normalizedLang);
 
   const { control, watch } = useForm({
     resolver: zodResolver(
@@ -37,14 +41,88 @@ const FormsScreen = () => {
   const searchQuery = watch("searchQuery") || "";
   const [refreshing, setRefreshing] = useState(false);
 
+  // Helper function to parse the custom translation format
+  const parseTranslations = (translationsString: string) => {
+    const result: any = {};
+    
+    // Match patterns like: title={en=New Year Glove, fr=, rw=Umwaka mushya Glove}
+    const fieldRegex = /(\w+)=\{([^}]+)\}/g;
+    let fieldMatch;
+    
+    while ((fieldMatch = fieldRegex.exec(translationsString)) !== null) {
+      const fieldName = fieldMatch[1];
+      const fieldContent = fieldMatch[2];
+      
+      result[fieldName] = {};
+      
+      // Match language pairs like: en=New Year Glove, rw=Umwaka mushya Glove
+      const langRegex = /(\w+)=([^,}]*?)(?=,\s*\w+=|$)/g;
+      let langMatch;
+      
+      while ((langMatch = langRegex.exec(fieldContent)) !== null) {
+        const lang = langMatch[1];
+        const value = langMatch[2].trim();
+        result[fieldName][lang] = value;
+      }
+    }
+    
+    return result;
+  };
+
+  // Helper function to get translated text
+  const getTranslatedText = (item: any, field: string) => {
+    // Check if translations exist
+    if (!item.translations) {
+      console.log('No translations object found, returning original:', item[field]);
+      return item[field];
+    }
+
+    try {
+      // Parse translations if it's a string
+      let translationsObj = item.translations;
+      if (typeof item.translations === 'string') {
+        translationsObj = parseTranslations(item.translations);
+        console.log('Parsed translations:', translationsObj);
+      }
+
+      // Check if the field exists in translations
+      if (translationsObj[field]) {
+        const fieldTranslations = translationsObj[field];
+        
+        // Try normalized language (e.g., 'rw')
+        if (fieldTranslations[normalizedLang] && fieldTranslations[normalizedLang].trim() !== '') {
+          console.log('Found translation for', normalizedLang, ':', fieldTranslations[normalizedLang]);
+          return fieldTranslations[normalizedLang];
+        }
+
+        // Try full language code (e.g., 'rw-RW')
+        if (fieldTranslations[currentLang] && fieldTranslations[currentLang].trim() !== '') {
+          console.log('Found translation for', currentLang, ':', fieldTranslations[currentLang]);
+          return fieldTranslations[currentLang];
+        }
+
+        // Fallback to English if current language is empty
+        if (fieldTranslations['en'] && fieldTranslations['en'].trim() !== '') {
+          console.log('Using English fallback:', fieldTranslations['en']);
+          return fieldTranslations['en'];
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing translations:', error);
+    }
+
+    console.log('No translation found, returning original:', item[field]);
+    return item[field];
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     try {
       await refresh();
       Toast.show({
         type: "success",
-        text1: t("Forms.refreshed") || "Refreshed",
-        text2: t("Forms.forms_updated") || "Forms list updated",
+        text1: t("FormPage.refreshed") || "Refreshed",
+        text2: t("FormPage.forms_updated") || "Forms list updated",
         position: "top",
         visibilityTime: 2000,
       });
@@ -69,19 +147,23 @@ const FormsScreen = () => {
 
     // Apply search filter if user typed something
     if (searchQuery.trim()) {
-      return publishedForms.filter((form) =>
-        form.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      return publishedForms.filter((form) => {
+        const translatedTitle = getTranslatedText(form, 'title');
+        return translatedTitle.toLowerCase().includes(searchQuery.toLowerCase());
+      });
     }
 
     return publishedForms;
-  }, [forms, searchQuery]);
+  }, [forms, searchQuery, normalizedLang]);
 
   const renderItem = ({ item }: { item: IExistingForm }) => {
     const isRiskManagement =
       item.title.toLowerCase().includes("risk of harm management") ||
       item.metadata?.category?.toLowerCase().includes("risk");
     if (isRiskManagement) return null;
+
+    const translatedTitle = getTranslatedText(item, 'title');
+    const translatedDescription = item.description ? getTranslatedText(item, 'description') : null;
 
     return (
       <TouchableOpacity
@@ -99,7 +181,7 @@ const FormsScreen = () => {
               color="#00227c"
             />
             <View className="ml-4 flex-1">
-              <Text className="text-lg font-semibold">{item.title}</Text>
+              <Text className="text-lg font-semibold">{translatedTitle}</Text>
               {item.metadata?.category && (
                 <Text className="text-xs text-gray-500 mt-1">
                   {item.metadata.category}
@@ -121,8 +203,8 @@ const FormsScreen = () => {
             </View>
           )}
         </View>
-        {item.description && (
-          <Text className="text-sm py-2 text-gray-600">{item.description}</Text>
+        {translatedDescription && (
+          <Text className="text-sm py-2 text-gray-600">{translatedDescription}</Text>
         )}
         {item.metadata?.country && (
           <View className="flex flex-row items-center mt-2">

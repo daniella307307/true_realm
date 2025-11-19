@@ -1,4 +1,3 @@
-// components/ui/custom-drawer/CustomDrawer.tsx
 import React, { useRef, useEffect, useState } from "react";
 import {
   View,
@@ -167,7 +166,11 @@ export const CustomDrawer: React.FC<CustomDrawerProps> = ({
             {/* Logout */}
             <TouchableOpacity
               className="p-4 border-b border-gray-200"
-              onPress={()=>logout()}
+              onPress={()=>{
+                logout()
+                onClose()
+              }
+              }
             >
               <Text className="text-lg text-orange-500">{t("SettingsPage.logout")}</Text>
             </TouchableOpacity>

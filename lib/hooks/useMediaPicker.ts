@@ -2,7 +2,7 @@ import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as MediaLibrary from 'expo-media-library';
-import { Alert, Platform } from 'react-native';
+import { Alert, Platform, Linking } from 'react-native';
 
 export interface MediaResult {
   uri: string;
@@ -17,7 +17,14 @@ export interface MediaResult {
 export const useMediaPicker = () => {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
-  // Request camera roll permissions
+  const openSettings = () => {
+    if (Platform.OS === 'ios') {
+      Linking.openURL('app-settings:');
+    } else {
+      Linking.openSettings();
+    }
+  };
+
   const requestMediaLibraryPermission = async (): Promise<boolean> => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -30,7 +37,7 @@ export const useMediaPicker = () => {
           'Please grant permission to access your photos in Settings.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => ImagePicker.requestMediaLibraryPermissionsAsync() }
+            { text: 'Open Settings', onPress: openSettings }
           ]
         );
       }
@@ -38,11 +45,11 @@ export const useMediaPicker = () => {
       return granted;
     } catch (error) {
       console.error('Error requesting media library permission:', error);
+      Alert.alert('Error', 'Failed to request media library permission');
       return false;
     }
   };
 
-  // Request camera permissions
   const requestCameraPermission = async (): Promise<boolean> => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -54,7 +61,7 @@ export const useMediaPicker = () => {
           'Please grant permission to access your camera in Settings.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => ImagePicker.requestCameraPermissionsAsync() }
+            { text: 'Open Settings', onPress: openSettings }
           ]
         );
       }
@@ -62,19 +69,19 @@ export const useMediaPicker = () => {
       return granted;
     } catch (error) {
       console.error('Error requesting camera permission:', error);
+      Alert.alert('Error', 'Failed to request camera permission');
       return false;
     }
   };
 
-  // Pick image from gallery
   const pickImage = async (options?: {
     allowsMultipleSelection?: boolean;
     quality?: number;
   }): Promise<MediaResult[] | null> => {
-    const hasAccess = await requestMediaLibraryPermission();
-    if (!hasAccess) return null;
-
     try {
+      const hasAccess = await requestMediaLibraryPermission();
+      if (!hasAccess) return null;
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: options?.allowsMultipleSelection || false,
@@ -95,17 +102,16 @@ export const useMediaPicker = () => {
       }));
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+      Alert.alert('Error', `Failed to pick image: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
     }
   };
 
-  // Pick video from gallery
   const pickVideo = async (): Promise<MediaResult | null> => {
-    const hasAccess = await requestMediaLibraryPermission();
-    if (!hasAccess) return null;
-
     try {
+      const hasAccess = await requestMediaLibraryPermission();
+      if (!hasAccess) return null;
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: false,
@@ -126,19 +132,18 @@ export const useMediaPicker = () => {
       };
     } catch (error) {
       console.error('Error picking video:', error);
-      Alert.alert('Error', 'Failed to pick video');
+      Alert.alert('Error', `Failed to pick video: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
     }
   };
 
-  // Pick any media (image or video)
   const pickMedia = async (options?: {
     allowsMultipleSelection?: boolean;
   }): Promise<MediaResult[] | null> => {
-    const hasAccess = await requestMediaLibraryPermission();
-    if (!hasAccess) return null;
-
     try {
+      const hasAccess = await requestMediaLibraryPermission();
+      if (!hasAccess) return null;
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsMultipleSelection: options?.allowsMultipleSelection || false,
@@ -159,17 +164,16 @@ export const useMediaPicker = () => {
       }));
     } catch (error) {
       console.error('Error picking media:', error);
-      Alert.alert('Error', 'Failed to pick media');
+      Alert.alert('Error', `Failed to pick media: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
     }
   };
 
-  // Take photo with camera
   const takePhoto = async (): Promise<MediaResult | null> => {
-    const hasAccess = await requestCameraPermission();
-    if (!hasAccess) return null;
-
     try {
+      const hasAccess = await requestCameraPermission();
+      if (!hasAccess) return null;
+
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: false,
         quality: 0.8,
@@ -189,12 +193,11 @@ export const useMediaPicker = () => {
       };
     } catch (error) {
       console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo');
+      Alert.alert('Error', `Failed to take photo: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
     }
   };
 
-  // Pick document
   const pickDocument = async (options?: {
     allowMultiple?: boolean;
     type?: string | string[];
@@ -206,12 +209,9 @@ export const useMediaPicker = () => {
         copyToCacheDirectory: true,
       });
 
-      if (result.canceled) return null;
+      if (result.canceled || !result.assets) return null;
 
-      // Handle both single and multiple file selection
-      const assets = result.assets || [result as any];
-      
-      return assets.map(asset => ({
+      return result.assets.map(asset => ({
         uri: asset.uri,
         type: asset.mimeType || 'application/octet-stream',
         name: asset.name || `document_${Date.now()}`,
@@ -220,17 +220,16 @@ export const useMediaPicker = () => {
       }));
     } catch (error) {
       console.error('Error picking document:', error);
-      Alert.alert('Error', 'Failed to pick document');
+      Alert.alert('Error', `Failed to pick document: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
     }
   };
 
-  // Get albums from media library
   const getAlbums = async () => {
-    const hasAccess = await requestMediaLibraryPermission();
-    if (!hasAccess) return [];
-
     try {
+      const hasAccess = await requestMediaLibraryPermission();
+      if (!hasAccess) return [];
+
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') return [];
 
@@ -238,6 +237,7 @@ export const useMediaPicker = () => {
       return albums;
     } catch (error) {
       console.error('Error getting albums:', error);
+      Alert.alert('Error', `Failed to get albums: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return [];
     }
   };

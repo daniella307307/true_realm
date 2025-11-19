@@ -31,6 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import { syncAllPendingChanges } from "~/services/survey-submission";
 
 function HomeScreen(): React.JSX.Element {
   const [splashHidden, setSplashHidden] = useState(false);
@@ -275,7 +276,6 @@ function HomeScreen(): React.JSX.Element {
                 </TouchableOpacity>
               </View>
 
-              {/* Sync Status Card */}
               <View className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
                 <View className="flex-1 justify-between  gap-y-4 mb-4">
                   <View>
@@ -298,7 +298,7 @@ function HomeScreen(): React.JSX.Element {
                   </TouchableOpacity>
                 </View>
 
-                {/* Progress Bar */}
+            
                 <View className="bg-gray-100 h-3 rounded-full overflow-hidden mb-4">
                   <View 
                     className="bg-gradient-to-r from-[#00227c] to-[#001a5e] h-full rounded-full"
@@ -306,7 +306,7 @@ function HomeScreen(): React.JSX.Element {
                   />
                 </View>
 
-                {/* Sync Details */}
+              
                 <View className="flex-row justify-between">
                   <View className="flex-1 flex-row items-center">
                     <View className="w-8 h-8 bg-green-100 rounded-lg items-center justify-center mr-2">
@@ -341,8 +341,6 @@ function HomeScreen(): React.JSX.Element {
               </View>
             </View>
           )}
-
-          {/* Quick Actions */}
           <View className="px-6 mb-6">
             <Text className="text-gray-900 text-xl font-bold mb-4">
               {t("HomePage.quick_actions")}
@@ -378,8 +376,6 @@ function HomeScreen(): React.JSX.Element {
               ))}
             </View>
           </View>
-
-          {/* Loading State */}
           {!isDataLoaded && (
             <View className="flex-1 justify-center items-center p-8">
               <ActivityIndicator size="large" color="#00227c" />
@@ -390,7 +386,6 @@ function HomeScreen(): React.JSX.Element {
           )}
         </Animated.View>
       </ScrollView>
-      {/* Sync Warning Modal */}
       <AlertDialog open={showSyncModal} onOpenChange={setShowSyncModal}>
         <AlertDialogContent className="bg-white rounded-2xl">
           <AlertDialogHeader>
@@ -411,14 +406,14 @@ function HomeScreen(): React.JSX.Element {
                 setShowSyncModal(false);
                 navigateTo("/(settings)/sync");
               }}
-              className="bg-[#00227c] w-full py-4 rounded-xl"
+              className="bg-[#00227c] text-white w-full py-4 rounded-xl"
             >
-              <Text className="text-white font-semibold">
+              <Text className="text-white">
                 {t("HomePage.sync_now")}
               </Text>
             </AlertDialogAction>
             <AlertDialogAction
-              className="bg-gray-100 w-full py-4 rounded-xl"
+              className="bg-gray-100 w-full py-4 rounded-xl text-blue-900"
               onPress={() => setShowSyncModal(false)}
             >
               <Text className="text-blue-900 font-semibold">

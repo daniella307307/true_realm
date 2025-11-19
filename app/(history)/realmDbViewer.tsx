@@ -24,9 +24,10 @@ import {
 import { useGetForms } from "~/services/formElements";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { isOnline } from "~/services/network";
+import { parseTranslations, translateFormSchema } from "~/components/utils-form/form-translation";
 
 const RealmDatabaseViewer = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, isLoggedIn } = useAuth({});
   const [submissionsByProject, setSubmissionsByProject] = useState<Record<string, any[]>>({});
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
@@ -42,6 +43,7 @@ const RealmDatabaseViewer = () => {
 
   const userId = user?.id || user?.json?.id;
   const userIdFilter = user?.id?.toString() || user?.json?.id?.toString() || "";
+  const currentLang = i18n.language;
 
   const {
     submissions,
@@ -67,13 +69,97 @@ const RealmDatabaseViewer = () => {
     return map;
   }, [forms]);
 
+  // Get translated form schema for a specific form
+  const getTranslatedFormSchema = (formId: string) => {
+    const form = formsMap[formId];
+    if (!form) return null;
+
+    try {
+      let formSchema;
+      if (typeof form.json === "string") {
+        formSchema = JSON.parse(form.json);
+      } else if (typeof form.json === "object") {
+        formSchema = JSON.parse(JSON.stringify(form.json));
+      } else {
+        return null;
+      }
+
+      if (form.translations) {
+        const parsedTranslations = parseTranslations(form.translations);
+        if (parsedTranslations) {
+          return translateFormSchema(formSchema, parsedTranslations, currentLang);
+        }
+      }
+
+      return formSchema;
+    } catch (err) {
+      console.error("Failed to parse form schema:", err);
+      return null;
+    }
+  };
+
+  // Get translated field label
+  const getTranslatedFieldLabel = (formId: string, fieldKey: string): string => {
+    const translatedSchema = getTranslatedFormSchema(formId);
+    if (!translatedSchema) return formatFieldName(fieldKey);
+
+    // Search for the field in the schema
+    const findField = (components: any[]): any => {
+      if (!Array.isArray(components)) return null;
+      
+      for (const comp of components) {
+        if (comp.key === fieldKey) {
+          return comp;
+        }
+        
+        // Search in nested components
+        if (comp.components) {
+          const found = findField(comp.components);
+          if (found) return found;
+        }
+        
+        // Search in columns
+        if (comp.columns) {
+          for (const col of comp.columns) {
+            if (col.components) {
+              const found = findField(col.components);
+              if (found) return found;
+            }
+          }
+        }
+        
+        // Search in wizard pages
+        if (comp.type === 'panel' && comp.components) {
+          const found = findField(comp.components);
+          if (found) return found;
+        }
+      }
+      
+      return null;
+    };
+
+    const field = findField(translatedSchema.components || []);
+    return field?.label || formatFieldName(fieldKey);
+  };
+
+  // Get translated form title
+  const getTranslatedFormTitle = (formId: string): string => {
+    const translatedSchema = getTranslatedFormSchema(formId);
+    if (!translatedSchema) {
+      const form = formsMap[formId];
+      return form?.title || form?.name || `${t('CommonPage.form')} #${formId}`;
+    }
+
+    return translatedSchema.title || translatedSchema.name || formsMap[formId]?.title || `${t('CommonPage.form')} #${formId}`;
+  };
+
   const isSelectionValue = (value: any): boolean => {
     return typeof value === 'boolean';
   };
 
-  const getSelectionDisplay = (key: string, value: any): string => {
+  const getSelectionDisplay = (key: string, value: any, formId?: string): string => {
     if (value === true) {
-      return formatFieldName(key);
+      return formId ? getTranslatedFieldLabel(formId, key) : formatFieldName(key);
     }
     if (value === false) {
       return '';
@@ -82,117 +168,111 @@ const RealmDatabaseViewer = () => {
   };
 
   const renderFilePreview = (file: any) => {
-
-  
-  // Handle various file formats
-  const fileUri = file.uri || file.url || file.path || file.originalData || '';
-  const fileName = file.name || file.fileName || 'File';
-  const fileType = file.type || file.mimeType || '';
-  const isBase64 = file.isBase64 || (typeof fileUri === 'string' && fileUri.startsWith('data:'));
-  
-  const isImage = fileType.startsWith('image/') || 
-                  /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(fileName) ||
-                  (isBase64 && fileUri.includes('image/'));
-  
-  if (isImage && fileUri) {
-    return (
-      <View className="bg-gray-50 rounded-lg p-2 border border-gray-200 mb-2">
-        <Image
-          source={{ uri: fileUri }}
-          className="w-full h-48 rounded-lg mb-2"
-          resizeMode="cover"
-          onError={(error) => {
-            console.error('Image load error:', error);
-          }}
-        />
-        <Text className="text-xs text-gray-600" numberOfLines={1}>
-          📎 {fileName}
-        </Text>
-        {fileType && (
-          <Text className="text-xs text-gray-400" numberOfLines={1}>
-            {fileType}
+    const fileUri = file.uri || file.url || file.path || file.originalData || '';
+    const fileName = file.name || file.fileName || 'File';
+    const fileType = file.type || file.mimeType || '';
+    const isBase64 = file.isBase64 || (typeof fileUri === 'string' && fileUri.startsWith('data:'));
+    
+    const isImage = fileType.startsWith('image/') || 
+                    /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(fileName) ||
+                    (isBase64 && fileUri.includes('image/'));
+    
+    if (isImage && fileUri) {
+      return (
+        <View className="bg-gray-50 rounded-lg p-2 border border-gray-200 mb-2">
+          <Image
+            source={{ uri: fileUri }}
+            className="w-full h-48 rounded-lg mb-2"
+            resizeMode="cover"
+            onError={(error) => {
+              console.error('Image load error:', error);
+            }}
+          />
+          <Text className="text-xs text-gray-600" numberOfLines={1}>
+            📎 {fileName}
           </Text>
+          {fileType && (
+            <Text className="text-xs text-gray-400" numberOfLines={1}>
+              {fileType}
+            </Text>
+          )}
+        </View>
+      );
+    }
+    
+    return (
+      <View className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row items-center mb-2">
+        <View className="w-10 h-10 bg-blue-100 rounded-lg items-center justify-center mr-3">
+          <Text className="text-xl">📄</Text>
+        </View>
+        <View className="flex-1">
+          <Text className="text-sm font-semibold text-gray-800" numberOfLines={1}>
+            {fileName}
+          </Text>
+          {fileType && (
+            <Text className="text-xs text-gray-500" numberOfLines={1}>
+              {fileType}
+            </Text>
+          )}
+          {file.size && (
+            <Text className="text-xs text-gray-400">
+              {formatFileSize(file.size)}
+            </Text>
+          )}
+        </View>
+        {fileUri && (
+          <TouchableOpacity
+            className="bg-blue-900 px-3 py-1.5 rounded-lg"
+            onPress={() => {
+              if (isBase64) {
+                Alert.alert(
+                  t('CommonPage.file') || 'File',
+                  t('CommonPage.file_saved_locally') || 'File data is stored locally'
+                );
+              } else {
+                Alert.alert(
+                  t('CommonPage.file') || 'File',
+                  `${fileName}\n\n${fileUri}`,
+                  [
+                    { text: t('CommonPage.ok') || 'OK' }
+                  ]
+                );
+              }
+            }}
+          >
+            <Text className="text-white text-xs font-semibold">
+              {t('CommonPage.info') || 'Info'}
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
     );
-  }
-  
-  return (
-    <View className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row items-center mb-2">
-      <View className="w-10 h-10 bg-blue-100 rounded-lg items-center justify-center mr-3">
-        <Text className="text-xl">📄</Text>
-      </View>
-      <View className="flex-1">
-        <Text className="text-sm font-semibold text-gray-800" numberOfLines={1}>
-          {fileName}
-        </Text>
-        {fileType && (
-          <Text className="text-xs text-gray-500" numberOfLines={1}>
-            {fileType}
-          </Text>
-        )}
-        {file.size && (
-          <Text className="text-xs text-gray-400">
-            {formatFileSize(file.size)}
-          </Text>
-        )}
-      </View>
-      {fileUri && (
-        <TouchableOpacity
-          className="bg-blue-900 px-3 py-1.5 rounded-lg"
-          onPress={() => {
-            if (isBase64) {
-              Alert.alert(
-                t('CommonPage.file') || 'File',
-                t('CommonPage.file_saved_locally') || 'File data is stored locally'
-              );
-            } else {
-              Alert.alert(
-                t('CommonPage.file') || 'File',
-                `${fileName}\n\n${fileUri}`,
-                [
-                  { text: t('CommonPage.ok') || 'OK' }
-                ]
-              );
-            }
-          }}
-        >
-          <Text className="text-white text-xs font-semibold">
-            {t('CommonPage.info') || 'Info'}
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-};
+  };
 
-// Helper function to format file size
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
-  
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-};
-
-// Enhanced isFileObject function for Document 2
-const isFileObject = (value: any): boolean => {
-  if (!value || typeof value !== 'object') return false;
-  
-  return (
-    ('uri' in value || 'url' in value || 'path' in value) &&
-    ('type' in value || 'mimeType' in value || 'name' in value)
-  ) || (
-    value.storage && value.name
-  ) || (
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
     
-    value.isBase64 && value.originalData
-  );
-};
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
 
-  const formatValue = (value: any, fieldKey?: string, allAnswers?: any) => {
+  const isFileObject = (value: any): boolean => {
+    if (!value || typeof value !== 'object') return false;
+    
+    return (
+      ('uri' in value || 'url' in value || 'path' in value) &&
+      ('type' in value || 'mimeType' in value || 'name' in value)
+    ) || (
+      value.storage && value.name
+    ) || (
+      value.isBase64 && value.originalData
+    );
+  };
+
+  const formatValue = (value: any, fieldKey?: string, allAnswers?: any, formId?: string) => {
     if (value === null || value === undefined) {
       return t('HistoryPageReal.not_answered') || 'Not answered';
     }
@@ -212,7 +292,7 @@ const isFileObject = (value: any): boolean => {
     }
     
     if (fieldKey && allAnswers && isSelectionValue(value)) {
-      const displayValue = getSelectionDisplay(fieldKey, value);
+      const displayValue = getSelectionDisplay(fieldKey, value, formId);
       if (!displayValue) return null;
       return displayValue;
     }
@@ -237,7 +317,7 @@ const isFileObject = (value: any): boolean => {
       .trim();
   };
 
-  const renderFormData = (answers: any, depth = 0) => {
+  const renderFormData = (answers: any, formId?: string, depth = 0) => {
     if (!answers || Object.keys(answers).length === 0) {
       return (
         <View className="items-center justify-center p-8">
@@ -265,15 +345,18 @@ const isFileObject = (value: any): boolean => {
     }
 
     return filteredEntries.map(([key, value], idx, array) => {
-      const formattedValue = formatValue(value, key, answers);
+      const formattedValue = formatValue(value, key, answers, formId);
       
       if (formattedValue === null) return null;
+      
+      // Get translated field label
+      const fieldLabel = formId ? getTranslatedFieldLabel(formId, key) : formatFieldName(key);
       
       return (
         <View key={`${key}-${idx}`}>
           <View className="py-2" style={{ marginLeft: depth * 16 }}>
             <Text className="text-sm font-semibold text-gray-600 mb-1">
-              {formatFieldName(key)}
+              {fieldLabel}
             </Text>
 
             {typeof value === "object" && 
@@ -281,7 +364,7 @@ const isFileObject = (value: any): boolean => {
              !Array.isArray(value) && 
              !isFileObject(value) ? (
               <View className="mt-2 pl-3 border-l-2 border-gray-200">
-                {renderFormData(value, depth + 1)}
+                {renderFormData(value, formId, depth + 1)}
               </View>
             ) : (
               <View>
@@ -346,18 +429,15 @@ const isFileObject = (value: any): boolean => {
       return;
     }
 
-    const grouped: Record<string, Array<SurveySubmission & { projectName: string; formTitle: string }>> = {};
+    const grouped: Record<string, Array<SurveySubmission & { projectName: string; formTitle: string; formId: string }>> = {};
 
     submissions.forEach((s) => {
       const surveyId = s.form_data?.survey_id || s.form_data?.form;
       const form = surveyId ? formsMap[surveyId] : null;
 
-      const formTitle = String(
-        form?.title ||
-        form?.name ||
-        s.form_data?.table_name ||
-        `${t('CommonPage.form') || 'Form'} #${surveyId || 'Unknown'}`
-      );
+      // Use translated form title
+      const formTitle = surveyId ? getTranslatedFormTitle(surveyId) : 
+        String(s.form_data?.table_name || `${t('CommonPage.form')} #${surveyId || 'Unknown'}`);
 
       const projectName = String(
         form?.metadata?.category ||
@@ -373,6 +453,7 @@ const isFileObject = (value: any): boolean => {
         ...s,
         projectName,
         formTitle,
+        formId: surveyId
       });
     });
 
@@ -388,7 +469,7 @@ const isFileObject = (value: any): boolean => {
       });
 
     setSubmissionsByProject(sortedGrouped);
-  }, [submissions, formsMap, t]);
+  }, [submissions, formsMap, t, currentLang]); // Added currentLang to re-group when language changes
 
   // Reset pagination when project changes
   useEffect(() => {
@@ -431,10 +512,10 @@ const isFileObject = (value: any): boolean => {
       if (result && (result.synced > 0 || result.failed > 0)) {
         const messages = [];
         if (result.synced > 0) {
-          messages.push(`${result.synced} ${t('CommonPage.submissions') || 'submissions'} synced`);
+          messages.push(`${result.synced} ${t('CommonPage.submissions') || 'submissions'} ${t('CommonPage.synced') || 'synced'}`);
         }
         if (result.failed > 0) {
-          messages.push(`${result.failed} failed to sync`);
+          messages.push(`${result.failed} ${t('CommonPage.failed_to_sync') || 'failed to sync'}`);
         }
 
         Alert.alert(
@@ -693,7 +774,7 @@ const isFileObject = (value: any): boolean => {
             </Text>
             {isLocal && (
               <View className="bg-gray-500 px-1.5 py-0.5 rounded-lg">
-                <Text className="text-white text-[9px] font-semibold">Local</Text>
+                <Text className="text-white text-[9px] font-semibold">{t('CommonPage.local') || 'Local'}</Text>
               </View>
             )}
           </View>
@@ -720,18 +801,23 @@ const isFileObject = (value: any): boolean => {
             {Object.entries(item.data)
               .filter(([key, value]) => key !== 'language' && key !== 'submit' && value !== false)
               .slice(0, 2)
-              .map(([key, value]) => (
-                <View key={key} className="flex-row justify-between items-start mb-1.5">
-                  <Text className="text-xs text-gray-600 font-semibold flex-1 mr-2" numberOfLines={1}>
-                    {formatFieldName(key)}:
-                  </Text>
-                  <Text className="text-xs text-gray-500 flex-2 text-right" numberOfLines={1}>
-                    {typeof value === 'string' || typeof value === 'number' ? String(value) : 
-                     Array.isArray(value) ? value.filter(v => v !== false).join(', ') :
-                     value === true ? '✓' : 'File'}
-                  </Text>
-                </View>
-              ))}
+              .map(([key, value]) => {
+                // Get translated field label
+                const fieldLabel = item.formId ? getTranslatedFieldLabel(item.formId, key) : formatFieldName(key);
+                
+                return (
+                  <View key={key} className="flex-row justify-between items-start mb-1.5">
+                    <Text className="text-xs text-gray-600 font-semibold flex-1 mr-2" numberOfLines={1}>
+                      {fieldLabel}:
+                    </Text>
+                    <Text className="text-xs text-gray-500 flex-2 text-right" numberOfLines={1}>
+                      {typeof value === 'string' || typeof value === 'number' ? String(value) : 
+                       Array.isArray(value) ? value.filter(v => v !== false).join(', ') :
+                       value === true ? '✓' : t('CommonPage.file') || 'File'}
+                    </Text>
+                  </View>
+                );
+              })}
             {fieldCount > 2 && (
               <Text className="text-[11px] text-blue-900 italic mt-0.5">
                 +{fieldCount - 2} {t('CommonPage.more_fields') || 'more fields'}
@@ -866,7 +952,9 @@ const isFileObject = (value: any): boolean => {
             <View className="flex-row items-center mb-2 gap-2">
               {isLocal && (
                 <View className="bg-gray-500 px-2 py-1 rounded-xl">
-                  <Text className="text-white text-[10px] font-semibold">Local Only</Text>
+                  <Text className="text-white text-[10px] font-semibold">
+                    {t('CommonPage.local_only') || 'Local Only'}
+                  </Text>
                 </View>
               )}
             </View>
@@ -932,7 +1020,7 @@ const isFileObject = (value: any): boolean => {
               {t('CommonPage.form_answers') || 'Form Answers'}
             </Text>
             <View className="bg-white rounded-xl p-4 border border-gray-200">
-              {renderFormData(selectedItem.data)}
+              {renderFormData(selectedItem.data, selectedItem.formId)}
             </View>
           </View>
         </ScrollView>

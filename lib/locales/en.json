@@ -237,6 +237,8 @@
     "module_not_found": "Module Not Found",
     "module_not_found_description": "The module you are looking for does not exist",
     "available_forms": "Available Forms",
+    "refreshed":"Refreshed Successfully",
+    "forms_updated":"Forms updated",
     "no_forms_found":"No form found"
   },
   "FormElementPage": {
@@ -433,7 +435,7 @@
     "noPendingUpdates":"No pending updates",
     "lastSync":"Last Synced",
     "online":"Online",
-
+    "sync_failed":"Sync failed",
     "offline": "You are offline",
     "offlineMessage": "You are offline. Please connect to the internet and try again.",
     "allSynced": "All components synced successfully",
@@ -592,6 +594,7 @@
     },
     "error": {
       "title": "Error",
+      "unauthorized":"You are not allowed to submit to this form",
       "duplicate": {
         "izu": "A User with these details already exists",
         "family": "A family with these details already exists",
@@ -662,6 +665,8 @@
     "retry":"Try Again",
     "of":"Of",
     "load_more":"Load More",
+    "failed_to_sync":"Failed to sync",
+    "sync_complete":"Sync Information",
     "info":"Info",
     "showing":"showing",
     "error_occurred":"An error occured",
@@ -701,6 +706,15 @@
     "in": "in",
     "updated": "Updated",
     "error": "Error"
+  },
+  "ReviewPage":{
+    "title":"Review You Answers",
+    "description":"Please review your answers carefully before submitting. You can go back to make changes if needed.",
+    "review":"Review",
+    "pageOf":"Page {page} of {total}",
+    "notProvided":"Not Provided",
+    "yes":"Yes",
+    "no":"no"
   }
  
 }

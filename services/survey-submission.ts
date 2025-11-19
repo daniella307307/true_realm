@@ -214,11 +214,12 @@ const prepareApiPayload = (submission: SurveySubmission, formId: string) => {
     },
   };
 };
-export const fetchSubmissionsFromRemote= async (
+export const fetchSubmissionsFromRemote = async (
   page: number = 1,
   limit: number = ITEMS_PER_PAGE,
   userId?: string,
-  isLoggedIn?: boolean
+  isLoggedIn?: boolean,
+  formId?: string
 ): Promise<PaginatedResponse<any>> => {
   if (!isLoggedIn) {
     return {
@@ -235,13 +236,20 @@ export const fetchSubmissionsFromRemote= async (
   }
 
   try {
-    console.log(`Fetching page ${page} with ${limit} items...`);
+    console.log(`Fetching page ${page} with ${limit} items${formId ? ` for form ${formId}` : ''}...`);
     
+    const params: any = {
+      page,
+      limit
+    };
+
+    // Add formId to params if provided
+    if (formId) {
+      params.formId = formId;
+    }
+
     const res = await baseInstance.get('/submissions/filter', {
-      params: {
-        page,
-        limit
-      },
+      params,
     });
 
     const submissions = Array.isArray(res.data?.data?.submissions)
@@ -349,6 +357,32 @@ export const fetchSubmissionsFromRemote= async (
   }
 };
 
+// Helper function to fetch all submissions for a specific form (up to 100)
+export const fetchFormSubmissions = async (
+  formId: string,
+  isLoggedIn: boolean,
+  userId?: string
+): Promise<any[]> => {
+  const allSubmissions: any[] = [];
+  const limit = 100; // Fetch 100 per request
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore && allSubmissions.length < 100) {
+    const response = await fetchSubmissionsFromRemote(
+      page,
+      limit,
+      userId,
+      isLoggedIn,
+      formId
+    );
+
+    allSubmissions.push(...response.data);
+    hasMore = response.pagination.hasNextPage && allSubmissions.length < 100;
+    page++;
+  }
+  return allSubmissions.slice(0, 100);
+};
 
 /**
  * Sync a specific page of submissions to local database
@@ -829,7 +863,7 @@ export const updateSurveySubmissionLocally = async (
       updatePayload.location = JSON.stringify(updatedData.location);
     }
 
-    const allSubmissions = await getAll("SurveySubmissions");  // ✅ Now using correct getAll
+    const allSubmissions = await getAll("SurveySubmissions");  
     const submission = allSubmissions.find((s: any) => s._id === submissionId);
     
     if (submission && submission.id) {
@@ -1080,7 +1114,7 @@ export const syncPendingSubmissions = async (
           });
           
           synced++;
-          console.log(`✅ Synced submission ${submission._id}`);
+          console.log(`Synced submission ${submission._id}`);
         } else {
           throw new Error("No ID returned from API");
         }
@@ -1122,7 +1156,7 @@ export const syncPendingSubmissions = async (
         Toast.show({
           type: "error",
           text1: t("Alerts.error.title"),
-          text2: `${failed} submissions failed to sync`,
+          text2: `${failed} Alerts.sync.failed`,
           position: "top",
           visibilityTime: 4000,
         });
@@ -1366,14 +1400,13 @@ const handleApiError = async (create: any, submission: any, error: any, t: TFunc
   const isUnauthorized = statusCode === 401 || statusCode === 403;
 
   if (isUnauthorized) {
-    showToast("error", t("Alerts.error.title"), t("Alerts.error.submission.unauthorized"));
+    showToast("error", t("Alerts.error.title"), t("Alerts.error.unauthorized"));
     return;
   }
 
-  // Save locally for retry
-  await create("SurveySubmissions", toSQLiteRow(submission));
-  showToast("info", t("Alerts.info.saved_locally"), t("Alerts.submitting.offline"));
-  router.push("/(history)/realmDbViewer");
+  // await create("SurveySubmissions", toSQLiteRow(submission));
+  // showToast("info", t("Alerts.info.saved_locally"), t("Alerts.submitting.offline"));
+  router.push("/(home)/home");
 };
 const handleOfflineSubmission = async (create: any, submission: any, t: TFunction) => {
   await create("SurveySubmissions", toSQLiteRow(submission));
@@ -1408,7 +1441,9 @@ const handleOnlineSubmission = async (
     submission.sync_data = { ...submission.sync_data, sync_status: true, sync_reason: "Successfully synced" };
 
     await create("SurveySubmissions", toSQLiteRow(submission));
-
+    if (response.data?.warnings && response.data.warnings.length > 0) {
+      showToast("warning", t("Alerts.warning.title"), t("Alerts.success.survey_with_warnings"));
+    } 
     showToast("success", t("Alerts.success.title"), t("Alerts.success.survey"));
     router.push("/(history)/realmDbViewer");
 

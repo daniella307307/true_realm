@@ -4,7 +4,7 @@ import NetInfo from "@react-native-community/netinfo";
 
 const env = process.env["EXPO_PUBLIC_API_ENV"] || "development";
 // Add fallback URL if environment variable is not set
-export const BASE_URL = process.env["EXPO_PUBLIC_API_URL"] || "https://afriquollect.heis.farm";
+export const BASE_URL = process.env["EXPO_PUBLIC_API_URL"] || " http://192.168.1.81:9002";
 console.log("[API] Base URL:", BASE_URL);
 
 // Create a flag to track authentication status
@@ -35,13 +35,14 @@ const publicRoutes = [
   "/user/verify-reset-code",
   "/auth/reset-password",
   "/auth/verify-reset-code",
-  "/auth/forgot-password",
+  "/auth/forgot-password"
 ];
 
 const baseInstance = axios.create({
   baseURL: BASE_URL + "/api",
   headers: {
     "Content-Type": "application/json",
+    
   },
   // Add timeout configuration for better mobile performance
   timeout: 15000, // Increased timeout for better reliability
@@ -55,6 +56,7 @@ const logAPIRequest = (
   type: "REQUEST" | "RESPONSE" | "ERROR",
   data?: any
 ) => {
+  const safeConfig = config || {};
   const url = config.url || "unknown";
   const method = config.method?.toUpperCase() || "unknown";
   const endpoint = url.replace(BASE_URL + "/api", "");
@@ -117,7 +119,9 @@ baseInstance.interceptors.request.use(
       } else {
         if (!isPublicRoute) {
           console.log("[API] No token for protected route:", config.url);
-          return Promise.reject(new Error("Authentication required"));
+          const err: any = new Error("Authentication required");
+          err.config = config;   // attach config so error interceptor doesn’t crash
+          return Promise.reject(err);
         }
       }
 

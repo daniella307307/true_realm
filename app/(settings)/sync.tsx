@@ -76,7 +76,6 @@ const getSyncTypeKey = (key: string, t: (key: string) => string) => {
   return t(mapping[key] || key);
 };
 
-// ===== Toast Helper =====
 const showToast = (
   type: "success" | "error" | "info",
   text1: string,
@@ -211,7 +210,7 @@ const SyncPage = () => {
         showToast(
           "error",
           t("Sync.error"),
-          `${syncResult.failed} ${t("Sync.submissionsFailed") || "submissions failed to sync"}`
+          `${syncResult.failed} ${t("Sync.sync_failed") || "submissions failed to sync"}`
         );
       } else {
         showToast("info", t("Sync.info"), t("Sync.noPendingSubmissions"));
@@ -220,7 +219,7 @@ const SyncPage = () => {
       console.log(`Survey submissions sync complete: ${syncResult.synced} synced, ${syncResult.failed} failed`);
     } catch (error) {
       console.error("Error syncing survey submissions:", error);
-      showToast("error", t("Sync.error"), t("Sync.submissionsSyncFailed") || "Failed to sync submissions");
+      showToast("error", t("Sync.error"), t("Login.submissionsSyncFailed") || "Failed to sync submissions");
     } finally {
       setIsSyncing(false);
       setSyncType(null);
@@ -337,7 +336,7 @@ const SyncPage = () => {
   //   setSyncType(getSyncTypeKey("Sync.responses", t));
 
   //   try {
-  //     console.log("🔄 Starting monitoring responses sync...");
+  //     console.log("Starting monitoring responses sync...");
   //     await syncTemporaryMonitoringResponses(query, "/get-performances", t, user.id);
   //     setLastSyncDate(new Date());
   //     await updateSubmissionCounts();
@@ -513,7 +512,7 @@ const SyncPage = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <HeaderNavigation title={t("SettingsPage.sync") || "Sync"} />
+      <HeaderNavigation title={t("SettingsPage.sync") || "Sync"}  showLeft showRight/>
       
       {/* Sync Status Banner */}
       <View className="bg-white p-4 border-b border-gray-200">

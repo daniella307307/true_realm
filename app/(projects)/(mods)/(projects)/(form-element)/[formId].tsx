@@ -6,7 +6,7 @@ import { useGetFormById } from "~/services/formElements";
 import { NotFound } from "~/components/ui/not-found";
 import HeaderNavigation from "~/components/ui/header";
 import { useTranslation } from "react-i18next";
-import { translateFormSchema } from "~/components/utils-form/form-translation";
+import { parseTranslations, translateFormSchema } from "~/components/utils-form/form-translation";
 import { checkNetworkConnection } from "~/utils/networkHelpers";
 import { useAuth } from "~/lib/hooks/useAuth";
 import Toast from "react-native-toast-message";
@@ -15,7 +15,7 @@ import * as FileSystem from "expo-file-system";
 import { saveSurveySubmissionToAPI } from "~/services/survey-submission";
 import { MediaPickerButton } from "~/components/ui/MediaPickerButton";
 import { useMediaPicker, MediaResult } from "~/lib/hooks/useMediaPicker";
-import  formSchemaWithTranslations  from "~/components/utils-form/formschema";
+import formSchemaWithTranslations from "~/components/utils-form/formschema";
 function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any {
   if (!formSchema || typeof formSchema !== 'object') {
     console.warn('Invalid form schema provided to convertToWizardForm');
@@ -106,117 +106,284 @@ function ProjectFormElementScreen(): React.JSX.Element {
   const [loadingStep, setLoadingStep] = useState("Initializing...");
   const [assetError, setAssetError] = useState<string | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<MediaResult[]>([]);
-  const { pickImage, pickVideo, takePhoto } = useMediaPicker();
+  const { takePhoto, pickImage, pickVideo, requestCameraPermission, requestMediaLibraryPermission, pickDocument, pickMedia } = useMediaPicker();
   const isSubmittingRef = useRef(false);
   const networkCheckMountedRef = useRef(true);
   const currentLang = i18n.language;
+  const normalizedLang = currentLang.split('-')[0].toLowerCase();
   const lastNetworkCheckRef = useRef(0);
   const assetsLoadedRef = useRef(false);
   const networkStatusInitialized = useRef(false);
   const webViewRef = useRef<WebView>(null);
   const handleMediaUpload = useCallback(async (fieldKey: string, allowMultiple: boolean = false) => {
-    try {
-      console.log("Media upload requested for field:", fieldKey, "Allow multiple:", allowMultiple);
+  try {
+    console.log("=== MEDIA UPLOAD START ===");
+    console.log("Field:", fieldKey, "Allow multiple:", allowMultiple);
 
-      Alert.alert(
-        'Select Media',
-        'Choose how to add media',
-        [
-          {
-            text: 'Take Photo',
-            onPress: async () => {
-              try {
-                const photo = await takePhoto();
-                console.log("Photo taken:", photo);
-                if (photo && webViewRef.current) {
-                  const message = JSON.stringify({
-                    type: 'MEDIA_SELECTED',
-                    fieldKey: fieldKey,
-                    media: [photo]
-                  });
-                  console.log("Sending photo to WebView:", message);
-                  webViewRef.current.postMessage(message);
-                }
-              } catch (error) {
-                console.error("Error taking photo:", error);
+    const [mediaPermission, cameraPermission] = await Promise.all([
+      requestMediaLibraryPermission(),
+      requestCameraPermission()
+    ]);
+
+    Alert.alert(
+      'Select Media',
+      'Choose how to add your files',
+      [
+        {
+          text: 'Take Photo',
+          onPress: async () => {
+            try {
+              if (!cameraPermission) {
                 Toast.show({
                   type: 'error',
-                  text1: 'Error',
-                  text2: 'Failed to take photo',
+                  text1: 'Permission Required',
+                  text2: 'Camera access needed',
                   position: 'top',
-                  visibilityTime: 3000,
                 });
+                return;
               }
-            },
-          },
-          {
-            text: 'Choose from Gallery',
-            onPress: async () => {
-              try {
-                const images = await pickImage({ allowsMultipleSelection: allowMultiple });
-                console.log("Images selected:", images);
-                if (images && images.length > 0 && webViewRef.current) {
-                  const message = JSON.stringify({
+
+              const photo = await takePhoto();
+              console.log("Photo taken:", photo);
+              
+              if (photo && webViewRef.current) {
+                try {
+                  const base64 = await FileSystem.readAsStringAsync(photo.uri, {
+                    encoding: FileSystem.EncodingType.Base64,
+                  });
+                  
+                  const message = {
                     type: 'MEDIA_SELECTED',
                     fieldKey: fieldKey,
-                    media: images
+                    media: [{
+                      name: photo.name,
+                      size: photo.size || 0,
+                      type: photo.mimeType || 'image/jpeg',
+                      url: `data:${photo.mimeType || 'image/jpeg'};base64,${base64}`,
+                      storage: 'base64'
+                    }]
+                  };
+                  
+                  console.log("Sending photo message:", message);
+                  webViewRef.current.postMessage(JSON.stringify(message));
+                  
+                  Toast.show({
+                    type: 'success',
+                    text1: 'Success',
+                    text2: 'Photo added',
+                    position: 'top',
                   });
-                  console.log("Sending images to WebView:", message);
-                  webViewRef.current.postMessage(message);
+                } catch (error) {
+                  console.error("Error processing photo:", error);
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Failed to process photo',
+                    position: 'top',
+                  });
                 }
-              } catch (error) {
-                console.error("Error picking images:", error);
+              }
+            } catch (error) {
+              console.error("Error taking photo:", error);
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to take photo',
+                position: 'top',
+              });
+            }
+          },
+        },
+        {
+          text: 'Photos & Videos',
+          onPress: async () => {
+            try {
+              if (!mediaPermission) {
                 Toast.show({
                   type: 'error',
-                  text1: 'Error',
-                  text2: 'Failed to select images',
+                  text1: 'Permission Required',
+                  text2: 'Media library access needed',
                   position: 'top',
-                  visibilityTime: 3000,
                 });
+                return;
               }
-            },
-          },
-          {
-            text: 'Choose Video',
-            onPress: async () => {
-              try {
-                const video = await pickVideo();
-                console.log("Video selected:", video);
-                if (video && webViewRef.current) {
-                  const message = JSON.stringify({
+
+              const media = await pickMedia({ allowsMultipleSelection: allowMultiple });
+              console.log("Media selected:", media?.length);
+              
+              if (media && media.length > 0 && webViewRef.current) {
+                try {
+                  const processedMedia = await Promise.all(
+                    media.map(async (item) => {
+                      try {
+                        if (item.mimeType?.startsWith('image/')) {
+                          const base64 = await FileSystem.readAsStringAsync(item.uri, {
+                            encoding: FileSystem.EncodingType.Base64,
+                          });
+                          return {
+                            name: item.name,
+                            size: item.size || 0,
+                            type: item.mimeType,
+                            url: `data:${item.mimeType};base64,${base64}`,
+                            storage: 'base64'
+                          };
+                        }
+                        // For videos, keep as URI
+                        return {
+                          name: item.name,
+                          size: item.size || 0,
+                          type: item.mimeType,
+                          url: item.uri,
+                          storage: 'url'
+                        };
+                      } catch (error) {
+                        console.error("Error processing item:", error);
+                        return {
+                          name: item.name,
+                          size: item.size || 0,
+                          type: item.mimeType,
+                          url: item.uri,
+                          storage: 'url'
+                        };
+                      }
+                    })
+                  );
+                  
+                  const message = {
                     type: 'MEDIA_SELECTED',
                     fieldKey: fieldKey,
-                    media: [video]
+                    media: processedMedia
+                  };
+                  
+                  console.log("Sending media message:", message);
+                  webViewRef.current.postMessage(JSON.stringify(message));
+                  
+                  Toast.show({
+                    type: 'success',
+                    text1: 'Success',
+                    text2: `${processedMedia.length} file(s) added`,
+                    position: 'top',
                   });
-                  console.log("Sending video to WebView:", message);
-                  webViewRef.current.postMessage(message);
+                } catch (error) {
+                  console.error("Error processing media:", error);
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Failed to process media',
+                    position: 'top',
+                  });
                 }
-              } catch (error) {
-                console.error("Error picking video:", error);
-                Toast.show({
-                  type: 'error',
-                  text1: 'Error',
-                  text2: 'Failed to select video',
-                  position: 'top',
-                  visibilityTime: 3000,
-                });
               }
-            },
+            } catch (error) {
+              console.error("Error picking media:", error);
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to select media',
+                position: 'top',
+              });
+            }
           },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
-    } catch (error) {
-      console.error('Error in handleMediaUpload:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to open media picker',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-    }
-  }, [takePhoto, pickImage, pickVideo]);
+        },
+        {
+          text: 'Documents',
+          onPress: async () => {
+            try {
+              const documents = await pickDocument({ 
+                allowMultiple: allowMultiple,
+                type: '*/*'
+              });
+              console.log("Documents selected:", documents?.length);
+              
+              if (documents && documents.length > 0 && webViewRef.current) {
+                try {
+                  const processedDocs = await Promise.all(
+                    documents.map(async (doc) => {
+                      try {
+                        const maxSize = 5 * 1024 * 1024;
+                        
+                        if (doc.size && doc.size < maxSize) {
+                          const base64 = await FileSystem.readAsStringAsync(doc.uri, {
+                            encoding: FileSystem.EncodingType.Base64,
+                          });
+                          return {
+                            name: doc.name,
+                            size: doc.size,
+                            type: doc.mimeType,
+                            url: `data:${doc.mimeType};base64,${base64}`,
+                            storage: 'base64'
+                          };
+                        }
+                        return {
+                          name: doc.name,
+                          size: doc.size,
+                          type: doc.mimeType,
+                          url: doc.uri,
+                          storage: 'url'
+                        };
+                      } catch (error) {
+                        console.error("Error processing doc:", error);
+                        return {
+                          name: doc.name,
+                          size: doc.size,
+                          type: doc.mimeType,
+                          url: doc.uri,
+                          storage: 'url'
+                        };
+                      }
+                    })
+                  );
+                  
+                  const message = {
+                    type: 'MEDIA_SELECTED',
+                    fieldKey: fieldKey,
+                    media: processedDocs
+                  };
+                  
+                  console.log("Sending documents message:", message);
+                  webViewRef.current.postMessage(JSON.stringify(message));
+                  
+                  Toast.show({
+                    type: 'success',
+                    text1: 'Success',
+                    text2: `${processedDocs.length} document(s) added`,
+                    position: 'top',
+                  });
+                } catch (error) {
+                  console.error("Error processing documents:", error);
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Failed to process documents',
+                    position: 'top',
+                  });
+                }
+              }
+            } catch (error) {
+              console.error("Error picking documents:", error);
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to select documents',
+                position: 'top',
+              });
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
+  } catch (error) {
+    console.error('Error in handleMediaUpload:', error);
+    Toast.show({
+      type: 'error',
+      text1: 'Error',
+      text2: 'Failed to open media picker',
+      position: 'top',
+    });
+  }
+}, [takePhoto, pickMedia, pickDocument, requestMediaLibraryPermission, requestCameraPermission]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -444,16 +611,26 @@ function ProjectFormElementScreen(): React.JSX.Element {
         console.error('Invalid json format:', typeof regularForm.json);
         return null;
       }
-
       let translatedForm = baseForm;
       if (regularForm.translations) {
         console.log(`translating form to ${currentLang}...`);
-        translatedForm = translateFormSchema(baseForm, regularForm?.translations, currentLang);
+        console.log('Translation type:', typeof regularForm.translations);
+        console.log('Translation data:', regularForm.translations);
+
+        // Parse the translations string into an object
+        const parsedTranslations = parseTranslations(regularForm.translations);
+
+        if (parsedTranslations) {
+          console.log('Parsed translations successfully:', parsedTranslations);
+          translatedForm = translateFormSchema(baseForm, parsedTranslations, currentLang);
+        } else {
+          console.log('Failed to parse translations');
+        }
       }
 
       console.log('Form parsed successfully, converting to wizard...');
       const wizardForm = convertToWizardForm(translatedForm, 5);
-      console.log('Wizard conversion complete');
+      console.log('Wizard conversion complete', wizardForm);
 
       return wizardForm;
     } catch (err) {
@@ -479,7 +656,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
     }
   }, [parsedForm]);
 
-  
+
 
 
   const processFormDataForSubmission = async (formData: any): Promise<any> => {
@@ -617,7 +794,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
         await saveSurveySubmissionToAPI(
           create,
           completeFormData,
-          `/forms/${formId}/submit`,
+          `/submissions/${formId}/submit`,
           t,
           fields,
           userId
@@ -727,8 +904,15 @@ function ProjectFormElementScreen(): React.JSX.Element {
 
     try {
       const formJsonString = JSON.stringify(parsedForm);
-      const escapedFormJson = formJsonString.replace(/</g, "\\u003c");
-      const escapedFormName = (regularForm?.name || "Form").replace(/'/g, "\\'");
+      const escapedFormJson = formJsonString
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
+      const escapedFormName = (parsedForm.title || regularForm?.name || "Form").replace(/'/g, "\\'");
       const totalPages = parsedForm.display === 'wizard' && Array.isArray(parsedForm.components)
         ? parsedForm.components.length
         : 1;
@@ -738,6 +922,53 @@ function ProjectFormElementScreen(): React.JSX.Element {
       const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
       const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
       const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
+      const reviewTranslations = {
+        reviewTitle: t("ReviewPage.title") || "Review Your Answers",
+        reviewSubtitle: t("ReviewPage.description") || "Please review your answers carefully before submitting. You can go back to make changes if needed.",
+        pageOf: t("ReviewPage.pageOf") || "Page {page} of {total}",
+        notProvided: t("ReviewPage.notProvided") || "Not provided",
+        yes: t("ReviewPage.yes") || "Yes",
+        no: t("ReviewPage.no") || "No"
+      };
+      const btnTranslations = {
+        en: {
+          submit: 'Submit',
+          cancel: 'Cancel',
+          previous: 'Previous',
+          next: 'Next'
+        },
+        es: {
+          submit: 'Enviar',
+          cancel: 'Cancelar',
+          previous: 'Anterior',
+          next: 'Siguiente'
+        },
+        fr: {
+          submit: 'Soumettre',
+          cancel: 'Annuler',
+          previous: 'Précédent',
+          next: 'Suivant'
+        },
+        rw:{
+          submit :"Ohereza",
+          cancel:"Reka",
+          previous:"Subira Inyuma",
+          next:"Komeza"
+        }
+      }
+      const currentBtnTranslations = btnTranslations[normalizedLang] || btnTranslations['en'];
+    
+    console.log('Current language:', normalizedLang);
+    console.log('Button translations:', currentBtnTranslations);
+      const escapedReviewTranslations = JSON.stringify(reviewTranslations)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"');
+           // Escape button translations for injection
+    const escapedBtnTranslations = JSON.stringify(currentBtnTranslations)
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"');
 
       return `
     <!DOCTYPE html>
@@ -844,7 +1075,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
           }
           
           .btn-wizard-nav-cancel {
-            background: #dc3545 !important;
+            background: #a19e9eff !important;
             color: white !important;
           }
           
@@ -1019,12 +1250,17 @@ function ProjectFormElementScreen(): React.JSX.Element {
             margin: 5px 0;
           }
         </style>
-        <script>
-  let formInstance;
+      <script>
+  console.log('=== MEDIA HANDLER SCRIPT LOADING ===');
+  let formInstance = null;
+  
+  window.initFormInstance = function(form) {
+    formInstance = form;
+    console.log('Form instance initialized:', !!formInstance);
+  };
+  
   document.addEventListener('click', function(e) {
     const target = e.target;
-    
-    // Check if clicking on file input, button, or label
     let fileInput = null;
     let componentElement = null;
     
@@ -1050,115 +1286,145 @@ function ProjectFormElementScreen(): React.JSX.Element {
       e.stopPropagation();
       e.stopImmediatePropagation();
       
-      // Try multiple ways to get the field key
       let fieldKey = fileInput.name || fileInput.id || fileInput.getAttribute('data-key');
       
-      // If still no key, try to get it from the component element's ref attribute
       if (!fieldKey && componentElement) {
         fieldKey = componentElement.getAttribute('ref') || 
                    componentElement.getAttribute('data-component-key') ||
                    componentElement.id;
       }
       
-      // If still no key, try to find it from FormIO's component structure
       if (!fieldKey && formInstance) {
-        const components = formInstance.components;
-        for (let comp of components) {
-          if (comp.element === componentElement || componentElement.contains(comp.element)) {
-            fieldKey = comp.component.key;
-            break;
+        try {
+          const allComponents = formInstance.components;
+          for (let comp of allComponents) {
+            if (comp.element === componentElement || componentElement.contains(comp.element)) {
+              fieldKey = comp.component.key;
+              console.log('Found key from component:', fieldKey);
+              break;
+            }
           }
+        } catch (error) {
+          console.error('Error finding component:', error);
         }
       }
       
       const allowMultiple = fileInput.hasAttribute('multiple');
       
-      console.log('File input clicked, requesting media for:', fieldKey, 'Element:', componentElement);
+      console.log('=== FILE INPUT CLICKED ===');
+      console.log('Field key:', fieldKey);
+      console.log('Allow multiple:', allowMultiple);
       
-      if (fieldKey) {
+      if (fieldKey && window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify({
           type: 'REQUEST_MEDIA',
           fieldKey: fieldKey,
           allowMultiple: allowMultiple
         }));
       } else {
-        console.error('Could not determine field key for file input');
+        console.error('Missing fieldKey or ReactNativeWebView');
       }
       
       return false;
     }
   }, true);
   
-  // Handle messages from React Native
-  document.addEventListener('message', function(event) {
-    handleMediaMessage(event.data);
-  });
+  document.addEventListener('message', handleMediaMessage);
+  window.addEventListener('message', handleMediaMessage);
   
-  window.addEventListener('message', function(event) {
-    handleMediaMessage(event.data);
-  });
-  
-  function handleMediaMessage(data) {
+  function handleMediaMessage(event) {
     try {
-      const message = typeof data === 'string' ? JSON.parse(data) : data;
+      const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+      
+      console.log('=== MESSAGE RECEIVED ===');
+      console.log('Type:', message.type);
       
       if (message.type === 'MEDIA_SELECTED') {
-        const fieldKey = message.fieldKey;
-        const media = message.media;
-        
-        console.log('Media received for field:', fieldKey, media);
+        console.log('Field:', message.fieldKey);
+        console.log('Media count:', message.media?.length);
+        console.log('Media data:', message.media);
         
         if (!formInstance) {
           console.error('Form instance not available');
           return;
         }
         
-        let component = formInstance.getComponent(fieldKey);
+        let component = formInstance.getComponent(message.fieldKey);
         
         if (!component) {
-         
-          let input = document.querySelector(\`input[name="\${fieldKey}"], input#\${fieldKey}\`);
+          console.log('Component not found directly, searching...');
+          const selector = "input[name='" + message.fieldKey + "'], input#" + message.fieldKey;
+          const input = document.querySelector(selector);
+          
           if (input) {
             const componentEl = input.closest('.formio-component');
             if (componentEl) {
-              const componentKey = componentEl.getAttribute('ref');
-              component = formInstance.getComponent(componentKey);
+              const ref = componentEl.getAttribute('ref');
+              if (ref) {
+                component = formInstance.getComponent(ref);
+                console.log('Found component by ref:', ref);
+              }
             }
           }
         }
         
-        if (component && media && media.length > 0) {
-          const formioFiles = media.map(item => ({
-            name: item.name || 'file',
-            size: item.size || 0,
-            type: item.type || 'application/octet-stream',
-            url: item.uri,
-            uri: item.uri,
-            storage: 'url',
-            originalData: item
-          }));
+        if (component && message.media && message.media.length > 0) {
+          console.log('Component found:', component.component.key);
+          console.log('Component type:', component.component.type);
+          console.log('Component multiple:', component.component.multiple);
           
-          console.log('Setting files on component:', formioFiles);
+          const formioFiles = message.media.map(function(item) {
+            return {
+              name: item.name || 'file',
+              size: item.size || 0,
+              type: item.type || 'application/octet-stream',
+              url: item.url,
+              storage: item.storage || 'base64'
+            };
+          });
           
-          if (component.component.multiple) {
-            const currentValue = component.getValue() || [];
-            component.setValue([...currentValue, ...formioFiles]);
-          } else {
-            component.setValue(formioFiles[0]);
+          console.log('Setting files:', formioFiles);
+          
+          try {
+            if (component.component.multiple) {
+              const currentValue = component.getValue() || [];
+              console.log('Current value:', currentValue);
+              const newValue = Array.isArray(currentValue) ? currentValue.concat(formioFiles) : formioFiles;
+              component.setValue(newValue);
+              console.log('New value set (multiple):', newValue);
+            } else {
+              component.setValue(formioFiles);
+              console.log('New value set (single):', formioFiles);
+            }
+            
+            if (typeof component.triggerChange === 'function') {
+              component.triggerChange();
+            }
+            
+            if (typeof component.redraw === 'function') {
+              component.redraw();
+            }
+            
+            console.log('=== MEDIA UPLOAD SUCCESS ===');
+            console.log('Final value:', component.getValue());
+          } catch (setError) {
+            console.error('Error setting value:', setError);
+            console.error('Stack:', setError.stack);
           }
-          
-          // Trigger change event
-          component.triggerChange();
-          
-          console.log('Media successfully added to field:', fieldKey);
         } else {
-          console.error('Component not found or no media:', fieldKey);
+          console.error('Component not found or no media');
+          console.error('Component:', !!component);
+          console.error('Media:', message.media);
         }
       }
     } catch (err) {
-      console.error('Error handling media message:', err);
+      console.error('Error handling message:', err);
+      console.error('Stack:', err.stack);
     }
   }
+  
+  window.handleMediaMessage = handleMediaMessage;
+  console.log('=== MEDIA HANDLER SCRIPT LOADED ===');
 </script>
       </head>
       <body>
@@ -1205,6 +1471,9 @@ function ProjectFormElementScreen(): React.JSX.Element {
             const MAX_INIT_ATTEMPTS = 30;
             const RETRY_DELAY = 500;
             let form;
+            const reviewTranslations = JSON.parse('${escapedReviewTranslations}');
+            const currentLanguage = '${normalizedLang}';
+            const buttonTranslations = JSON.parse('${escapedBtnTranslations}');
             
             function postMessage(data) {
               try {
@@ -1218,105 +1487,111 @@ function ProjectFormElementScreen(): React.JSX.Element {
               }
             }
 
-            function formatValue(value, label) {
-              if (value === null || value === undefined || value === '') {
-                return '<span class="review-empty">Not provided</span>';
-              }
+           function formatValue(value, label) {
+    if (value === null || value === undefined || value === '') {
+      return '<span class="review-empty">' + reviewTranslations.notProvided + '</span>';
+    }
+    
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return '<span class="review-empty">' + reviewTranslations.notProvided + '</span>';
+      }
+      
+      if (value[0] && (value[0].url || value[0].uri)) {
+        let html = '<div>';
+        value.forEach(file => {
+          const fileName = file.name || 'File';
+          const fileUrl = file.url || file.uri;
+          const isImage = file.type && file.type.startsWith('image');
+          
+          if (isImage) {
+            html += \`<img src="\${fileUrl}" alt="\${fileName}" class="review-image" />\`;
+          } else {
+            html += \`<div class="review-file"><i class="fas fa-file"></i>\${fileName}</div>\`;
+          }
+        });
+        html += '</div>';
+        return html;
+      }
+      
+      return '<ul class="review-list">' + value.map(v => '<li>' + String(v) + '</li>').join('') + '</ul>';
+    }
               
-              if (Array.isArray(value)) {
-                if (value.length === 0) {
-                  return '<span class="review-empty">Not provided</span>';
-                }
-                
-                if (value[0] && (value[0].url || value[0].uri)) {
-                  let html = '<div>';
-                  value.forEach(file => {
-                    const fileName = file.name || 'File';
-                    const fileUrl = file.url || file.uri;
-                    const isImage = file.type && file.type.startsWith('image');
-                    
-                    if (isImage) {
-                      html += \`<img src="\${fileUrl}" alt="\${fileName}" class="review-image" />\`;
-                    } else {
-                      html += \`<div class="review-file"><i class="fas fa-file"></i>\${fileName}</div>\`;
-                    }
-                  });
-                  html += '</div>';
-                  return html;
-                }
-                
-                return '<ul class="review-list">' + value.map(v => '<li>' + String(v) + '</li>').join('') + '</ul>';
-              }
-              
-              if (typeof value === 'object') {
-                if (value.url || value.uri) {
-                  const fileName = value.name || 'File';
-                  const fileUrl = value.url || value.uri;
-                  const isImage = value.type && value.type.startsWith('image');
-                  
-                  if (isImage) {
-                    return \`<img src="\${fileUrl}" alt="\${fileName}" class="review-image" />\`;
-                  } else {
-                    return \`<div class="review-file"><i class="fas fa-file"></i>\${fileName}</div>\`;
-                  }
-                }
-                return '<pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">' + JSON.stringify(value, null, 2) + '</pre>';
-              }
-              
-              if (typeof value === 'boolean') {
-                return value ? '<i class="fas fa-check-circle" style="color: #28a745;"></i> Yes' : '<i class="fas fa-times-circle" style="color: #dc3545;"></i> No';
-              }
-              
-              return String(value);
-            }
+             if (typeof value === 'object') {
+      if (value.url || value.uri) {
+        const fileName = value.name || 'File';
+        const fileUrl = value.url || value.uri;
+        const isImage = value.type && value.type.startsWith('image');
+        
+        if (isImage) {
+          return \`<img src="\${fileUrl}" alt="\${fileName}" class="review-image" />\`;
+        } else {
+          return \`<div class="review-file"><i class="fas fa-file"></i>\${fileName}</div>\`;
+        }
+      }
+      return '<pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">' + JSON.stringify(value, null, 2) + '</pre>';
+    }
+    
+    if (typeof value === 'boolean') {
+      return value 
+        ? '<i class="fas fa-check-circle" style="color: #28a745;"></i> ' + reviewTranslations.yes
+        : '<i class="fas fa-times-circle" style="color: #dc3545;"></i> ' + reviewTranslations.no;
+    }
+    
+    return String(value);
+  }
 
-            function generateReviewPage(formData, components) {
-              let html = \`
-                <div class="review-container">
-                  <div class="review-header">
-                    <h3><i class="fas fa-clipboard-check"></i> Review Your Answers</h3>
-                  </div>
-                  <p style="margin-bottom: 20px; color: #6c757d;">Please review your answers carefully before submitting. You can go back to make changes if needed.</p>
-              \`;
+ function generateReviewPage(formData, components) {
+    let html = \`
+      <div class="review-container">
+        <div class="review-header">
+          <h3><i class="fas fa-clipboard-check"></i> \${reviewTranslations.reviewTitle}</h3>
+        </div>
+        <p style="margin-bottom: 20px; color: #6c757d;">\${reviewTranslations.reviewSubtitle}</p>
+    \`;
 
-              const pages = {};
-              components.forEach((comp, index) => {
-                const pageNum = Math.floor(index / 5) + 1;
-                if (!pages[pageNum]) {
-                  pages[pageNum] = [];
-                }
-                pages[pageNum].push(comp);
-              });
+    const pages = {};
+    components.forEach((comp, index) => {
+      const pageNum = Math.floor(index / 5) + 1;
+      if (!pages[pageNum]) {
+        pages[pageNum] = [];
+      }
+      pages[pageNum].push(comp);
+    });
 
-              Object.keys(pages).forEach(pageNum => {
-                html += \`
-                  <div class="review-section">
-                    <div class="review-section-title">
-                      <i class="fas fa-list-ul"></i> Page \${pageNum} of \${Object.keys(pages).length}
-                    </div>
-                \`;
+    Object.keys(pages).forEach(pageNum => {
+      const pageText = reviewTranslations.pageOf
+        .replace('{page}', pageNum)
+        .replace('{total}', Object.keys(pages).length);
+        
+      html += \`
+        <div class="review-section">
+          <div class="review-section-title">
+            <i class="fas fa-list-ul"></i> \${pageText}
+          </div>
+      \`;
 
-                pages[pageNum].forEach(comp => {
-                  if (comp.type === 'button' || comp.type === 'htmlelement') return;
-                  
-                  const label = comp.label || comp.key;
-                  const value = formData[comp.key];
-                  
-                  html += \`
-                    <div class="review-item">
-                      <div class="review-label">\${label}</div>
-                      <div class="review-value">\${formatValue(value, label)}</div>
-                    </div>
-                  \`;
-                });
+      pages[pageNum].forEach(comp => {
+        if (comp.type === 'button' || comp.type === 'htmlelement') return;
+        
+        const label = comp.label || comp.key;
+        const value = formData[comp.key];
+        
+        html += \`
+          <div class="review-item">
+            <div class="review-label">\${label}</div>
+            <div class="review-value">\${formatValue(value, label)}</div>
+          </div>
+        \`;
+      });
 
-                html += '</div>';
-              });
-              html += '</div>';
-              return html;
-            }
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
 
-            async function initializeForm() {
+             async function initializeForm() {
               if (formInitialized) {
                 console.log('Form already initialized, skipping');
                 return;
@@ -1367,19 +1642,25 @@ function ProjectFormElementScreen(): React.JSX.Element {
                   });
                 }
 
+                // Create form with translations
                 form = await Formio.createForm(formioEl, formSchema, {
                   noAlerts: true,
                   readOnly: false,
                   sanitize: true,
+                  language: currentLanguage,
+                  i18n: {
+                    [currentLanguage]: buttonTranslations
+                  },
                   buttonSettings: {
-                    showCancel: false,
+                    showCancel: true,
                     showPrevious: true,
                     showNext: true,
                     showSubmit: true
                   }
                 });
-
-                window.form = form;
+                window.form = form
+                window.initFormInstance(form)
+                console.log('Form instance initialized for media handling');
                 formInstance = form;
                 console.log('Form created successfully');
                 

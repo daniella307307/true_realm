@@ -2,8 +2,8 @@
   "language": "kin",
   "Login": {
     "title": "Injiramo",
-    "emailOrPhone": "Imeli cyangwa telefone",
-    "emailOrPhonePlaceholder": "Shyiramo imeli yawe/numero ya telefone",
+    "emailOrPhone": "Imeli",
+    "emailOrPhonePlaceholder": "Shyiramo imeli yawe",
     "password": "Ijambo ry'ibanga",
     "passwordPlaceholder": "Shyiramo  Ijambobanga ",
     "login": "Injiramo",
@@ -200,6 +200,8 @@
     "module_not_found": "Ikiganiro ntikibonetse",
     "module_not_found_description": "Ikiganiro uri gushaka ntikibaho",
     "available_forms": "Amafishi ahari ni",
+    "refreshed":"Byagenze Neza",
+    "forms_updated":"amafishi yavuguruwe",
     "no_forms_found":"Nta fishi zabonetse"
   },
   "FormElementPage": {
@@ -433,6 +435,7 @@
     "lastSync": "Ibiheruka guhuzwa",
     "online":"Uri kumurongo",
     "offline": "Nturi kumurongo",
+    "sync_failed":"Ntabwo guhuzwa byakunze",
     "offlineMessage": "Nturi kumurongo. Shyiraho murandasi wongere ugerageze.",
     "allSynced": "Ibice byose byahurijwe neza",
     "formSyncFailed": "Kuhuza amafishi n'amasuzuma byanze",
@@ -590,6 +593,7 @@
     },
     "error": {
       "title": "Ikibazo",
+      "unauthorized":"Ntabwo mwemerewe gusubiza iyi fishi",
       "duplicate": {
         "izu": "Umukoresha ufite aya makuru asanzwe ariho",
         "family": "Umuryango ufite aya makuru usanzwe uriho",
@@ -657,6 +661,9 @@
     "no": "Oya",
     "offline_mode":"Nta murandasi",
     "error_occurred":"Habaye ikosa",
+    "failed_to_sync":"Nta muradasi guhuza amakuru byanze",
+    "sync_complete":"Amakuru ku ihuzwa",
+    "submissions":"Ibisubizo",
     "showing":"Page",
     "of":"muri",
     "load_more":"Kwerekana byinshi",
@@ -701,7 +708,15 @@
     "in": "in",
     "updated": "Byahindutse",
     "error": "Ikosa"
+  },
+  "ReviewPage":{
+    "title":"Reba ibisubizo mbere yo kubyohereza",
+    "description":"Reba ibisubizo wohereje witonze mbere yuko ubyohereza. Ushobora gusubira inyuma ukagira ibyo uhindura niba bikenewe",
+    "Review":"Genzura",
+    "pageOf":"Page {page} muri {total}",
+    "notProvided":"Ntabwo byasubijwe",
+    "yes":"Yego",
+    "no":"oya"
   }
-   
 
 }
