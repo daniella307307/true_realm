@@ -111,30 +111,75 @@ function EditSubmissionScreen(): React.JSX.Element {
 
   // Get the original form structure
   const { form: regularForm } = useGetFormById(submission?.form_data?.survey_id?.toString() || '');
-  const { pickImage, takePhoto, pickVideo, pickMedia } = useMediaPicker();
+  const { pickImage, takePhoto, pickVideo, pickMedia,  requestMediaLibraryPermission, requestCameraPermission, pickDocument } = useMediaPicker();
   const webViewRef = useRef<WebView>(null);
-  const handleMediaUpload = useCallback(async (fieldKey: string, allowMultiple: boolean = false) => {
+   const handleMediaUpload = useCallback(async (fieldKey: string, allowMultiple: boolean = false) => {
     try {
-      console.log("Media upload requested for field:", fieldKey, "Allow multiple:", allowMultiple);
-
+      console.log("=== MEDIA UPLOAD START ===");
+      console.log("Field:", fieldKey, "Allow multiple:", allowMultiple);
+  
+      const [mediaPermission, cameraPermission] = await Promise.all([
+        requestMediaLibraryPermission(),
+        requestCameraPermission()
+      ]);
+  
       Alert.alert(
         'Select Media',
-        'Choose how to add media',
+        'Choose how to add your files',
         [
           {
             text: 'Take Photo',
             onPress: async () => {
               try {
+                if (!cameraPermission) {
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Permission Required',
+                    text2: 'Camera access needed',
+                    position: 'top',
+                  });
+                  return;
+                }
+  
                 const photo = await takePhoto();
                 console.log("Photo taken:", photo);
+                
                 if (photo && webViewRef.current) {
-                  const message = JSON.stringify({
-                    type: 'MEDIA_SELECTED',
-                    fieldKey: fieldKey,
-                    media: [photo]
-                  });
-                  console.log("Sending photo to WebView:", message);
-                  webViewRef.current.postMessage(message);
+                  try {
+                    const base64 = await FileSystem.readAsStringAsync(photo.uri, {
+                      encoding: FileSystem.EncodingType.Base64,
+                    });
+                    
+                    const message = {
+                      type: 'MEDIA_SELECTED',
+                      fieldKey: fieldKey,
+                      media: [{
+                        name: photo.name,
+                        size: photo.size || 0,
+                        type: photo.mimeType || 'image/jpeg',
+                        url: `data:${photo.mimeType || 'image/jpeg'};base64,${base64}`,
+                        storage: 'base64'
+                      }]
+                    };
+                    
+                    console.log("Sending photo message:", message);
+                    webViewRef.current.postMessage(JSON.stringify(message));
+                    
+                    Toast.show({
+                      type: 'success',
+                      text1: 'Success',
+                      text2: 'Photo added',
+                      position: 'top',
+                    });
+                  } catch (error) {
+                    console.error("Error processing photo:", error);
+                    Toast.show({
+                      type: 'error',
+                      text1: 'Error',
+                      text2: 'Failed to process photo',
+                      position: 'top',
+                    });
+                  }
                 }
               } catch (error) {
                 console.error("Error taking photo:", error);
@@ -143,67 +188,189 @@ function EditSubmissionScreen(): React.JSX.Element {
                   text1: 'Error',
                   text2: 'Failed to take photo',
                   position: 'top',
-                  visibilityTime: 3000,
                 });
               }
             },
           },
           {
-            text: 'Choose from Gallery',
+            text: 'Photos & Videos',
             onPress: async () => {
               try {
-                const images = await pickImage({ allowsMultipleSelection: allowMultiple });
-                console.log("Images selected:", images);
-                if (images && images.length > 0 && webViewRef.current) {
-                  const message = JSON.stringify({
-                    type: 'MEDIA_SELECTED',
-                    fieldKey: fieldKey,
-                    media: images
+                if (!mediaPermission) {
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Permission Required',
+                    text2: 'Media library access needed',
+                    position: 'top',
                   });
-                  console.log("Sending images to WebView:", message);
-                  webViewRef.current.postMessage(message);
+                  return;
+                }
+  
+                const media = await pickMedia({ allowsMultipleSelection: allowMultiple });
+                console.log("Media selected:", media?.length);
+                
+                if (media && media.length > 0 && webViewRef.current) {
+                  try {
+                    const processedMedia = await Promise.all(
+                      media.map(async (item) => {
+                        try {
+                          if (item.mimeType?.startsWith('image/')) {
+                            const base64 = await FileSystem.readAsStringAsync(item.uri, {
+                              encoding: FileSystem.EncodingType.Base64,
+                            });
+                            return {
+                              name: item.name,
+                              size: item.size || 0,
+                              type: item.mimeType,
+                              url: `data:${item.mimeType};base64,${base64}`,
+                              storage: 'base64'
+                            };
+                          }
+                          // For videos, keep as URI
+                          return {
+                            name: item.name,
+                            size: item.size || 0,
+                            type: item.mimeType,
+                            url: item.uri,
+                            storage: 'url'
+                          };
+                        } catch (error) {
+                          console.error("Error processing item:", error);
+                          return {
+                            name: item.name,
+                            size: item.size || 0,
+                            type: item.mimeType,
+                            url: item.uri,
+                            storage: 'url'
+                          };
+                        }
+                      })
+                    );
+                    
+                    const message = {
+                      type: 'MEDIA_SELECTED',
+                      fieldKey: fieldKey,
+                      media: processedMedia
+                    };
+                    
+                    console.log("Sending media message:", message);
+                    webViewRef.current.postMessage(JSON.stringify(message));
+                    
+                    Toast.show({
+                      type: 'success',
+                      text1: 'Success',
+                      text2: `${processedMedia.length} file(s) added`,
+                      position: 'top',
+                    });
+                  } catch (error) {
+                    console.error("Error processing media:", error);
+                    Toast.show({
+                      type: 'error',
+                      text1: 'Error',
+                      text2: 'Failed to process media',
+                      position: 'top',
+                    });
+                  }
                 }
               } catch (error) {
-                console.error("Error picking images:", error);
+                console.error("Error picking media:", error);
                 Toast.show({
                   type: 'error',
                   text1: 'Error',
-                  text2: 'Failed to select images',
+                  text2: 'Failed to select media',
                   position: 'top',
-                  visibilityTime: 3000,
                 });
               }
             },
           },
           {
-            text: 'Choose Video',
+            text: 'Documents',
             onPress: async () => {
               try {
-                const video = await pickVideo();
-                console.log("Video selected:", video);
-                if (video && webViewRef.current) {
-                  const message = JSON.stringify({
-                    type: 'MEDIA_SELECTED',
-                    fieldKey: fieldKey,
-                    media: [video]
-                  });
-                  console.log("Sending video to WebView:", message);
-                  webViewRef.current.postMessage(message);
+                const documents = await pickDocument({ 
+                  allowMultiple: allowMultiple,
+                  type: '*/*'
+                });
+                console.log("Documents selected:", documents?.length);
+                
+                if (documents && documents.length > 0 && webViewRef.current) {
+                  try {
+                    const processedDocs = await Promise.all(
+                      documents.map(async (doc) => {
+                        try {
+                          const maxSize = 5 * 1024 * 1024;
+                          
+                          if (doc.size && doc.size < maxSize) {
+                            const base64 = await FileSystem.readAsStringAsync(doc.uri, {
+                              encoding: FileSystem.EncodingType.Base64,
+                            });
+                            return {
+                              name: doc.name,
+                              size: doc.size,
+                              type: doc.mimeType,
+                              url: `data:${doc.mimeType};base64,${base64}`,
+                              storage: 'base64'
+                            };
+                          }
+                          return {
+                            name: doc.name,
+                            size: doc.size,
+                            type: doc.mimeType,
+                            url: doc.uri,
+                            storage: 'url'
+                          };
+                        } catch (error) {
+                          console.error("Error processing doc:", error);
+                          return {
+                            name: doc.name,
+                            size: doc.size,
+                            type: doc.mimeType,
+                            url: doc.uri,
+                            storage: 'url'
+                          };
+                        }
+                      })
+                    );
+                    
+                    const message = {
+                      type: 'MEDIA_SELECTED',
+                      fieldKey: fieldKey,
+                      media: processedDocs
+                    };
+                    
+                    console.log("Sending documents message:", message);
+                    webViewRef.current.postMessage(JSON.stringify(message));
+                    
+                    Toast.show({
+                      type: 'success',
+                      text1: 'Success',
+                      text2: `${processedDocs.length} document(s) added`,
+                      position: 'top',
+                    });
+                  } catch (error) {
+                    console.error("Error processing documents:", error);
+                    Toast.show({
+                      type: 'error',
+                      text1: 'Error',
+                      text2: 'Failed to process documents',
+                      position: 'top',
+                    });
+                  }
                 }
               } catch (error) {
-                console.error("Error picking video:", error);
+                console.error("Error picking documents:", error);
                 Toast.show({
                   type: 'error',
                   text1: 'Error',
-                  text2: 'Failed to select video',
+                  text2: 'Failed to select documents',
                   position: 'top',
-                  visibilityTime: 3000,
                 });
               }
             },
           },
           { text: 'Cancel', style: 'cancel' },
-        ]
+        ],
+        { cancelable: true }
       );
     } catch (error) {
       console.error('Error in handleMediaUpload:', error);
@@ -212,10 +379,9 @@ function EditSubmissionScreen(): React.JSX.Element {
         text1: 'Error',
         text2: 'Failed to open media picker',
         position: 'top',
-        visibilityTime: 3000,
       });
     }
-  }, [takePhoto, pickImage, pickVideo]);
+  }, [takePhoto, pickMedia, pickDocument, requestMediaLibraryPermission, requestCameraPermission]);
   // Initial network check
   useEffect(() => {
     let mounted = true;
@@ -620,6 +786,7 @@ function EditSubmissionScreen(): React.JSX.Element {
             handleMediaUpload(message.fieldKey, message.allowMultiple);
             break;
 
+
           default:
             console.log("Unknown message:", message.type);
         }
@@ -627,7 +794,7 @@ function EditSubmissionScreen(): React.JSX.Element {
         console.error("Failed to parse WebView message:", err, "Data:", event.nativeEvent.data);
       }
     },
-    [handleFormSubmission, t, handleMediaUpload]
+    [handleFormSubmission, t]
   );
   const formHtml = useMemo(() => {
       if (!parsedForm) {
@@ -990,147 +1157,6 @@ function EditSubmissionScreen(): React.JSX.Element {
               margin: 5px 0;
             }
           </style>
-          <script>
-    let formInstance;
-    document.addEventListener('click', function(e) {
-      const target = e.target;
-      
-      // Check if clicking on file input, button, or label
-      let fileInput = null;
-      let componentElement = null;
-      
-      if (target.matches('input[type="file"]')) {
-        fileInput = target;
-        componentElement = target.closest('.formio-component-file');
-      } else if (target.matches('button') && target.closest('.formio-component-file')) {
-        componentElement = target.closest('.formio-component-file');
-        fileInput = componentElement.querySelector('input[type="file"]');
-      } else if (target.closest('label')) {
-        const label = target.closest('label');
-        fileInput = label.querySelector('input[type="file"]') || document.getElementById(label.getAttribute('for'));
-        if (fileInput) {
-          componentElement = fileInput.closest('.formio-component-file');
-        }
-      } else if (target.closest('.formio-component-file')) {
-        componentElement = target.closest('.formio-component-file');
-        fileInput = componentElement.querySelector('input[type="file"]');
-      }
-      
-      if (fileInput && componentElement) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        
-        // Try multiple ways to get the field key
-        let fieldKey = fileInput.name || fileInput.id || fileInput.getAttribute('data-key');
-        
-        // If still no key, try to get it from the component element's ref attribute
-        if (!fieldKey && componentElement) {
-          fieldKey = componentElement.getAttribute('ref') || 
-                     componentElement.getAttribute('data-component-key') ||
-                     componentElement.id;
-        }
-        
-        // If still no key, try to find it from FormIO's component structure
-        if (!fieldKey && formInstance) {
-          const components = formInstance.components;
-          for (let comp of components) {
-            if (comp.element === componentElement || componentElement.contains(comp.element)) {
-              fieldKey = comp.component.key;
-              break;
-            }
-          }
-        }
-        
-        const allowMultiple = fileInput.hasAttribute('multiple');
-        
-        console.log('File input clicked, requesting media for:', fieldKey, 'Element:', componentElement);
-        
-        if (fieldKey) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'REQUEST_MEDIA',
-            fieldKey: fieldKey,
-            allowMultiple: allowMultiple
-          }));
-        } else {
-          console.error('Could not determine field key for file input');
-        }
-        
-        return false;
-      }
-    }, true);
-    
-    // Handle messages from React Native
-    document.addEventListener('message', function(event) {
-      handleMediaMessage(event.data);
-    });
-    
-    window.addEventListener('message', function(event) {
-      handleMediaMessage(event.data);
-    });
-    
-    function handleMediaMessage(data) {
-      try {
-        const message = typeof data === 'string' ? JSON.parse(data) : data;
-        
-        if (message.type === 'MEDIA_SELECTED') {
-          const fieldKey = message.fieldKey;
-          const media = message.media;
-          
-          console.log('Media received for field:', fieldKey, media);
-          
-          if (!formInstance) {
-            console.error('Form instance not available');
-            return;
-          }
-          
-          let component = formInstance.getComponent(fieldKey);
-          
-          if (!component) {
-           
-            let input = document.querySelector(\`input[name="\${fieldKey}"], input#\${fieldKey}\`);
-            if (input) {
-              const componentEl = input.closest('.formio-component');
-              if (componentEl) {
-                const componentKey = componentEl.getAttribute('ref');
-                component = formInstance.getComponent(componentKey);
-              }
-            }
-          }
-          
-          if (component && media && media.length > 0) {
-            const formioFiles = media.map(item => ({
-              name: item.name || 'file',
-              size: item.size || 0,
-              type: item.type || 'application/octet-stream',
-              url: item.uri,
-              uri: item.uri,
-              storage: 'url',
-              originalData: item
-            }));
-            
-            console.log('Setting files on component:', formioFiles);
-            
-            if (component.component.multiple) {
-              const currentValue = component.getValue() || [];
-              component.setValue([...currentValue, ...formioFiles]);
-            } else {
-              component.setValue(formioFiles[0]);
-            }
-            
-            // Trigger change event
-            component.triggerChange();
-            
-            console.log('Media successfully added to field:', fieldKey);
-          } else {
-            console.error('Component not found or no media:', fieldKey);
-          }
-        }
-      } catch (err) {
-        console.error('Error handling media message:', err);
-      }
-    }
-  </script>
         </head>
         <body>
           <div class="form-container">

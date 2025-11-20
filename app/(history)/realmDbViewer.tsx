@@ -147,7 +147,7 @@ const RealmDatabaseViewer = () => {
     const translatedSchema = getTranslatedFormSchema(formId);
     if (!translatedSchema) {
       const form = formsMap[formId];
-      return form?.title || form?.name || `${t('CommonPage.form')} #${formId}`;
+      return form?.title || form?.name ||`${t('Common.form_answers')}` || `${t('CommonPage.form')} #${formId}`;
     }
 
     return translatedSchema.title || translatedSchema.name || formsMap[formId]?.title || `${t('CommonPage.form')} #${formId}`;

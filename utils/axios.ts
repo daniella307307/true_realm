@@ -4,14 +4,12 @@ import NetInfo from "@react-native-community/netinfo";
 
 const env = process.env["EXPO_PUBLIC_API_ENV"] || "development";
 // Add fallback URL if environment variable is not set
-export const BASE_URL = process.env["EXPO_PUBLIC_API_URL"] || " http://192.168.1.81:9002";
+export const BASE_URL = process.env["EXPO_PUBLIC_API_URL"] || "https://afriquollect.heis.farm";
 console.log("[API] Base URL:", BASE_URL);
 
-// Create a flag to track authentication status
+
 let isAuthenticated = false;
 let isCheckingAuth = false;
-
-// Function to update authentication status - call this from useAuth
 export const setAuthenticationStatus = (status: boolean) => {
   isAuthenticated = status;
   console.log("[API] Authentication status updated:", isAuthenticated);
@@ -44,13 +42,11 @@ const baseInstance = axios.create({
     "Content-Type": "application/json",
     
   },
-  // Add timeout configuration for better mobile performance
-  timeout: 15000, // Increased timeout for better reliability
-  // Optimize HTTP requests
+  timeout: 30000,
   timeoutErrorMessage: "Request timed out. Please check your connection.",
 });
 
-// Debug logging function for API requests
+console.log("Full URL: ", baseInstance.defaults.baseURL);
 const logAPIRequest = (
   config: any,
   type: "REQUEST" | "RESPONSE" | "ERROR",
@@ -72,7 +68,7 @@ const logAPIRequest = (
     }
   } else if (type === "RESPONSE") {
     console.log("🔹 Status:", data?.status);
-    // console.log("🔹 Response data:", JSON.stringify(data?.data, null, 2));
+    console.log("🔹 Response data:", JSON.stringify(data?.data, null, 2));
   } else if (type === "ERROR") {
     console.log("[API] Error status:", data?.response?.status);
     console.log("[API] Error details:", data?.response?.data);

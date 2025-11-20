@@ -462,9 +462,6 @@ export const syncPageToLocal = async (
   }
 };
 
-// ============================================================================
-// INITIAL SYNC (FIRST 100 SUBMISSIONS)
-// ============================================================================
 
 /**
  * Perform initial sync of first 100 submissions
@@ -1401,12 +1398,13 @@ const handleApiError = async (create: any, submission: any, error: any, t: TFunc
 
   if (isUnauthorized) {
     showToast("error", t("Alerts.error.title"), t("Alerts.error.unauthorized"));
+    router.push("/(home)/home");
     return;
   }
 
-  // await create("SurveySubmissions", toSQLiteRow(submission));
-  // showToast("info", t("Alerts.info.saved_locally"), t("Alerts.submitting.offline"));
-  router.push("/(home)/home");
+  await create("SurveySubmissions", toSQLiteRow(submission));
+  showToast("info", t("Alerts.info.saved_locally"), t("Alerts.submitting.offline"));
+  router.push("/(history)/realmDbViewer");
 };
 const handleOfflineSubmission = async (create: any, submission: any, t: TFunction) => {
   await create("SurveySubmissions", toSQLiteRow(submission));

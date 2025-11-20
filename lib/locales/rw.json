@@ -510,6 +510,7 @@
     "logging_in": "Kwinjira...",
     "login_success": "Kwinjira byagenze neza",
     "login_failed": "Kwinjira byanze",
+    "logout_failed":"Logout failed",
     "updating_password": "Guhindura ijambo ry'ibanga...",
     "password_update_success": "Ijambo ry'ibanga ryahinduwe neza",
     "password_update_failed": "Guhindura ijambo ry'ibanga byanze",
