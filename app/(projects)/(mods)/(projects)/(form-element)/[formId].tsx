@@ -16,7 +16,7 @@ import { saveSurveySubmissionToAPI } from "~/services/survey-submission";
 import { MediaPickerButton } from "~/components/ui/MediaPickerButton";
 import { useMediaPicker, MediaResult } from "~/lib/hooks/useMediaPicker";
 import formSchemaWithTranslations from "~/components/utils-form/formschema";
-function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any {
+function convertToWizardForm(formSchema: any, questionsPerPage: number = 5,t:any): any {
   if (!formSchema || typeof formSchema !== 'object') {
     console.warn('Invalid form schema provided to convertToWizardForm');
     return formSchema;
@@ -55,8 +55,8 @@ function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any
 
     if (pageComponents.length > 0) {
       pages.push({
-        title: `Page ${pageNumber} of ${totalPages}`,
-        label: `Page ${pageNumber} of ${totalPages}`,
+        title: `Page ${pageNumber}  ${t("ReviewPage.of")} ${totalPages}`,
+        label: `Page ${pageNumber}  ${t("ReviewPage.of")} ${totalPages}`,
         type: 'panel',
         key: `page${pageNumber}`,
         components: pageComponents,
@@ -629,7 +629,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
       }
 
       console.log('Form parsed successfully, converting to wizard...');
-      const wizardForm = convertToWizardForm(translatedForm, 5);
+      const wizardForm = convertToWizardForm(translatedForm, 5,t);
       console.log('Wizard conversion complete', wizardForm);
 
       return wizardForm;
@@ -926,6 +926,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
         reviewTitle: t("ReviewPage.title") || "Review Your Answers",
         reviewSubtitle: t("ReviewPage.description") || "Please review your answers carefully before submitting. You can go back to make changes if needed.",
         pageOf: t("ReviewPage.pageOf") || "Page {page} of {total}",
+        page:t("ReviewPage.page") || "Page",
         notProvided: t("ReviewPage.notProvided") || "Not provided",
         yes: t("ReviewPage.yes") || "Yes",
         no: t("ReviewPage.no") || "No"
