@@ -790,12 +790,10 @@ export const transformApiSurveySubmissions = (apiResponses: any[]) => {
       sync_type: "survey_submissions",
       created_by_user_id: response.user_id || null,
     };
-
-    // Return SQLite row format with correct column names
     return {
       _id: `remote-${response.id}`,
       id: response.id,
-      answers: JSON.stringify(answersData), // ✅ Use 'answers' column
+      answers: JSON.stringify(answersData),
       form_data: JSON.stringify(formData),
       location: JSON.stringify(locationData),
       sync_data: JSON.stringify(syncData),
@@ -1150,13 +1148,13 @@ export const syncPendingSubmissions = async (
           visibilityTime: 4000,
         });
       } else if (failed > 0) {
-        Toast.show({
-          type: "error",
-          text1: t("Alerts.error.title"),
-          text2: `${failed} Alerts.sync.failed`,
-          position: "top",
-          visibilityTime: 4000,
-        });
+       Toast.show({
+  type: "error",
+  text1: t("Alerts.error.title"),
+  text2: t("Alerts.error.sync.failed", { failed }),
+  position: "top",
+  visibilityTime: 4000,
+});
       }
     }
 

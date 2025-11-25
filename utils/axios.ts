@@ -3,7 +3,6 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import NetInfo from "@react-native-community/netinfo";
 
 const env = process.env["EXPO_PUBLIC_API_ENV"] || "development";
-// Add fallback URL if environment variable is not set
 export const BASE_URL = process.env["EXPO_PUBLIC_API_URL"] || "https://afriquollect.heis.farm";
 console.log("[API] Base URL:", BASE_URL);
 
@@ -15,7 +14,6 @@ export const setAuthenticationStatus = (status: boolean) => {
   console.log("[API] Authentication status updated:", isAuthenticated);
 };
 
-// Function to clear authentication tokens
 export const clearAuthTokens = async () => {
   try {
     await AsyncStorage.removeItem("tknToken");
@@ -45,8 +43,6 @@ const baseInstance = axios.create({
   timeout: 30000,
   timeoutErrorMessage: "Request timed out. Please check your connection.",
 });
-
-console.log("Full URL: ", baseInstance.defaults.baseURL);
 const logAPIRequest = (
   config: any,
   type: "REQUEST" | "RESPONSE" | "ERROR",

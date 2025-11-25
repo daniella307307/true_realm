@@ -17,7 +17,7 @@ import { User } from "~/types";
 import { TabBarIcon } from "~/components/ui/tabbar-icon";
 
 // Local User type (from SQLite)
-interface LocalUser {
+export interface LocalUser {
   id: number;
   firstName: string;
   lastName: string;

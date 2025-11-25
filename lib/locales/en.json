@@ -669,6 +669,7 @@
     "failed_to_sync":"Failed to sync",
     "sync_complete":"Sync Information",
     "info":"Info",
+    "local":"local",
     "showing":"showing",
     "error_occurred":"An error occured",
     "synced":"Synced",
