@@ -41,15 +41,16 @@ export const CREATE_SURVEY_SUBMISSIONS_TABLE = `
   CREATE INDEX IF NOT EXISTS idx_survey_remote_id ON SurveySubmissions(id);
 `;
 export interface PaginationMetadata {
+  hasNext: boolean;
   currentPage: number;
   totalPages: number;
   totalItems: number;
   itemsPerPage: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
+  hasPrev: boolean;
 }
 
 export interface PaginatedResponse<T> {
+  submissions: any;
   data: T[];
   pagination: PaginationMetadata;
 }
@@ -141,11 +142,11 @@ const markPageAsCached = async (
 
 export const getPendingSubmissionsCount = async (
   query: any,
-  userId: number
+  userId: string,
 ): Promise<number> => {
   try {
     const result = await query(
-      `SELECT COUNT(*) as count FROM SurveySubmissions WHERE sync_status = 0 AND created_by_user_id = ?`,
+      `SELECT COUNT(*) as count FROM SurveySubmissions WHERE user_id= ?`,
       [userId]
     );
     return result[0]?.count || 0;
@@ -160,6 +161,8 @@ import { baseInstance } from "~/utils/axios";
 import Toast from "react-native-toast-message";
 import { router } from "expo-router";
 import { TFunction } from "i18next";
+import { IFormsApiResponse } from "./project";
+import { ActivityIndicator, Alert } from "react-native";
 
 interface FormField {
   key: string;
@@ -216,68 +219,101 @@ const prepareApiPayload = (submission: SurveySubmission, formId: string) => {
 };
 export const fetchSubmissionsFromRemote = async (
   page: number = 1,
-  limit: number = ITEMS_PER_PAGE,
+  limit: number = 100,
   userId?: string,
   isLoggedIn?: boolean,
   formId?: string
 ): Promise<PaginatedResponse<any>> => {
   if (!isLoggedIn) {
+    console.log('[fetchSubmissionsFromRemote] User not logged in, returning empty result');
     return {
+      submissions: [],
       data: [],
       pagination: {
         currentPage: page,
         totalPages: 0,
         totalItems: 0,
         itemsPerPage: limit,
-        hasNextPage: false,
-        hasPreviousPage: false,
+        hasNext: false,
+        hasPrev: false,
       },
     };
   }
 
   try {
-    console.log(`Fetching page ${page} with ${limit} items${formId ? ` for form ${formId}` : ''}...`);
-    
-    const params: any = {
-      page,
-      limit
-    };
-
-    // Add formId to params if provided
-    if (formId) {
-      params.formId = formId;
+    console.log(`[fetchSubmissionsFromRemote] Fetching page ${page} with ${limit} items${formId ? ` for form ${formId}` : ''}...`);
+    const online = isOnline();
+    if (!online) {
+      console.log('[fetchSubmissionsFromRemote] Device is offline');
+      return {
+        submissions: [],
+        data: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: limit,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
     }
 
-    const res = await baseInstance.get('/submissions/filter', {
-      params,
+    // Build query parameters - try GET request first
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
     });
 
-    const submissions = Array.isArray(res.data?.data?.submissions)
-      ? res.data.data.submissions
-      : [];
 
-    // Extract pagination metadata from API response
+    if (formId) {
+      queryParams.append('form', formId);
+    }
+
+    let res;
+    let submissions = [];
+    let paginationData;
+
+    try {
+      console.log('[fetchSubmissionsFromRemote] Trying GET /submissions/filter');
+      const filterParams = {
+        page,
+        limit,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+        flattenEditGrid: false,
+      };
+     
+      res = await baseInstance.post(`/submissions/filter`, {params: filterParams}, {timeout:10000});
+
+      submissions = res.data?.submissions || [];
+      paginationData = res.data?.data?.pagination;
+
+    } catch (filterError) {
+      console.log('[fetchSubmissionsFromRemote] Filter endpoint failed, trying GET /submissions');
+    }
+
     const pagination: PaginationMetadata = {
-      currentPage: res.data?.data?.pagination?.currentPage || page,
-      totalPages: res.data?.data?.pagination?.totalPages || 1,
-      totalItems: res.data?.data?.pagination?.totalItems || submissions.length,
+      currentPage: paginationData?.currentPage || paginationData?.current || page,
+      totalPages: paginationData?.totalPages || paginationData?.total || 1,
+      totalItems: paginationData?.totalItems || paginationData?.total || submissions.length,
       itemsPerPage: limit,
-      hasNextPage: res.data?.data?.pagination?.hasNextPage || false,
-      hasPreviousPage: res.data?.data?.pagination?.hasPreviousPage || false,
+      hasNext: paginationData?.hasNext ?? false,
+      hasPrev: paginationData?.hasPrev ?? false,
     };
 
-    console.log(`Received ${submissions.length} submissions for page ${page}`);
-    console.log('Pagination:', pagination);
-
-    // Transform submissions
+    console.log(`[fetchSubmissionsFromRemote] Received ${submissions.length} submissions for page ${page}`);
+    console.log('[fetchSubmissionsFromRemote] Pagination:', pagination);
     const transformed = submissions.map((sub: any) => {
       const data = sub.data ?? {};
       const form = sub.form ?? {};
       const submitter = sub.submitter ?? {};
 
       const formData = {
-        survey_id: form._id ?? null,
-        user_id: submitter.id ?? null,
+        survey_id: form._id ?? form.id ?? null,
+        user_id: submitter.id ?? submitter._id ?? null,
         table_name: form.title ?? null,
         project_module_id: null,
         source_module_id: null,
@@ -293,20 +329,20 @@ export const fetchSubmissionsFromRemote = async (
         sync_status: true,
         sync_reason: 'From API',
         sync_attempts: 1,
-        last_sync_attempt: new Date(sub.updatedAt ?? sub.createdAt).toISOString(),
+        last_sync_attempt: new Date(sub.updatedAt ?? sub.createdAt ?? Date.now()).toISOString(),
         submitted_at: new Date(sub.createdAt ?? Date.now()).toISOString(),
         sync_type: 'survey_submissions',
-        created_by_user_id: submitter.id ?? null,
+        created_by_user_id: submitter.id ?? submitter._id ?? null,
       };
 
       return {
-        _id: `remote-${sub._id}`,
-        id: sub._id,
+        _id: sub._id,
+        id: sub._id ?? sub.id,
         answers: JSON.stringify(data),
         form_data: JSON.stringify(formData),
         location: JSON.stringify({}),
         sync_data: JSON.stringify(syncData),
-        created_by_user_id: submitter.id ?? null,
+        created_by_user_id: submitter.id ?? submitter._id ?? null,
         sync_status: 1,
         sync_reason: 'From API',
         sync_attempts: 1,
@@ -338,55 +374,118 @@ export const fetchSubmissionsFromRemote = async (
     });
 
     return {
+      submissions: transformed,
       data: transformed,
       pagination,
     };
-  } catch (error) {
-    console.error('Failed to fetch paginated submissions:', error);
+
+  } catch (error: any) {
+    console.error('[fetchSubmissionsFromRemote] Failed to fetch submissions:', error?.message);
+    console.error('[fetchSubmissionsFromRemote] Error details:', {
+      status: error?.response?.status,
+      statusText: error?.response?.statusText,
+      data: error?.response?.data,
+      isNetworkError: error?.message === 'Network Error',
+    });
+
     return {
       data: [],
+      submissions: [],
       pagination: {
         currentPage: page,
         totalPages: 0,
         totalItems: 0,
         itemsPerPage: limit,
-        hasNextPage: false,
-        hasPreviousPage: false,
+        hasNext: false,
+        hasPrev: false,
       },
     };
   }
 };
 
-// Helper function to fetch all submissions for a specific form (up to 100)
-export const fetchFormSubmissions = async (
-  formId: string,
-  isLoggedIn: boolean,
-  userId?: string
-): Promise<any[]> => {
-  const allSubmissions: any[] = [];
-  const limit = 100; // Fetch 100 per request
-  let page = 1;
-  let hasMore = true;
+// Enhanced performInitialSync with better error handling
+export const performInitialSync = async (
+  create: any,
+  update: any,
+  userId?: string,
+  isLoggedIn?: boolean
+): Promise<{ success: boolean; itemsSynced: number; error?: string }> => {
+  try {
+    console.log('[performInitialSync] Starting initial sync...');
 
-  while (hasMore && allSubmissions.length < 100) {
-    const response = await fetchSubmissionsFromRemote(
-      page,
-      limit,
-      userId,
-      isLoggedIn,
-      formId
-    );
+    // Check if online
+    const online = isOnline();
+    if (!online) {
+      console.log('[performInitialSync] Device offline, skipping sync');
+      return {
+        success: false,
+        itemsSynced: 0,
+        error: 'Device is offline',
+      };
+    }
 
-    allSubmissions.push(...response.data);
-    hasMore = response.pagination.hasNextPage && allSubmissions.length < 100;
-    page++;
+    const result = await syncPageToLocal(create, update, 1, userId, isLoggedIn);
+
+    if (result.success) {
+      console.log(`[performInitialSync] Successfully synced ${result.itemsSynced} items`);
+      return {
+        success: true,
+        itemsSynced: result.itemsSynced,
+      };
+    }
+
+    return {
+      success: false,
+      itemsSynced: 0,
+      error: 'Sync failed',
+    };
+  } catch (error: any) {
+    console.error('[performInitialSync] Failed:', error?.message);
+    return {
+      success: false,
+      itemsSynced: 0,
+      error: error?.message || 'Unknown error',
+    };
   }
-  return allSubmissions.slice(0, 100);
 };
 
-/**
- * Sync a specific page of submissions to local database
- */
+// Helper function to verify API connectivity
+export const verifySubmissionsEndpoint = async (): Promise<{
+  isAvailable: boolean;
+  workingEndpoint?: string;
+  error?: string;
+}> => {
+  try {
+    const online = isOnline();
+    if (!online) {
+      return { isAvailable: false, error: 'Device offline' };
+    }
+
+    // Test filter endpoint
+    try {
+      await baseInstance.post('/submissions/filter', {
+        page: 1,
+        limit: 1,
+      }, { timeout: 5000 });
+      return { isAvailable: true, workingEndpoint: '/submissions/filter' };
+    } catch (e) {
+      console.log('[verifySubmissionsEndpoint] Filter endpoint unavailable');
+    }
+
+    
+    try {
+      await baseInstance.get('/submissions/filter?page=1&limit=1', { timeout: 5000 });
+      return { isAvailable: true, workingEndpoint: '/submissions/filter' };
+    } catch (e) {
+      console.log('[verifySubmissionsEndpoint] GET endpoint unavailable');
+    }
+
+    return { isAvailable: false, error: 'No working endpoint found' };
+  } catch (error: any) {
+    return { isAvailable: false, error: error?.message };
+  }
+};
+
 export const syncPageToLocal = async (
   create: any,
   update: any,
@@ -396,8 +495,6 @@ export const syncPageToLocal = async (
 ): Promise<{ success: boolean; itemsSynced: number; pagination: PaginationMetadata }> => {
   try {
     console.log(`Syncing page ${page} to local database...`);
-
-    // Fetch the page from API
     const response = await fetchSubmissionsFromRemote(
       page,
       ITEMS_PER_PAGE,
@@ -418,11 +515,13 @@ export const syncPageToLocal = async (
     let synced = 0;
     for (const submission of response.data) {
       try {
+        submission.userId = userId;
         // Check if submission already exists
         const exists = await update('SurveySubmissions', submission._id, submission);
         
         if (!exists) {
           // Create new if doesn't exist
+          submission.userId = userId;
           await create('SurveySubmissions', submission);
         }
         
@@ -455,45 +554,9 @@ export const syncPageToLocal = async (
         totalPages: 0,
         totalItems: 0,
         itemsPerPage: ITEMS_PER_PAGE,
-        hasNextPage: false,
-        hasPreviousPage: false,
+        hasNext: false,
+        hasPrev: false,
       },
-    };
-  }
-};
-
-
-/**
- * Perform initial sync of first 100 submissions
- */
-export const performInitialSync = async (
-  create: any,
-  update: any,
-  userId?: string,
-  isLoggedIn?: boolean
-): Promise<{ success: boolean; itemsSynced: number }> => {
-  try {
-    console.log('Starting initial sync of first 100 submissions...');
-
-    const result = await syncPageToLocal(create, update, 1, userId, isLoggedIn);
-
-    if (result.success) {
-    
-      return {
-        success: true,
-        itemsSynced: result.itemsSynced,
-      };
-    }
-
-    return {
-      success: false,
-      itemsSynced: 0,
-    };
-  } catch (error) {
-    console.error('Initial sync failed:', error);
-    return {
-      success: false,
-      itemsSynced: 0,
     };
   }
 };
@@ -536,7 +599,7 @@ export const loadNextPage = async (
     const nextPage = metadata.currentPage + 1;
 
     // Check if next page exists
-    if (!metadata.hasNextPage) {
+    if (!metadata.hasNext) {
       console.log('No more pages to load');
       return {
         success: true,
@@ -724,7 +787,7 @@ export const parseSQLiteRow = (row: any): SurveySubmission => {
 
   return {
     ...row,
-    data: safeParse(row.answers), // ✅ Map answers to data
+    data: safeParse(row.answers), 
     form_data: safeParse(row.form_data),
     location: safeParse(row.location),
     sync_data: safeParse(row.sync_data),
@@ -733,10 +796,6 @@ export const parseSQLiteRow = (row: any): SurveySubmission => {
   };
 };
 
-/**
- * Transform API responses to SQLite row format (not SurveySubmission format)
- * This ensures column names match the database schema
- */
 export const transformApiSurveySubmissions = (apiResponses: any[]) => {
   return apiResponses.map((response) => {
     const jsonData = typeof response.json === "string" 
@@ -807,7 +866,6 @@ export const transformApiSurveySubmissions = (apiResponses: any[]) => {
       is_modified: 0,
       needs_update_sync: 0,
       last_modified_at: null,
-      // Other schema columns
       table_name: jsonData.table_name || null,
       name: null,
       name_kin: null,
@@ -1039,6 +1097,7 @@ export const syncModifiedSubmissions = async (
 export const syncPendingSubmissions = async (
   getAll: any,
   update: any,
+  query:any,
   t?: TFunction,
   userId?: number
 ): Promise<{ synced: number; failed: number; errors: string[] }> => {
@@ -1098,6 +1157,29 @@ export const syncPendingSubmissions = async (
         console.log("Syncing to:", apiUrl);
 
         const response = await baseInstance.post(apiUrl, apiPayload);
+        if(response.status === 401 || response.status === 403){
+          Toast.show({
+            text1: t ? t("Alerts.error.auth.title") : "Authentication Error",
+            text2: t ? t("Alerts.error.auth.sync") : "Failed to sync due to authentication issues.",
+            type: "error",
+            position: "top",
+            visibilityTime: 4000,
+          });
+
+          // Alert.alert(
+          //   "Do you want to delete your submissions or keep them but keep in mind that you won't be able to sync them?",
+          //   "You can delete them and try to sync again later.",
+          //    <Text> delete</Text>
+          //    <Text>Cancel </Text>
+          // )
+
+          await query(`DELETE FROM SurveySubmissions WHERE _id = ?`, [submission._id]);
+          console.error("Authentication error during sync:", response.data);
+          return { synced: 0, failed: 0, errors: ["Authentication error"] };
+        }
+        if (response.status !== 200) {
+          continue;
+        }
         
         if (response.data?.submission?._id) {
           await update("SurveySubmissions", submission._id!, {
@@ -1174,6 +1256,7 @@ export const syncAllPendingChanges = async (
   getAll: any,
   update: any,
   create: any,
+  query: any,
   t?: TFunction,
   userId?: number
 ): Promise<{ 
@@ -1186,7 +1269,7 @@ export const syncAllPendingChanges = async (
   console.log("Starting complete sync of all pending changes...");
   
   try {
-    const isConnected = await isOnline();
+    const isConnected = isOnline();
     if (!isConnected) {
       console.log("Offline - skipping sync");
       if (t) {
@@ -1208,7 +1291,7 @@ export const syncAllPendingChanges = async (
     }
 
     // Sync new submissions first
-    const newResults = await syncPendingSubmissions(getAll, update, t, userId);
+    const newResults = await syncPendingSubmissions(getAll, update,query, t, userId);
     
     // Then sync modified submissions
     const updateResults = await syncModifiedSubmissions(getAll, update, t, userId);
@@ -1464,7 +1547,89 @@ const checkDuplicateSubmission = async (create: any, formData: Record<string, an
   });
 };
 
+// Helper: Create empty response
+function createEmptyResponse(page: number, limit: number): PaginatedResponse<any> {
+  return {
+    submissions: [],
+    data: [],
+    pagination: {
+      currentPage: page,
+      totalPages: 0,
+      totalItems: 0,
+      itemsPerPage: limit,
+      hasNext: false,
+      hasPrev: false,
+    },
+  };
+}
 
+
+function transformSubmission(sub: any): any {
+  const data = sub.data ?? {};
+  const form = sub.form ?? {};
+  const submitter = sub.submitter ?? sub.user ?? {};
+
+  const formData = {
+    survey_id: form._id ?? form.id ?? null,
+    user_id: submitter.id ?? submitter._id ?? null,
+    table_name: form.title ?? null,
+    project_module_id: null,
+    source_module_id: null,
+    project_id: null,
+    post_data: null,
+    izucode: null,
+    family: null,
+    form_status: sub.status ?? 'submitted',
+    cohorts: null,
+  };
+
+  const syncData = {
+    sync_status: true,
+    sync_reason: 'From API',
+    sync_attempts: 1,
+    last_sync_attempt: new Date(sub.updatedAt ?? sub.createdAt ?? Date.now()).toISOString(),
+    submitted_at: new Date(sub.createdAt ?? Date.now()).toISOString(),
+    sync_type: 'survey_submissions',
+    created_by_user_id: submitter.id ?? submitter._id ?? null,
+  };
+
+  return {
+    _id: `remote-${sub._id ?? sub.id}`,
+    id: sub._id ?? sub.id,
+    answers: JSON.stringify(data),
+    form_data: JSON.stringify(formData),
+    location: JSON.stringify({}),
+    sync_data: JSON.stringify(syncData),
+    created_by_user_id: submitter.id ?? submitter._id ?? null,
+    sync_status: 1,
+    sync_reason: 'From API',
+    sync_attempts: 1,
+    created_at: sub.createdAt ?? new Date().toISOString(),
+    updated_at: sub.updatedAt ?? new Date().toISOString(),
+    is_modified: 0,
+    needs_update_sync: 0,
+    last_modified_at: null,
+    table_name: null,
+    name: null,
+    name_kin: null,
+    slug: null,
+    json2: null,
+    post_data: null,
+    loads: null,
+    time_spent: null,
+    user_id: null,
+    is_primary: 0,
+    project_module_id: null,
+    source_module_id: null,
+    project_id: null,
+    survey_status: null,
+    fetch_data: null,
+    prev_id: null,
+    order_list: null,
+    survey_id: null,
+    sync_type: 'survey_submissions',
+  };
+}
 export const saveSurveySubmissionToAPI = async (
   create: any,
   formData: Record<string, any>,
@@ -1496,4 +1661,5 @@ export const saveSurveySubmissionToAPI = async (
     showToast("error", t("Alerts.error.title"), t("Alerts.error.submission.unexpected"));
   }
 };
+
 

@@ -68,7 +68,7 @@ function HomeScreen(): React.JSX.Element {
 
     const unsyncedSubmissions = await getAll(
       'SurveySubmissions',
-      'sync_status == false AND created_by_user_id == ?',
+      'sync_status == false OR is_modified = 1 AND created_by_user_id == ?',
       [user.id]
     );
     const syncedSubmissions = await getAll(
@@ -201,7 +201,7 @@ function HomeScreen(): React.JSX.Element {
       >
         <Animated.View style={{ opacity: fadeAnim }}>
           {/* Welcome Section */}
-          <View className="px-6 pt-4 pb-6">
+          <View className="px-6 pt-4">
             <Text className="text-3xl font-bold text-gray-900">
               {t("HomePage.title")} {user?.firstName}!
             </Text>
@@ -231,10 +231,10 @@ function HomeScreen(): React.JSX.Element {
 
           {/* Stats Overview */}
           {isDataLoaded && !isRefreshing && (
-            <View className="px-6 mb-6">
+            <View className="px-4 mb-4">
               {/* Primary Stats Row */}
               <View className="flex-row gap-3 mb-3">
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   onPress={() => handleNavigation("/(projects)/project")}
                   className="flex-1 bg-primary/10 p-5 rounded-2xl border border-blue-200 shadow-sm"
                   activeOpacity={0.8}
@@ -253,9 +253,9 @@ function HomeScreen(): React.JSX.Element {
                   <Text className="text-gray-600 text-4xl text-center font-bold">
                     {formsCount}
                   </Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   onPress={() => handleNavigation("/(history)/realmDbViewer")}
                   className="flex-1 bg-orange-200/10 p-5 rounded-2xl border border-orange-200 shadow-sm"
                   activeOpacity={0.8}
@@ -273,10 +273,10 @@ function HomeScreen(): React.JSX.Element {
                   <Text className="text-gray-600 text-4xl text-center font-bold">
                     {submissionsCount}
                   </Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
 
-              <View className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+              <View className="bg-white p-5 rounded-2xl  shadow-sm">
                 <View className="flex-1 justify-between  gap-y-4 mb-4">
                   <View>
                     <Text className="text-gray-900 text-lg font-bold">

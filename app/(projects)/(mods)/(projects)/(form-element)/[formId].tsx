@@ -16,6 +16,7 @@ import { saveSurveySubmissionToAPI } from "~/services/survey-submission";
 import { MediaPickerButton } from "~/components/ui/MediaPickerButton";
 import { useMediaPicker, MediaResult } from "~/lib/hooks/useMediaPicker";
 import formSchemaWithTranslations from "~/components/utils-form/formschema";
+import { Path } from "react-native-svg";
 function convertToWizardForm(formSchema: any, questionsPerPage: number = 5,t:any): any {
   if (!formSchema || typeof formSchema !== 'object') {
     console.warn('Invalid form schema provided to convertToWizardForm');
@@ -499,6 +500,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
         const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
         const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
         const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
+        const bootstrapIcons = `${FileSystem.cacheDirectory}bootstrap-icons.css`;
 
         const [jsInfo, cssInfo, bootstrapInfo] = await Promise.all([
           FileSystem.getInfoAsync(jsPath),
@@ -546,6 +548,11 @@ function ProjectFormElementScreen(): React.JSX.Element {
             path: bootstrapPath,
             name: "Bootstrap CSS"
           },
+          {
+            url:"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css",
+            path:bootstrapIcons,
+            name:"Bootstrap Icons"
+          }
         ];
 
         const results = await Promise.allSettled(
@@ -922,6 +929,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
       const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
       const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
       const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
+      const bootstrapIcons = `${FileSystem.cacheDirectory}bootstrap-icons.css`;
       const reviewTranslations = {
         reviewTitle: t("ReviewPage.title") || "Review Your Answers",
         reviewSubtitle: t("ReviewPage.description") || "Please review your answers carefully before submitting. You can go back to make changes if needed.",
@@ -980,7 +988,7 @@ function ProjectFormElementScreen(): React.JSX.Element {
         <title>Form</title>
         <link href="${cssPath}" rel="stylesheet" onerror="this.href='https://cdn.form.io/formiojs/formio.full.min.css'">
         <link href="${bootstrapPath}" rel="stylesheet" onerror="this.href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css'">
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        <link href="${bootstrapIcons} "onerror="this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css' rel="stylesheet">
         <style>
           :root {
             --primary-color: #00227c;
@@ -1553,6 +1561,20 @@ function ProjectFormElementScreen(): React.JSX.Element {
 
     const pages = {};
     components.forEach((comp, index) => {
+    if (comp.type === 'button' || comp.type === 'htmlelement') return;
+
+  const label = comp.label || comp.key;
+  const value = formData[comp.key];
+  if (comp.type === 'editgrid') {
+   html += ''
+  + '<div class="review-item">'
+    + '<div class="review-label">' + label + '</div>'
+    + '<div class="review-value">'
+      + renderEditGrid(value, comp)
+    + '</div>'
+  + '</div>';
+    return;
+  }
       const pageNum = Math.floor(index / 5) + 1;
       if (!pages[pageNum]) {
         pages[pageNum] = [];

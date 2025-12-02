@@ -25,6 +25,7 @@ import Toast from "react-native-toast-message";
 import { checkNetworkConnection } from "~/utils/networkHelpers";
 import * as FileSystem from "expo-file-system";
 import { useGetFormById } from "~/services/formElements";
+import { RefreshControl, ScrollView } from "react-native-gesture-handler";
 
 function convertToWizardForm(formSchema: any, questionsPerPage: number = 5): any {
   if (!formSchema || typeof formSchema !== 'object') {
@@ -1532,13 +1533,13 @@ function EditSubmissionScreen(): React.JSX.Element {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#00227c" />
-        {/* <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text> */}
+        <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text>
         {!isOnline && (
           // 
           <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
-            {/* <Text className="text-sm text-yellow-800 text-center">
-              You are currently offline. Some features may be unavailable until you reconnect.
-            </Text> */}
+            <Text className="text-sm text-yellow-800 text-center">
+              {t("FormElementPage.is_offline")}
+            </Text>
           </View>
         )}
       </View>
@@ -1564,7 +1565,7 @@ function EditSubmissionScreen(): React.JSX.Element {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <ScrollView className="flex-1 bg-background">
       <HeaderNavigation title={t("FormElementPage.title")} showLeft showRight />
       <WebView
         ref={webViewRef}
@@ -1608,7 +1609,7 @@ function EditSubmissionScreen(): React.JSX.Element {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 

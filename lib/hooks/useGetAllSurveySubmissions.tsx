@@ -11,13 +11,14 @@ import {
   fetchSubmissionsFromRemote,
   toSQLiteRow,
 } from "~/services/survey-submission";
+import { useGetAllForms } from "~/services/project";
 
 /**
  * Hook to get all survey submissions with auto-sync and database lock prevention
  */
 export const useGetAllSurveySubmissions = (forceSync: boolean = false) => {
   const { user, isLoggedIn } = useAuth({});
-  const { getAll, update, create, deleteAll } = useSQLite();
+  const { getAll, update, create, deleteAll,query } = useSQLite();
   const { t } = useTranslation();
   const [submissions, setSubmissions] = useState<SurveySubmission[]>([]);
   const [isOffline, setIsOffline] = useState(false);
@@ -156,8 +157,7 @@ export const useGetAllSurveySubmissions = (forceSync: boolean = false) => {
       if (online && isLoggedIn) {
         console.log("Fetching remote submissions...");
 
-        await syncPendingSubmissions(getAll, update, t, userId);
-
+        await syncPendingSubmissions(getAll, update, query, t, userId);
         const response = await fetchSubmissionsFromRemote(1, 100, userIdFilter,await isLoggedIn);
 
         if (response.data && response.data.length > 0) {
@@ -171,7 +171,6 @@ export const useGetAllSurveySubmissions = (forceSync: boolean = false) => {
       }
     } catch (error) {
       console.error("Error during sync:", error);
-      // Still try to load from local database on error
       await loadFromSQLite();
     } finally {
       operationLock.current = false;
@@ -227,7 +226,7 @@ export const useGetAllSurveySubmissions = (forceSync: boolean = false) => {
 
     try {
       // Sync pending submissions
-      const syncResult = await syncPendingSubmissions(getAll, update, t, userId);
+      const syncResult = await syncPendingSubmissions(getAll, update,query, t, userId);
       const response = await fetchSubmissionsFromRemote(1, 100, userIdFilter,await isLoggedIn);
       if (response.data && response.data.length > 0) {
         await saveRemoteDataToSQLite(response.data);

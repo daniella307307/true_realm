@@ -523,7 +523,10 @@
     "password_already_changed": "Ijambobanga ryarahindutse",
     "session_expired_title": "Igihe cyarangiye",
     "session_expired_message": "Igihe cyawe cyarangiye cyangwa nticyemewe. Nyamuneka wongere winjire kugira ngo ukomeze.",
-    "go_to_login": "Jya ku Kwinjira"
+    "go_to_login": "Jya ku Kwinjira",
+    "unknown_error":"Ikosa ritasobanutse ryabayeho . Mwongere mugerageze mu kanya",
+    "invalid_credentials":"Imeli cg Ijambabanga byatanze ntago ari byo",
+    "server_error":"Seriveri yagize ikibazo. Mwongere mugeregeze mu kanya"
   },
   "Months": {
     "january": "Mutarama",

@@ -247,6 +247,7 @@
     "next": "Next",
     "previous": "Previous",
     "page_of": "Page of",
+    "is_offline":"You are currently offline. Some features may be unavailable until you reconnect.",
     "save":"Saving Submissions.....",
     "loading_form":"Form is loading...",
     "submit": "Submit",
@@ -524,7 +525,10 @@
     "password_already_changed": "Password already changed",
     "session_expired_title": "Session Expired",
     "session_expired_message": "Your session has expired or is invalid. Please log in again to continue.",
-    "go_to_login": "Go to Login"
+    "go_to_login": "Go to Login",
+    "unknown_error":"An unknown error occured.Please try again",
+    "invalid_credentials":"Invalid email or Password",
+    "server_error":"Server error, Please Try again later!"
   },
   "Months": {
     "january": "January",

@@ -96,7 +96,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
 
   const _userLogout = useMutation<{}, AxiosError<IResponseError>>({
     mutationFn: async () => {
-      // Check if user exists
+
       if (!user?.id) {
         throw new Error("User ID not found");
       }
@@ -181,12 +181,6 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     },
   });
 
-  // ============================================
-  // Additional: Check SQLite is properly initialized
-  // ============================================
-
-  // At the top of your useAuth hook, add this useEffect to verify SQLite:
-
   useEffect(() => {
     console.log("SQLite status in useAuth:", {
       hasQuery: !!query,
@@ -195,9 +189,6 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     });
   }, [query, sqlite]);
 
-  // ============================================
-  // Updated _userLogout mutation in useAuth.tsx
-  // ============================================
 
   const logoutUser = async () => {
     console.log("Clearing local data and navigating to login");
@@ -208,16 +199,11 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
     mainStore.logout();
     setAuthenticationStatus(false);
     onLogout?.();
-
-    // Clear the stored token and userId
     await AsyncStorage.removeItem("tknToken");
     await AsyncStorage.removeItem("userId");
-
-    // Navigate to login screen
     router.replace("/(user-management)/login");
   };
 
-  // Trigger logout
   const handleLogout = () => {
     _userLogout.mutate();
   };
@@ -316,14 +302,14 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
         responseData?.errors?.[0]?.message ||
         null;
 
-      let userFriendlyMessage = "An unknown error occurred. Please try again.";
+      let userFriendlyMessage = t("Auth.unknown_error");
 
       if (status === 400 && serverMessage) {
         userFriendlyMessage = serverMessage;
       } else if (status === 401) {
-        userFriendlyMessage = "Invalid credentials. Please try again.";
+        userFriendlyMessage =t("Auth.invalid_credentials");
       } else if (status === 500) {
-        userFriendlyMessage = "Server error. Please try again later.";
+        userFriendlyMessage = t("Auth.server_error");
       } else if (serverMessage) {
         userFriendlyMessage = serverMessage;
       }
@@ -343,7 +329,7 @@ export const useAuth = ({ onLogin, onLogout }: AuthOptions) => {
       );
 
       Toast.show({
-        text1: "Login Failed",
+        text1: t("Auth.login_failed"),
         text2: userFriendlyMessage,
         type: "error",
         position: "top",

@@ -488,6 +488,7 @@ const RealmDatabaseViewer = () => {
     const endIndex = projectPage * PROJECT_PAGE_SIZE;
     return allSubs.slice(0, endIndex);
   }, [selectedProject, submissionsByProject, projectPage]);
+ 
 
   const projectHasNextPage = useMemo(() => {
     if (!selectedProject || !submissionsByProject[selectedProject]) {
@@ -545,7 +546,7 @@ const RealmDatabaseViewer = () => {
   };
 
   const handleLoadMore = async () => {
-    if (loadingMore || !paginationMetadata?.hasNextPage) return;
+    if (loadingMore || !paginationMetadata?.hasNext) return;
 
     const online = await isOnline();
     
@@ -658,7 +659,7 @@ const RealmDatabaseViewer = () => {
             </Text>
           </View>
         </View>
-        {paginationMetadata.hasNextPage && (
+        {paginationMetadata.hasNext && (
           <TouchableOpacity
             className={`bg-blue-900 py-3.5 px-5 rounded-xl items-center ${loadingMore ? 'opacity-50' : ''}`}
             onPress={handleLoadMore}
@@ -856,6 +857,7 @@ const RealmDatabaseViewer = () => {
           />
         }
       >
+        {renderPaginationInfo()}
         {Object.keys(submissionsByProject).length > 0 ? (
           <>
             {Object.entries(submissionsByProject).map(([projectName, submissions], index, array) => (
@@ -866,6 +868,21 @@ const RealmDatabaseViewer = () => {
                 )}
               </View>
             ))}
+             {projectHasNextPage && (
+              <TouchableOpacity
+                className={`bg-blue-900 py-3.5 px-5 rounded-xl mt-4 mb-6 items-center ${loadingMore ? 'opacity-50' : ''}`}
+                onPress={handleLoadMoreProjectSubs}
+                disabled={loadingMore}
+              >
+                {loadingMore ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text className="text-white text-base font-semibold">
+                    {t('CommonPage.load_more') || 'Load More Submissions'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
           </>
         ) : (
           <View className="items-center justify-center p-8">

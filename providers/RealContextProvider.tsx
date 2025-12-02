@@ -139,9 +139,9 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     } catch (error: any) {
       if (error.message?.includes("cannot rollback")) {
-        console.warn("⚠️ Ignoring harmless rollback warning");
+        console.warn("Ignoring harmless rollback warning");
       } else {
-        console.error("❌ SQLite transaction error:", error);
+        console.error("SQLite transaction error:", error);
         throw error;
       }
     }

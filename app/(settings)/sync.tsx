@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 // import { useFamilyOperations } from "~/services/families";
 // import { useSyncIzus, useGetIzus } from "~/services/izus";
 import Toast from "react-native-toast-message";
-import { syncTemporaryMonitoringResponses } from "~/services/monitoring/monitoring-responses";
+// import { syncTemporaryMonitoringResponses } from "~/services/monitoring/monitoring-responses";
 import { useNetworkStatus } from "~/services/network";
 import { useGetForms } from "~/services/formElements";
 import { useAuth } from "~/lib/hooks/useAuth";
@@ -102,7 +102,7 @@ const SyncPage = () => {
   // const { syncTemporaryIzus } = useSyncIzus();
 
   // Service hooks
-   const { refresh: refreshProjects } = useGetAllForms(true);
+  //  const { refresh: refreshProjects } = useGetAllForms(true);
   // const { refresh: refreshStakeholders } = useGetStakeholders(true);
   // useGetIzus(true);
   useGetForms(true);
@@ -126,8 +126,11 @@ const SyncPage = () => {
 
     try {
       // Survey Submissions count
-      const surveyCount = await getPendingSubmissionsCount(query, user.id);
-      setPendingSurveySubmissionsCount(surveyCount);
+      const surveyCount = await query(
+        `SELECT COUNT(*) as count FROM SurveySubmissions WHERE sync_status = 0  AND created_by_user_id = ?`,
+        [user.id]
+      )
+      setPendingSurveySubmissionsCount(surveyCount[0].count|| 0);
       const updatedCountResult = await query(
         `SELECT COUNT(*) as count FROM SurveySubmissions WHERE sync_status = 0 AND is_modified = 1 AND created_by_user_id = ?`,
         [user.id]
@@ -189,7 +192,7 @@ const SyncPage = () => {
       console.log("Starting survey submissions sync...");
       
       // Use the new syncPendingSubmissions function
-      const syncResult = await syncPendingSubmissions(getAll, update, t, user.id);
+      const syncResult = await syncPendingSubmissions(getAll, update,query, t, user.id);
       
       await updateSubmissionCounts();
       setLastSyncDate(new Date());
