@@ -25,6 +25,7 @@ import { useGetForms } from "~/services/formElements";
 import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { isOnline } from "~/services/network";
 import { parseTranslations, translateFormSchema } from "~/components/utils-form/form-translation";
+import { SimpleSkeletonItem } from "~/components/ui/skeleton";
 
 const RealmDatabaseViewer = () => {
   const { t, i18n } = useTranslation();
@@ -39,7 +40,7 @@ const RealmDatabaseViewer = () => {
   const [cachedPages, setCachedPages] = useState<number[]>([]);
   const [totalCached, setTotalCached] = useState(0);
   const [projectPage, setProjectPage] = useState(1);
-  const PROJECT_PAGE_SIZE = 10;
+  const PROJECT_PAGE_SIZE = 15;
 
   const userId = user?.id || user?.json?.id;
   const userIdFilter = user?.id?.toString() || user?.json?.id?.toString() || "";
@@ -106,18 +107,18 @@ const RealmDatabaseViewer = () => {
     // Search for the field in the schema
     const findField = (components: any[]): any => {
       if (!Array.isArray(components)) return null;
-      
+
       for (const comp of components) {
         if (comp.key === fieldKey) {
           return comp;
         }
-        
+
         // Search in nested components
         if (comp.components) {
           const found = findField(comp.components);
           if (found) return found;
         }
-        
+
         // Search in columns
         if (comp.columns) {
           for (const col of comp.columns) {
@@ -127,14 +128,14 @@ const RealmDatabaseViewer = () => {
             }
           }
         }
-        
+
         // Search in wizard pages
         if (comp.type === 'panel' && comp.components) {
           const found = findField(comp.components);
           if (found) return found;
         }
       }
-      
+
       return null;
     };
 
@@ -147,7 +148,7 @@ const RealmDatabaseViewer = () => {
     const translatedSchema = getTranslatedFormSchema(formId);
     if (!translatedSchema) {
       const form = formsMap[formId];
-      return form?.title || form?.name ||`${t('Common.form_answers')}` || `${t('CommonPage.form')} #${formId}`;
+      return form?.title || form?.name || `${t('Common.form_answers')}` || `${t('CommonPage.form')} #${formId}`;
     }
 
     return translatedSchema.title || translatedSchema.name || formsMap[formId]?.title || `${t('CommonPage.form')} #${formId}`;
@@ -172,11 +173,11 @@ const RealmDatabaseViewer = () => {
     const fileName = file.name || file.fileName || 'File';
     const fileType = file.type || file.mimeType || '';
     const isBase64 = file.isBase64 || (typeof fileUri === 'string' && fileUri.startsWith('data:'));
-    
-    const isImage = fileType.startsWith('image/') || 
-                    /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(fileName) ||
-                    (isBase64 && fileUri.includes('image/'));
-    
+
+    const isImage = fileType.startsWith('image/') ||
+      /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(fileName) ||
+      (isBase64 && fileUri.includes('image/'));
+
     if (isImage && fileUri) {
       return (
         <View className="bg-gray-50 rounded-lg p-2 border border-gray-200 mb-2">
@@ -199,7 +200,7 @@ const RealmDatabaseViewer = () => {
         </View>
       );
     }
-    
+
     return (
       <View className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row items-center mb-2">
         <View className="w-10 h-10 bg-blue-100 rounded-lg items-center justify-center mr-3">
@@ -251,36 +252,36 @@ const RealmDatabaseViewer = () => {
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
-    
+
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
+
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   const isFileObject = (value: any): boolean => {
     if (!value || typeof value !== 'object') return false;
-    
+
     return (
       ('uri' in value || 'url' in value || 'path' in value) &&
       ('type' in value || 'mimeType' in value || 'name' in value)
     ) || (
-      value.storage && value.name
-    ) || (
-      value.isBase64 && value.originalData
-    );
+        value.storage && value.name
+      ) || (
+        value.isBase64 && value.originalData
+      );
   };
 
   const formatValue = (value: any, fieldKey?: string, allAnswers?: any, formId?: string) => {
     if (value === null || value === undefined) {
       return t('HistoryPageReal.not_answered') || 'Not answered';
     }
-    
+
     if (isFileObject(value)) {
       return renderFilePreview(value);
     }
-    
+
     if (Array.isArray(value) && value.length > 0 && isFileObject(value[0])) {
       return (
         <View className="gap-2">
@@ -290,23 +291,23 @@ const RealmDatabaseViewer = () => {
         </View>
       );
     }
-    
+
     if (fieldKey && allAnswers && isSelectionValue(value)) {
       const displayValue = getSelectionDisplay(fieldKey, value, formId);
       if (!displayValue) return null;
       return displayValue;
     }
-    
+
     if (Array.isArray(value)) {
       const filtered = value.filter(v => v !== false);
       if (filtered.length === 0) return t('HistoryPageReal.not_answered') || 'Not answered';
       return filtered.map(v => String(v)).join(", ");
     }
-    
+
     if (typeof value === "object") {
       return JSON.stringify(value, null, 2);
     }
-    
+
     return String(value);
   };
 
@@ -346,37 +347,52 @@ const RealmDatabaseViewer = () => {
 
     return filteredEntries.map(([key, value], idx, array) => {
       const formattedValue = formatValue(value, key, answers, formId);
-      
+
       if (formattedValue === null) return null;
-      
+
       // Get translated field label
       const fieldLabel = formId ? getTranslatedFieldLabel(formId, key) : formatFieldName(key);
-      
+
       return (
         <View key={`${key}-${idx}`}>
           <View className="py-2" style={{ marginLeft: depth * 16 }}>
             <Text className="text-sm font-semibold text-gray-600 mb-1">
               {fieldLabel}
             </Text>
-
-            {typeof value === "object" && 
-             value !== null && 
-             !Array.isArray(value) && 
-             !isFileObject(value) ? (
+            {Array.isArray(value) ? (
               <View className="mt-2 pl-3 border-l-2 border-gray-200">
-                {renderFormData(value, formId, depth + 1)}
+                {value.map((item, index) => (
+                  <View key={index} className="mb-3">
+                    <Text className="text-sm font-semibold text-gray-500 mb-1">
+                      {fieldLabel} #{index + 1}
+                    </Text>
+
+                    {typeof item === "object"
+                      ? renderFormData(item, formId, depth + 1)
+                      : <Text className="text-sm text-gray-800">{String(item)}</Text>}
+                  </View>
+                ))}
               </View>
-            ) : (
-              <View>
-                {typeof formattedValue === 'string' ? (
-                  <Text className="text-sm text-gray-800 leading-5">
-                    {formattedValue}
-                  </Text>
-                ) : (
-                  formattedValue
-                )}
-              </View>
-            )}
+            ) :
+              typeof value === "object" &&
+                value !== null &&
+                !isFileObject(value) ? (
+                <View className="mt-2 pl-3 border-l-2 border-gray-200">
+                  {renderFormData(value, formId, depth + 1)}
+                </View>
+              ) : (
+
+                <View>
+                  {typeof formattedValue === "string" ? (
+                    <Text className="text-sm text-gray-800 leading-5">
+                      {formattedValue}
+                    </Text>
+                  ) : (
+                    formattedValue
+                  )}
+                </View>
+              )}
+
           </View>
 
           {idx < array.length - 1 && (
@@ -436,7 +452,7 @@ const RealmDatabaseViewer = () => {
       const form = surveyId ? formsMap[surveyId] : null;
 
       // Use translated form title
-      const formTitle = surveyId ? getTranslatedFormTitle(surveyId) : 
+      const formTitle = surveyId ? getTranslatedFormTitle(surveyId) :
         String(s.form_data?.table_name || `${t('CommonPage.form')} #${surveyId || 'Unknown'}`);
 
       const projectName = String(
@@ -483,18 +499,18 @@ const RealmDatabaseViewer = () => {
     if (!selectedProject || !submissionsByProject[selectedProject]) {
       return [];
     }
-    
+
     const allSubs = submissionsByProject[selectedProject];
     const endIndex = projectPage * PROJECT_PAGE_SIZE;
     return allSubs.slice(0, endIndex);
   }, [selectedProject, submissionsByProject, projectPage]);
- 
+
 
   const projectHasNextPage = useMemo(() => {
     if (!selectedProject || !submissionsByProject[selectedProject]) {
       return false;
     }
-    
+
     const allSubs = submissionsByProject[selectedProject];
     const currentlyShowing = projectPage * PROJECT_PAGE_SIZE;
     return allSubs.length > currentlyShowing;
@@ -537,7 +553,7 @@ const RealmDatabaseViewer = () => {
 
   const handleLoadMoreProjectSubs = () => {
     if (!projectHasNextPage || loadingMore) return;
-    
+
     setLoadingMore(true);
     setTimeout(() => {
       setProjectPage(prev => prev + 1);
@@ -548,8 +564,8 @@ const RealmDatabaseViewer = () => {
   const handleLoadMore = async () => {
     if (loadingMore || !paginationMetadata?.hasNext) return;
 
-    const online = await isOnline();
-    
+    const online = isOnline();
+
     if (!online) {
       Alert.alert(
         t('CommonPage.offline_mode') || 'Offline Mode',
@@ -608,26 +624,45 @@ const RealmDatabaseViewer = () => {
   };
 
   const renderSyncBadge = (item: any) => {
-    const isSynced = item.sync_status === 1 || item.sync_status === true;
+  const isSynced =
+    item.sync_status === 1 ||
+    item.sync_status === true ||
+    item.sync_status === "1" ||
+    item.sync_status === "true";
 
-    if (isSynced) {
-      return (
-        <View className="bg-green-500 px-2 py-1 rounded-xl">
-          <Text className="text-white text-[10px] font-semibold">
-            ✓ {t('CommonPage.synced') || 'Synced'}
-          </Text>
-        </View>
-      );
-    } else {
-      return (
-        <View className="bg-orange-500 px-2 py-1 rounded-xl">
-          <Text className="text-white text-[10px] font-semibold">
-            ⟳ {t('CommonPage.pending') || 'Pending'}
-          </Text>
-        </View>
-      );
-    }
-  };
+  const isModified =
+    item.is_modified === 1 ||
+    item.is_modified === true ||
+    item.is_modified === "1" ||
+    item.is_modified === "true";
+
+  if (isSynced && isModified) {
+    return (
+      <View className="bg-yellow-500 px-2 py-1 rounded-xl">
+        <Text className="text-white text-[10px] font-semibold">
+          ✎ {t('CommonPage.modified') || 'Modified'}
+        </Text>
+      </View>
+    );
+  } else if (isSynced) {
+    return (
+      <View className="bg-green-500 px-2 py-1 rounded-xl">
+        <Text className="text-white text-[10px] font-semibold">
+          ✓ {t('CommonPage.synced') || 'Synced'}
+        </Text>
+      </View>
+    );
+  } 
+  return (
+    <View className="bg-orange-500 px-2 py-1 rounded-xl">
+      <Text className="text-white text-[10px] font-semibold">
+        ⟳ {t('CommonPage.pendingUpdate') || 'Pending Update'}
+      </Text>
+    </View>
+  );
+};
+
+
 
   const renderPaginationInfo = () => {
     if (!paginationMetadata) return null;
@@ -681,6 +716,10 @@ const RealmDatabaseViewer = () => {
   const renderProjectCard = (projectName: string, submissions: any[]) => {
     const pendingCount = submissions.filter(s => !s.sync_status || s.sync_status === 0).length;
     const syncedCount = submissions.length - pendingCount;
+    const totalCount = submissions.length;
+    const pendingUpdateCount = submissions.filter(s => s.is_modified && (s.sync_status === 1 || s.sync_status === true)).length;
+    const updateCount = pendingUpdateCount;
+    const hasUpdates = updateCount > 0;
 
     return (
       <TouchableOpacity
@@ -693,14 +732,14 @@ const RealmDatabaseViewer = () => {
       >
         <View className="flex-row justify-between items-start mb-3">
           <View className="flex-1 mr-3">
-            <Text className="text-lg font-bold text-gray-800 mb-1" numberOfLines={2}>
+            <Text className="text-lg font-bold text-gray-800" numberOfLines={2}>
               {projectName}
             </Text>
-            <Text className="text-xs text-gray-500 font-medium">
+            {/* <Text className="text-xs text-gray-500 font-medium">
               {submissions.length} {submissions.length === 1
                 ? t('CommonPage.submission') || 'submission'
                 : t('HistoryPageReal.submissions') || 'submissions'}
-            </Text>
+            </Text> */}
           </View>
           <View className="bg-blue-900 px-3.5 py-2 rounded-full min-w-[40px] items-center">
             <Text className="text-white text-base font-bold">
@@ -709,7 +748,7 @@ const RealmDatabaseViewer = () => {
           </View>
         </View>
 
-        <View className="flex-1 gap-4 mb-3">
+        <View className="flex-1 gap-2 mb-3">
           {syncedCount > 0 && (
             <View className="flex-row items-center gap-1.5">
               <View className="w-5 h-5 rounded-full bg-green-500 items-center justify-center">
@@ -730,10 +769,20 @@ const RealmDatabaseViewer = () => {
               </Text>
             </View>
           )}
+          {hasUpdates && (
+            <View className="flex-row items-center gap-1.5">
+              <View className="w-5 h-5 rounded-full bg-yellow-500 items-center justify-center">
+                <Text className="text-white text-xs font-bold">✎</Text>
+              </View>
+              <Text className="text-xs text-yellow-600 font-semibold">
+                {updateCount} {t('CommonPage.modified') || 'modified'}
+              </Text>
+            </View>
+          )}
         </View>
-
+        
         {submissions.length > 0 && (
-          <View className="border-t border-gray-100 pt-3">
+          <View className="border-t border-gray-100">
             <Text className="text-xs text-gray-500 font-medium">
               {t('HistoryPageReal.lastSubmission') || 'Last submission'}: {submissions[0].created_at
                 ? new Date(submissions[0].created_at).toLocaleDateString(undefined, {
@@ -797,7 +846,7 @@ const RealmDatabaseViewer = () => {
           </Text>
         </View>
 
-        {fieldCount > 0 && (
+        {/* {fieldCount > 0 && (
           <View className="bg-gray-50 p-3 rounded-lg mt-2">
             {Object.entries(item.data)
               .filter(([key, value]) => key !== 'language' && key !== 'submit' && value !== false)
@@ -825,7 +874,7 @@ const RealmDatabaseViewer = () => {
               </Text>
             )}
           </View>
-        )}
+        )} */}
       </TouchableOpacity>
     );
   };
@@ -868,7 +917,7 @@ const RealmDatabaseViewer = () => {
                 )}
               </View>
             ))}
-             {projectHasNextPage && (
+            {projectHasNextPage && (
               <TouchableOpacity
                 className={`bg-blue-900 py-3.5 px-5 rounded-xl mt-4 mb-6 items-center ${loadingMore ? 'opacity-50' : ''}`}
                 onPress={handleLoadMoreProjectSubs}
@@ -910,7 +959,7 @@ const RealmDatabaseViewer = () => {
         }
       >
         {renderPaginationInfo()}
-        
+
         {selectedProject && submissionsByProject[selectedProject] ? (
           <>
             <View className="mb-4 px-1">
@@ -918,7 +967,7 @@ const RealmDatabaseViewer = () => {
                 {t('HomePage.total_submissions') || 'Submissions'} {projectPaginatedSubmissions.length} {t('CommonPage.of') || 'of'} {submissionsByProject[selectedProject].length}
               </Text>
             </View>
-            
+
             {projectPaginatedSubmissions.map(renderSubmissionItem)}
 
             {projectHasNextPage && (
@@ -958,7 +1007,7 @@ const RealmDatabaseViewer = () => {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
         <ScrollView className="flex-1">
-          <View className="bg-white p-5 border-b border-gray-200">
+          {/* <View className="bg-white p-5 border-b border-gray-200">
             <View className="flex-row justify-between items-center mb-2">
               <Text className="text-xl font-bold text-gray-800 flex-1" numberOfLines={2}>
                 {selectedItem.formTitle || t('HistoryPageReal.submission_detail') || 'Submission'}
@@ -1015,22 +1064,8 @@ const RealmDatabaseViewer = () => {
               )}
             </View>
 
-            {canEdit && (
-              <TouchableOpacity
-                className="bg-primary py-4 px-5 rounded-xl mt-4 items-center justify-center shadow-sm"
-                onPress={() => {
-                  router.push({
-                    pathname: "/(projects)/(mods)/(projects)/(edit-submission)/[submissionId]",
-                    params: { submissionId: selectedItem._id }
-                  });
-                }}
-              >
-                <Text className="text-white text-base font-semibold">
-                  {t('CommonPage.edit') || 'Edit Submission'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+           
+          </View> */}
 
           <View className="my-2 mx-4">
             <Text className="text-lg font-bold text-gray-800 mb-3">
@@ -1040,6 +1075,21 @@ const RealmDatabaseViewer = () => {
               {renderFormData(selectedItem.data, selectedItem.formId)}
             </View>
           </View>
+          {canEdit && (
+            <TouchableOpacity
+              className="bg-primary py-4 px-5 rounded-xl mt-4 items-center justify-center shadow-sm w-11/12 mx-auto mb-6"
+              onPress={() => {
+                router.push({
+                  pathname: "/(projects)/(mods)/(projects)/(edit-submission)/[submissionId]",
+                  params: { submissionId: selectedItem._id }
+                });
+              }}
+            >
+              <Text className="text-white text-base font-semibold">
+                {t('CommonPage.edit') || 'Edit Submission'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </SafeAreaView>
     );
@@ -1048,10 +1098,28 @@ const RealmDatabaseViewer = () => {
   if (isLoading && submissions.length === 0) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#00227c" />
-        <Text className="text-gray-600 text-base mt-4">
-          {t('CommonPage.loading') || 'Loading submissions...'}
-        </Text>
+        <HeaderNavigation showLeft={true} title={t('HistoryPageReal.title') || "Submission History"} showRight />
+        <View className="flex-1 justify-center items-center">
+          <SimpleSkeletonItem />
+          <SimpleSkeletonItem />
+          <SimpleSkeletonItem />
+        </View>
+      </SafeAreaView>
+    );
+  }
+  if (isLoading || !submissions) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <HeaderNavigation
+          showLeft={true}
+          title={t('HistoryPageReal.title') || "Submission History"}
+          showRight
+        />
+        <View className="flex-1 justify-center items-center">
+          <SimpleSkeletonItem />
+          <SimpleSkeletonItem />
+          <SimpleSkeletonItem />
+        </View>
       </SafeAreaView>
     );
   }

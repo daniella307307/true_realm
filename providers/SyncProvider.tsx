@@ -40,7 +40,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
   const [pendingChanges, setPendingChanges] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
   
-  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   // Monitor network connectivity
@@ -87,9 +87,9 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
 
     // Initial sync
     performSync();
-    // syncIntervalRef.current = setInterval(() => {
-    //   performSync();
-    // }, syncIntervalMs);
+    syncIntervalRef.current = setInterval(() => {
+      performSync();
+    }, syncIntervalMs);
 
     return () => {
       if (syncIntervalRef.current) {
@@ -139,6 +139,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({
         getAll,
         update,
         create,
+        query,
         t,
         userId
       );

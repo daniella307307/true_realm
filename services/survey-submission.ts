@@ -289,17 +289,21 @@ export const fetchSubmissionsFromRemote = async (
       res = await baseInstance.post(`/submissions/filter`, {params: filterParams}, {timeout:10000});
 
       submissions = res.data?.submissions || [];
-      paginationData = res.data?.data?.pagination;
+      paginationData = res.data?.pagination || [];
 
     } catch (filterError) {
       console.log('[fetchSubmissionsFromRemote] Filter endpoint failed, trying GET /submissions');
+      res = await baseInstance.post(`/submissions/filter` + `?limit=100`, {timeout:10000});
+
+      submissions = res.data?.submissions || [];
+      paginationData = res.data?.pagination || [];
     }
 
     const pagination: PaginationMetadata = {
       currentPage: paginationData?.currentPage || paginationData?.current || page,
       totalPages: paginationData?.totalPages || paginationData?.total || 1,
       totalItems: paginationData?.totalItems || paginationData?.total || submissions.length,
-      itemsPerPage: limit,
+      itemsPerPage: 100,
       hasNext: paginationData?.hasNext ?? false,
       hasPrev: paginationData?.hasPrev ?? false,
     };
@@ -960,6 +964,14 @@ export const updateSurveySubmissionOnServer = async (
     }
   } catch (error: any) {
     console.error(`Failed to update submission ${submission.id}:`, error);
+    Toast.show({
+      type: "error",
+      text1: t("Alerts.error.title"),
+      text2: t("FormElementPage.updateFailed", { id: submission.id }),
+      position: "top",
+      visibilityTime: 4000,
+    });
+    router.push("/(history)/realmDbViewer");                           
     console.error("Error response:", error.response?.data);
     throw error;
   }
@@ -1157,29 +1169,42 @@ export const syncPendingSubmissions = async (
         console.log("Syncing to:", apiUrl);
 
         const response = await baseInstance.post(apiUrl, apiPayload);
-        if(response.status === 401 || response.status === 403){
-          Toast.show({
-            text1: t ? t("Alerts.error.auth.title") : "Authentication Error",
-            text2: t ? t("Alerts.error.auth.sync") : "Failed to sync due to authentication issues.",
-            type: "error",
-            position: "top",
-            visibilityTime: 4000,
-          });
+        if (response.status === 401 || response.status === 403) {
+  Toast.show({
+    text1: t ? t("Alerts.error.auth.title") : "Authentication Error",
+    text2: t ? t("Alerts.error.auth.sync") : "Failed to sync due to authentication issues.",
+    type: "error",
+    position: "top",
+    visibilityTime: 4000,
+  });
 
-          // Alert.alert(
-          //   "Do you want to delete your submissions or keep them but keep in mind that you won't be able to sync them?",
-          //   "You can delete them and try to sync again later.",
-          //    <Text> delete</Text>
-          //    <Text>Cancel </Text>
-          // )
+  return new Promise((resolve) => {
+    Alert.alert(
+      t ? t("Alerts.error.auth.title") : "Authentication Error",
+      "Do you want to delete your submissions, or keep them? If you keep them, syncing will be disabled until you re-authenticate.",
+      [
+        {
+          text: "Delete",
+          onPress: async () => {
+            await query(`DELETE FROM SurveySubmissions WHERE _id = ?`, [submission._id]);
+            console.error("Authentication error during sync:", response.data);
+            resolve({ synced: 0, failed: 0, errors: ["Authentication error"] });
+          },
+          style: "destructive",
+        },
+        {
+          text: "Cancel",
+          onPress: () => {
+            resolve({ synced: 0, failed: 1, errors: ["Authentication error – kept data"] });
+          },
+          style: "cancel",
+        },
+      ],
+      { cancelable: true }
+    );
+  });
+}
 
-          await query(`DELETE FROM SurveySubmissions WHERE _id = ?`, [submission._id]);
-          console.error("Authentication error during sync:", response.data);
-          return { synced: 0, failed: 0, errors: ["Authentication error"] };
-        }
-        if (response.status !== 200) {
-          continue;
-        }
         
         if (response.data?.submission?._id) {
           await update("SurveySubmissions", submission._id!, {
@@ -1556,7 +1581,7 @@ function createEmptyResponse(page: number, limit: number): PaginatedResponse<any
       currentPage: page,
       totalPages: 0,
       totalItems: 0,
-      itemsPerPage: limit,
+      itemsPerPage: 100,
       hasNext: false,
       hasPrev: false,
     },

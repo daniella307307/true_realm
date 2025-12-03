@@ -212,6 +212,7 @@
     "page_of": "Urupapuro rwa",
     "save":"Kubika Amakuru.....",
     "loading_form":"Ifishi iri gutunganywa...",
+    "updateFailed": "Kuvugurura byanze",
     "submit": "Ohereza",
     "monitoring_title": "Ifishi yo kugenzura",
     "previewTitle": "Subiramo Ibisubizo Byawe",
@@ -235,6 +236,7 @@
     "submission_error_title": "Ikibazo mu kohereza",
     "submission_error_message": "Kohereza byanze",
     "validation": "Hakenewe kuzuzwa",
+    "loading_submission":"Ibisubizo biri gutunganywa...",
     "submitting": "Biri koherezwa"
   },
   "HistoryPage": {
@@ -666,6 +668,7 @@
     "local":"Bibitswe aha",
     "offline_mode":"Nta murandasi",
     "error_occurred":"Habaye ikosa",
+    "modified":"Byahinduwe",
     "failed_to_sync":"Nta muradasi guhuza amakuru byanze",
     "sync_complete":"Amakuru ku ihuzwa",
     "submissions":"Ibisubizo",

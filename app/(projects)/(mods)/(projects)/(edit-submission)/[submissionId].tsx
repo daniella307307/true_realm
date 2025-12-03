@@ -112,18 +112,18 @@ function EditSubmissionScreen(): React.JSX.Element {
 
   // Get the original form structure
   const { form: regularForm } = useGetFormById(submission?.form_data?.survey_id?.toString() || '');
-  const { pickImage, takePhoto, pickVideo, pickMedia,  requestMediaLibraryPermission, requestCameraPermission, pickDocument } = useMediaPicker();
+  const { pickImage, takePhoto, pickVideo, pickMedia, requestMediaLibraryPermission, requestCameraPermission, pickDocument } = useMediaPicker();
   const webViewRef = useRef<WebView>(null);
-   const handleMediaUpload = useCallback(async (fieldKey: string, allowMultiple: boolean = false) => {
+  const handleMediaUpload = useCallback(async (fieldKey: string, allowMultiple: boolean = false) => {
     try {
       console.log("=== MEDIA UPLOAD START ===");
       console.log("Field:", fieldKey, "Allow multiple:", allowMultiple);
-  
+
       const [mediaPermission, cameraPermission] = await Promise.all([
         requestMediaLibraryPermission(),
         requestCameraPermission()
       ]);
-  
+
       Alert.alert(
         'Select Media',
         'Choose how to add your files',
@@ -141,16 +141,16 @@ function EditSubmissionScreen(): React.JSX.Element {
                   });
                   return;
                 }
-  
+
                 const photo = await takePhoto();
                 console.log("Photo taken:", photo);
-                
+
                 if (photo && webViewRef.current) {
                   try {
                     const base64 = await FileSystem.readAsStringAsync(photo.uri, {
                       encoding: FileSystem.EncodingType.Base64,
                     });
-                    
+
                     const message = {
                       type: 'MEDIA_SELECTED',
                       fieldKey: fieldKey,
@@ -162,10 +162,10 @@ function EditSubmissionScreen(): React.JSX.Element {
                         storage: 'base64'
                       }]
                     };
-                    
+
                     console.log("Sending photo message:", message);
                     webViewRef.current.postMessage(JSON.stringify(message));
-                    
+
                     Toast.show({
                       type: 'success',
                       text1: 'Success',
@@ -206,10 +206,10 @@ function EditSubmissionScreen(): React.JSX.Element {
                   });
                   return;
                 }
-  
+
                 const media = await pickMedia({ allowsMultipleSelection: allowMultiple });
                 console.log("Media selected:", media?.length);
-                
+
                 if (media && media.length > 0 && webViewRef.current) {
                   try {
                     const processedMedia = await Promise.all(
@@ -247,16 +247,16 @@ function EditSubmissionScreen(): React.JSX.Element {
                         }
                       })
                     );
-                    
+
                     const message = {
                       type: 'MEDIA_SELECTED',
                       fieldKey: fieldKey,
                       media: processedMedia
                     };
-                    
+
                     console.log("Sending media message:", message);
                     webViewRef.current.postMessage(JSON.stringify(message));
-                    
+
                     Toast.show({
                       type: 'success',
                       text1: 'Success',
@@ -288,19 +288,19 @@ function EditSubmissionScreen(): React.JSX.Element {
             text: 'Documents',
             onPress: async () => {
               try {
-                const documents = await pickDocument({ 
+                const documents = await pickDocument({
                   allowMultiple: allowMultiple,
                   type: '*/*'
                 });
                 console.log("Documents selected:", documents?.length);
-                
+
                 if (documents && documents.length > 0 && webViewRef.current) {
                   try {
                     const processedDocs = await Promise.all(
                       documents.map(async (doc) => {
                         try {
                           const maxSize = 5 * 1024 * 1024;
-                          
+
                           if (doc.size && doc.size < maxSize) {
                             const base64 = await FileSystem.readAsStringAsync(doc.uri, {
                               encoding: FileSystem.EncodingType.Base64,
@@ -332,16 +332,16 @@ function EditSubmissionScreen(): React.JSX.Element {
                         }
                       })
                     );
-                    
+
                     const message = {
                       type: 'MEDIA_SELECTED',
                       fieldKey: fieldKey,
                       media: processedDocs
                     };
-                    
+
                     console.log("Sending documents message:", message);
                     webViewRef.current.postMessage(JSON.stringify(message));
-                    
+
                     Toast.show({
                       type: 'success',
                       text1: 'Success',
@@ -605,51 +605,47 @@ function EditSubmissionScreen(): React.JSX.Element {
     loadSubmission();
   }, [params.submissionId]);
 
-  const parsedForm = useMemo(() => {
-    if (!regularForm?.json) {
-      console.log('No form json available');
-      return null;
+ const parsedForm = useMemo(() => {
+  if (!regularForm?.json) {
+    console.log('No form json available');
+    return null;
+  }
+
+  try {
+    console.log('Parsing form JSON...');
+    let baseForm;
+
+    // 1. Parse form JSON
+    if (typeof regularForm.json === "string") {
+      baseForm = JSON.parse(regularForm.json);
+    } else {
+      baseForm = JSON.parse(JSON.stringify(regularForm.json));
     }
 
-    try {
-      console.log('Parsing form JSON...');
-      let baseForm;
+   
+    console.log('Converting form to wizard BEFORE translation...');
+    let wizardForm = convertToWizardForm(baseForm, 5);
+    console.log('Wizard conversion result:', wizardForm);
 
-      if (typeof regularForm.json === "string") {
-        baseForm = JSON.parse(regularForm.json);
-      } else if (typeof regularForm.json === "object") {
-        baseForm = JSON.parse(JSON.stringify(regularForm.json));
-      } else {
-        console.error('Invalid json format:', typeof regularForm.json);
-        return null;
+
+    if (regularForm.translations) {
+      console.log(`Translating form to ${currentLang}...`);
+      const parsedTranslations = parseTranslations(regularForm.translations);
+
+      if (parsedTranslations) {
+        console.log("Parsed translations:", parsedTranslations);
+        wizardForm = translateFormSchema(wizardForm, parsedTranslations, currentLang);
       }
-      let translatedForm = baseForm;
-      if (regularForm.translations) {
-        console.log(`translating form to ${currentLang}...`);
-        console.log('Translation type:', typeof regularForm.translations);
-        console.log('Translation data:', regularForm.translations);
-
-        // Parse the translations string into an object
-        const parsedTranslations = parseTranslations(regularForm.translations);
-
-        if (parsedTranslations) {
-          console.log('Parsed translations successfully:', parsedTranslations);
-          translatedForm = translateFormSchema(baseForm, parsedTranslations, currentLang);
-        } else {
-          console.log('Failed to parse translations');
-        }
-      }
-
-      console.log('Form parsed successfully, converting to wizard...');
-      const wizardForm = convertToWizardForm(translatedForm, 5);
-      console.log('Wizard conversion complete', wizardForm);
-
-      return wizardForm;
-    } catch (err) {
-      console.error("Failed to parse form JSON:", err);
-      return null;
     }
-  }, [regularForm?.json]);
+
+    return wizardForm;
+
+  } catch (err) {
+    console.error("Failed to parse form JSON:", err);
+    return null;
+  }
+}, [regularForm?.json, regularForm?.translations, currentLang]);
+
 
   const handleFormSubmission = useCallback(
     async (formData: any) => {
@@ -798,79 +794,79 @@ function EditSubmissionScreen(): React.JSX.Element {
     [handleFormSubmission, t]
   );
   const formHtml = useMemo(() => {
-      if (!parsedForm) {
-        console.log('Cannot generate HTML - form not ready');
-        return "";
-      }
-  
-      if (!assetsReady) {
-        console.log('Cannot generate HTML - assets not ready');
-        return "";
-      }
-  
-      try {
-        const formJsonString = JSON.stringify(parsedForm);
-        const escapedFormJson = formJsonString
-          .replace(/\\/g, '\\\\')
-          .replace(/'/g, "\\'")
-          .replace(/"/g, '\\"')
-          .replace(/</g, '\\u003c')
-          .replace(/>/g, '\\u003e')
-          .replace(/\n/g, '\\n')
-          .replace(/\r/g, '\\r');
-        const escapedFormName = (parsedForm.title || regularForm?.name || "Form").replace(/'/g, "\\'");
-        const totalPages = parsedForm.display === 'wizard' && Array.isArray(parsedForm.components)
-          ? parsedForm.components.length
-          : 1;
-  
-        console.log('Generating form HTML with', totalPages, 'pages');
-  
-        const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
-        const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
-        const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
-        const reviewTranslations = {
-          reviewTitle: t("ReviewPage.title") || "Review Your Answers",
-          reviewSubtitle: t("ReviewPage.description") || "Please review your answers carefully before submitting. You can go back to make changes if needed.",
-          pageOf: t("ReviewPage.pageOf") || "Page {page} of {total}",
-          notProvided: t("ReviewPage.notProvided") || "Not provided",
-          yes: t("ReviewPage.yes") || "Yes",
-          no: t("ReviewPage.no") || "No"
-        };
-        const btnTranslations = {
-          en: {
-            submit: 'Submit',
-            cancel: 'Cancel',
-            previous: 'Previous',
-            next: 'Next'
-          },
-          es: {
-            submit: 'Enviar',
-            cancel: 'Cancelar',
-            previous: 'Anterior',
-            next: 'Siguiente'
-          },
-          fr: {
-            submit: 'Soumettre',
-            cancel: 'Annuler',
-            previous: 'Précédent',
-            next: 'Suivant'
-          },
-          rw:{
-            submit :"Ohereza",
-            cancel:"Reka",
-            previous:"Subira Inyuma",
-            next:"Komeza"
-          }
+    if (!parsedForm) {
+      console.log('Cannot generate HTML - form not ready');
+      return "";
+    }
+
+    if (!assetsReady) {
+      console.log('Cannot generate HTML - assets not ready');
+      return "";
+    }
+
+    try {
+      const formJsonString = JSON.stringify(parsedForm);
+      const escapedFormJson = formJsonString
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
+      const escapedFormName = (parsedForm.title || regularForm?.name || "Form").replace(/'/g, "\\'");
+      const totalPages = parsedForm.display === 'wizard' && Array.isArray(parsedForm.components)
+        ? parsedForm.components.length
+        : 1;
+
+      console.log('Generating form HTML with', totalPages, 'pages');
+
+      const jsPath = `${FileSystem.cacheDirectory}formio.full.min.js`;
+      const cssPath = `${FileSystem.cacheDirectory}formio.full.min.css`;
+      const bootstrapPath = `${FileSystem.cacheDirectory}bootstrap.min.css`;
+      const reviewTranslations = {
+        reviewTitle: t("ReviewPage.title") || "Review Your Answers",
+        reviewSubtitle: t("ReviewPage.description") || "Please review your answers carefully before submitting. You can go back to make changes if needed.",
+        pageOf: t("ReviewPage.pageOf") || "Page {page} of {total}",
+        notProvided: t("ReviewPage.notProvided") || "Not provided",
+        yes: t("ReviewPage.yes") || "Yes",
+        no: t("ReviewPage.no") || "No"
+      };
+      const btnTranslations = {
+        en: {
+          submit: 'Submit',
+          cancel: 'Cancel',
+          previous: 'Previous',
+          next: 'Next'
+        },
+        es: {
+          submit: 'Enviar',
+          cancel: 'Cancelar',
+          previous: 'Anterior',
+          next: 'Siguiente'
+        },
+        fr: {
+          submit: 'Soumettre',
+          cancel: 'Annuler',
+          previous: 'Précédent',
+          next: 'Suivant'
+        },
+        rw: {
+          submit: "Ohereza",
+          cancel: "Reka",
+          previous: "Subira Inyuma",
+          next: "Komeza"
         }
-        const currentBtnTranslations = btnTranslations[normalizedLang] || btnTranslations['en'];
-      
+      }
+      const currentBtnTranslations = btnTranslations[normalizedLang] || btnTranslations['en'];
+
       console.log('Current language:', normalizedLang);
       console.log('Button translations:', currentBtnTranslations);
-        const escapedReviewTranslations = JSON.stringify(reviewTranslations)
-          .replace(/\\/g, '\\\\')
-          .replace(/'/g, "\\'")
-          .replace(/"/g, '\\"');
-             // Escape button translations for injection
+      const escapedReviewTranslations = JSON.stringify(reviewTranslations)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"');
+      // Escape button translations for injection
       const escapedBtnTranslations = JSON.stringify(currentBtnTranslations)
         .replace(/\\/g, '\\\\')
         .replace(/'/g, "\\'")
@@ -878,7 +874,7 @@ function EditSubmissionScreen(): React.JSX.Element {
       const submissionData = JSON.stringify(submission.data || {});
       const escapedSubmissionData = submissionData.replace(/</g, "\\u003c");
 
-        return `
+      return `
       <!DOCTYPE html>
       <html lang="en">
         <head>
@@ -1219,109 +1215,239 @@ function EditSubmissionScreen(): React.JSX.Element {
                 }
               }
   
-             function formatValue(value, label) {
-      if (value === null || value === undefined || value === '') {
+             
+           function formatValue(value, label) {
+    if (value === null || value === undefined || value === '') {
+      return '<span class="review-empty">' + reviewTranslations.notProvided + '</span>';
+    }
+    
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
         return '<span class="review-empty">' + reviewTranslations.notProvided + '</span>';
       }
       
-      if (Array.isArray(value)) {
-        if (value.length === 0) {
-          return '<span class="review-empty">' + reviewTranslations.notProvided + '</span>';
-        }
-        
-        if (value[0] && (value[0].url || value[0].uri)) {
-          let html = '<div>';
-          value.forEach(file => {
-            const fileName = file.name || 'File';
-            const fileUrl = file.url || file.uri;
-            const isImage = file.type && file.type.startsWith('image');
-            
-            if (isImage) {
-              html += \`<img src="\${fileUrl}" alt="\${fileName}" class="review-image" />\`;
-            } else {
-              html += \`<div class="review-file"><i class="fas fa-file"></i>\${fileName}</div>\`;
-            }
-          });
-          html += '</div>';
-          return html;
-        }
-        
-        return '<ul class="review-list">' + value.map(v => '<li>' + String(v) + '</li>').join('') + '</ul>';
-      }
-                
-               if (typeof value === 'object') {
-        if (value.url || value.uri) {
-          const fileName = value.name || 'File';
-          const fileUrl = value.url || value.uri;
-          const isImage = value.type && value.type.startsWith('image');
+      if (value[0] && (value[0].url || value[0].uri)) {
+        let html = '<div>';
+        value.forEach(file => {
+          const fileName = file.name || 'File';
+          const fileUrl = file.url || file.uri;
+          const isImage = file.type && file.type.startsWith('image');
           
           if (isImage) {
-            return \`<img src="\${fileUrl}" alt="\${fileName}" class="review-image" />\`;
+            html += \`<img src="\${fileUrl}" alt="\${fileName}" class="review-image" />\`;
           } else {
-            return \`<div class="review-file"><i class="fas fa-file"></i>\${fileName}</div>\`;
+            html += \`<div class="review-file"><i class="fas fa-file"></i>\${fileName}</div>\`;
           }
-        }
-        return '<pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">' + JSON.stringify(value, null, 2) + '</pre>';
+        });
+        html += '</div>';
+        return html;
       }
       
-      if (typeof value === 'boolean') {
-        return value 
-          ? '<i class="fas fa-check-circle" style="color: #28a745;"></i> ' + reviewTranslations.yes
-          : '<i class="fas fa-times-circle" style="color: #dc3545;"></i> ' + reviewTranslations.no;
-      }
-      
-      return String(value);
+      return '<ul class="review-list">' + value.map(v => '<li>' + String(v) + '</li>').join('') + '</ul>';
     }
-  
-   function generateReviewPage(formData, components) {
-      let html = \`
-        <div class="review-container">
-          <div class="review-header">
-            <h3><i class="fas fa-clipboard-check"></i> \${reviewTranslations.reviewTitle}</h3>
-          </div>
-          <p style="margin-bottom: 20px; color: #6c757d;">\${reviewTranslations.reviewSubtitle}</p>
-      \`;
-  
-      const pages = {};
-      components.forEach((comp, index) => {
-        const pageNum = Math.floor(index / 5) + 1;
-        if (!pages[pageNum]) {
-          pages[pageNum] = [];
+              
+             if (typeof value === 'object') {
+      if (value.url || value.uri) {
+        const fileName = value.name || 'File';
+        const fileUrl = value.url || value.uri;
+        const isImage = value.type && value.type.startsWith('image');
+        
+        if (isImage) {
+          return \`<img src="\${fileUrl}" alt="\${fileName}" class="review-image" />\`;
+        } else {
+          return \`<div class="review-file"><i class="fas fa-file"></i>\${fileName}</div>\`;
         }
-        pages[pageNum].push(comp);
-      });
-  
-      Object.keys(pages).forEach(pageNum => {
-        const pageText = reviewTranslations.pageOf
-          .replace('{page}', pageNum)
-          .replace('{total}', Object.keys(pages).length);
-          
+      }
+      return '<pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">' + JSON.stringify(value, null, 2) + '</pre>';
+    }
+    
+    if (typeof value === 'boolean') {
+      return value 
+        ? '<i class="fas fa-check-circle" style="color: #28a745;"></i> ' + reviewTranslations.yes
+        : '<i class="fas fa-times-circle" style="color: #dc3545;"></i> ' + reviewTranslations.no;
+    }
+    
+    return String(value);
+  }
+    
+  function renderComponentValue(value, component) {
+      if (value === null || value === undefined || value === "") {
+        return '<span class="review-empty">' + reviewTranslations.notProvided + '</span>';
+      }
+        function renderFileList(files) {
+    let html = "<div>";
+    files.forEach(file => {
+      const name = file.name || "File";
+      const url = file.url || file.uri;
+      const isImage = file.type && file.type.startsWith("image");
+
+      if (isImage) {
+        html += \`<img src="\${url}" alt="\${name}" class="review-image" />\`;
+      } else {
+        html += \`<div class="review-file"><i class="fas fa-file"></i>\${name}</div>\`;
+      }
+    });
+    html += "</div>";
+    return html;
+  } // Arrays (could be editgrid, datagrid, nested arrays, etc.)
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return '<span class="review-empty">' + reviewTranslations.notProvided + '</span>';
+    }
+
+    // File array
+    if (value[0] && (value[0].url || value[0].uri)) {
+      return renderFileList(value);
+    }
+
+    // Array of rows (editGrid, dataGrid)
+    if (typeof value[0] === "object") {
+      let html = "<div>";
+
+      value.forEach((row, rowIndex) => {
         html += \`
-          <div class="review-section">
-            <div class="review-section-title">
-              <i class="fas fa-list-ul"></i> \${pageText}
+          <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 6px;">
+            <div style="font-weight: 600; margin-bottom: 8px;">
+              \${(component.label || component.key)} - \${rowIndex + 1}
             </div>
         \`;
-  
-        pages[pageNum].forEach(comp => {
-          if (comp.type === 'button' || comp.type === 'htmlelement') return;
-          
-          const label = comp.label || comp.key;
-          const value = formData[comp.key];
-          
+
+        // Find nested components for this row (editgrid / datagrid)
+        const subComponents =
+          component.components ||
+          component.columns ||
+          component.rows ||
+          [];
+
+        subComponents.forEach(sub => {
+          const subKey = sub.key;
+          const subLabel = sub.label || subKey;
+          const subValue = row[subKey];
+
           html += \`
             <div class="review-item">
-              <div class="review-label">\${label}</div>
-              <div class="review-value">\${formatValue(value, label)}</div>
+              <div class="review-label">\${subLabel}</div>
+              <div class="review-value">
+                \${renderComponentValue(subValue, sub)}
+              </div>
             </div>
           \`;
         });
-  
-        html += '</div>';
+
+        html += "</div>";
       });
-      html += '</div>';
+
+      html += "</div>";
       return html;
     }
+
+    // Primitive array fallback
+    return \`<ul class="review-list">\${value.map(v => \`<li>\${String(v)}</li>\`).join("")}</ul>\`;
+  }
+
+  // Object (container, panel, datamap, nested file object)
+  if (typeof value === "object") {
+    // Single file object
+    if (value.url || value.uri) {
+      return renderFileList([value]);
+    }
+
+    // Container / Panel / Datamap — recursively render nested fields
+    let html = "<div>";
+
+    (component.components || []).forEach(sub => {
+      const subKey = sub.key;
+      const subLabel = sub.label || subKey;
+      const subValue = value[subKey];
+
+      html += \`
+        <div class="review-item">
+          <div class="review-label">\${subLabel}</div>
+          <div class="review-value">
+            \${renderComponentValue(subValue, sub)}
+          </div>
+        </div>
+      \`;
+    });
+
+    html += "</div>";
+    return html;
+  }
+
+  // Boolean
+  if (typeof value === "boolean") {
+    return value
+      ? \`<i class="fas fa-check-circle" style="color: #28a745;"></i> \${reviewTranslations.yes}\`
+      : \`<i class="fas fa-times-circle" style="color: #dc3545;"></i> \${reviewTranslations.no}\`;
+  }
+
+  // Fallback
+  return String(value);
+  }
+
+ function generateReviewPage(formData, components) {
+    let html = \`
+      <div class="review-container">
+        <div class="review-header">
+          <h3><i class="fas fa-clipboard-check"></i> \${reviewTranslations.reviewTitle}</h3>
+        </div>
+        <p style="margin-bottom: 20px; color: #6c757d;">\${reviewTranslations.reviewSubtitle}</p>
+    \`;
+
+    const pages = {};
+    components.forEach((comp, index) => {
+    if (comp.type === 'button' || comp.type === 'htmlelement') return;
+
+  const label = comp.label || comp.key;
+  const value = formData[comp.key];
+  if (comp.type === 'editgrid') {
+   html += ''
+  + '<div class="review-item">'
+    + '<div class="review-label">' + label + '</div>'
+    + '<div class="review-value">'
+      +  renderComponentValue(value, comp)
+    + '</div>'
+  + '</div>';
+    return;
+  }
+      const pageNum = Math.floor(index / 5) + 1;
+      if (!pages[pageNum]) {
+        pages[pageNum] = [];
+      }
+      pages[pageNum].push(comp);
+    });
+
+    Object.keys(pages).forEach(pageNum => {
+      const pageText = reviewTranslations.pageOf
+        .replace('{page}', pageNum)
+        .replace('{total}', Object.keys(pages).length);
+        
+      html += \`
+        <div class="review-section">
+          <div class="review-section-title">
+            <i class="fas fa-list-ul"></i> \${pageText}
+          </div>
+      \`;
+
+      pages[pageNum].forEach(comp => {
+        if (comp.type === 'button' || comp.type === 'htmlelement') return;
+        
+        const label = comp.label || comp.key;
+        const value = formData[comp.key];
+        
+        html += \`
+          <div class="review-item">
+            <div class="review-label">\${label}</div>
+            <div class="review-value">\${formatValue(value, label)}</div>
+          </div>
+        \`;
+      });
+
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
   
                async function initializeForm() {
                 if (formInitialized) {
@@ -1498,11 +1624,11 @@ function EditSubmissionScreen(): React.JSX.Element {
         </body>
       </html>
         `;
-      } catch (err) {
-        console.error('Error generating form HTML:', err);
-        return "";
-      }
-    }, [parsedForm, regularForm?.name, assetsReady]);
+    } catch (err) {
+      console.error('Error generating form HTML:', err);
+      return "";
+    }
+  }, [parsedForm, regularForm?.name, assetsReady]);
 
   // Show error if assets couldn't be loaded
   if (assetError) {
@@ -1533,7 +1659,7 @@ function EditSubmissionScreen(): React.JSX.Element {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#00227c" />
-        <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text>
+        {/* <Text className="mt-3 text-gray-600 font-medium">{loadingStep || "Loading..."}</Text> */}
         {!isOnline && (
           // 
           <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
@@ -1554,18 +1680,19 @@ function EditSubmissionScreen(): React.JSX.Element {
     return <NotFound title="Submission not found" description="Please try again" />;
   }
 
+
   // CRITICAL FIX: Don't render WebView if formHtml is null
   if (!formHtml) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#00227c" />
-        <Text className="mt-3 text-gray-600 font-medium">{t("FormElementPage.loading_form")}</Text>
+        <Text className="mt-3 text-gray-600 font-medium">{t("FormElementPage.loading_submission")}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background">
       <HeaderNavigation title={t("FormElementPage.title")} showLeft showRight />
       <WebView
         ref={webViewRef}
@@ -1598,7 +1725,7 @@ function EditSubmissionScreen(): React.JSX.Element {
       {formLoading && (
         <View className="absolute inset-0 items-center justify-center bg-white bg-opacity-95">
           <ActivityIndicator size="large" color="#00227c" />
-          <Text className="mt-3 text-gray-600 font-medium">{t("FormElementPage.loading_form")}</Text>
+          <Text className="mt-3 text-gray-600 font-medium">{t("FormElementPage.loading_submission")}</Text>
         </View>
       )}
       {isSubmitting && (
@@ -1609,7 +1736,7 @@ function EditSubmissionScreen(): React.JSX.Element {
           </View>
         </View>
       )}
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
