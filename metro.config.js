@@ -3,4 +3,9 @@ const { withNativeWind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
 
-module.exports = withNativeWind(config, { input: './global.css' });
+// Check NativeWind version and use appropriate config
+module.exports = withNativeWind(config, {
+  input: './global.css',
+  // NativeWind v4 specific options
+  projectRoot: __dirname,
+});
