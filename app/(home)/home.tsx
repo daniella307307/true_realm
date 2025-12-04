@@ -200,14 +200,14 @@ function HomeScreen(): React.JSX.Element {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={{ opacity: fadeAnim }}>
-          {/* Welcome Section */}
+       
           <View className="px-6 pt-4 pb-6">
             <Text className="text-3xl font-bold text-gray-900">
               {t("HomePage.title")} {user?.firstName}!
             </Text>
           </View>
 
-          {/* Sync Warning Banner */}
+        
           {showSyncWarning && !isRefreshing && (
             <TouchableOpacity
               onPress={() => setShowSyncModal(true)}
