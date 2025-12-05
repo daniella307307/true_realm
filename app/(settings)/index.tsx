@@ -675,7 +675,7 @@ const SettingsScreen = () => {
             style={{ color: COLORS.text.tertiary }}
             className="text-xs"
           >
-            © 2024 YourAppName. All rights reserved.
+            © 2025 Afriquollect. All rights reserved.
           </Text>
         </View>
       </ScrollView>
