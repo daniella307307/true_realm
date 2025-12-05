@@ -159,7 +159,13 @@
     "sync_description": "Ufite amakuru akeneye guhuza. Nyabuneka jya kuri page yo guhuza kugira ngo uhuze amakuru yawe.",
     "go_to_sync": "Guhuza",
     "cancel": "Reka",
-    "sync_title": "Imishinga"
+    "sync_title": "Imishinga",
+    "projects_sub": "Uzuza amafishi",
+    "history_sub": "Reba amakuru yatanzwe",
+    "sync_sub": "Ohereza amakuru yatoranijwe",
+    "synced_sub": "Reba umurongo wo kohereza",
+    "settings_sub": "Hindura Ingenamiterere"
+
   },
   "ProjectPage": {
     "title": "Africollect",

@@ -58,7 +58,7 @@ function HomeScreen(): React.JSX.Element {
   const { width } = useWindowDimensions();
   const isSmallScreen = width < 375;
 
-  
+  // Check for unsynced data
   const checkUnsyncedData = async () => {
     if (!user?.id) return;
 
@@ -82,13 +82,13 @@ function HomeScreen(): React.JSX.Element {
   };
   
 
- 
+
   const getActiveLinks = () => {
     const baseLinks = [
       {
         icon: <TabBarIcon name="file-document-multiple" family="MaterialCommunityIcons" />,
         title: t("HomePage.projects"),
-       
+        subtitle: t("HomePage.projects_sub"),
         route: "/(projects)/project",
         color: COLORS.primary.blue[500],
         gradient: [COLORS.primary.blue[500], COLORS.primary.blue[600]] as [ColorValue, ColorValue],
@@ -96,7 +96,7 @@ function HomeScreen(): React.JSX.Element {
       {
         icon: <TabBarIcon name="chart-bar" family="MaterialCommunityIcons" />,
         title: t("HomePage.history"),
-        
+        subtitle: t("HomePage.history_sub"), 
         route: "/(history)/realmDbViewer",
         color: COLORS.primary.orange[500],
         gradient: [COLORS.primary.orange[500], COLORS.primary.orange[600]] as [ColorValue, ColorValue],
@@ -104,7 +104,7 @@ function HomeScreen(): React.JSX.Element {
       {
         icon: <TabBarIcon name="sync" family="MaterialCommunityIcons" />,
         title:t("HomePage.synced"),
-        
+        subtitle: t("HomePage.synced_sub"),
         route: "/(settings)/sync",
         color: COLORS.semantic.info,
         gradient: [COLORS.semantic.info, '#2563EB'] as [ColorValue, ColorValue],
@@ -112,7 +112,7 @@ function HomeScreen(): React.JSX.Element {
       {
         icon: <TabBarIcon name="settings" family="Ionicons" />,
         title: t("HomePage.settings"),
-      
+        subtitle: t("HomePage.settings_sub"), 
         route: "/(settings)/",
         color: COLORS.neutral.gray[600],
         gradient: [COLORS.neutral.gray[600], COLORS.neutral.gray[700]] as [ColorValue, ColorValue],
@@ -131,7 +131,7 @@ function HomeScreen(): React.JSX.Element {
           await SplashScreen.hideAsync();
           setSplashHidden(true);
           
-         
+          // Fade in animation
           Animated.timing(fadeAnim, {
             toValue: 1,
             duration: 500,
@@ -170,13 +170,13 @@ function HomeScreen(): React.JSX.Element {
     navigateTo(route);
   };
 
-
+  // Calculate sync percentage
   const totalSubmissions = syncedCount + unsyncedCount;
   const syncPercentage = totalSubmissions > 0 
     ? Math.round((syncedCount / totalSubmissions) * 100) 
     : 0;
 
-  
+
   if (!isDataLoaded && !splashHidden) {
     return (
       <SafeAreaView className="flex-1 bg-white justify-center items-center">
@@ -190,10 +190,10 @@ function HomeScreen(): React.JSX.Element {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
- 
+   
       <View className="px-5 pt-12 pb-4 border-b border-gray-100">
         <View className="flex-row justify-between items-center">
-          
+        
           <View className="flex-row items-center">
            
             <View className="w-10 h-10 bg-blue-600 rounded-lg items-center justify-center mr-3">
@@ -202,7 +202,7 @@ function HomeScreen(): React.JSX.Element {
             <Text className="text-2xl font-bold text-gray-900">Afriquollect</Text>
           </View>
 
-        
+       
           <View className="flex-row items-center">
             <TouchableOpacity className="mr-4 p-2">
               <TabBarIcon 
@@ -275,15 +275,15 @@ function HomeScreen(): React.JSX.Element {
             </TouchableOpacity>
           )}
 
-          
+         
           <View className="px-5 mb-6">
             <Text className="text-xl font-bold text-gray-900 mb-4">
               Dashboard overview
             </Text>
 
-            {/* Stats Cards Row */}
+           
             <View className="flex-row gap-4 mb-6">
-              {/* Forms Card */}
+            
               <TouchableOpacity
                 onPress={() => handleNavigation("/(projects)/project")}
                 className="flex-1 bg-white rounded-xl p-5 border border-gray-200 shadow-sm"
@@ -393,7 +393,7 @@ function HomeScreen(): React.JSX.Element {
                   </View>
                   <View>
                     <Text className="text-gray-500 text-xs">
-                      {t("HomePage.synced")}
+                      {t("HomePage.synced")} 
                     </Text>
                     <Text className="text-gray-900 font-bold text-xl">
                       {syncedCount}
@@ -404,7 +404,7 @@ function HomeScreen(): React.JSX.Element {
                 <View className="flex-row items-center">
                   <View className="mr-3">
                     <Text className="text-gray-500 text-xs text-right">
-                      {t("History.pending")} {/* This will show "Pending" in English, "Nitbirahuzwa" in Kinyarwanda */}
+                      {t("History.pending")}
                     </Text>
                     <Text className="text-gray-900 font-bold text-xl text-right">
                       {unsyncedCount}
@@ -456,9 +456,9 @@ function HomeScreen(): React.JSX.Element {
                   <Text className="text-gray-900 font-bold text-base mb-1">
                     {link.title}
                   </Text>
-                  {/* <Text className="text-gray-500 text-xs">
+                  <Text className="text-gray-500 text-xs">
                     {link.subtitle}
-                  </Text> */}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>

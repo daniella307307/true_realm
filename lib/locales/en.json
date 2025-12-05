@@ -150,7 +150,12 @@
     "sync_description": "You have unsynced data that needs to be synced. Please go to the sync page to sync your data.",
     "go_to_sync": "Go to Sync Page",
     "cancel": "Cancel",
-    "sync_title": "Projects"
+    "sync_title": "Projects",
+    "projects_sub": "Fill out survey forms",
+    "history_sub": "View submitted data",
+    "sync_sub": "Upload collected data",
+    "synced_sub": "Check upload progress",
+    "settings_sub": "Manage app preferences"
   },
   "ProjectPage": {
     "title": "Forms",
