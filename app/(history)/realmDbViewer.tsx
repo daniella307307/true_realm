@@ -26,7 +26,9 @@ import EmptyDynamicComponent from "~/components/EmptyDynamic";
 import { isOnline } from "~/services/network";
 import { parseTranslations, translateFormSchema } from "~/components/utils-form/form-translation";
 import { SimpleSkeletonItem } from "~/components/ui/skeleton";
-
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { Linking } from 'react-native';
 const RealmDatabaseViewer = () => {
   const { t, i18n } = useTranslation();
   const { user, isLoggedIn } = useAuth({});
@@ -168,87 +170,100 @@ const RealmDatabaseViewer = () => {
     return String(value);
   };
 
-  const renderFilePreview = (file: any) => {
-    const fileUri = file.uri || file.url || file.path || file.originalData || '';
-    const fileName = file.name || file.fileName || 'File';
-    const fileType = file.type || file.mimeType || '';
-    const isBase64 = file.isBase64 || (typeof fileUri === 'string' && fileUri.startsWith('data:'));
+ 
 
-    const isImage = fileType.startsWith('image/') ||
-      /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(fileName) ||
-      (isBase64 && fileUri.includes('image/'));
+const renderFilePreview = (file: any) => {
+  const fileUri = file.uri || file.url || file.path || file.originalData || '';
+  const fileName = file.name || file.fileName || 'file';
+  const fileType = file.type || file.mimeType || '';
+  const isBase64 = file.isBase64 || (typeof fileUri === 'string' && fileUri.startsWith('data:'));
 
-    if (isImage && fileUri) {
-      return (
-        <View className="bg-gray-50 rounded-lg p-2 border border-gray-200 mb-2">
-          <Image
-            source={{ uri: fileUri }}
-            className="w-full h-48 rounded-lg mb-2"
-            resizeMode="cover"
-            onError={(error) => {
-              console.error('Image load error:', error);
-            }}
-          />
-          <Text className="text-xs text-gray-600" numberOfLines={1}>
-            📎 {fileName}
-          </Text>
-          {fileType && (
-            <Text className="text-xs text-gray-400" numberOfLines={1}>
-              {fileType}
-            </Text>
-          )}
-        </View>
-      );
+  // Normalize Base64 so it always includes data:mime;base64,
+  const normalizedUri = isBase64
+    ? fileUri.startsWith('data:')
+      ? fileUri
+      : `data:${fileType};base64,${fileUri}`
+    : fileUri;
+
+  // Detect image files
+  const isImage =
+    fileType.startsWith('image/') ||
+    /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(fileName) ||
+    (isBase64 && normalizedUri.includes('image/'));
+
+  // Function to convert base64 → temp file and open it
+  const openBase64File = async () => {
+    try {
+      const base64Data = normalizedUri.replace(/^data:.*;base64,/, '');
+
+      const tempPath = FileSystem.cacheDirectory + fileName;
+
+      await FileSystem.writeAsStringAsync(tempPath, base64Data, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      await Sharing.shareAsync(tempPath, { mimeType: fileType });
+    } catch (err) {
+      console.error('Error opening Base64 file:', err);
+      Alert.alert('Error', 'Unable to open file.');
     }
+  };
 
+  // IMAGE PREVIEW
+  if (isImage && normalizedUri) {
     return (
-      <View className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row items-center mb-2">
-        <View className="w-10 h-10 bg-blue-100 rounded-lg items-center justify-center mr-3">
-          <Text className="text-xl">📄</Text>
-        </View>
-        <View className="flex-1">
-          <Text className="text-sm font-semibold text-gray-800" numberOfLines={1}>
-            {fileName}
-          </Text>
-          {fileType && (
-            <Text className="text-xs text-gray-500" numberOfLines={1}>
-              {fileType}
-            </Text>
-          )}
-          {file.size && (
-            <Text className="text-xs text-gray-400">
-              {formatFileSize(file.size)}
-            </Text>
-          )}
-        </View>
-        {fileUri && (
-          <TouchableOpacity
-            className="bg-blue-900 px-3 py-1.5 rounded-lg"
-            onPress={() => {
-              if (isBase64) {
-                Alert.alert(
-                  t('CommonPage.file') || 'File',
-                  t('CommonPage.file_saved_locally') || 'File data is stored locally'
-                );
-              } else {
-                Alert.alert(
-                  t('CommonPage.file') || 'File',
-                  `${fileName}\n\n${fileUri}`,
-                  [
-                    { text: t('CommonPage.ok') || 'OK' }
-                  ]
-                );
-              }
-            }}
-          >
-            <Text className="text-white text-xs font-semibold">
-              {t('CommonPage.info') || 'Info'}
-            </Text>
-          </TouchableOpacity>
+      <View className="bg-gray-50 rounded-lg p-2 border border-gray-200 mb-2">
+        <Image
+          source={{ uri: normalizedUri }}
+          className="w-full h-48 rounded-lg mb-2"
+          resizeMode="cover"
+        />
+        <Text className="text-xs text-gray-600" numberOfLines={1}>
+          📎 {fileName}
+        </Text>
+        {fileType && (
+          <Text className="text-xs text-gray-400">{fileType}</Text>
         )}
       </View>
     );
-  };
+  }
+
+  // OTHER FILE TYPES (PDF, DOCX, ZIP, etc.)
+  return (
+    <View className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row items-center mb-2">
+      <View className="w-10 h-10 bg-blue-100 rounded-lg items-center justify-center mr-3">
+        <Text className="text-xl">📄</Text>
+      </View>
+
+      <View className="flex-1">
+        <Text className="text-sm font-semibold text-gray-800" numberOfLines={1}>
+          {fileName}
+        </Text>
+        {fileType && (
+          <Text className="text-xs text-gray-500">{fileType}</Text>
+        )}
+        {file.size && (
+          <Text className="text-xs text-gray-400">
+            {formatFileSize(file.size)}
+          </Text>
+        )}
+      </View>
+
+      <TouchableOpacity
+        className="bg-blue-900 px-3 py-1.5 rounded-lg"
+        onPress={() => {
+          if (isBase64) {
+            openBase64File();
+          } else {
+            Linking.openURL(fileUri);
+          }
+        }}
+      >
+        <Text className="text-white text-xs font-semibold">Open</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';

@@ -634,7 +634,7 @@ function EditSubmissionScreen(): React.JSX.Element {
 
       if (parsedTranslations) {
         console.log("Parsed translations:", parsedTranslations);
-        wizardForm = translateFormSchema(wizardForm, parsedTranslations, currentLang);
+        wizardForm =translateFormSchema(wizardForm, parsedTranslations, currentLang);
       }
     }
 

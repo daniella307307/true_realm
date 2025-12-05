@@ -10,6 +10,7 @@ import { CREATE_FOLLOWUPS_TABLE } from "~/models/followups/follow-up";
 import { CREATE_APPMETADATA_TABLE_SQL } from "~/models/metadata/appmetadata";
 import { CREATE_PROJECT_TABLE } from "~/models/projects/project";
 import { CREATE_COHORT_TABLE } from "~/models/cohorts/cohort";
+import { CREATE_DRAFT_SUBMISSIONS_TABLE } from "~/models/draft-submissions/draft-submissions";
 import { CREATE_IZU_TABLE } from "~/models/izus/izu";
 import { CREATE_SURVEY_SUBMISSIONS_TABLE } from "~/services/survey-submission";
 import { CREATE_CELL_TABLE } from "~/models/locations/cell";
@@ -88,6 +89,7 @@ export const SQLiteProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           { name: "Izu", sql: CREATE_IZU_TABLE },
           { name: "Cell", sql: CREATE_CELL_TABLE },
           { name: "Village", sql: CREATE_VILLAGE_TABLE },
+          { name: "DraftSubmissions", sql: CREATE_DRAFT_SUBMISSIONS_TABLE },
           { name: "Sector", sql: CREATE_SECTOR_TABLE },
           { name: "District", sql: CREATE_DISTRICT_TABLE },
           { name: "Province", sql: CREATE_PROVINCE_TABLE },

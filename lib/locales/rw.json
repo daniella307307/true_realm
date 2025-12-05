@@ -237,7 +237,13 @@
     "submission_error_message": "Kohereza byanze",
     "validation": "Hakenewe kuzuzwa",
     "loading_submission":"Ibisubizo biri gutunganywa...",
-    "submitting": "Biri koherezwa"
+    "submitting": "Biri koherezwa",
+    "draft_found_title":"Ibisubizo Biheruka",
+    "draft_loaded": "Ibisubizo biheruka byarimo byuzuzwa",
+    "draft_found_message":"Mufite ibisubizo bitari byoherezwa. Murifuze gukomereza kuri ibyo bisubizo cg gutangira bundi bushya?",
+    "continue_draft":"Komereza ku bisubizo biheruka",
+    "draft_loaded_message": "Komeza wuzuze ibisubizo byawe biheruka.",
+    "start_new":"Tangira bushya"
   },
   "HistoryPage": {
     "title": "Ibyakozwe",
@@ -438,6 +444,7 @@
     "online":"Uri kumurongo",
     "offline": "Nturi kumurongo",
     "sync_failed":"Ntabwo guhuzwa byakunze",
+    "sync_failed_message":"Hari ikibazo mu guhuza amakuru yawe. Genzura murandasi yawe maze wongere ugerageze.",
     "offlineMessage": "Nturi kumurongo. Shyiraho murandasi wongere ugerageze.",
     "allSynced": "Ibice byose byahurijwe neza",
     "formSyncFailed": "Kuhuza amafishi n'amasuzuma byanze",

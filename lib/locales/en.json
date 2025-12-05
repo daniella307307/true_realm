@@ -275,7 +275,13 @@
     "submission_error_title": "Submission Error",
     "submission_error_message": "Your submission has failed",
     "validation": "Fields are required",
-    "submitting": "Submitting..."
+    "submitting": "Submitting...",
+    "draft_found_title":"Draft Found",
+    "draft_loaded": "Draft submission loaded",
+    "draft_loaded_message": "Continue editing your draft submission.",
+    "draft_found_message":"A draft submission was found for this form. Would you like to continue editing the draft or start a new submission?",
+    "continue_draft":"Continue Draft",
+    "start_new":"Start New"
   },
   "HistoryPage": {
     "title": "History",
@@ -294,6 +300,7 @@
     "title": "Settings",
     "sync": "Sync",
     "home": "Home",
+
     "account": "Account",
     "language": "Language",
     "account_details": "Account Details",
@@ -437,6 +444,7 @@
     "networkError": "Network Error",
     "noPendingUpdates":"No pending updates",
     "lastSync":"Last Synced",
+    "sync_failed_message":"Sync failed. Please check your internet connection and try again.",
     "online":"Online",
     "sync_failed":"Sync failed",
     "offline": "You are offline",

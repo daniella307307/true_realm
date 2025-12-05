@@ -1346,7 +1346,7 @@ export const syncAllPendingChanges = async (
         Toast.show({
           type: "error",
           text1: t("Alerts.error.title"),
-          text2: `${totalFailed} changes failed to sync`,
+          text2: `${totalFailed} ${totalFailed === 1 ? t("Sync.sync_failed"): t("Sync.sync_failed")}`,
           position: "top",
           visibilityTime: 4000,
         });
@@ -1533,7 +1533,7 @@ const handleOnlineSubmission = async (
   const apiPayload = prepareApiPayload(submission, formId);
 
   try {
-    const response = await baseInstance.post(apiUrl, apiPayload);
+    const response = await baseInstance.post(apiUrl, apiPayload, {timeout: 20000});
     const id = response.data?.submission?._id;
 
     if (!id) throw new Error("No ID returned from API");
